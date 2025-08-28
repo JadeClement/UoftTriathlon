@@ -1,0 +1,339 @@
+.coaches-exec-container {
+  margin-top: 70px;
+  padding: 2rem 0;
+  background: #f8fafc;
+  min-height: calc(100vh - 70px);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.section-title {
+  text-align: center;
+  color: #1E3A8A;
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+
+.section-subtitle {
+  color: #1E3A8A;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+/* Coaches Section */
+.coaches-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.coaches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+}
+
+/* Coach Card Link Styles */
+.coach-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.coach-card {
+  background: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #1E40AF;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.coach-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.2);
+  border-left-color: #3b82f6;
+}
+
+.coach-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.coach-photo {
+  width: 80px;
+  height: 80px;
+  background: #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #1E40AF;
+  overflow: hidden;
+}
+
+.coach-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.photo-placeholder {
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.coach-emoji {
+  font-size: 2rem;
+}
+
+.coach-card h3 {
+  color: #1E3A8A;
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.coach-name {
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.profile-link {
+  color: #1E40AF;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.profile-link:hover {
+  color: #1E3A8A;
+  text-decoration: underline;
+}
+
+.coach-bio {
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.coach-contact p {
+  color: #374151;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Executive Team Section */
+.exec-team-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.exec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Executive Card Link Styles */
+.exec-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.exec-card {
+  background: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #1E40AF;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.exec-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.2);
+  border-left-color: #3b82f6;
+}
+
+.exec-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.exec-photo {
+  width: 70px;
+  height: 70px;
+  background: #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #1E40AF;
+  overflow: hidden;
+}
+
+.exec-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.exec-emoji {
+  font-size: 1.5rem;
+}
+
+.exec-card h3 {
+  color: #1E3A8A;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.exec-name {
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.exec-bio {
+  color: #374151;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+/* Contact Section */
+.contact-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.contact-info {
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.contact-info a {
+  color: #1E40AF;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.contact-info a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
+  .coaches-grid,
+  .exec-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .coaches-section,
+  .exec-team-section,
+  .contact-section {
+    padding: 1.5rem;
+  }
+  
+  .section-title {
+    font-size: 2rem;
+  }
+  
+  .section-subtitle {
+    font-size: 1.5rem;
+  }
+  
+  /* Move profile circles to top on mobile */
+  .coach-avatar,
+  .exec-avatar {
+    order: -1;
+    margin-bottom: 1.5rem;
+  }
+  
+  .coach-card,
+  .exec-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .coach-photo,
+  .exec-photo {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.loading-state h2 {
+  color: #1E3A8A;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.error-state h2 {
+  color: #dc2626;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.error-state p {
+  color: #6b7280;
+  margin-bottom: 2rem;
+}
+
+.error-state button {
+  background: #1E40AF;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.error-state button:hover {
+  background: #1E3A8A;
+}
+

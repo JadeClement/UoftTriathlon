@@ -1,0 +1,38 @@
+# Twilio Configuration
+# Get these from your Twilio Console: https://console.twilio.com/
+TWILIO_ACCOUNT_SID=your_account_sid_here
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_PHONE_NUMBER=+1234567890
+
+# Example:
+# TWILIO_ACCOUNT_SID=AC1234567890abcdef1234567890abcdef
+# TWILIO_AUTH_TOKEN=1234567890abcdef1234567890abcdef
+# TWILIO_PHONE_NUMBER=+15551234567
+
+# SendGrid Configuration
+# Get your API key from SendGrid Dashboard: https://app.sendgrid.com/settings/api_keys
+SENDGRID_API_KEY=your_sendgrid_api_key_here
+SENDGRID_FROM_EMAIL=info@uofttriathlon.com
+
+# Example:
+# SENDGRID_API_KEY=SG.1234567890abcdef1234567890abcdef
+# SENDGRID_FROM_EMAIL=info@uofttriathlon.com
+
+# JWT Configuration
+# Generate a secure random string for JWT signing
+JWT_SECRET=your_jwt_secret_here
+
+# Frontend URL (for password reset links)
+FRONTEND_URL=http://localhost:3000
+
+# Copy this to .env and fill in your actual values
+
+# SMTP (Nodemailer) settings for sending emails
+# Use your provider's SMTP settings (e.g., Gmail, Outlook, custom domain)
+# If using Gmail, you must use an App Password and set SMTP_SECURE=true and SMTP_PORT=465
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your_smtp_username
+SMTP_PASS=your_smtp_password_or_app_password
+SMTP_SECURE=false
+SMTP_FROM="UofT Triathlon Club" <no-reply@uofttriathlon.com>

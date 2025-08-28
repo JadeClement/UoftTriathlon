@@ -1,0 +1,522 @@
+.join-us-container {
+  margin-top: 70px;
+  padding: 1.5rem 0;
+  background: #f8fafc;
+  min-height: calc(100vh - 70px);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.section-title {
+  text-align: center;
+  color: #1E3A8A;
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+
+/* Section Navigation */
+.section-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  color: #1E3A8A;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.nav-link:hover {
+  background: #f8fafc;
+  border-color: #1E3A8A;
+  transform: translateY(-2px);
+}
+
+.nav-link:active {
+  background: #1E3A8A;
+  color: white;
+}
+
+.section-subtitle {
+  color: #1E3A8A;
+  font-size: 1.6rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+/* Goal Section */
+.goal-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.goal-title {
+  color: #1E3A8A;
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.goal-text {
+  color: #374151;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Who Can Join Section */
+.who-can-join-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.membership-info p {
+  color: #374151;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+.athlete-types h3 {
+  color: #1E3A8A;
+  font-size: 1.6rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.athlete-types > p {
+  color: #6b7280;
+  margin-bottom: 2rem;
+  font-size: 1rem;
+}
+
+.athlete-category {
+  background: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #1E40AF;
+}
+
+.athlete-category h4 {
+  color: #1E3A8A;
+  font-size: 1.3rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.athlete-category p {
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.beginner-note {
+  background: #fef3c7;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #f59e0b;
+}
+
+.beginner-note h4 {
+  color: #92400e;
+  font-size: 1.3rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.beginner-note p {
+  color: #78350f;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Charter Section */
+.charter-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.charter-notice {
+  background: #fef3c7;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #f59e0b;
+  margin-bottom: 2rem;
+}
+
+.charter-notice p {
+  color: #78350f;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.charter-content h3 {
+  color: #1E3A8A;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.charter-content h4 {
+  color: #1E3A8A;
+  font-size: 1.4rem;
+  margin: 2rem 0 1rem 0;
+  font-weight: 600;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.charter-content h5 {
+  color: #1E3A8A;
+  font-size: 1.2rem;
+  margin: 1.5rem 0 0.75rem 0;
+  font-weight: 600;
+}
+
+.charter-content p {
+  color: #374151;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.charter-content ul {
+  margin: 1rem 0 1.5rem 1.5rem;
+}
+
+.charter-content li {
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.charter-content a {
+  color: #1E40AF;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.charter-content a:hover {
+  text-decoration: underline;
+}
+
+/* Joining Instructions Section */
+.joining-instructions-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.step-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.step {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.step-number {
+  background: #1E3A8A;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.step-content h3 {
+  color: #1E3A8A;
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.step-content p {
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.step-content a {
+  color: #1E40AF;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.step-content a:hover {
+  text-decoration: underline;
+}
+
+.packages-info {
+  background: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.packages-info h4 {
+  color: #1E3A8A;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.packages-info ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 1.5rem;
+}
+
+.packages-info li {
+  padding: 0.5rem 0;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.packages-info li:last-child {
+  border-bottom: none;
+}
+
+.fees-section {
+  margin-bottom: 1.5rem;
+}
+
+.fees-section h4 {
+  color: #1E3A8A;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.fees-section p {
+  font-style: italic;
+  color: #6b7280;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.fee-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.fee-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.fee-name {
+  font-weight: 600;
+  color: #374151;
+}
+
+.fee-amount {
+  font-weight: 600;
+  color: #1E3A8A;
+}
+
+.registration-info {
+  background: #dbeafe;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #1E40AF;
+}
+
+.registration-info h4 {
+  color: #1E3A8A;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.registration-info p {
+  margin-bottom: 1rem;
+}
+
+.discount-info {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+}
+
+.discount-info p {
+  margin-bottom: 0.5rem;
+}
+
+.discount-info ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+.discount-info li {
+  padding: 0.25rem 0;
+  color: #374151;
+}
+
+.discount-info code {
+  background: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
+  color: #1E3A8A;
+  font-weight: 600;
+}
+
+/* CTA Section */
+.cta-section {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.cta-section h2 {
+  color: #1E3A8A;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.cta-section p {
+  color: #6b7280;
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #1E3A8A, #1E40AF);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1E40AF, #1E3A8A);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 2px solid #1E3A8A;
+  color: #1E3A8A;
+}
+
+.btn-secondary:hover {
+  background: #1E3A8A;
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
+  .section-title {
+    font-size: 2.5rem;
+  }
+  
+  .goal-section,
+  .who-can-join-section,
+  .joining-instructions-section,
+  .cta-section {
+    padding: 1.5rem;
+  }
+  
+  .step {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .step-number {
+    align-self: center;
+  }
+  
+  .fee-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .cta-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn {
+    width: 100%;
+    max-width: 300px;
+    text-align: center;
+  }
+}

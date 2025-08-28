@@ -1,0 +1,15 @@
+.page-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.teamgear-page h1 {
+  margin-bottom: 1rem;
+}
+
+.teamgear-page p {
+  color: #374151;
+}
+
+

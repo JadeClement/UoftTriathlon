@@ -1,0 +1,77 @@
+.charter-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.charter-modal {
+  background: #fff;
+  max-width: 800px;
+  width: 90%;
+  border-radius: 10px;
+  padding: 1rem;
+  color: #000;
+}
+
+.charter-content {
+  height: 50vh;
+  overflow-y: auto;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.charter-modal h2 {
+  text-align: left !important;
+  font-size: 1.6rem;
+  margin: 0.5rem 0 0.5rem 0;
+}
+
+.charter-title {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 1rem;
+  text-decoration: underline;
+  color: #000 !important;
+  text-align: left !important;
+}
+
+.charter-paragraph {
+  margin: 0.25rem 0;
+  line-height: 1.6;
+  color: #000;
+}
+
+/* no boxed sections; titles flow inline */
+
+.charter-list {
+  margin: 0.25rem 0 0.5rem 1.25rem;
+}
+
+.charter-item.sub {
+  list-style: none;
+  margin-left: 0;
+  font-weight: 700;
+}
+
+.charter-list .charter-item:not(.sub) {
+  margin-left: 2rem;
+}
+
+.charter-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.charter-actions .btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
