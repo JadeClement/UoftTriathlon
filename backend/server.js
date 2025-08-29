@@ -49,6 +49,15 @@ app.get('/api/test-cors', (req, res) => {
   res.json({ message: 'CORS test successful', timestamp: new Date().toISOString() });
 });
 
+// Test endpoint specifically for races CORS debugging
+app.get('/api/test-races-cors', (req, res) => {
+  res.json({ 
+    message: 'Races CORS test successful', 
+    timestamp: new Date().toISOString(),
+    endpoint: '/api/test-races-cors'
+  });
+});
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
