@@ -2,10 +2,22 @@ const { Pool } = require('pg');
 const path = require('path');
 
 // PostgreSQL connection configuration
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const pool = new Pool(
+  process.env.DATABASE_URL 
+    ? {
+        // Production (Railway) - use DATABASE_URL
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+      }
+    : {
+        // Local development - use local database
+        user: 'postgres',
+        host: 'localhost',
+        database: 'uofttriathlon',
+        password: '', // No password for local development
+        port: 5432,
+      }
+);
 
 // Test the connection
 pool.on('connect', () => {
