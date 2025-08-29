@@ -216,7 +216,7 @@
 
 .profile-menu {
   position: absolute;
-  top: calc(100% + 10px); /* Add extra space below the navbar */
+  top: 100%;
   right: 0;
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
   border-radius: 8px;
@@ -224,7 +224,7 @@
   min-width: 180px;
   margin-top: 0.5rem;
   overflow: hidden;
-  z-index: 1002; /* Increase z-index to be above navbar */
+  z-index: 1001;
   animation: slideDown 0.2s ease-out;
 }
 
