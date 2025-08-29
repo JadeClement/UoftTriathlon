@@ -25,7 +25,12 @@ const Races = () => {
   const loadRaces = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/races`);
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/races`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       if (response.ok) {
         const data = await response.json();
