@@ -216,7 +216,7 @@
 
 .profile-menu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 10px); /* Add extra space below the navbar */
   right: 0;
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
   border-radius: 8px;
@@ -224,7 +224,7 @@
   min-width: 180px;
   margin-top: 0.5rem;
   overflow: hidden;
-  z-index: 1001;
+  z-index: 1002; /* Increase z-index to be above navbar */
   animation: slideDown 0.2s ease-out;
 }
 
@@ -289,7 +289,7 @@
 
 .more-menu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 10px); /* Add extra space below the navbar */
   left: 0;
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
   border-radius: 8px;
@@ -297,7 +297,7 @@
   min-width: 180px;
   margin-top: 0.5rem;
   overflow: hidden;
-  z-index: 1001;
+  z-index: 1002; /* Increase z-index to be above navbar */
   animation: slideDown 0.2s ease-out;
   pointer-events: auto;
 }

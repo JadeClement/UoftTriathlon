@@ -23,7 +23,27 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
       ORDER BY r.date DESC
     `);
 
-    res.json({ races: racesResult.rows || [] });
+    // Get signup details for each race to check if current user is signed up
+    const racesWithSignups = await Promise.all(
+      racesResult.rows.map(async (race) => {
+        const signupsResult = await pool.query(`
+          SELECT 
+            rs.id, rs.user_id, rs.signup_time,
+            u.name as user_name, u.role as user_role
+          FROM race_signups rs
+          JOIN users u ON rs.user_id = u.id
+          WHERE rs.race_id = $1
+          ORDER BY rs.signup_time ASC
+        `, [race.id]);
+
+        return {
+          ...race,
+          signups: signupsResult.rows || []
+        };
+      })
+    );
+
+    res.json({ races: racesWithSignups || [] });
   } catch (error) {
     console.error('Get races error:', error);
     res.status(500).json({ error: 'Internal server error' });
