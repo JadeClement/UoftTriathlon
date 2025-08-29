@@ -448,7 +448,7 @@ router.post('/workout-attendance/:workoutId', authenticateToken, requireAdmin, a
 });
 
 // Get race management data
-router.get('/races', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/race-management', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const racesResult = await pool.query(`
       SELECT 
@@ -469,7 +469,7 @@ router.get('/races', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Delete race (soft delete)
-router.delete('/races/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.delete('/race-management/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
