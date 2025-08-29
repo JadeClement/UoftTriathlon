@@ -3,9 +3,23 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireMember } = require('../middleware/auth');
+const { authenticateToken, allowOwnProfile, requireMember } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Test route to verify the router is working
+router.get('/test', (req, res) => {
+  res.json({ message: 'Users router is working!' });
+});
+
+// Test route with same middleware as profile
+router.get('/test-auth', authenticateToken, allowOwnProfile, (req, res) => {
+  res.json({ 
+    message: 'Auth middleware working!', 
+    userId: req.user.id,
+    userRole: req.user.role
+  });
+});
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -36,7 +50,7 @@ const upload = multer({
 
 // CORS is handled by main server middleware
 // Get user profile
-router.get('/profile', authenticateToken, requireMember, async (req, res) => {
+router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -59,41 +73,59 @@ router.get('/profile', authenticateToken, requireMember, async (req, res) => {
 });
 
 // Update user profile
-router.put('/profile', authenticateToken, requireMember, async (req, res) => {
+router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) => {
   try {
+    console.log('🔍 Profile update route: Starting...');
     const userId = req.user.id;
+    console.log('🔍 Profile update route: User ID:', userId);
     console.log('🔍 Backend received request body:', req.body);
     console.log('🔍 Backend received headers:', req.headers);
     
-    const { name, email, phone_number } = req.body;
+    const { name, email, phone_number, bio } = req.body;
+    console.log('🔍 Profile update route: Extracted data:', { name, email, phone_number, bio });
 
     if (!name || !email) {
-      console.log('❌ Backend validation failed:', { name, email, phone_number });
+      console.log('❌ Backend validation failed:', { name, email, phone_number, bio });
       return res.status(400).json({ error: 'Name and email are required' });
     }
 
+    console.log('🔍 Profile update route: Validation passed, checking email and phone uniqueness...');
+
     // Check if email is already taken by another user
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, userId]);
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'Email is already taken' });
+    const existingUserByEmail = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, userId]);
+    if (existingUserByEmail.rows.length > 0) {
+      console.log('❌ Email already taken by user ID:', existingUserByEmail.rows[0].id);
+      return res.status(400).json({ error: 'Hey, that email is already taken by another user. Please choose a different email address.' });
     }
+
+    // Check if phone number is already taken by another user
+    if (phone_number) {
+      const existingUserByPhone = await pool.query('SELECT id FROM users WHERE phone_number = $1 AND id != $2', [phone_number, userId]);
+      if (existingUserByPhone.rows.length > 0) {
+        console.log('❌ Phone number already taken by user ID:', existingUserByPhone.rows[0].id);
+        return res.status(400).json({ error: 'Hey, that phone number is already taken by another user. Please choose a different phone number.' });
+      }
+    }
+
+    console.log('🔍 Profile update route: Email and phone unique, updating database...');
 
     // Update user profile
     await pool.query(`
       UPDATE users 
-      SET name = $1, email = $2, phone_number = $3
-      WHERE id = $4
-    `, [name, email, phone_number || null, userId]);
+      SET name = $1, email = $2, phone_number = $3, bio = $4
+      WHERE id = $5
+    `, [name, email, phone_number || null, bio || null, userId]);
 
+    console.log('✅ Profile update route: Database update successful');
     res.json({ message: 'Profile updated successfully' });
   } catch (error) {
-    console.error('Update profile error:', error);
+    console.error('❌ Profile update route: Error occurred:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Upload profile picture
-router.post('/profile-picture', authenticateToken, requireMember, upload.single('profilePicture'), async (req, res) => {
+router.post('/profile-picture', authenticateToken, allowOwnProfile(), upload.single('profilePicture'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -117,7 +149,7 @@ router.post('/profile-picture', authenticateToken, requireMember, upload.single(
 });
 
 // Delete profile picture
-router.delete('/profile-picture', authenticateToken, requireMember, async (req, res) => {
+router.delete('/profile-picture', authenticateToken, allowOwnProfile(), async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -165,6 +197,15 @@ router.get('/uploads/profile-pictures/:filename', (req, res) => {
 router.post('/accept-charter', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
+    
+    // Allow pending and member users to accept charter
+    if (req.user.role !== 'pending' && req.user.role !== 'member') {
+      return res.status(403).json({ 
+        error: 'Only pending and member users can accept the charter',
+        required: 'pending or member',
+        current: req.user.role
+      });
+    }
 
     await pool.query(`
       UPDATE users 
@@ -172,7 +213,7 @@ router.post('/accept-charter', authenticateToken, async (req, res) => {
       WHERE id = $1
     `, [userId]);
 
-    res.json({ message: 'Charter accepted successfully' });
+    res.json({ message: 'Team charter accepted successfully' });
   } catch (error) {
     console.error('Accept charter error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -180,7 +221,7 @@ router.post('/accept-charter', authenticateToken, async (req, res) => {
 });
 
 // Check for role change notifications
-router.get('/role-change-notifications', authenticateToken, async (req, res) => {
+router.get('/role-change-notifications', authenticateToken, requireMember, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -210,7 +251,7 @@ router.get('/role-change-notifications', authenticateToken, async (req, res) => 
 });
 
 // Mark role change notification as read
-router.post('/mark-role-notification-read', authenticateToken, async (req, res) => {
+router.post('/mark-role-notification-read', authenticateToken, requireMember, async (req, res) => {
   try {
     const userId = req.user.id;
     

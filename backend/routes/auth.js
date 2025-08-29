@@ -11,16 +11,22 @@ const router = express.Router();
 // Register new user
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phoneNumber } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
+    if (!name || !email || !password || !phoneNumber) {
+      return res.status(400).json({ error: 'Name, email, password, and phone number are required' });
     }
 
-    // Check if user already exists
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existingUser.rows.length > 0) {
+    // Check if user already exists with this email
+    const existingUserByEmail = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existingUserByEmail.rows.length > 0) {
       return res.status(400).json({ error: 'User already exists with this email' });
+    }
+
+    // Check if user already exists with this phone number
+    const existingUserByPhone = await pool.query('SELECT id FROM users WHERE phone_number = $1', [phoneNumber]);
+    if (existingUserByPhone.rows.length > 0) {
+      return res.status(400).json({ error: 'A user with this phone number already exists. Please use a different phone number or contact support if you believe this is an error.' });
     }
 
     // Hash password
@@ -29,10 +35,10 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const result = await pool.query(`
-      INSERT INTO users (name, email, password_hash, role, created_at)
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-      RETURNING id, name, email, role
-    `, [name, email, hashedPassword, 'pending']);
+      INSERT INTO users (name, email, password_hash, phone_number, role, created_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      RETURNING id, name, email, phone_number, role
+    `, [name, email, hashedPassword, phoneNumber, 'pending']);
 
     const user = result.rows[0];
 
@@ -53,12 +59,21 @@ router.post('/register', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        phone_number: user.phone_number,
         role: user.role
       },
       token
     });
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Check if it's a unique constraint violation
+    if (error.code === '23505' && error.constraint === 'users_phone_number_unique') {
+      return res.status(400).json({ 
+        error: 'A user with this phone number already exists. Please use a different phone number or contact support if you believe this is an error.' 
+      });
+    }
+    
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -129,7 +144,7 @@ router.post('/login', async (req, res) => {
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
     const userResult = await pool.query(`
-      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted
+      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, bio
       FROM users 
       WHERE id = $1 AND is_active = true
     `, [req.user.id]);
@@ -146,35 +161,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// Update user profile
-router.put('/profile', authenticateToken, async (req, res) => {
-  try {
-    const { name, email, phone_number } = req.body;
-    const userId = req.user.id;
-
-    if (!name || !email) {
-      return res.status(400).json({ error: 'Name and email are required' });
-    }
-
-    // Check if email is already taken by another user
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, userId]);
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'Email is already taken' });
-    }
-
-    // Update user profile
-    await pool.query(`
-      UPDATE users 
-      SET name = $1, email = $2, phone_number = $3
-      WHERE id = $4
-    `, [name, email, phone_number || null, userId]);
-
-    res.json({ message: 'Profile updated successfully' });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// Profile update moved to /api/users/profile
 
 // Change password
 router.put('/change-password', authenticateToken, async (req, res) => {
@@ -208,24 +195,6 @@ router.put('/change-password', authenticateToken, async (req, res) => {
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
     console.error('Change password error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Accept team charter
-router.post('/accept-charter', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    await pool.query(`
-      UPDATE users 
-      SET charter_accepted = true, charter_accepted_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-    `, [userId]);
-
-    res.json({ message: 'Team charter accepted successfully' });
-  } catch (error) {
-    console.error('Accept charter error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

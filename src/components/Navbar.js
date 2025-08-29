@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Navbar.css';
 
@@ -8,8 +8,8 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
-  const location = useLocation();
-  const { currentUser, isMember, isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const { currentUser, isMember, isAdmin, logout } = useAuth();
   const profileRef = useRef(null);
   const moreRef = useRef(null);
   
@@ -49,7 +49,7 @@ const Navbar = () => {
   };
 
   const isActive = (path) => {
-    return location.pathname === path;
+    return window.location.pathname === path;
   };
 
   // Handle clicks outside profile and more dropdowns
@@ -212,9 +212,7 @@ const Navbar = () => {
                   <button 
                     className="profile-menu-item logout-btn"
                     onClick={() => {
-                      localStorage.removeItem('triathlonUser');
-                      localStorage.removeItem('triathlonToken');
-                      window.location.reload();
+                      logout();
                     }}
                   >
                     Logout

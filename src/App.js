@@ -21,6 +21,7 @@ import ResetPassword from './components/ResetPassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
+import WorkInProgressBanner from './components/WorkInProgressBanner';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -169,6 +170,7 @@ function App() {
       <Router>
         <div className="App">
           <ScrollToTop />
+          <WorkInProgressBanner />
           <Navbar />
           <CharterPrompt />
           <AppContent />

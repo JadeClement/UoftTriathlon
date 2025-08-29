@@ -16,6 +16,17 @@ const Login = () => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
+
+  // Function to scroll to top of the page
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Function to set error and scroll to top
+  const setErrorAndScroll = (errorMessage) => {
+    setError(errorMessage);
+    scrollToTop();
+  };
   
   const { signup, login } = useAuth();
   const navigate = useNavigate();
@@ -31,23 +42,35 @@ const Login = () => {
       } else {
         // Validate passwords match for signup
         if (password !== confirmPassword) {
-          setError("Passwords do not match. Please ensure both password fields are identical.");
+          setErrorAndScroll("Passwords do not match. Please ensure both password fields are identical.");
           setLoading(false);
           return;
         }
-        await signup(email, password, name, phoneNumber);
+        if (!isLogin) {
+          if (!name || !email || !password || !phoneNumber) {
+            setErrorAndScroll('All fields are required');
+            return;
+          }
+          await signup(email, password, name, phoneNumber);
+        } else {
+          if (!email || !password) {
+            setErrorAndScroll('Email and password are required');
+            return;
+          }
+          await login(email, password);
+        }
       }
       navigate('/');
     } catch (error) {
       // Customize error message for login failures
       if (isLogin) {
-        setError("Username or password are incorrect. Please try again. If you do not have an account, please create one! ");
+        setErrorAndScroll("Username or password are incorrect. Please try again. If you do not have an account, please create one! ");
       } else {
         // Check if it's a duplicate email error
         if (error.message.includes('already exists')) {
-          setError("An account is already associated with this email. ");
+          setErrorAndScroll("An account is already associated with this email. ");
         } else {
-          setError(error.message);
+          setErrorAndScroll(error.message);
         }
       }
     } finally {
@@ -63,12 +86,13 @@ const Login = () => {
     setConfirmPassword('');
     setName('');
     setPhoneNumber('');
+    scrollToTop();
   };
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     if (!forgotPasswordEmail) {
-      setError('Please enter your email address');
+      setErrorAndScroll('Please enter your email address');
       return;
     }
 
@@ -95,11 +119,11 @@ const Login = () => {
       } else {
         const errorData = await response.json();
         console.error('🔑 Forgot password error:', errorData);
-        setError(errorData.error || 'Failed to send reset email');
+        setErrorAndScroll(errorData.error || 'Failed to send reset email');
       }
     } catch (error) {
       console.error('🔑 Forgot password network error:', error);
-      setError('Failed to send reset email. Please try again.');
+      setErrorAndScroll('Failed to send reset email. Please try again.');
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -110,6 +134,7 @@ const Login = () => {
     console.log('🔑 Opening forgot password modal with email:', email);
     setForgotPasswordEmail(email);
     setShowForgotPassword(true);
+    scrollToTop();
   };
 
   const closeForgotPassword = () => {
@@ -128,9 +153,11 @@ const Login = () => {
           <div className="error-message">
             {error}
             {isLogin && error.includes("please create one!") && (
-              <button type="button" onClick={toggleMode} className="error-link">
-                Sign Up
-              </button>
+              <div className="error-links">
+                <button type="button" onClick={toggleMode} className="error-link">
+                  Sign Up
+                </button>
+              </div>
             )}
             {!isLogin && error.includes("already associated with this email") && (
               <div className="error-links">
@@ -150,7 +177,7 @@ const Login = () => {
           {!isLogin && (
             <>
               <div className="form-group">
-                <label htmlFor="name">Full Name</label>
+                <label htmlFor="name">Full Name *</label>
                 <input
                   type="text"
                   id="name"
@@ -162,14 +189,13 @@ const Login = () => {
               </div>
               
               <div className="form-group">
-                <label htmlFor="phoneNumber">Phone Number (Optional)</label>
+                <label htmlFor="phoneNumber">Phone Number *</label>
                 <input
                   type="tel"
                   id="phoneNumber"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+1 (555) 123-4567"
-                  pattern="[\+]?[1-9][\d]{0,15}"
+                  required
                 />
                 <small className="form-help">For SMS notifications when promoted from waitlists</small>
               </div>
@@ -177,7 +203,7 @@ const Login = () => {
           )}
           
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Email *</label>
             <input
               type="email"
               id="email"
@@ -189,7 +215,7 @@ const Login = () => {
           </div>
           
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">Password *</label>
             <input
               type="password"
               id="password"
@@ -203,7 +229,7 @@ const Login = () => {
           {!isLogin && (
             <>
               <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm Password</label>
+                <label htmlFor="confirmPassword">Confirm Password *</label>
                 <input
                   type="password"
                   id="confirmPassword"

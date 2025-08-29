@@ -10,7 +10,7 @@ router.get('/', authenticateToken, requireMember, (req, res) => {
     db.all(`
       SELECT 
         id, email, name, role, created_at, last_login,
-        join_date, payment_confirmed
+        join_date
       FROM users
       WHERE is_active = 1
       ORDER BY created_at DESC
@@ -36,8 +36,7 @@ router.get('/:id', authenticateToken, requireMember, (req, res) => {
     db.get(`
       SELECT 
         id, email, name, role, created_at, last_login,
-        join_date, payment_confirmed,
-        emergency_contact, phone, address
+        join_date, emergency_contact, phone, address
       FROM users
       WHERE id = ? AND is_active = 1
     `, [id], (err, member) => {

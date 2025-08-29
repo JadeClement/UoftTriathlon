@@ -58,7 +58,6 @@ const Admin = () => {
           ...member,
           joinDate: member.join_date,
           expiryDate: member.expiry_date,
-          paymentConfirmed: member.payment_confirmed,
           absences: member.absences || 0,
           charterAccepted: member.charter_accepted || 0
         }));

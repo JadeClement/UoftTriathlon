@@ -10,6 +10,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
   color: #333;
+  margin: 0;
+  padding: 0;
 }
 
 .App {
@@ -20,7 +22,7 @@ body {
 
 main {
   flex: 1;
-  padding-top: 0; /* no offset for fixed navbar */
+  padding-top: 0; /* no extra padding needed since navbar is positioned below banner */
 }
 
 .container {
@@ -71,7 +73,7 @@ main {
     padding: 40px 0;
   }
   main {
-    padding-top: 0; /* no offset on mobile */
+    padding-top: 0; /* no extra padding needed on mobile */
   }
   
   .section-title {

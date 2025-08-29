@@ -40,7 +40,6 @@ async function initializeDatabase() {
         absences INTEGER DEFAULT 0,
         charter_accepted BOOLEAN DEFAULT FALSE,
         charter_accepted_at TIMESTAMP,
-        payment_confirmed BOOLEAN DEFAULT FALSE,
         reset_token VARCHAR(255),
         reset_token_expiry TIMESTAMP,
         is_active BOOLEAN DEFAULT TRUE,
@@ -157,6 +156,31 @@ async function initializeDatabase() {
     `);
     console.log('✅ Role change notifications table created');
 
+    // Create post_likes table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS post_likes (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER REFERENCES forum_posts(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(post_id, user_id)
+      )
+    `);
+    console.log('✅ Post likes table created');
+
+    // Create event_rsvps table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS event_rsvps (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER REFERENCES forum_posts(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) DEFAULT 'going' CHECK (status IN ('going', 'not_going', 'maybe')),
+        rsvp_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(post_id, user_id)
+      )
+    `);
+    console.log('✅ Event RSVPs table created');
+
     // Create indexes
     await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_forum_posts_user_id ON forum_posts(user_id)');
@@ -167,6 +191,10 @@ async function initializeDatabase() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_workout_waitlist_workout_id ON workout_waitlist(workout_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_role_change_notifications_user_id ON role_change_notifications(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_post_likes_post_id ON post_likes(post_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_post_likes_user_id ON post_likes(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_post_id ON event_rsvps(post_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_user_id ON event_rsvps(user_id)');
     
     console.log('✅ Database indexes created');
 

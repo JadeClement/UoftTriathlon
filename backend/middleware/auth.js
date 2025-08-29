@@ -16,31 +16,46 @@ console.log('🔒 Auth Middleware: JWT_SECRET from env:', !!process.env.JWT_SECR
 console.log('🔒 Auth Middleware: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
 console.log('🔒 Auth Middleware: Using JWT_SECRET:', JWT_SECRET.substring(0, 10) + '...');
 
-// Middleware to verify JWT token
+// Middleware to authenticate JWT token
 const authenticateToken = (req, res, next) => {
-  console.log('🔒 Auth Middleware: authenticateToken called');
-  console.log('🔒 Auth Middleware: Using JWT_SECRET:', JWT_SECRET.substring(0, 10) + '...');
+  console.log('🔒 Auth Middleware: Starting authentication...');
+  
+  // Critical check to prevent hanging
+  if (!JWT_SECRET || typeof JWT_SECRET !== 'string' || JWT_SECRET.length < 10) {
+    console.error('🚨 CRITICAL: Invalid JWT_SECRET detected!');
+    console.error('🚨 JWT_SECRET type:', typeof JWT_SECRET);
+    console.error('🚨 JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 'undefined');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
   
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    console.warn('🔒 Auth: Missing token');
+    console.log('🔒 Auth Middleware: No token provided');
     return res.status(401).json({ error: 'Access token required' });
   }
 
   console.log('🔒 Auth Middleware: Token received:', token.substring(0, 20) + '...');
+  console.log('🔒 Auth Middleware: About to verify token with JWT_SECRET...');
+  console.log('🔒 Auth Middleware: JWT_SECRET length:', JWT_SECRET.length);
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      console.warn('🔒 Auth: Token verification failed:', err && err.message);
-      console.warn('🔒 Auth: JWT_SECRET used:', JWT_SECRET.substring(0, 10) + '...');
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
+  try {
+    // Use synchronous verification to prevent hanging
+    const user = jwt.verify(token, JWT_SECRET);
     console.log('🔒 Auth Middleware: Token verification successful');
     req.user = user;
     next();
-  });
+  } catch (error) {
+    console.error('🚨 JWT verification error:', error.message);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(403).json({ error: 'Token expired' });
+    } else if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid token' });
+    } else {
+      return res.status(403).json({ error: 'Token verification failed' });
+    }
+  }
 };
 
 // Middleware to check if user has required role
@@ -80,6 +95,40 @@ const requireMember = requireRole('member');
 
 // Middleware to check if user is exec or higher
 const requireExec = requireRole('exec');
+
+// Middleware to allow users to edit their own profiles
+const requireOwnProfile = () => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Users can always edit their own profiles
+    if (req.user.id == req.params.id || req.user.id == req.body.userId) {
+      return next();
+    }
+
+    // If not editing own profile, require member role
+    return requireRole('member')(req, res, next);
+  };
+};
+
+// Middleware to allow users to edit their own profiles (for profile routes)
+const allowOwnProfile = () => {
+  return (req, res, next) => {
+    console.log('🔒 allowOwnProfile middleware: Starting...');
+    console.log('🔒 allowOwnProfile middleware: User ID from token:', req.user?.id);
+    
+    if (!req.user) {
+      console.log('🔒 allowOwnProfile middleware: No user found, returning 401');
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    console.log('🔒 allowOwnProfile middleware: User authenticated, allowing access');
+    // Users can always edit their own profiles
+    next();
+  };
+};
 
 // Middleware to log login activity
 const logLoginActivity = async (userId, req) => {
@@ -121,6 +170,8 @@ module.exports = {
   requireAdmin,
   requireMember,
   requireExec,
+  requireOwnProfile,
+  allowOwnProfile,
   logLoginActivity,
   generateToken,
   JWT_SECRET

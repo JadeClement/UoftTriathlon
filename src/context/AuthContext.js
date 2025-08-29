@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (email, password, name, phoneNumber) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,8 +68,13 @@ export const AuthProvider = ({ children }) => {
       // Normalize user data to ensure consistent field names
       const normalizedUser = {
         ...user,
-        charterAccepted: user.charter_accepted || user.charterAccepted
+        charterAccepted: user.charter_accepted || user.charterAccepted,
+        phoneNumber: user.phone_number || user.phoneNumber
       };
+      
+      // Remove duplicate fields to keep only normalized versions
+      delete normalizedUser.phone_number;
+      delete normalizedUser.charter_accepted;
       
       // Store user and token separately
       localStorage.setItem('triathlonUser', JSON.stringify(normalizedUser));
@@ -115,8 +120,15 @@ export const AuthProvider = ({ children }) => {
       const normalizedUser = {
         ...user,
         charterAccepted: user.charter_accepted || user.charterAccepted,
-        profilePictureUrl: user.profile_picture_url || user.profilePictureUrl
+        profilePictureUrl: user.profile_picture_url || user.profilePictureUrl,
+        phoneNumber: user.phone_number || user.phoneNumber,
+        bio: user.bio
       };
+      
+      // Remove duplicate fields to keep only normalized versions
+      delete normalizedUser.phone_number;
+      delete normalizedUser.profile_picture_url;
+      delete normalizedUser.charter_accepted;
       
       // Store user and token separately
       localStorage.setItem('triathlonUser', JSON.stringify(normalizedUser));
@@ -137,6 +149,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('triathlonUser');
     localStorage.removeItem('triathlonToken');
     setCurrentUser(null);
+    
+    // Force a page reload to clear any protected routes
+    window.location.href = '/login';
   };
 
   const getUserRole = (user) => {
@@ -238,7 +253,9 @@ export const AuthProvider = ({ children }) => {
         const normalizedUser = {
           ...user,
           charterAccepted: user.charter_accepted || user.charterAccepted,
-          profilePictureUrl: user.profile_picture_url || user.profilePictureUrl
+          profilePictureUrl: user.profile_picture_url || user.profilePictureUrl,
+          phoneNumber: user.phone_number || user.phoneNumber,
+          bio: user.bio
         };
         
         setCurrentUser(normalizedUser);

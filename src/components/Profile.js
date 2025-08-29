@@ -67,10 +67,12 @@ const Profile = () => {
   const [editedName, setEditedName] = useState('');
   const [editedEmail, setEditedEmail] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
+  const [editedBio, setEditedBio] = useState('');
   const [editedImage, setEditedImage] = useState('');
   const [saving, setSaving] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [justSaved, setJustSaved] = useState(false);
+  const [error, setError] = useState('');
 
   // Check if this is a user profile page or team member page
   const isUserProfile = React.useMemo(() => {
@@ -105,7 +107,8 @@ const Profile = () => {
         email: currentUser.email,
         phone: currentUser.phone_number || currentUser.phone || '',
         image: profileImage,
-        role: currentUser.role
+        role: currentUser.role,
+        bio: currentUser.bio || '' // Include bio from currentUser
       });
       setLoading(false);
     } else if (role && teamMembers[role]) {
@@ -143,6 +146,7 @@ const Profile = () => {
       setEditedName(userProfile.name || '');
       setEditedEmail(userProfile.email || '');
       setEditedPhone(userProfile.phone || '');
+      setEditedBio(userProfile.bio || ''); // Initialize bio
       setEditedImage(userProfile.image || '/images/default_profile.png');
     } else {
       console.log('⏭️ Skipping form initialization:', {
@@ -157,9 +161,11 @@ const Profile = () => {
     if (!isUserProfile) return; // Only allow editing for user profiles, not team member bios
     
     setJustSaved(false); // Reset the flag when starting to edit
+    setError(''); // Clear any previous errors
     setEditedName(userProfile.name || '');
     setEditedEmail(userProfile.email || '');
     setEditedPhone(userProfile.phone || '');
+    setEditedBio(userProfile.bio || ''); // Set bio for editing
     setEditedImage(userProfile.image || '/images/default_profile.png');
     setEditMode(true);
   };
@@ -177,7 +183,8 @@ const Profile = () => {
       const profileData = {
         name: editedName,
         email: editedEmail,
-        phone_number: editedPhone
+        phone_number: editedPhone,
+        bio: editedBio
       };
 
       console.log('📝 Sending profile data:', profileData);
@@ -259,7 +266,8 @@ const Profile = () => {
         name: editedName,
         email: editedEmail,
         phone: editedPhone,
-        image: finalImage
+        image: finalImage,
+        bio: editedBio // Include bio in the update
       };
       
       setUserProfile(prev => ({
@@ -273,7 +281,8 @@ const Profile = () => {
         name: editedName,
         email: editedEmail,
         phone_number: editedPhone,  // Match the database field name
-        profile_picture_url: profilePictureUrl || null  // Use the new image URL from backend
+        profile_picture_url: profilePictureUrl || null,  // Use the new image URL from backend
+        bio: editedBio // Include bio in the auth context update
       };
       
       console.log('🔄 Updating auth context with:', authUpdateData);
@@ -320,13 +329,14 @@ const Profile = () => {
       setEditMode(false);
       setSaving(false);
       setJustSaved(true);
+      setError(''); // Clear any errors on successful save
       
       // Reset the justSaved flag after a short delay
       setTimeout(() => setJustSaved(false), 100);
       
     } catch (error) {
       console.error('❌ Error updating profile:', error);
-      alert(`Error updating profile: ${error.message}`);
+      setError(error.message);
       setSaving(false);
     }
   };
@@ -337,6 +347,7 @@ const Profile = () => {
       setEditedName(userProfile?.name || '');
       setEditedEmail(userProfile?.email || '');
       setEditedPhone(userProfile?.phone || '');
+      setEditedBio(userProfile?.bio || ''); // Reset bio on cancel
       setEditedImage(userProfile?.image || '/images/default_profile.png');
     }
   };
@@ -434,6 +445,12 @@ const Profile = () => {
               )}
             </div>
             
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
+            
             {editMode ? (
               <div className="edit-form">
                 <div className="image-upload-section">
@@ -479,7 +496,10 @@ const Profile = () => {
                       id="name-input"
                       type="text"
                       value={editedName}
-                      onChange={(e) => setEditedName(e.target.value)}
+                      onChange={(e) => {
+                        setEditedName(e.target.value);
+                        if (error) setError(''); // Clear error when user starts typing
+                      }}
                       className="form-input"
                       placeholder="Enter your name..."
                     />
@@ -491,7 +511,10 @@ const Profile = () => {
                       id="email-input"
                       type="email"
                       value={editedEmail}
-                      onChange={(e) => setEditedEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEditedEmail(e.target.value);
+                        if (error) setError(''); // Clear error when user starts typing
+                      }}
                       className="form-input"
                       placeholder="Enter your email..."
                     />
@@ -503,9 +526,26 @@ const Profile = () => {
                       id="phone-input"
                       type="tel"
                       value={editedPhone}
-                      onChange={(e) => setEditedPhone(e.target.value)}
+                      onChange={(e) => {
+                        setEditedPhone(e.target.value);
+                        if (error) setError(''); // Clear error when user starts typing
+                      }}
                       className="form-input"
                       placeholder="Enter your phone number..."
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="bio-input" className="form-label">Bio:</label>
+                    <textarea
+                      id="bio-input"
+                      value={editedBio}
+                      onChange={(e) => {
+                        setEditedBio(e.target.value);
+                        if (error) setError(''); // Clear error when user starts typing
+                      }}
+                      className="form-input"
+                      placeholder="Enter your bio..."
                     />
                   </div>
                   

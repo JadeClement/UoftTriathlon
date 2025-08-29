@@ -60,9 +60,9 @@
 .error-links {
   margin-top: 0.5rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
 .error-link-separator {
@@ -191,30 +191,32 @@
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
-  padding: 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 16px;
   border-radius: 8px;
   margin-bottom: 1.5rem;
   text-align: center;
-  border: 1px solid #fcc;
+  border: 1px solid #fecaca;
+  line-height: 1.5;
+  font-size: 0.95rem;
 }
 
 .error-link {
   background: none;
   border: none;
-  color: #4169E1;
+  color: #3b82f6;
   text-decoration: underline;
   cursor: pointer;
   font-weight: 600;
   padding: 0;
   margin: 0;
-  margin-left: 5px;
-  font-size: inherit;
+  font-size: 0.95rem;
+  transition: color 0.2s ease;
 }
 
 .error-link:hover {
-  color: #1E3A8A;
+  color: #1d4ed8;
 }
 
 .password-validation {

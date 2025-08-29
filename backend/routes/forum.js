@@ -324,16 +324,17 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
   }
 });
 
-// Get workout details
+// Get workout by ID with signups and waitlist
 router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Get workout post
     const workoutResult = await pool.query(`
       SELECT 
         fp.id, fp.title, fp.content, fp.workout_type, fp.workout_date, 
-        fp.workout_time, fp.capacity, fp.created_at, fp.user_id,
-        u.name as author_name, u.profile_picture_url as "authorProfilePictureUrl"
+        fp.workout_time, fp.capacity, fp.created_at,
+        u.name as author_name, u.role as author_role
       FROM forum_posts fp
       JOIN users u ON fp.user_id = u.id
       WHERE fp.id = $1 AND fp.type = 'workout' AND fp.is_deleted = false
@@ -343,7 +344,35 @@ router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) =
       return res.status(404).json({ error: 'Workout not found' });
     }
 
-    res.json({ workout: workoutResult.rows[0] });
+    const workout = workoutResult.rows[0];
+
+    // Get signups
+    const signupsResult = await pool.query(`
+      SELECT 
+        ws.id, ws.user_id, ws.signup_time,
+        u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
+      FROM workout_signups ws
+      JOIN users u ON ws.user_id = u.id
+      WHERE ws.post_id = $1
+      ORDER BY ws.signup_time ASC
+    `, [id]);
+
+    // Get waitlist
+    const waitlistResult = await pool.query(`
+      SELECT 
+        ww.id, ww.user_id, ww.waitlist_time,
+        u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
+      FROM workout_waitlist ww
+      JOIN users u ON ww.user_id = u.id
+      WHERE ww.post_id = $1
+      ORDER BY ww.waitlist_time ASC
+    `, [id]);
+
+    res.json({
+      workout,
+      signups: signupsResult.rows || [],
+      waitlist: waitlistResult.rows || []
+    });
   } catch (error) {
     console.error('Get workout error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -355,11 +384,9 @@ router.get('/workouts/:id/signups', authenticateToken, requireMember, async (req
   try {
     const { id } = req.params;
 
-
-
     const signupsResult = await pool.query(`
       SELECT 
-        ws.id, ws.user_id, ws.signup_time as signed_up_at,
+        ws.id, ws.user_id, ws.signup_time,
         u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM workout_signups ws
       JOIN users u ON ws.user_id = u.id
@@ -367,108 +394,9 @@ router.get('/workouts/:id/signups', authenticateToken, requireMember, async (req
       ORDER BY ws.signup_time ASC
     `, [id]);
 
-
-
     res.json({ signups: signupsResult.rows || [] });
   } catch (error) {
-    console.error('Get signups error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Join workout waitlist
-router.post('/workouts/:id/waitlist', authenticateToken, requireMember, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-    
-    console.log('🔍 Waitlist join attempt - Workout ID:', id, 'User ID:', userId, 'User object:', req.user);
-
-    // Check if workout exists and has capacity
-    const workoutResult = await pool.query(
-      'SELECT id, capacity FROM forum_posts WHERE id = $1 AND type = $2 AND is_deleted = false', 
-      [id, 'workout']
-    );
-
-    if (workoutResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Workout not found' });
-    }
-
-    const workout = workoutResult.rows[0];
-
-    // Check if user is already signed up
-    const existingSignupResult = await pool.query(
-      'SELECT id FROM workout_signups WHERE user_id = $1 AND post_id = $2', 
-      [userId, id]
-    );
-
-    if (existingSignupResult.rows.length > 0) {
-      return res.status(400).json({ error: 'Already signed up for this workout' });
-    }
-
-    // Check if user is already on waitlist
-    const existingWaitlistResult = await pool.query(
-      'SELECT id FROM workout_waitlist WHERE user_id = $1 AND workout_id = $2', 
-      [userId, id]
-    );
-
-    if (existingWaitlistResult.rows.length > 0) {
-      return res.status(400).json({ error: 'Already on waitlist' });
-    }
-
-    // Check current signup count
-    const countResult = await pool.query(
-      'SELECT COUNT(*) as current_count FROM workout_signups WHERE post_id = $1', 
-      [id]
-    );
-
-    const currentCount = parseInt(countResult.rows[0].current_count);
-    const capacity = workout.capacity || 0;
-
-    if (capacity > 0 && currentCount < capacity) {
-      // Still has capacity, add to signups instead
-      const signupResult = await pool.query(
-        'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id', 
-        [userId, id]
-      );
-
-      console.log('✅ Added to signups (capacity available), ID:', signupResult.rows[0].id);
-      res.json({ message: 'Added to signups successfully' });
-    } else {
-      // Add to waitlist
-      console.log('➕ Adding to waitlist - User ID:', userId, 'Workout ID:', id);
-      const waitlistResult = await pool.query(
-        'INSERT INTO workout_waitlist (user_id, workout_id) VALUES ($1, $2) RETURNING id', 
-        [userId, id]
-      );
-
-      console.log('✅ Waitlist entry added successfully, ID:', waitlistResult.rows[0].id);
-      res.json({ message: 'Added to waitlist successfully' });
-    }
-  } catch (error) {
-    console.error('Join waitlist error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Leave workout waitlist
-router.delete('/workouts/:id/waitlist', authenticateToken, requireMember, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const result = await pool.query(
-      'DELETE FROM workout_waitlist WHERE user_id = $1 AND workout_id = $2', 
-      [userId, id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Not on waitlist' });
-    }
-
-    res.json({ message: 'Removed from waitlist successfully' });
-  } catch (error) {
-    console.error('Leave waitlist error:', error);
+    console.error('Get workout signups error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -480,17 +408,111 @@ router.get('/workouts/:id/waitlist', authenticateToken, requireMember, async (re
 
     const waitlistResult = await pool.query(`
       SELECT 
-        ww.id, ww.user_id, ww.joined_at,
+        ww.id, ww.user_id, ww.waitlist_time,
         u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM workout_waitlist ww
       JOIN users u ON ww.user_id = u.id
-      WHERE ww.workout_id = $1
-      ORDER BY ww.joined_at ASC
+      WHERE ww.post_id = $1
+      ORDER BY ww.waitlist_time ASC
     `, [id]);
 
     res.json({ waitlist: waitlistResult.rows || [] });
   } catch (error) {
-    console.error('Get waitlist error:', error);
+    console.error('Get workout waitlist error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get event by ID
+router.get('/events/:id', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get event post
+    const eventResult = await pool.query(`
+      SELECT 
+        fp.id, fp.title, fp.content, fp.event_date, fp.created_at,
+        u.name as author_name, u.role as author_role
+      FROM forum_posts fp
+      JOIN users u ON fp.user_id = u.id
+      WHERE fp.id = $1 AND fp.type = 'event' AND fp.is_deleted = false
+    `, [id]);
+
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const event = eventResult.rows[0];
+
+    // Get RSVPs
+    const rsvpsResult = await pool.query(`
+      SELECT 
+        er.id, er.user_id, er.status, er.rsvp_time,
+        u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
+      FROM event_rsvps er
+      JOIN users u ON er.user_id = u.id
+      WHERE er.post_id = $1
+      ORDER BY er.rsvp_time ASC
+    `, [id]);
+
+    res.json({
+      event,
+      rsvps: rsvpsResult.rows || []
+    });
+  } catch (error) {
+    console.error('Get event error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get workout attendance
+router.get('/workouts/:id/attendance', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const attendanceResult = await pool.query(`
+      SELECT 
+        wa.id, wa.user_id, wa.attended, wa.recorded_at,
+        u.name as user_name, u.role as user_role
+      FROM workout_attendance wa
+      JOIN users u ON wa.user_id = u.id
+      WHERE wa.post_id = $1
+      ORDER BY wa.recorded_at DESC
+    `, [id]);
+
+    res.json({ attendance: attendanceResult.rows || [] });
+  } catch (error) {
+    console.error('Get workout attendance error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Like/unlike a post
+router.post('/posts/:id/like', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check if post exists
+    const postResult = await pool.query('SELECT id FROM forum_posts WHERE id = $1 AND is_deleted = false', [id]);
+    if (postResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    // Check if user already liked the post
+    const existingLike = await pool.query('SELECT id FROM post_likes WHERE post_id = $1 AND user_id = $2', [id, userId]);
+
+    if (existingLike.rows.length > 0) {
+      // Unlike: remove the like
+      await pool.query('DELETE FROM post_likes WHERE post_id = $1 AND user_id = $2', [id, userId]);
+      res.json({ message: 'Post unliked successfully', liked: false });
+    } else {
+      // Like: add the like
+      await pool.query('INSERT INTO post_likes (post_id, user_id, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP)', [id, userId]);
+      res.json({ message: 'Post liked successfully', liked: true });
+    }
+  } catch (error) {
+    console.error('Toggle post like error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

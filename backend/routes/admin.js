@@ -67,7 +67,7 @@ router.get('/members', authenticateToken, requireAdmin, async (req, res) => {
     const membersResult = await pool.query(`
       SELECT 
         id, email, name, role, created_at,
-        join_date, expiry_date, payment_confirmed, phone_number, absences, charter_accepted
+        join_date, expiry_date, phone_number, absences, charter_accepted
       FROM users
       ${whereClause}
       ORDER BY created_at DESC
@@ -151,6 +151,72 @@ router.put('/members/:id/charter', authenticateToken, requireAdmin, async (req, 
   }
 });
 
+// General member update endpoint
+router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone_number, role } = req.body;
+
+    // Check if this is the last administrator
+    if (role && role !== 'administrator') {
+      const adminCount = await pool.query('SELECT COUNT(*) as count FROM users WHERE role = $1 AND is_active = true', ['administrator']);
+      if (parseInt(adminCount.rows[0].count) <= 1) {
+        const currentUser = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
+        if (currentUser.rows[0]?.role === 'administrator') {
+          return res.status(400).json({ error: 'Cannot remove the last administrator' });
+        }
+      }
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+    let paramCount = 0;
+
+    if (name !== undefined) {
+      paramCount++;
+      updates.push(`name = $${paramCount}`);
+      values.push(name);
+    }
+
+    if (email !== undefined) {
+      paramCount++;
+      updates.push(`email = $${paramCount}`);
+      values.push(email);
+    }
+
+    if (phone_number !== undefined) {
+      paramCount++;
+      updates.push(`phone_number = $${paramCount}`);
+      values.push(phone_number);
+    }
+
+    if (role !== undefined) {
+      paramCount++;
+      updates.push(`role = $${paramCount}`);
+      values.push(role);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(id);
+    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramCount + 1}`;
+
+    const result = await pool.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'Member updated successfully' });
+  } catch (error) {
+    console.error('Update member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Deactivate member (soft delete)
 router.delete('/members/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -174,6 +240,98 @@ router.delete('/members/:id', authenticateToken, requireAdmin, async (req, res) 
     res.json({ message: 'Member deactivated successfully' });
   } catch (error) {
     console.error('Deactivate member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Approve pending member
+router.post('/members/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role = 'member' } = req.body;
+
+    // Validate role
+    const validRoles = ['member', 'exec', 'administrator'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    // Check if user exists and is pending
+    const userResult = await pool.query('SELECT role FROM users WHERE id = $1 AND is_active = true', [id]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (userResult.rows[0].role !== 'pending') {
+      return res.status(400).json({ error: 'User is not pending approval' });
+    }
+
+    // Update user role
+    await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+
+    // Create role change notification
+    await pool.query(`
+      INSERT INTO role_change_notifications (user_id, old_role, new_role)
+      VALUES ($1, $2, $3)
+    `, [id, 'pending', role]);
+
+    res.json({ message: 'Member approved successfully', newRole: role });
+  } catch (error) {
+    console.error('Approve member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reject pending member
+router.post('/members/:id/reject', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason = 'Application rejected' } = req.body;
+
+    // Check if user exists and is pending
+    const userResult = await pool.query('SELECT role FROM users WHERE id = $1 AND is_active = true', [id]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (userResult.rows[0].role !== 'pending') {
+      return res.status(400).json({ error: 'User is not pending approval' });
+    }
+
+    // Deactivate the rejected user
+    await pool.query('UPDATE users SET is_active = false WHERE id = $1', [id]);
+
+    // Create role change notification
+    await pool.query(`
+      INSERT INTO role_change_notifications (user_id, old_role, new_role)
+      VALUES ($1, $2, $3)
+    `, [id, 'pending', 'rejected']);
+
+    res.json({ message: 'Member rejected successfully', reason });
+  } catch (error) {
+    console.error('Reject member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Notify role change
+router.post('/notify-role-change', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, oldRole, newRole, message } = req.body;
+
+    if (!userId || !oldRole || !newRole) {
+      return res.status(400).json({ error: 'User ID, old role, and new role are required' });
+    }
+
+    // Create role change notification
+    await pool.query(`
+      INSERT INTO role_change_notifications (user_id, old_role, new_role, message)
+      VALUES ($1, $2, $3, $4)
+    `, [userId, oldRole, newRole, message || null]);
+
+    res.json({ message: 'Role change notification created successfully' });
+  } catch (error) {
+    console.error('Create role change notification error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

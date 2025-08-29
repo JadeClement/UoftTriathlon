@@ -1,0 +1,104 @@
+.work-in-progress-banner {
+  background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+  color: white;
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin: 0;
+}
+
+.banner-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.banner-text {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.banner-icon {
+  font-size: 1.2rem;
+  animation: pulse 2s infinite;
+}
+
+.banner-message {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.banner-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.banner-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.banner-button:active {
+  transform: translateY(0);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .banner-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+    padding: 0 1rem;
+  }
+  
+  .banner-text {
+    justify-content: center;
+  }
+  
+  .banner-button {
+    width: 100%;
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .work-in-progress-banner {
+    padding: 10px 0;
+  }
+  
+  .banner-message {
+    font-size: 0.9rem;
+  }
+  
+  .banner-button {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+  }
+}
