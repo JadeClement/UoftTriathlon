@@ -44,17 +44,13 @@ const PORT = process.env.PORT || 5001;
 // });
 // app.use(limiter);
 
-// CORS configuration
+// CORS configuration - temporarily allow all origins for debugging
 app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://localhost:5001',
-    'https://uoft-triathlon.vercel.app'
-  ],
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+  credentials: false
+});
 
 // Handle preflight requests globally
 app.options('*', cors());
