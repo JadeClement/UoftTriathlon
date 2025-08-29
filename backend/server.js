@@ -58,6 +58,15 @@ app.get('/api/test-races-cors', (req, res) => {
   });
 });
 
+// Simple test route for races endpoint debugging
+app.get('/api/test-races-simple', (req, res) => {
+  res.json({ 
+    message: 'Simple races test successful', 
+    timestamp: new Date().toISOString(),
+    endpoint: '/api/test-races-simple'
+  });
+});
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
