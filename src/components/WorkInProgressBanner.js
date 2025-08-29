@@ -1,13 +1,13 @@
 import React from 'react';
 import './WorkInProgressBanner.css';
 
-const WorkInProgressBanner = () => {
+const WorkInProgressBanner = ({ bannerRef }) => {
   const handleRedirect = () => {
     window.open('https://uofttriathlon.com/', '_blank');
   };
 
   return (
-    <div className="work-in-progress-banner">
+    <div className="work-in-progress-banner" ref={bannerRef}>
       <div className="banner-content">
         <div className="banner-text">
           <span className="banner-icon">🚧</span>

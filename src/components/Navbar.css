@@ -6,6 +6,7 @@
   width: 100%;
   z-index: 1000;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  min-height: 70px;
 }
 
 .navbar-container {
@@ -15,6 +16,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 50px;
 }
 
 .navbar-logo {
@@ -114,25 +116,29 @@
 }
 
 @media (max-width: 768px) {
+  .navbar {
+    top: 90px; /* Moved further down to clear the banner completely */
+  }
+  
   .navbar-menu {
-    position: fixed;
-    left: -100%;
-    top: 70px;
-    flex-direction: column;
-    background: linear-gradient(135deg, #1E3A8A, #1E40AF);
-    width: 100%;
-    text-align: center;
-    transition: 0.3s;
-    box-shadow: 0 10px 27px rgba(0, 0, 0, 0.05);
-    padding: 2rem 0;
-    gap: 1rem;
-    height: calc(100vh - 70px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    position: fixed !important;
+    left: -100% !important;
+    top: 138px !important; /* Adjusted for mobile banner (48px) + navbar (90px) */
+    flex-direction: column !important;
+    background: linear-gradient(135deg, #1E3A8A, #1E40AF) !important;
+    width: 100% !important;
+    text-align: center !important;
+    transition: 0.3s !important;
+    box-shadow: 0 10px 27px rgba(0, 0, 0, 0.05) !important;
+    padding: 2rem 0 !important;
+    gap: 1rem !important;
+    height: calc(100vh - 138px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .navbar-menu.active {
-    left: 0;
+    left: 0 !important;
   }
 
   .navbar-toggle {

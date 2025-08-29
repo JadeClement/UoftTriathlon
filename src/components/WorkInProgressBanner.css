@@ -90,15 +90,15 @@
 
 @media (max-width: 480px) {
   .work-in-progress-banner {
-    padding: 10px 0;
+    padding: 8px 0;
   }
   
   .banner-message {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
   
   .banner-button {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     padding: 6px 12px;
   }
 }
