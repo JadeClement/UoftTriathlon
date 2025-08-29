@@ -49,8 +49,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000', 
     'http://localhost:5001',
-    'https://uoft-triathlon.vercel.app',
-    'https://uoft-triathlon-fol0pjgmg-jadeclements-projects.vercel.app'
+    'https://uoft-triathlon.vercel.app'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
