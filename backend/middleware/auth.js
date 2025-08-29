@@ -19,6 +19,9 @@ console.log('🔒 Auth Middleware: Using JWT_SECRET:', JWT_SECRET.substring(0, 1
 // Middleware to authenticate JWT token
 const authenticateToken = (req, res, next) => {
   console.log('🔒 Auth Middleware: Starting authentication...');
+  console.log('🔒 Auth Middleware: Request URL:', req.url);
+  console.log('🔒 Auth Middleware: Request method:', req.method);
+  console.log('🔒 Auth Middleware: Request headers:', req.headers);
   
   // Critical check to prevent hanging
   if (!JWT_SECRET || typeof JWT_SECRET !== 'string' || JWT_SECRET.length < 10) {
@@ -44,6 +47,8 @@ const authenticateToken = (req, res, next) => {
     // Use synchronous verification to prevent hanging
     const user = jwt.verify(token, JWT_SECRET);
     console.log('🔒 Auth Middleware: Token verification successful');
+    console.log('🔒 Auth Middleware: Decoded user data:', user);
+    console.log('🔒 Auth Middleware: User role from token:', user.role);
     req.user = user;
     next();
   } catch (error) {
@@ -92,7 +97,14 @@ const requireAdmin = requireRole('administrator');
 
 // Middleware to check if user is member or higher
 const requireMember = (req, res, next) => {
+  console.log('🔒 requireMember middleware: Starting...');
+  console.log('🔒 requireMember middleware: Request URL:', req.url);
+  console.log('🔒 requireMember middleware: Request method:', req.method);
+  console.log('🔒 requireMember middleware: User object:', req.user);
+  console.log('🔒 requireMember middleware: User role:', req.user?.role);
+  
   if (!req.user) {
+    console.log('🔒 requireMember middleware: No user found, returning 401');
     return res.status(401).json({ error: 'Authentication required' });
   }
 
@@ -105,11 +117,17 @@ const requireMember = (req, res, next) => {
   };
 
   const userRole = req.user.role || 'public';
+  console.log('🔒 requireMember middleware: User role:', userRole);
+  console.log('🔒 requireMember middleware: Role hierarchy value:', roleHierarchy[userRole]);
+  console.log('🔒 requireMember middleware: Member hierarchy value:', roleHierarchy['member']);
+  console.log('🔒 requireMember middleware: Is user role >= member?', roleHierarchy[userRole] >= roleHierarchy['member']);
   
   // Allow member, exec, and admin roles
   if (roleHierarchy[userRole] >= roleHierarchy['member']) {
+    console.log('🔒 requireMember middleware: Access granted, calling next()');
     next();
   } else {
+    console.log('🔒 requireMember middleware: Access denied, returning 403');
     return res.status(403).json({ 
       error: 'Insufficient permissions',
       required: 'member or higher',

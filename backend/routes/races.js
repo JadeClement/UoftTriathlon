@@ -7,6 +7,10 @@ const router = express.Router();
 // CORS is handled by main server middleware
 // Get all races
 router.get('/', authenticateToken, requireMember, async (req, res) => {
+  console.log('🏁 Races route: GET / reached successfully!');
+  console.log('🏁 Races route: User authenticated:', !!req.user);
+  console.log('🏁 Races route: User role:', req.user?.role);
+  
   try {
     const racesResult = await pool.query(`
       SELECT 
