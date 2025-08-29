@@ -16,7 +16,7 @@ const RoleChangeNotification = ({ currentUser }) => {
         const token = localStorage.getItem('triathlonToken');
         if (!token) return;
 
-        const response = await fetch('http://localhost:5001/api/users/role-change-notifications', {
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/role-change-notifications`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -63,7 +63,7 @@ const RoleChangeNotification = ({ currentUser }) => {
       if (!token) return;
 
       // Mark notification as read
-      await fetch('http://localhost:5001/api/users/mark-role-notification-read', {
+              await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/mark-role-notification-read`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

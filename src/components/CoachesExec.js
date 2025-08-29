@@ -13,7 +13,7 @@ const CoachesExec = () => {
     const loadTeamMembers = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5001/api/profiles');
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch team members');
@@ -31,7 +31,7 @@ const CoachesExec = () => {
               image = '/images/icon.png';
             }
             const normalizedImage = image && image.startsWith('/uploads/')
-              ? `http://localhost:5001${image}`
+              ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${image}`
               : image;
 
             membersObject[member.id] = {
@@ -62,7 +62,7 @@ const CoachesExec = () => {
     if (!loading) {
       const refreshTeamMembers = async () => {
         try {
-          const response = await fetch('http://localhost:5001/api/profiles');
+          const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
           
           if (response.ok) {
             const data = await response.json();
@@ -76,7 +76,7 @@ const CoachesExec = () => {
                   image = '/images/icon.png';
                 }
                 const normalizedImage = image && image.startsWith('/uploads/')
-                  ? `http://localhost:5001${image}`
+                  ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${image}`
                   : image;
                 membersObject[member.id] = {
                   ...member,
@@ -111,7 +111,7 @@ const CoachesExec = () => {
     if (!loading) {
       const interval = setInterval(async () => {
         try {
-          const response = await fetch('http://localhost:5001/api/profiles');
+          const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
           
           if (response.ok) {
             const data = await response.json();
@@ -125,7 +125,7 @@ const CoachesExec = () => {
                   image = '/images/icon.png';
                 }
                 const normalizedImage = image && image.startsWith('/uploads/')
-                  ? `http://localhost:5001${image}`
+                  ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${image}`
                   : image;
                 membersObject[member.id] = {
                   ...member,
