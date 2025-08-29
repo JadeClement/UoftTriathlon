@@ -120,14 +120,7 @@ app.post('/api/admin/backups/create', authenticateToken, requireAdmin, async (re
 });
 */
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-  });
-}
+// Frontend is served by Vercel, backend only serves API
 
 // Error handling middleware
 app.use((err, req, res, next) => {
