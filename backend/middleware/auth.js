@@ -91,7 +91,32 @@ const requireRole = (requiredRole) => {
 const requireAdmin = requireRole('administrator');
 
 // Middleware to check if user is member or higher
-const requireMember = requireRole('member');
+const requireMember = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const roleHierarchy = {
+    'public': 0,
+    'pending': 1,
+    'member': 2,
+    'exec': 3,
+    'administrator': 4
+  };
+
+  const userRole = req.user.role || 'public';
+  
+  // Allow member, exec, and admin roles
+  if (roleHierarchy[userRole] >= roleHierarchy['member']) {
+    next();
+  } else {
+    return res.status(403).json({ 
+      error: 'Insufficient permissions',
+      required: 'member or higher',
+      current: userRole
+    });
+  }
+};
 
 // Middleware to check if user is exec or higher
 const requireExec = requireRole('exec');
