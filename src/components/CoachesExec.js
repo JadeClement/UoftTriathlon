@@ -13,13 +13,19 @@ const CoachesExec = () => {
     const loadTeamMembers = async () => {
       try {
         setLoading(true);
+        console.log('🔄 Loading team members from:', `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
+        
         const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
+        
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response ok:', response.ok);
         
         if (!response.ok) {
           throw new Error('Failed to fetch team members');
         }
         
         const data = await response.json();
+        console.log('📊 Received data:', data);
         
         // Convert array to object with id as key
         const membersObject = {};
@@ -40,6 +46,7 @@ const CoachesExec = () => {
             };
           });
           console.log('✅ Converted', data.teamMembers.length, 'team members to object');
+          console.log('🔑 Member IDs:', Object.keys(membersObject));
         } else {
           console.error('❌ Expected array but got:', typeof data.teamMembers, data.teamMembers);
         }
@@ -47,7 +54,7 @@ const CoachesExec = () => {
         setTeamMembers(membersObject);
         setError(null);
       } catch (error) {
-        console.error('Error loading team members:', error);
+        console.error('❌ Error loading team members:', error);
         setError('Failed to load team members');
       } finally {
         setLoading(false);
