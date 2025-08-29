@@ -31,9 +31,7 @@ const raceRoutes = require('./routes/races');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Security middleware - temporarily disabled for CORS debugging
-
-// Rate limiting - temporarily disabled for CORS debugging
+// Security and rate limiting temporarily disabled for CORS debugging
 
 // CORS configuration - temporarily allow all origins for debugging
 app.use(cors({
@@ -41,7 +39,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
-});
+}));
 
 // Handle preflight requests globally
 app.options('*', cors());
@@ -157,7 +155,7 @@ async function startServer() {
     await seedDatabase();
     
     // Start server
-    app.listen(PORT, 'localhost', () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 UofT Triathlon Club API running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
