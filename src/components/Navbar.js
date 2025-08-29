@@ -109,13 +109,15 @@ const Navbar = () => {
             Coaches & Exec
           </Link>
 
-          <Link 
-            to="/races" 
-            className={`navbar-link ${isActive('/races') ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Races
-          </Link>
+          {currentUser && (
+            <Link 
+              to="/races" 
+              className={`navbar-link ${isActive('/races') ? 'active' : ''}`}
+              onClick={closeMenu}
+            >
+              Races
+            </Link>
+          )}
 
           {/* More dropdown for extra pages */}
           <div className="navbar-link more-dropdown" ref={moreRef}>
