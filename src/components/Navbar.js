@@ -109,7 +109,7 @@ const Navbar = () => {
             Coaches & Exec
           </Link>
 
-          {currentUser && (
+          {currentUser && isMember(currentUser) && (
             <Link 
               to="/races" 
               className={`navbar-link ${isActive('/races') ? 'active' : ''}`}
