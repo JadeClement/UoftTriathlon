@@ -151,7 +151,7 @@ const Login = () => {
         
         {error && (
           <div className="error-message">
-            {error}
+            <div className="error-text">{error}</div>
             {isLogin && error.includes("please create one!") && (
               <div className="error-links">
                 <button type="button" onClick={toggleMode} className="error-link">
