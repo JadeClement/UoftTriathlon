@@ -32,17 +32,8 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Security middleware - temporarily disabled for CORS debugging
-// app.use(helmet({
-//   crossOriginResourcePolicy: { policy: "cross-origin" },
-//   contentSecurityPolicy: false
-// }));
 
 // Rate limiting - temporarily disabled for CORS debugging
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 15 minutes
-//   max: 100 // limit each IP to 100 requests per windowMs
-// });
-// app.use(limiter);
 
 // CORS configuration - temporarily allow all origins for debugging
 app.use(cors({
