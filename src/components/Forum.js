@@ -35,7 +35,7 @@ const Forum = () => {
   const [workoutToCancel, setWorkoutToCancel] = useState(null);
   const [showPromotionMessage, setShowPromotionMessage] = useState(false);
   const [promotedWorkout, setPromotedWorkout] = useState(null);
-  const API_BASE_URL = 'http://localhost:5001/api';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   const { 
     editingWorkout, 

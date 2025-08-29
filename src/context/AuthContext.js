@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const API_BASE_URL = 'http://localhost:5001/api';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
   useEffect(() => {
     console.log('🔄 AuthContext useEffect running...');
