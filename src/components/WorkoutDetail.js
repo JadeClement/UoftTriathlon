@@ -19,7 +19,7 @@ const WorkoutDetail = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [attendance, setAttendance] = useState({});
   const [attendanceSaved, setAttendanceSaved] = useState(false);
-  const API_BASE_URL = 'http://localhost:5001/api';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   const { 
     editingWorkout, 
@@ -528,7 +528,7 @@ const WorkoutDetail = () => {
               <div className="author-info">
                                     {workout.authorProfilePictureUrl ? (
                       <img 
-                        src={`http://localhost:5001${workout.authorProfilePictureUrl}`} 
+                        src={`${API_BASE_URL}${workout.authorProfilePictureUrl}`} 
                         alt="Profile" 
                         className="author-avatar"
                         onError={(e) => {
@@ -746,7 +746,7 @@ const WorkoutDetail = () => {
                     <div className="signup-user-info">
                       {signup.userProfilePictureUrl ? (
                         <img 
-                          src={`http://localhost:5001${signup.userProfilePictureUrl}`} 
+                          src={`${API_BASE_URL}${signup.userProfilePictureUrl}`} 
                           alt="Profile" 
                           className="user-avatar"
                           onError={(e) => {
@@ -810,7 +810,7 @@ const WorkoutDetail = () => {
                   <div className="waitlist-user-info">
                     {waitlistItem.userProfilePictureUrl ? (
                       <img 
-                        src={`http://localhost:5001${waitlistItem.userProfilePictureUrl}`} 
+                        src={`${API_BASE_URL}${waitlistItem.userProfilePictureUrl}`} 
                         alt="Profile" 
                         className="user-avatar"
                         onError={(e) => {
@@ -863,7 +863,7 @@ const WorkoutDetail = () => {
                     <div className="comment-author-info">
                                           {comment.userProfilePictureUrl ? (
                       <img 
-                        src={`http://localhost:5001${comment.userProfilePictureUrl}`} 
+                        src={`${API_BASE_URL}${comment.userProfilePictureUrl}`} 
                         alt="Profile" 
                         className="user-avatar"
                         onError={(e) => {
