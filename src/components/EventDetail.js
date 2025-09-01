@@ -71,31 +71,47 @@ const EventDetail = () => {
         return;
       }
 
-      // Update local state immediately for better UX
-      const newRsvp = {
-        id: Date.now(),
-        user_name: currentUser.name,
-        status: status,
-        signed_up_at: new Date().toISOString().split('T')[0]
-      };
+      // Call backend API to save RSVP
+      const response = await fetch(`${API_BASE_URL}/forum/events/${id}/rsvp`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
 
-      // Remove existing RSVP if any
-      const filteredRsvps = rsvps.filter(r => r.user_name !== currentUser.name);
-      
-      if (userRsvp === status) {
-        // User is clicking the same status, remove RSVP
-        setRsvps(filteredRsvps);
-        setUserRsvp(null);
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Update local state based on backend response
+        if (result.status === null) {
+          // RSVP was removed
+          const filteredRsvps = rsvps.filter(r => r.user_name !== currentUser.name);
+          setRsvps(filteredRsvps);
+          setUserRsvp(null);
+        } else {
+          // RSVP was added/updated
+          const filteredRsvps = rsvps.filter(r => r.user_name !== currentUser.name);
+          const newRsvp = {
+            id: Date.now(),
+            user_id: currentUser.id,
+            user_name: currentUser.name,
+            status: result.status,
+            signed_up_at: new Date().toISOString().split('T')[0]
+          };
+          setRsvps([...filteredRsvps, newRsvp]);
+          setUserRsvp(result.status);
+        }
+        
+        console.log('Event RSVP updated:', result);
       } else {
-        // User is changing RSVP status
-        setRsvps([...filteredRsvps, newRsvp]);
-        setUserRsvp(status);
+        const error = await response.json();
+        console.error('Error updating RSVP:', error.error);
+        alert(error.error || 'Error updating RSVP');
       }
-
-      // TODO: Add backend API call for RSVP functionality
-      console.log('RSVP updated:', status);
     } catch (error) {
-      console.error('Error updating RSVP:', error);
+      console.error('Error updating event RSVP:', error);
       alert('Error updating RSVP');
     }
   };
