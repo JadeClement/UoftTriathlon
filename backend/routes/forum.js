@@ -413,12 +413,12 @@ router.get('/workouts/:id/waitlist', authenticateToken, requireMember, async (re
 
     const waitlistResult = await pool.query(`
       SELECT 
-        ww.id, ww.user_id, ww.waitlist_time,
+        ww.id, ww.user_id, ww.joined_at,
         u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM workout_waitlist ww
       JOIN users u ON ww.user_id = u.id
-      WHERE ww.post_id = $1
-      ORDER BY ww.waitlist_time ASC
+      WHERE ww.workout_id = $1
+      ORDER BY ww.joined_at ASC
     `, [id]);
 
     res.json({ waitlist: waitlistResult.rows || [] });
