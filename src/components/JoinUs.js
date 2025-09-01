@@ -125,14 +125,6 @@ const JoinUs = () => {
                   <div className="registration-info">
                     <h4>Current 2025/26 Registration Links:</h4>
                     <p><a href="https://recreation.utoronto.ca" target="_blank" rel="noopener noreferrer">Register here</a>. "Club Sports: Triathlon Club" You must have a AC membership to join the Triathlon Club.</p>
-                    <div className="discount-info">
-                      <p><strong>20% off until Aug 21/2025:</strong></p>
-                      <ul>
-                        <li><code>FINDYOURFITFY25</code> (full year)</li>
-                        <li><code>FINDYOURFITFT25</code> (fall only)</li>
-                      </ul>
-                      <p><em>Choose carefully for Fall only and Fall and Winter Combo options.</em></p>
-                    </div>
                   </div>
                 </div>
               </div>

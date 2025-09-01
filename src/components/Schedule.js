@@ -73,7 +73,7 @@ const Schedule = () => {
                 </div>
                 <div className="schedule-day">
                   <h5>Sunday</h5>
-                  <div className="workout-item recovery">Recovery</div>
+                  <div className="workout-item swim">Swim 10:00-12:00pm</div>
                 </div>
               </div>
             </div>
