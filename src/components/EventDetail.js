@@ -48,10 +48,18 @@ const EventDetail = () => {
       if (eventResponse.ok) {
         const eventData = await eventResponse.json();
         setEvent(eventData.event);
+        
+        // Load RSVPs from backend response
+        if (eventData.rsvps) {
+          setRsvps(eventData.rsvps);
+          
+          // Set current user's RSVP status
+          const userRsvp = eventData.rsvps.find(rsvp => rsvp.user_id === currentUser.id);
+          if (userRsvp) {
+            setUserRsvp(userRsvp.status);
+          }
+        }
       }
-
-      // Load RSVPs (will be implemented when backend is ready)
-      setRsvps([]);
 
       // Load comments (will be implemented when backend is ready)
       setComments([]);
