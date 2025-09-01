@@ -651,6 +651,7 @@
 /* Post Footer Actions */
 .post-footer {
   display: flex;
+  justify-content: center;
   gap: 1rem;
   margin-top: 1rem;
   padding-top: 1rem;
@@ -678,6 +679,8 @@
 .rsvp-buttons {
   display: flex;
   gap: 0.5rem;
+  justify-content: center;
+  width: 100%;
 }
 
 .rsvp-btn {
