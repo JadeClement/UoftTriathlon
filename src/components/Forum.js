@@ -133,6 +133,9 @@ const Forum = () => {
         console.log('🔍 Valid event posts:', validPosts);
         
         setEventPosts(validPosts);
+        
+        // Load RSVP data for all events
+        await loadEventRsvps(validPosts);
       }
     } catch (error) {
       console.error('Error loading forum posts:', error);
@@ -197,6 +200,34 @@ const Forum = () => {
       setWorkoutWaitlists(waitlistData);
     } catch (error) {
       console.error('Error loading workout waitlists:', error);
+    }
+  };
+
+  const loadEventRsvps = async (events) => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) return;
+
+      const rsvpsData = {};
+      
+      for (const event of events) {
+        const rsvpsResponse = await fetch(`${API_BASE_URL}/forum/events/${event.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (rsvpsResponse.ok) {
+          const data = await rsvpsResponse.json();
+          rsvpsData[event.id] = data.rsvps || [];
+          console.log(`🔍 Event ${event.id} RSVPs:`, data.rsvps || []);
+        }
+      }
+      
+      setEventRsvps(rsvpsData);
+      console.log('📊 All event RSVPs loaded:', rsvpsData);
+    } catch (error) {
+      console.error('Error loading event RSVPs:', error);
     }
   };
 
