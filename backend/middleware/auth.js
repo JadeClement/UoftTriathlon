@@ -33,16 +33,10 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  console.log('🔒 Auth Middleware: Token received:', token.substring(0, 20) + '...');
-  console.log('🔒 Auth Middleware: About to verify token with JWT_SECRET...');
-  console.log('🔒 Auth Middleware: JWT_SECRET length:', JWT_SECRET.length);
 
   try {
     // Use synchronous verification to prevent hanging
     const user = jwt.verify(token, JWT_SECRET);
-    console.log('🔒 Auth Middleware: Token verification successful');
-    console.log('🔒 Auth Middleware: Decoded user data:', user);
-    console.log('🔒 Auth Middleware: User role from token:', user.role);
     req.user = user;
     next();
   } catch (error) {
@@ -93,7 +87,6 @@ const requireAdmin = requireRole('administrator');
 const requireMember = (req, res, next) => {
 
   if (!req.user) {
-    console.log('🔒 requireMember middleware: No user found, returning 401');
     return res.status(401).json({ error: 'Authentication required' });
   }
 
@@ -106,17 +99,11 @@ const requireMember = (req, res, next) => {
   };
 
   const userRole = req.user.role || 'public';
-  console.log('🔒 requireMember middleware: User role:', userRole);
-  console.log('🔒 requireMember middleware: Role hierarchy value:', roleHierarchy[userRole]);
-  console.log('🔒 requireMember middleware: Member hierarchy value:', roleHierarchy['member']);
-  console.log('🔒 requireMember middleware: Is user role >= member?', roleHierarchy[userRole] >= roleHierarchy['member']);
-  
+
   // Allow member, exec, and admin roles
   if (roleHierarchy[userRole] >= roleHierarchy['member']) {
-    console.log('🔒 requireMember middleware: Access granted, calling next()');
     next();
   } else {
-    console.log('🔒 requireMember middleware: Access denied, returning 403');
     return res.status(403).json({ 
       error: 'Insufficient permissions',
       required: 'member or higher',
