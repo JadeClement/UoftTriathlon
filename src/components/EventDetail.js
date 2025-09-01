@@ -50,18 +50,11 @@ const EventDetail = () => {
         setEvent(eventData.event);
       }
 
-      // Load RSVPs (placeholder for now)
-      setRsvps([
-        { id: 1, user_name: 'John Doe', status: 'going', signed_up_at: '2024-01-15' },
-        { id: 2, user_name: 'Jane Smith', status: 'maybe', signed_up_at: '2024-01-15' },
-        { id: 3, user_name: 'Bob Wilson', status: 'not-going', signed_up_at: '2024-01-15' }
-      ]);
+      // Load RSVPs (will be implemented when backend is ready)
+      setRsvps([]);
 
-      // Load comments (placeholder for now)
-      setComments([
-        { id: 1, user_name: 'John Doe', content: 'Looking forward to this event!', created_at: '2024-01-15' },
-        { id: 2, user_name: 'Jane Smith', content: 'What should I bring?', created_at: '2024-01-15' }
-      ]);
+      // Load comments (will be implemented when backend is ready)
+      setComments([]);
 
       setLoading(false);
     } catch (error) {
