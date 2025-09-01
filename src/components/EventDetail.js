@@ -341,7 +341,7 @@ const EventDetail = () => {
                     <div className="comment-author-info">
                       {comment.userProfilePictureUrl ? (
                         <img 
-                          src={`http://localhost:5001${comment.userProfilePictureUrl}`} 
+                          src={`${API_BASE_URL}/..${comment.userProfilePictureUrl}`} 
                           alt="Profile" 
                           className="user-avatar"
                           onError={(e) => {

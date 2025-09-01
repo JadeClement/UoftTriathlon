@@ -249,6 +249,7 @@
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #e9ecef;
+  background: linear-gradient(135deg, #4169E1, #1E3A8A);
 }
 
 .user-avatar-placeholder {
