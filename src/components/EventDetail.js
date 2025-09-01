@@ -136,7 +136,7 @@ const EventDetail = () => {
   return (
     <div className="event-detail-container">
       <div className="container">
-        <button className="back-btn" onClick={() => navigate('/forum')}>
+        <button className="back-btn" onClick={() => navigate('/forum?tab=events')}>
           ← Back to Forum
         </button>
 

@@ -78,6 +78,19 @@ const Forum = () => {
     };
   }, []);
 
+  // Check for tab query parameter and set active tab accordingly
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    
+    if (tabParam === 'events') {
+      setActiveTab('events');
+    } else if (tabParam === 'workouts') {
+      setActiveTab('workouts');
+    }
+    // If no tab param or invalid value, default to 'workouts' (existing behavior)
+  }, []);
+
   const loadForumPosts = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
