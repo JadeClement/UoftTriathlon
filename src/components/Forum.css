@@ -726,6 +726,19 @@
   background: #b91c1c;
 }
 
+/* Mobile centering for RSVP buttons (same as EventDetail) */
+@media (max-width: 768px) {
+  .rsvp-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .rsvp-btn {
+    width: 100%;
+    max-width: 200px;
+  }
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
