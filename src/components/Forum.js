@@ -297,39 +297,51 @@ const Forum = () => {
         return;
       }
 
-      // Update local state immediately for better UX
-      const newRsvp = {
-        id: Date.now(),
-        user_id: currentUser.id,
-        user_name: currentUser.name,
-        status: status,
-        signed_up_at: new Date().toISOString().split('T')[0]
-      };
+      // Call backend API to save RSVP
+      const response = await fetch(`${API_BASE_URL}/forum/events/${eventId}/rsvp`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
 
-      // Get current RSVPs for this event
-      const currentRsvps = eventRsvps[eventId] || [];
-      
-      // Remove existing RSVP if any
-      const filteredRsvps = currentRsvps.filter(r => r.user_id !== currentUser.id);
-      
-      // Check if user is clicking the same status (remove RSVP)
-      const currentStatus = getUserRsvpStatus(eventId);
-      if (currentStatus === status) {
-        // Remove RSVP
-        setEventRsvps(prev => ({
-          ...prev,
-          [eventId]: filteredRsvps
-        }));
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Update local state based on backend response
+        const currentRsvps = eventRsvps[eventId] || [];
+        
+        if (result.status === null) {
+          // RSVP was removed
+          const filteredRsvps = currentRsvps.filter(r => r.user_id !== currentUser.id);
+          setEventRsvps(prev => ({
+            ...prev,
+            [eventId]: filteredRsvps
+          }));
+        } else {
+          // RSVP was added/updated
+          const filteredRsvps = currentRsvps.filter(r => r.user_id !== currentUser.id);
+          const newRsvp = {
+            id: Date.now(),
+            user_id: currentUser.id,
+            user_name: currentUser.name,
+            status: result.status,
+            signed_up_at: new Date().toISOString().split('T')[0]
+          };
+          setEventRsvps(prev => ({
+            ...prev,
+            [eventId]: [...filteredRsvps, newRsvp]
+          }));
+        }
+        
+        console.log('Event RSVP updated:', result);
       } else {
-        // Add/update RSVP
-        setEventRsvps(prev => ({
-          ...prev,
-          [eventId]: [...filteredRsvps, newRsvp]
-        }));
+        const error = await response.json();
+        console.error('Error updating RSVP:', error.error);
+        alert(error.error || 'Error updating RSVP');
       }
-
-      // TODO: Add backend API call for RSVP functionality
-      console.log('Event RSVP updated:', { eventId, status });
     } catch (error) {
       console.error('Error updating event RSVP:', error);
       alert('Error updating RSVP');

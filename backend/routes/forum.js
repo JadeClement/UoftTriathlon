@@ -524,6 +524,48 @@ router.get('/events/:id', authenticateToken, requireMember, async (req, res) => 
   }
 });
 
+// Save event RSVP
+router.post('/events/:id/rsvp', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    // Validate status
+    if (!['going', 'maybe', 'not-going'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid RSVP status' });
+    }
+
+    // Check if event exists
+    const eventResult = await pool.query('SELECT id FROM forum_posts WHERE id = $1 AND type = \'event\' AND is_deleted = false', [id]);
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user already has an RSVP
+    const existingRsvp = await pool.query('SELECT id, status FROM event_rsvps WHERE user_id = $1 AND post_id = $2', [userId, id]);
+    
+    if (existingRsvp.rows.length > 0) {
+      if (existingRsvp.rows[0].status === status) {
+        // User is clicking the same status, remove RSVP
+        await pool.query('DELETE FROM event_rsvps WHERE user_id = $1 AND post_id = $2', [userId, id]);
+        res.json({ message: 'RSVP removed successfully', status: null });
+      } else {
+        // Update existing RSVP
+        await pool.query('UPDATE event_rsvps SET status = $1, rsvp_time = CURRENT_TIMESTAMP WHERE user_id = $1 AND post_id = $2', [status, userId, id]);
+        res.json({ message: 'RSVP updated successfully', status });
+      }
+    } else {
+      // Create new RSVP
+      await pool.query('INSERT INTO event_rsvps (user_id, post_id, status, rsvp_time) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)', [userId, id, status]);
+      res.json({ message: 'RSVP saved successfully', status });
+    }
+  } catch (error) {
+    console.error('Save event RSVP error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get workout attendance
 router.get('/workouts/:id/attendance', authenticateToken, requireMember, async (req, res) => {
   try {
