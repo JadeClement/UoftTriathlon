@@ -428,6 +428,60 @@ router.get('/workouts/:id/waitlist', authenticateToken, requireMember, async (re
   }
 });
 
+// Join workout waitlist
+router.post('/workouts/:id/waitlist', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check if workout exists
+    const workoutResult = await pool.query('SELECT id FROM forum_posts WHERE id = $1 AND type = \'workout\' AND is_deleted = false', [id]);
+    if (workoutResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+
+    // Check if user is already on waitlist
+    const existingWaitlist = await pool.query('SELECT id FROM workout_waitlist WHERE user_id = $1 AND workout_id = $2', [userId, id]);
+    if (existingWaitlist.rows.length > 0) {
+      return res.status(400).json({ error: 'Already on waitlist' });
+    }
+
+    // Check if user is already signed up
+    const existingSignup = await pool.query('SELECT id FROM workout_signups WHERE user_id = $1 AND post_id = $2', [userId, id]);
+    if (existingSignup.rows.length > 0) {
+      return res.status(400).json({ error: 'Already signed up for this workout' });
+    }
+
+    // Add to waitlist
+    await pool.query('INSERT INTO workout_waitlist (user_id, workout_id) VALUES ($1, $2)', [userId, id]);
+    
+    res.json({ message: 'Joined waitlist successfully' });
+  } catch (error) {
+    console.error('Join waitlist error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Leave workout waitlist
+router.delete('/workouts/:id/waitlist', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Remove from waitlist
+    const result = await pool.query('DELETE FROM workout_waitlist WHERE user_id = $1 AND workout_id = $2', [userId, id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Not on waitlist' });
+    }
+    
+    res.json({ message: 'Left waitlist successfully' });
+  } catch (error) {
+    console.error('Leave waitlist error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get event by ID
 router.get('/events/:id', authenticateToken, requireMember, async (req, res) => {
   try {
