@@ -709,6 +709,23 @@
   transform: translateY(-1px);
 }
 
+.rsvp-btn.active {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.rsvp-btn.going.active {
+  background: #047857;
+}
+
+.rsvp-btn.maybe.active {
+  background: #b45309;
+}
+
+.rsvp-btn.not-going.active {
+  background: #b91c1c;
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;

@@ -31,6 +31,7 @@ const Forum = () => {
   });
   const [workoutSignups, setWorkoutSignups] = useState({});
   const [workoutWaitlists, setWorkoutWaitlists] = useState({});
+  const [eventRsvps, setEventRsvps] = useState({});
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [workoutToCancel, setWorkoutToCancel] = useState(null);
   const [showPromotionMessage, setShowPromotionMessage] = useState(false);
@@ -285,6 +286,61 @@ const Forum = () => {
     if (n == null) return '';
     const s = ["th","st","nd","rd"], v = n % 100;
     return n + (s[(v-20)%10] || s[v] || s[0]);
+  };
+
+  // Event RSVP functions
+  const handleEventRsvp = async (eventId, status) => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      // Update local state immediately for better UX
+      const newRsvp = {
+        id: Date.now(),
+        user_id: currentUser.id,
+        user_name: currentUser.name,
+        status: status,
+        signed_up_at: new Date().toISOString().split('T')[0]
+      };
+
+      // Get current RSVPs for this event
+      const currentRsvps = eventRsvps[eventId] || [];
+      
+      // Remove existing RSVP if any
+      const filteredRsvps = currentRsvps.filter(r => r.user_id !== currentUser.id);
+      
+      // Check if user is clicking the same status (remove RSVP)
+      const currentStatus = getUserRsvpStatus(eventId);
+      if (currentStatus === status) {
+        // Remove RSVP
+        setEventRsvps(prev => ({
+          ...prev,
+          [eventId]: filteredRsvps
+        }));
+      } else {
+        // Add/update RSVP
+        setEventRsvps(prev => ({
+          ...prev,
+          [eventId]: [...filteredRsvps, newRsvp]
+        }));
+      }
+
+      // TODO: Add backend API call for RSVP functionality
+      console.log('Event RSVP updated:', { eventId, status });
+    } catch (error) {
+      console.error('Error updating event RSVP:', error);
+      alert('Error updating RSVP');
+    }
+  };
+
+  const getUserRsvpStatus = (eventId) => {
+    if (!eventId) return null;
+    const rsvps = eventRsvps[eventId] || [];
+    const userRsvp = rsvps.find(rsvp => rsvp.user_id === currentUser.id);
+    return userRsvp ? userRsvp.status : null;
   };
 
   const handleWaitlistJoin = async (workoutId) => {
@@ -1035,9 +1091,24 @@ const Forum = () => {
                     
                     <div className="post-footer">
                       <div className="rsvp-buttons">
-                        <button className="rsvp-btn going">Going</button>
-                        <button className="rsvp-btn maybe">Maybe</button>
-                        <button className="rsvp-btn not-going">Not Going</button>
+                        <button 
+                          className={`rsvp-btn going ${getUserRsvpStatus(post.id) === 'going' ? 'active' : ''}`}
+                          onClick={() => handleEventRsvp(post.id, 'going')}
+                        >
+                          Going
+                        </button>
+                        <button 
+                          className={`rsvp-btn maybe ${getUserRsvpStatus(post.id) === 'maybe' ? 'active' : ''}`}
+                          onClick={() => handleEventRsvp(post.id, 'maybe')}
+                        >
+                          Maybe
+                        </button>
+                        <button 
+                          className={`rsvp-btn not-going ${getUserRsvpStatus(post.id) === 'not-going' ? 'active' : ''}`}
+                          onClick={() => handleEventRsvp(post.id, 'not-going')}
+                        >
+                          Not Going
+                        </button>
                       </div>
                     </div>
                   </div>
