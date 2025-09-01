@@ -32,41 +32,70 @@ const EventDetail = () => {
 
   const loadEventDetails = async () => {
     try {
+      console.log('🔄 EventDetail: Starting to load event details...');
+      console.log('🆔 Event ID:', id);
+      console.log('👤 Current user:', currentUser);
+      
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
-        console.error('No authentication token found');
+        console.error('❌ No authentication token found');
         return;
       }
+      console.log('🔑 Token found:', token.substring(0, 20) + '...');
 
       // Load event details
+      console.log('📡 Fetching event from:', `${API_BASE_URL}/forum/events/${id}`);
       const eventResponse = await fetch(`${API_BASE_URL}/forum/events/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
+      console.log('📡 Event response status:', eventResponse.status);
+      console.log('📡 Event response ok:', eventResponse.ok);
+
       if (eventResponse.ok) {
         const eventData = await eventResponse.json();
+        console.log('📊 Full event data received:', eventData);
+        console.log('📊 Event object:', eventData.event);
+        console.log('📊 RSVPs array:', eventData.rsvps);
+        
         setEvent(eventData.event);
         
         // Load RSVPs from backend response
         if (eventData.rsvps) {
+          console.log('✅ Setting RSVPs state with:', eventData.rsvps);
           setRsvps(eventData.rsvps);
           
           // Set current user's RSVP status
           const userRsvp = eventData.rsvps.find(rsvp => rsvp.user_id === currentUser.id);
+          console.log('🔍 Looking for user RSVP with user_id:', currentUser.id);
+          console.log('🔍 Found user RSVP:', userRsvp);
+          
           if (userRsvp) {
+            console.log('✅ Setting userRsvp state to:', userRsvp.status);
             setUserRsvp(userRsvp.status);
+          } else {
+            console.log('ℹ️ No RSVP found for current user');
+            setUserRsvp(null);
           }
+        } else {
+          console.log('⚠️ No RSVPs data in response');
+          setRsvps([]);
         }
+      } else {
+        console.error('❌ Event response not ok');
+        const errorText = await eventResponse.text();
+        console.error('❌ Error response:', errorText);
       }
 
       // Load comments (will be implemented when backend is ready)
       setComments([]);
 
       setLoading(false);
+      console.log('✅ EventDetail: Finished loading event details');
     } catch (error) {
-      console.error('Error loading event details:', error);
+      console.error('❌ Error loading event details:', error);
       setLoading(false);
     }
   };
@@ -241,7 +270,7 @@ const EventDetail = () => {
                       <div className="rsvp-user-info">
                         {rsvp.userProfilePictureUrl ? (
                           <img 
-                            src={`http://localhost:5001${rsvp.userProfilePictureUrl}`} 
+                            src={`${API_BASE_URL}/..${rsvp.userProfilePictureUrl}`} 
                             alt="Profile" 
                             className="user-avatar"
                             onError={(e) => {
@@ -258,7 +287,10 @@ const EventDetail = () => {
                         <span className="rsvp-user">{rsvp.user_name}</span>
                       </div>
                       <span className="rsvp-date">
-                        {new Date(rsvp.signed_up_at).toLocaleDateString()}
+                        {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
+                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          : 'Recently'
+                        }
                       </span>
                     </div>
                   ))}
@@ -277,7 +309,7 @@ const EventDetail = () => {
                       <div className="rsvp-user-info">
                         {rsvp.userProfilePictureUrl ? (
                           <img 
-                            src={`http://localhost:5001${rsvp.userProfilePictureUrl}`} 
+                            src={`${API_BASE_URL}/..${rsvp.userProfilePictureUrl}`} 
                             alt="Profile" 
                             className="user-avatar"
                             onError={(e) => {
@@ -294,7 +326,10 @@ const EventDetail = () => {
                         <span className="rsvp-user">{rsvp.user_name}</span>
                       </div>
                       <span className="rsvp-date">
-                        {new Date(rsvp.signed_up_at).toLocaleDateString()}
+                        {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
+                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          : 'Recently'
+                        }
                       </span>
                     </div>
                   ))}
@@ -313,7 +348,7 @@ const EventDetail = () => {
                       <div className="rsvp-user-info">
                         {rsvp.userProfilePictureUrl ? (
                           <img 
-                            src={`http://localhost:5001${rsvp.userProfilePictureUrl}`} 
+                            src={`${API_BASE_URL}/..${rsvp.userProfilePictureUrl}`} 
                             alt="Profile" 
                             className="user-avatar"
                             onError={(e) => {
@@ -330,7 +365,10 @@ const EventDetail = () => {
                         <span className="rsvp-user">{rsvp.user_name}</span>
                       </div>
                       <span className="rsvp-date">
-                        {new Date(rsvp.signed_up_at).toLocaleDateString()}
+                        {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
+                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          : 'Recently'
+                        }
                       </span>
                     </div>
                   ))}
