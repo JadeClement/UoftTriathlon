@@ -931,22 +931,26 @@ const Forum = () => {
                         )}
                       </div>
                       
-                      <span className="signup-count">
-                        {post.capacity 
-                          ? `${workoutSignups[post.id]?.length || 0}/${post.capacity} signed up`
-                          : `${workoutSignups[post.id]?.length || 0} signed up`
-                        }
+                      <div className="signup-count">
+                        <div className="signup-main">
+                          {post.capacity 
+                            ? `${workoutSignups[post.id]?.length || 0}/${post.capacity} signed up`
+                            : `${workoutSignups[post.id]?.length || 0} signed up`
+                          }
+                        </div>
                         {post.capacity && (
-                          <span className={`capacity-status ${isWorkoutFull(post.id) ? 'full' : 'available'}`}>
-                            {isWorkoutFull(post.id) ? ' (Full)' : ' (Available)'}
-                          </span>
+                          <div className="signup-details">
+                            <span className={`capacity-status ${isWorkoutFull(post.id) ? 'full' : 'available'}`}>
+                              {isWorkoutFull(post.id) ? 'Full' : 'Available'}
+                            </span>
+                            {post.capacity && workoutWaitlists[post.id]?.length > 0 && (
+                              <span className="waitlist-count">
+                                {workoutWaitlists[post.id].length} on waitlist
+                              </span>
+                            )}
+                          </div>
                         )}
-                        {post.capacity && workoutWaitlists[post.id]?.length > 0 && (
-                          <span className="waitlist-count">
-                            • {workoutWaitlists[post.id].length} on waitlist
-                          </span>
-                        )}
-                      </span>
+                      </div>
                     </div>
 
                   </div>
