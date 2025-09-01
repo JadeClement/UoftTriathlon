@@ -346,6 +346,11 @@ router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) =
 
     const workout = workoutResult.rows[0];
 
+    // Fix invalid workout_time values
+    if (workout.workout_time && (workout.workout_time === 'Invalid Date' || workout.workout_time === 'null')) {
+      workout.workout_time = null;
+    }
+
     // Get signups
     const signupsResult = await pool.query(`
       SELECT 
@@ -568,6 +573,31 @@ router.get('/debug/posts', authenticateToken, requireMember, async (req, res) =>
   }
 });
 
+// Clean up invalid workout_time values (admin only)
+router.post('/admin/cleanup-workout-times', authenticateToken, requireMember, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'administrator') {
+      return res.status(403).json({ error: 'Only administrators can perform cleanup' });
+    }
+
+    // Update invalid workout_time values to NULL
+    const result = await pool.query(`
+      UPDATE forum_posts 
+      SET workout_time = NULL 
+      WHERE workout_time = 'Invalid Date' OR workout_time = 'null' OR workout_time = ''
+    `);
+
+    res.json({ 
+      message: 'Workout time cleanup completed',
+      rows_updated: result.rowCount
+    });
+  } catch (error) {
+    console.error('Workout time cleanup error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Create new workout post (exec and administrator only)
 router.post('/workouts', authenticateToken, requireMember, async (req, res) => {
   try {
@@ -594,12 +624,28 @@ router.post('/workouts', authenticateToken, requireMember, async (req, res) => {
       return res.status(400).json({ error: 'Post content is too long (max 1000 characters)' });
     }
 
+    // Validate and format workout time
+    let formattedTime = null;
+    if (workoutTime) {
+      try {
+        // Ensure workoutTime is in HH:MM format
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        if (!timeRegex.test(workoutTime)) {
+          return res.status(400).json({ error: 'Workout time must be in HH:MM format (e.g., 14:30)' });
+        }
+        formattedTime = workoutTime;
+      } catch (error) {
+        console.error('Time formatting error:', error);
+        return res.status(400).json({ error: 'Invalid workout time format' });
+      }
+    }
+
     // Insert the workout post
     const result = await pool.query(`
       INSERT INTO forum_posts (user_id, title, workout_type, workout_date, workout_time, content, type, capacity, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, 'workout', $7, CURRENT_TIMESTAMP)
       RETURNING id
-    `, [req.user.id, title, workoutType, workoutDate, workoutTime, content.trim(), capacity || null]);
+    `, [req.user.id, title, workoutType, workoutDate, formattedTime, content.trim(), capacity || null]);
 
     const postId = result.rows[0].id;
 
