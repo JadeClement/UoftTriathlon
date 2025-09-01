@@ -14,7 +14,7 @@ const EventDetail = () => {
   const [loading, setLoading] = useState(true);
   const [userRsvp, setUserRsvp] = useState(null); // 'going', 'maybe', 'not-going', or null
 
-  const API_BASE_URL = 'http://localhost:5001/api';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
   useEffect(() => {
     if (!currentUser) {
@@ -154,7 +154,7 @@ const EventDetail = () => {
               <div className="author-info">
                 {event.authorProfilePictureUrl ? (
                   <img 
-                    src={`http://localhost:5001${event.authorProfilePictureUrl}`} 
+                    src={`${API_BASE_URL}/..${event.authorProfilePictureUrl}`} 
                     alt="Profile" 
                     className="author-avatar"
                     onError={(e) => {
