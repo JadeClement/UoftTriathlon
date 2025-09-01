@@ -568,4 +568,59 @@ router.get('/debug/posts', authenticateToken, requireMember, async (req, res) =>
   }
 });
 
+// Create new workout post (exec and administrator only)
+router.post('/workouts', authenticateToken, requireMember, async (req, res) => {
+  try {
+    // Check if user is exec or higher
+    if (!['exec', 'administrator'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Only executives can create workout posts' });
+    }
+
+    const { title, workoutType, workoutDate, workoutTime, content, capacity } = req.body;
+
+    if (!title || title.trim().length === 0) {
+      return res.status(400).json({ error: 'Workout title is required' });
+    }
+
+    if (!workoutDate) {
+      return res.status(400).json({ error: 'Workout date is required' });
+    }
+
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Post content is required' });
+    }
+
+    if (content.length > 1000) {
+      return res.status(400).json({ error: 'Post content is too long (max 1000 characters)' });
+    }
+
+    // Insert the workout post
+    const result = await pool.query(`
+      INSERT INTO forum_posts (user_id, title, workout_type, workout_date, workout_time, content, type, capacity, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, 'workout', $7, CURRENT_TIMESTAMP)
+      RETURNING id
+    `, [req.user.id, title, workoutType, workoutDate, workoutTime, content.trim(), capacity || null]);
+
+    const postId = result.rows[0].id;
+
+    // Get the created post
+    const postResult = await pool.query(`
+      SELECT 
+        fp.id, fp.content, fp.title, fp.workout_type, fp.workout_date, fp.workout_time, fp.created_at, fp.capacity,
+        u.id as user_id, u.name as author_name, u.role as author_role
+      FROM forum_posts fp
+      JOIN users u ON fp.user_id = u.id
+      WHERE fp.id = $1
+    `, [postId]);
+
+    res.status(201).json({
+      message: 'Workout post created successfully',
+      post: postResult.rows[0]
+    });
+  } catch (error) {
+    console.error('Create workout post error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
