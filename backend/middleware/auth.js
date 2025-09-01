@@ -12,16 +12,10 @@ if (!JWT_SECRET) {
 }
 
 // Debug: Log which JWT secret is being used
-console.log('🔒 Auth Middleware: JWT_SECRET from env:', !!process.env.JWT_SECRET);
-console.log('🔒 Auth Middleware: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
-console.log('🔒 Auth Middleware: Using JWT_SECRET:', JWT_SECRET.substring(0, 10) + '...');
+
 
 // Middleware to authenticate JWT token
 const authenticateToken = (req, res, next) => {
-  console.log('🔒 Auth Middleware: Starting authentication...');
-  console.log('🔒 Auth Middleware: Request URL:', req.url);
-  console.log('🔒 Auth Middleware: Request method:', req.method);
-  console.log('🔒 Auth Middleware: Request headers:', req.headers);
   
   // Critical check to prevent hanging
   if (!JWT_SECRET || typeof JWT_SECRET !== 'string' || JWT_SECRET.length < 10) {
@@ -97,12 +91,7 @@ const requireAdmin = requireRole('administrator');
 
 // Middleware to check if user is member or higher
 const requireMember = (req, res, next) => {
-  console.log('🔒 requireMember middleware: Starting...');
-  console.log('🔒 requireMember middleware: Request URL:', req.url);
-  console.log('🔒 requireMember middleware: Request method:', req.method);
-  console.log('🔒 requireMember middleware: User object:', req.user);
-  console.log('🔒 requireMember middleware: User role:', req.user?.role);
-  
+
   if (!req.user) {
     console.log('🔒 requireMember middleware: No user found, returning 401');
     return res.status(401).json({ error: 'Authentication required' });
