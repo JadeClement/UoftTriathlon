@@ -358,19 +358,19 @@ router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) =
         u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM workout_signups ws
       JOIN users u ON ws.user_id = u.id
-      WHERE ws.post_id = $1
+      WHERE ws.workout_id = $1
       ORDER BY ws.signup_time ASC
     `, [id]);
 
     // Get waitlist
     const waitlistResult = await pool.query(`
       SELECT 
-        ww.id, ww.user_id, ww.waitlist_time,
+        ww.id, ww.user_id, ww.joined_at,
         u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM workout_waitlist ww
       JOIN users u ON ww.user_id = u.id
-      WHERE ww.post_id = $1
-      ORDER BY ww.waitlist_time ASC
+      WHERE ww.workout_id = $1
+      ORDER BY ww.joined_at ASC
     `, [id]);
 
     res.json({
@@ -395,7 +395,7 @@ router.get('/workouts/:id/signups', authenticateToken, requireMember, async (req
         u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM workout_signups ws
       JOIN users u ON ws.user_id = u.id
-      WHERE ws.post_id = $1
+      WHERE ws.workout_id = $1
       ORDER BY ws.signup_time ASC
     `, [id]);
 
