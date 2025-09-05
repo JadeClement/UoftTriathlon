@@ -22,7 +22,7 @@ const Profile = () => {
     const loadTeamMembers = async () => {
       try {
         setTeamLoading(true);
-        const response = await fetch('http://localhost:5001/api/profiles');
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch team members');
@@ -41,7 +41,7 @@ const Profile = () => {
             }
             // Convert relative image URLs to full URLs for display
             const normalizedImage = image && image.startsWith('/uploads/')
-              ? `http://localhost:5001${image}`
+              ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${image}`
               : image;
             
             membersObject[member.id] = {
@@ -76,7 +76,7 @@ const Profile = () => {
 
   // Check if this is a user profile page or team member page
   const isUserProfile = React.useMemo(() => {
-    const result = !role || role === 'profile';
+    const result = !role;
     console.log('🧮 isUserProfile calculated:', { role, result });
     return result;
   }, [role]);
@@ -96,7 +96,7 @@ const Profile = () => {
       console.log('📊 Current user data:', currentUser);
       // Ensure we always have a valid image, defaulting to the default profile image
       const profileImage = currentUser.profilePictureUrl 
-        ? `http://localhost:5001${currentUser.profilePictureUrl}` 
+        ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${currentUser.profilePictureUrl}` 
         : '/images/default_profile.png';
       
       console.log('🖼️ Profile image set to:', profileImage);
@@ -199,7 +199,7 @@ const Profile = () => {
         phone_number: editedPhone
       });
 
-      const profileResponse = await fetch(`http://localhost:5001/api/users/profile`, {
+      const profileResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -231,7 +231,7 @@ const Profile = () => {
         const imageFormData = new FormData();
         imageFormData.append('profilePicture', file);
         
-        const imageResponse = await fetch(`http://localhost:5001/api/users/profile-picture`, {
+        const imageResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile-picture`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -254,7 +254,7 @@ const Profile = () => {
       let finalImage;
       if (profilePictureUrl) {
         // New image was uploaded and saved to backend
-        finalImage = `http://localhost:5001${profilePictureUrl}`;
+        finalImage = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${profilePictureUrl}`;
         console.log('🖼️ New image uploaded and saved:', finalImage);
       } else {
         // No new image, keep the current one
@@ -302,7 +302,7 @@ const Profile = () => {
       const profileUpdateEvent = new CustomEvent('profileUpdated', {
         detail: {
           userId: currentUser.id,
-          newImageUrl: profilePictureUrl ? `http://localhost:5001${profilePictureUrl}` : userProfile.image,
+          newImageUrl: profilePictureUrl ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${profilePictureUrl}` : userProfile.image,
           timestamp: Date.now()
         }
       });

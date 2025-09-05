@@ -216,7 +216,7 @@ const CoachesExec = () => {
               </div>
             </Link>
 
-            <Link to="/profile/run-coach" className="coach-card-link">
+            <Link to="/profile/run-coach/run-coach" className="coach-card-link">
               <div className="coach-card">
                 <div className="coach-avatar">
                   <div className="coach-photo">
@@ -377,7 +377,7 @@ const CoachesExec = () => {
               </div>
             </Link>
 
-            <Link to="/profile/workout-coordinator" className="exec-card-link">
+            <Link to="/profile/workout-coordinator/workout-coordinator" className="exec-card-link">
               <div className="exec-card">
                 <div className="exec-avatar">
                   <div className="exec-photo">
