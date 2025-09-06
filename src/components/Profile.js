@@ -352,7 +352,7 @@ const Profile = () => {
     }
   };
 
-  if (loading) {
+  if (loading || teamLoading) {
     return (
       <div className="profile-container">
         <div className="container">
