@@ -65,6 +65,10 @@ const EventDetail = () => {
         // Load RSVPs from backend response
         if (eventData.rsvps) {
           console.log('✅ Setting RSVPs state with:', eventData.rsvps);
+          console.log('🔍 RSVP profile picture URLs:');
+          eventData.rsvps.forEach((rsvp, index) => {
+            console.log(`  RSVP ${index}: userProfilePictureUrl = "${rsvp.userProfilePictureUrl}"`);
+          });
           setRsvps(eventData.rsvps);
           
           // Set current user's RSVP status
