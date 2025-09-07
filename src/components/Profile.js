@@ -88,15 +88,15 @@ const Profile = () => {
       currentUserId: currentUser?.id,
       role,
       currentUserName: currentUser?.name,
-      currentUserProfilePicture: currentUser?.profilePictureUrl
+      currentUserProfilePicture: currentUser?.profile_picture_url
     });
     
     if (isUserProfile && currentUser) {
       console.log('👤 Loading user profile for:', currentUser.name);
       console.log('📊 Current user data:', currentUser);
       // Ensure we always have a valid image, defaulting to the default profile image
-      const profileImage = currentUser.profilePictureUrl 
-        ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${currentUser.profilePictureUrl}` 
+      const profileImage = currentUser.profile_picture_url 
+        ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${currentUser.profile_picture_url}` 
         : '/images/default_profile.png';
       
       console.log('🖼️ Profile image set to:', profileImage);
