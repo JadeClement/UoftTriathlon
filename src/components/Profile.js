@@ -254,7 +254,10 @@ const Profile = () => {
       let finalImage;
       if (profilePictureUrl) {
         // New image was uploaded and saved to backend
-        finalImage = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${profilePictureUrl}`;
+        // Backend returns /api/users/uploads/profile-pictures/filename
+        // We need to construct the full URL correctly
+        const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+        finalImage = `${baseUrl.replace('/api', '')}${profilePictureUrl}`;
         console.log('🖼️ New image uploaded and saved:', finalImage);
       } else {
         // No new image, keep the current one
@@ -302,7 +305,7 @@ const Profile = () => {
       const profileUpdateEvent = new CustomEvent('profileUpdated', {
         detail: {
           userId: currentUser.id,
-          newImageUrl: profilePictureUrl ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${profilePictureUrl}` : userProfile.image,
+          newImageUrl: profilePictureUrl ? `${(process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api').replace('/api', '')}${profilePictureUrl}` : userProfile.image,
           timestamp: Date.now()
         }
       });
