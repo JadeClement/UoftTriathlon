@@ -307,7 +307,7 @@ const Profile = () => {
         bio: editedBio // Include bio in the auth context update
       };
       
-      // Only update profile_picture_url if we actually got a new one
+      // Always update profile_picture_url with the backend URL (if we got a new one)
       if (profilePictureUrl) {
         authUpdateData.profile_picture_url = profilePictureUrl;
       }
@@ -329,7 +329,7 @@ const Profile = () => {
       const profileUpdateEvent = new CustomEvent('profileUpdated', {
         detail: {
           userId: currentUser.id,
-          newImageUrl: profilePictureUrl ? `${(process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api').replace('/api', '')}${profilePictureUrl}` : userProfile.image,
+          newImageUrl: finalImage,
           timestamp: Date.now()
         }
       });
