@@ -244,7 +244,8 @@ const Profile = () => {
           profilePictureUrl = imageResult.profilePictureUrl;
           console.log('✅ Profile picture uploaded successfully:', profilePictureUrl);
         } else {
-          console.warn('⚠️ Failed to upload profile picture, but profile was updated');
+          const errorText = await imageResponse.text();
+          console.warn('⚠️ Failed to upload profile picture:', imageResponse.status, errorText);
         }
       } else {
         console.log('ℹ️ No new image to upload');
@@ -259,10 +260,14 @@ const Profile = () => {
         const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
         finalImage = `${baseUrl.replace('/api', '')}${profilePictureUrl}`;
         console.log('🖼️ New image uploaded and saved:', finalImage);
+        console.log('🔍 Base URL:', baseUrl);
+        console.log('🔍 Profile picture URL from backend:', profilePictureUrl);
+        console.log('🔍 Final constructed URL:', finalImage);
       } else {
         // No new image, keep the current one
         finalImage = userProfile.image;
         console.log('🖼️ Keeping current image:', finalImage);
+        console.log('⚠️ No profilePictureUrl received from backend');
       }
       
       const updatedProfile = {
@@ -284,9 +289,13 @@ const Profile = () => {
         name: editedName,
         email: editedEmail,
         phone_number: editedPhone,  // Match the database field name
-        profile_picture_url: profilePictureUrl || null,  // Use the new image URL from backend
         bio: editedBio // Include bio in the auth context update
       };
+      
+      // Only update profile_picture_url if we actually got a new one
+      if (profilePictureUrl) {
+        authUpdateData.profile_picture_url = profilePictureUrl;
+      }
       
       console.log('🔄 Updating auth context with:', authUpdateData);
       updateUser(authUpdateData);
