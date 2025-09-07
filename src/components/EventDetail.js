@@ -270,7 +270,7 @@ const EventDetail = () => {
                       <div className="rsvp-user-info">
                         {rsvp.userProfilePictureUrl ? (
                           <img 
-                            src={`${API_BASE_URL}/..${rsvp.userProfilePictureUrl}`} 
+                            src={`${API_BASE_URL.replace('/api', '')}${rsvp.userProfilePictureUrl}`} 
                             alt="Profile" 
                             className="user-avatar"
                             onError={(e) => {
@@ -309,7 +309,7 @@ const EventDetail = () => {
                       <div className="rsvp-user-info">
                         {rsvp.userProfilePictureUrl ? (
                           <img 
-                            src={`${API_BASE_URL}/..${rsvp.userProfilePictureUrl}`} 
+                            src={`${API_BASE_URL.replace('/api', '')}${rsvp.userProfilePictureUrl}`} 
                             alt="Profile" 
                             className="user-avatar"
                             onError={(e) => {
@@ -348,7 +348,7 @@ const EventDetail = () => {
                       <div className="rsvp-user-info">
                         {rsvp.userProfilePictureUrl ? (
                           <img 
-                            src={`${API_BASE_URL}/..${rsvp.userProfilePictureUrl}`} 
+                            src={`${API_BASE_URL.replace('/api', '')}${rsvp.userProfilePictureUrl}`} 
                             alt="Profile" 
                             className="user-avatar"
                             onError={(e) => {
@@ -403,7 +403,7 @@ const EventDetail = () => {
                     <div className="comment-author-info">
                       {comment.userProfilePictureUrl ? (
                         <img 
-                          src={`${API_BASE_URL}/..${comment.userProfilePictureUrl}`} 
+                          src={`${API_BASE_URL.replace('/api', '')}${comment.userProfilePictureUrl}`} 
                           alt="Profile" 
                           className="user-avatar"
                           onError={(e) => {
