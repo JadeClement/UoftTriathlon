@@ -171,6 +171,7 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
+    console.log('🚀 STARTING PROFILE SAVE - DEBUGGING ENABLED');
     setSaving(true);
     
     try {
@@ -217,6 +218,12 @@ const Profile = () => {
 
       // Then, if there's a new image, upload it separately
       let profilePictureUrl = null;
+      console.log('🔍 CHECKING FOR NEW IMAGE:');
+      console.log('🔍 editedImage:', editedImage);
+      console.log('🔍 userProfile.image:', userProfile.image);
+      console.log('🔍 editedImage !== userProfile.image:', editedImage !== userProfile.image);
+      console.log('🔍 editedImage.startsWith("blob:"):', editedImage && editedImage.startsWith('blob:'));
+      
       if (editedImage && editedImage !== userProfile.image && editedImage.startsWith('blob:')) {
         console.log('🖼️ Processing new image for upload...');
         
@@ -242,10 +249,14 @@ const Profile = () => {
         if (imageResponse.ok) {
           const imageResult = await imageResponse.json();
           profilePictureUrl = imageResult.profilePictureUrl;
-          console.log('✅ Profile picture uploaded successfully:', profilePictureUrl);
+          console.log('✅ Profile picture uploaded successfully!');
+          console.log('✅ Backend response:', imageResult);
+          console.log('✅ profilePictureUrl from backend:', profilePictureUrl);
         } else {
           const errorText = await imageResponse.text();
-          console.warn('⚠️ Failed to upload profile picture:', imageResponse.status, errorText);
+          console.error('❌ IMAGE UPLOAD FAILED!');
+          console.error('❌ Status:', imageResponse.status);
+          console.error('❌ Error:', errorText);
         }
       } else {
         console.log('ℹ️ No new image to upload');
@@ -253,20 +264,24 @@ const Profile = () => {
 
       // Update local state with the new image
       let finalImage;
+      console.log('🔍 DETERMINING FINAL IMAGE:');
+      console.log('🔍 profilePictureUrl:', profilePictureUrl);
+      
       if (profilePictureUrl) {
         // New image was uploaded and saved to backend
         // Backend returns /api/users/uploads/profile-pictures/filename
         // We need to construct the full URL correctly
         const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
         finalImage = `${baseUrl.replace('/api', '')}${profilePictureUrl}`;
-        console.log('🖼️ New image uploaded and saved:', finalImage);
-        console.log('🔍 Base URL:', baseUrl);
-        console.log('🔍 Profile picture URL from backend:', profilePictureUrl);
-        console.log('🔍 Final constructed URL:', finalImage);
+        console.log('✅ USING NEW IMAGE!');
+        console.log('✅ Base URL:', baseUrl);
+        console.log('✅ Profile picture URL from backend:', profilePictureUrl);
+        console.log('✅ Final constructed URL:', finalImage);
       } else {
         // No new image, keep the current one
         finalImage = userProfile.image;
-        console.log('🖼️ Keeping current image:', finalImage);
+        console.log('⚠️ KEEPING CURRENT IMAGE (no new upload)');
+        console.log('⚠️ Current image:', finalImage);
         console.log('⚠️ No profilePictureUrl received from backend');
       }
       
