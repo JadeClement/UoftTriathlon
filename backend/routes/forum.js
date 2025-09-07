@@ -552,7 +552,7 @@ router.post('/events/:id/rsvp', authenticateToken, requireMember, async (req, re
         res.json({ message: 'RSVP removed successfully', status: null });
       } else {
         // Update existing RSVP
-        await pool.query('UPDATE event_rsvps SET status = $1, rsvp_time = CURRENT_TIMESTAMP WHERE user_id = $1 AND post_id = $2', [status, userId, id]);
+        await pool.query('UPDATE event_rsvps SET status = $1, rsvp_time = CURRENT_TIMESTAMP WHERE user_id = $2 AND post_id = $3', [status, userId, id]);
         res.json({ message: 'RSVP updated successfully', status });
       }
     } else {
