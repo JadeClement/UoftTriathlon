@@ -26,8 +26,9 @@ const Navbar = () => {
     window.addEventListener('profileUpdated', handleProfileUpdate);
     
     // Initialize profile image URL
-    if (currentUser?.profilePictureUrl) {
-      setProfileImageUrl(`http://localhost:5001${currentUser.profilePictureUrl}`);
+    if (currentUser?.profile_picture_url) {
+      const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+      setProfileImageUrl(`${baseUrl.replace('/api', '')}${currentUser.profile_picture_url}`);
     }
     
     return () => {
