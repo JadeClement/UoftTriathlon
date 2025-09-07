@@ -1160,10 +1160,10 @@ const Forum = () => {
                           {getUserRsvpStatus(post.id) === 'maybe' ? '✓ Maybe' : 'Maybe'}
                         </button>
                         <button 
-                          className={`rsvp-btn not-going ${getUserRsvpStatus(post.id) === 'not-going' ? 'active' : ''}`}
-                          onClick={() => handleEventRsvp(post.id, 'not-going')}
+                          className={`rsvp-btn not-going ${getUserRsvpStatus(post.id) === 'not_going' ? 'active' : ''}`}
+                          onClick={() => handleEventRsvp(post.id, 'not_going')}
                         >
-                          {getUserRsvpStatus(post.id) === 'not-going' ? '✓ Not Going' : 'Not Going'}
+                          {getUserRsvpStatus(post.id) === 'not_going' ? '✓ Not Going' : 'Not Going'}
                         </button>
                       </div>
                     </div>

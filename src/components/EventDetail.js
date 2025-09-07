@@ -12,7 +12,7 @@ const EventDetail = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
-  const [userRsvp, setUserRsvp] = useState(null); // 'going', 'maybe', 'not-going', or null
+  const [userRsvp, setUserRsvp] = useState(null); // 'going', 'maybe', 'not_going', or null
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -246,10 +246,10 @@ const EventDetail = () => {
                 {userRsvp === 'maybe' ? '✓ Maybe' : 'Maybe'}
               </button>
               <button 
-                onClick={() => handleRsvp('not-going')}
-                className={`rsvp-btn not-going ${userRsvp === 'not-going' ? 'active' : ''}`}
+                onClick={() => handleRsvp('not_going')}
+                className={`rsvp-btn not-going ${userRsvp === 'not_going' ? 'active' : ''}`}
               >
-                {userRsvp === 'not-going' ? '✓ Not Going' : 'Not Going'}
+                {userRsvp === 'not_going' ? '✓ Not Going' : 'Not Going'}
               </button>
             </div>
           </div>
@@ -338,12 +338,12 @@ const EventDetail = () => {
             </div>
 
             <div className="rsvp-category">
-              <h3>Not Going ({rsvps.filter(r => r.status === 'not-going').length})</h3>
-              {rsvps.filter(r => r.status === 'not-going').length === 0 ? (
+              <h3>Not Going ({rsvps.filter(r => r.status === 'not_going').length})</h3>
+              {rsvps.filter(r => r.status === 'not_going').length === 0 ? (
                 <p className="no-rsvps">No declines yet.</p>
               ) : (
                 <div className="rsvp-list">
-                  {rsvps.filter(r => r.status === 'not-going').map(rsvp => (
+                  {rsvps.filter(r => r.status === 'not_going').map(rsvp => (
                     <div key={rsvp.id} className="rsvp-item not-going">
                       <div className="rsvp-user-info">
                         {rsvp.userProfilePictureUrl ? (

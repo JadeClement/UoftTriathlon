@@ -532,7 +532,7 @@ router.post('/events/:id/rsvp', authenticateToken, requireMember, async (req, re
     const userId = req.user.id;
 
     // Validate status
-    if (!['going', 'maybe', 'not-going'].includes(status)) {
+    if (!['going', 'maybe', 'not_going'].includes(status)) {
       return res.status(400).json({ error: 'Invalid RSVP status' });
     }
 
