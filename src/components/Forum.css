@@ -403,16 +403,18 @@
     clear: both; /* Clear any floating elements */
   }
   
+  /* Keep the original layout for buttons and signup count */
   .workout-signup-section {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start; /* Align items to the left */
+    flex-direction: row; /* Keep buttons and signup count side by side */
+    align-items: flex-start;
+    gap: 1rem;
   }
   
-  /* Ensure the signup count and waitlist position are separate blocks */
+  /* Signup count stays beside buttons */
   .signup-count {
-    width: 100%;
-    margin-bottom: 0.5rem;
+    flex: 1;
+    margin-bottom: 0;
   }
 }
 
