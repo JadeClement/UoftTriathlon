@@ -228,8 +228,24 @@ router.post('/forgot-password', async (req, res) => {
       WHERE id = $3
     `, [resetToken, resetTokenExpiry, user.id]);
 
-    // Build reset link
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    // Build reset link with explicit logging and flexible env fallbacks
+    const candidateFrontend = (
+      process.env.FRONTEND_URL ||
+      process.env.FRONTEND_ORIGIN ||
+      process.env.WEB_URL ||
+      process.env.WEBSITE_URL ||
+      process.env.VERCEL_URL ||
+      'http://localhost:3000'
+    );
+    let frontendOrigin = candidateFrontend;
+    // If VERCEL_URL style (no protocol), add https://
+    if (/^[^.]+\.[^/]+$/.test(frontendOrigin) && !/^https?:\/\//i.test(frontendOrigin)) {
+      frontendOrigin = `https://${frontendOrigin}`;
+    }
+    // Remove trailing slash
+    frontendOrigin = frontendOrigin.replace(/\/$/, '');
+    const resetLink = `${frontendOrigin}/reset-password?token=${resetToken}`;
+    console.log('✉️  Forgot-password: using FRONTEND origin =', frontendOrigin, ' resetLink =', resetLink);
 
     // Send email with reset link
     try {
