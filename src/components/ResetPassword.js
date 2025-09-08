@@ -47,9 +47,15 @@ const ResetPassword = () => {
         token: token,
         newPassword: newPassword 
       };
-      console.log('🔑 Sending reset password request:', requestBody);
+      console.log('🔑 RESET PASSWORD DEBUG - Starting reset process');
+      console.log('🔑 Token from URL:', token);
+      console.log('🔑 Request body:', requestBody);
       
-      const response = await fetch('http://localhost:5001/api/auth/reset-password', {
+      const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+      const resetUrl = `${API_BASE_URL}/auth/reset-password`;
+      console.log('🔑 Making request to:', resetUrl);
+      
+      const response = await fetch(resetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,18 +63,22 @@ const ResetPassword = () => {
         body: JSON.stringify(requestBody),
       });
 
+      console.log('🔑 Response status:', response.status);
+      console.log('🔑 Response ok:', response.ok);
+
       if (response.ok) {
         const responseData = await response.json();
+        console.log('✅ Reset password successful:', responseData);
         setSuccess(true);
         setNewPassword('');
         setConfirmPassword('');
-        
-
       } else {
         const errorData = await response.json();
+        console.error('❌ Reset password failed:', errorData);
         setError(errorData.error || 'Failed to reset password');
       }
     } catch (error) {
+      console.error('❌ Reset password error:', error);
       setError('Failed to reset password. Please try again.');
     } finally {
       setLoading(false);

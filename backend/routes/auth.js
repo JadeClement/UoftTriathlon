@@ -291,43 +291,60 @@ router.get('/get-user-email', async (req, res) => {
 // Reset password with token
 router.post('/reset-password', async (req, res) => {
   try {
+    console.log('🔑 RESET PASSWORD DEBUG - Backend received request');
     const { token, newPassword } = req.body;
+    console.log('🔑 Token received:', token ? `${token.substring(0, 10)}...` : 'null');
+    console.log('🔑 New password length:', newPassword ? newPassword.length : 'null');
 
     if (!token || !newPassword) {
+      console.log('❌ Missing token or password');
       return res.status(400).json({ error: 'Token and new password are required' });
     }
 
     // Find user with valid reset token
+    console.log('🔍 Looking for user with reset token...');
     const userResult = await pool.query(`
       SELECT id, email, reset_token_expiry 
       FROM users 
       WHERE reset_token = $1 AND reset_token_expiry > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
     `, [token]);
 
+    console.log('🔍 User query result:', userResult.rows.length, 'rows found');
+    if (userResult.rows.length > 0) {
+      console.log('🔍 User found:', { id: userResult.rows[0].id, email: userResult.rows[0].email });
+      console.log('🔍 Token expiry:', userResult.rows[0].reset_token_expiry);
+    }
+
     if (userResult.rows.length === 0) {
+      console.log('❌ No user found with valid reset token');
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
 
     const user = userResult.rows[0];
 
     // Hash new password
+    console.log('🔑 Hashing new password...');
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    console.log('✅ Password hashed successfully');
 
     // Update password and clear reset token
+    console.log('🔑 Updating user password and clearing reset token...');
     await pool.query(`
       UPDATE users 
       SET password_hash = $1, reset_token = NULL, reset_token_expiry = NULL
       WHERE id = $2
     `, [hashedPassword, user.id]);
+    console.log('✅ Password updated successfully');
 
     // Return success with user email for auto-login
+    console.log('✅ Password reset completed successfully');
     res.json({ 
       message: 'Password reset successfully',
       email: user.email 
     });
   } catch (error) {
-    console.error('Reset password error:', error);
+    console.error('❌ Reset password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
