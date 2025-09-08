@@ -57,6 +57,9 @@ const Forum = () => {
     // If user is at least member, load posts. If pending, we'll render a gate message.
     if (isMember(currentUser)) {
       loadForumPosts();
+    } else {
+      // Ensure we don't stay stuck on loading for pending users
+      setLoading(false);
     }
   }, [currentUser, navigate, isMember]);
 
