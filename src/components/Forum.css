@@ -392,12 +392,27 @@
 /* Mobile layout: style waitlist position at bottom */
 @media (max-width: 768px) {
   .waitlist-position {
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
     font-size: 0.9rem;
     color: #d97706;
     font-weight: 500;
     display: block;
     text-align: left;
+    order: 999; /* Force to bottom with high order value */
+    width: 100%; /* Take full width */
+    clear: both; /* Clear any floating elements */
+  }
+  
+  .workout-signup-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Align items to the left */
+  }
+  
+  /* Ensure the signup count and waitlist position are separate blocks */
+  .signup-count {
+    width: 100%;
+    margin-bottom: 0.5rem;
   }
 }
 
