@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { installFetchInterceptor } from '../utils/installFetchInterceptor';
 
 const AuthContext = createContext();
 
@@ -18,7 +19,20 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     console.log('🔄 AuthContext useEffect running...');
-    
+
+    // Install global fetch interceptor to handle expired/invalid tokens gracefully
+    const remove = installFetchInterceptor(
+      () => localStorage.getItem('triathlonToken'),
+      ({ status, message }) => {
+        console.warn('🔒 Auth interceptor caught unauthorized response:', status, message);
+        localStorage.removeItem('triathlonUser');
+        localStorage.removeItem('triathlonToken');
+        const params = new URLSearchParams();
+        params.set('reason', (message || 'session_expired'));
+        window.location.href = `/login?${params.toString()}`;
+      }
+    );
+
     // Check if user is logged in from localStorage (for now)
     const savedUser = localStorage.getItem('triathlonUser');
     console.log('📦 Saved user from localStorage:', savedUser);
@@ -38,6 +52,10 @@ export const AuthProvider = ({ children }) => {
     
     setLoading(false);
     console.log('🏁 AuthContext loading complete');
+
+    return () => {
+      if (typeof remove === 'function') remove();
+    };
   }, []);
 
   const signup = async (email, password, name, phoneNumber) => {
