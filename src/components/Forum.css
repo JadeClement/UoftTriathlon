@@ -398,8 +398,11 @@
   }
   
   .waitlist-position {
-    order: 3; /* Move waitlist position to the bottom */
-    margin-top: 0.25rem;
+    order: 4; /* Move waitlist position to the very bottom */
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #d97706;
+    font-weight: 500;
   }
   
   .signup-count {
@@ -408,6 +411,11 @@
   
   .signup-btn {
     order: 1; /* Keep signup button at the top */
+  }
+  
+  /* Ensure proper spacing */
+  .workout-signup-section > * {
+    margin-bottom: 0.25rem;
   }
 }
 
