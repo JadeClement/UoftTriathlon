@@ -101,7 +101,11 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/forgot-password', {
+      const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+      const url = `${API_BASE_URL}/auth/forgot-password`;
+      console.log('🔑 Forgot password POST to:', url);
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
