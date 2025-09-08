@@ -1035,12 +1035,6 @@ const Forum = () => {
                           </button>
                         )}
                         
-                        {/* Position label when on waitlist */}
-                        {post.capacity && isWorkoutFull(post.id) && isUserOnWaitlist(post.id) && (
-                          <span className="waitlist-position">
-                            {`You're ${formatOrdinal(getWaitlistPosition(post.id))} on the waitlist`}
-                          </span>
-                        )}
                       </div>
                       
                       <div className="signup-count">
@@ -1063,6 +1057,13 @@ const Forum = () => {
                           </div>
                         )}
                       </div>
+                      
+                      {/* Position label when on waitlist - moved to bottom */}
+                      {post.capacity && isWorkoutFull(post.id) && isUserOnWaitlist(post.id) && (
+                        <span className="waitlist-position">
+                          {`You're ${formatOrdinal(getWaitlistPosition(post.id))} on the waitlist`}
+                        </span>
+                      )}
                     </div>
 
                   </div>

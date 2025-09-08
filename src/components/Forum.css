@@ -389,33 +389,15 @@
   font-size: 0.8rem;
 }
 
-/* Mobile layout: move waitlist position below signup details */
+/* Mobile layout: style waitlist position at bottom */
 @media (max-width: 768px) {
-  .workout-signup-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
   .waitlist-position {
-    order: 4; /* Move waitlist position to the very bottom */
     margin-top: 0.5rem;
     font-size: 0.9rem;
     color: #d97706;
     font-weight: 500;
-  }
-  
-  .signup-count {
-    order: 2; /* Keep signup count in the middle */
-  }
-  
-  .signup-btn {
-    order: 1; /* Keep signup button at the top */
-  }
-  
-  /* Ensure proper spacing */
-  .workout-signup-section > * {
-    margin-bottom: 0.25rem;
+    display: block;
+    text-align: left;
   }
 }
 
