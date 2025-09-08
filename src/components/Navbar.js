@@ -157,7 +157,7 @@ const Navbar = () => {
 
           
           
-          {currentUser && isMember(currentUser) && (
+          {currentUser && (
             <Link 
               to="/forum" 
               className={`navbar-link ${isActive('/forum') ? 'active' : ''}`}

@@ -54,14 +54,10 @@ const Forum = () => {
       return;
     }
     
-    // Check if user has member access or higher
-    if (!isMember(currentUser)) {
-      navigate('/login');
-      return;
+    // If user is at least member, load posts. If pending, we'll render a gate message.
+    if (isMember(currentUser)) {
+      loadForumPosts();
     }
-    
-    // Load forum posts from backend API
-    loadForumPosts();
   }, [currentUser, navigate, isMember]);
 
   // Listen for profile updates to refresh profile pictures
@@ -755,6 +751,29 @@ const Forum = () => {
 
   if (!currentUser) {
     return null;
+  }
+
+  // Gate for pending users: show message instead of forum content
+  if (!isMember(currentUser)) {
+    return (
+      <div className="forum-container">
+        <div className="container">
+          <h1 className="section-title">Team Forum</h1>
+          <div className="notice-card" style={{
+            background: '#fff8e1',
+            border: '1px solid #facc15',
+            color: '#92400e',
+            padding: '16px',
+            borderRadius: '8px',
+            lineHeight: 1.6
+          }}>
+            <p style={{margin: 0}}>
+              You don't have access to the forum yet. Please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration! You will have to log out and then log back in to see this page.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
