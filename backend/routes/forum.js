@@ -232,7 +232,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         SELECT ww.id, ww.user_id, u.name as user_name, u.email, u.phone_number 
         FROM workout_waitlist ww 
         JOIN users u ON ww.user_id = u.id 
-        WHERE ww.workout_id = $1 
+        WHERE ww.post_id = $1 
         ORDER BY ww.joined_at ASC 
         LIMIT 1
       `, [id]);
@@ -370,7 +370,7 @@ router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) =
         u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM workout_waitlist ww
       JOIN users u ON ww.user_id = u.id
-      WHERE ww.workout_id = $1
+      WHERE ww.post_id = $1
       ORDER BY ww.joined_at ASC
     `, [id]);
 
@@ -418,7 +418,7 @@ router.get('/workouts/:id/waitlist', authenticateToken, requireMember, async (re
         u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM workout_waitlist ww
       JOIN users u ON ww.user_id = u.id
-      WHERE ww.workout_id = $1
+      WHERE ww.post_id = $1
       ORDER BY ww.joined_at ASC
     `, [id]);
 
@@ -442,7 +442,7 @@ router.post('/workouts/:id/waitlist', authenticateToken, requireMember, async (r
     }
 
     // Check if user is already on waitlist
-    const existingWaitlist = await pool.query('SELECT id FROM workout_waitlist WHERE user_id = $1 AND workout_id = $2', [userId, id]);
+    const existingWaitlist = await pool.query('SELECT id FROM workout_waitlist WHERE user_id = $1 AND post_id = $2', [userId, id]);
     if (existingWaitlist.rows.length > 0) {
       return res.status(400).json({ error: 'Already on waitlist' });
     }
@@ -454,7 +454,7 @@ router.post('/workouts/:id/waitlist', authenticateToken, requireMember, async (r
     }
 
     // Add to waitlist
-    await pool.query('INSERT INTO workout_waitlist (user_id, workout_id) VALUES ($1, $2)', [userId, id]);
+    await pool.query('INSERT INTO workout_waitlist (user_id, post_id) VALUES ($1, $2)', [userId, id]);
     
     res.json({ message: 'Joined waitlist successfully' });
   } catch (error) {
@@ -470,7 +470,7 @@ router.delete('/workouts/:id/waitlist', authenticateToken, requireMember, async 
     const userId = req.user.id;
 
     // Remove from waitlist
-    const result = await pool.query('DELETE FROM workout_waitlist WHERE user_id = $1 AND workout_id = $2', [userId, id]);
+    const result = await pool.query('DELETE FROM workout_waitlist WHERE user_id = $1 AND post_id = $2', [userId, id]);
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Not on waitlist' });

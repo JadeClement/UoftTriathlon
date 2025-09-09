@@ -107,9 +107,9 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS workout_waitlist (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        workout_id INTEGER REFERENCES forum_posts(id) ON DELETE CASCADE,
+        post_id INTEGER REFERENCES forum_posts(id) ON DELETE CASCADE,
         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, workout_id)
+        UNIQUE(user_id, post_id)
       )
     `);
     console.log('✅ Workout waitlist table created');
@@ -197,7 +197,7 @@ async function initializeDatabase() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_workout_signups_user_id ON workout_signups(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_workout_signups_post_id ON workout_signups(post_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_workout_waitlist_user_id ON workout_waitlist(user_id)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_workout_waitlist_workout_id ON workout_waitlist(workout_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_workout_waitlist_post_id ON workout_waitlist(post_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_role_change_notifications_user_id ON role_change_notifications(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_post_likes_post_id ON post_likes(post_id)');
