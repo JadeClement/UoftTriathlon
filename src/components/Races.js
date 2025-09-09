@@ -315,7 +315,9 @@ const Races = () => {
             getFilteredRaces().map(race => (
               <div key={race.id} className="race-card" onClick={() => handleRaceClick(race.id)}>
                 <div className="race-header">
-                  <h3>{race.name}</h3>
+                  <div className="race-title">
+                    <h3>{race.name}</h3>
+                  </div>
                   <div className="race-date-info">
                     <span className="race-date">{formatDate(race.date)}</span>
                     <span className="race-countdown">{getDaysUntilRace(race.date)}</span>

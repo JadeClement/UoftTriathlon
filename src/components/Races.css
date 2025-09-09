@@ -181,24 +181,63 @@
   margin-bottom: 0.75rem;
   flex-wrap: wrap;
   gap: 0.75rem;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
-.race-header h3 {
+.race-title {
+  flex: 1;
+}
+
+.race-title h3 {
   margin: 0;
   color: #1f2937;
   font-size: 1.25rem;
   font-weight: 600;
   transition: all 0.3s ease;
   display: inline-block;
-  background: none;
-  padding: 0;
-  border: none;
+  background: none !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-.race-card:hover .race-header h3 {
+.race-card:hover .race-title h3 {
   color: #4169E1;
   text-decoration: underline;
   transform: translateX(2px);
+  background: none !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure race title has no box styling */
+.race-card .race-title h3,
+.race-card .race-title h3:hover,
+.race-card .race-title h3:focus,
+.race-card .race-title h3:active {
+  background: none !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  margin: 0 !important;
+}
+
+/* Ensure race header div has no box styling */
+.race-card .race-header,
+.race-card .race-header:hover,
+.race-card .race-header:focus,
+.race-card .race-header:active {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
 }
 
 .race-date-info {
