@@ -178,18 +178,19 @@ const RaceDetail = () => {
           <button onClick={() => navigate('/races')} className="back-btn">
             ← Back to Races
           </button>
-          <h1>{race.name}</h1>
-          <div className="race-date">{formatDate(race.date)}</div>
+          <div className="race-title-section">
+            <h1>{race.name}</h1>
+            <div className="race-date">{formatDate(race.date)}</div>
+            {race.location && (
+              <div className="race-location">
+                <h3>📍 Location</h3>
+                <p>{race.location}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="race-info">
-          {race.location && (
-            <div className="info-section">
-              <h3>📍 Location</h3>
-              <p>{race.location}</p>
-            </div>
-          )}
-
           {race.description && (
             <div className="info-section">
               <h3>📝 Description</h3>

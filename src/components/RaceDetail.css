@@ -37,11 +37,34 @@
   transform: translateY(-1px);
 }
 
+.race-title-section {
+  text-align: center;
+}
+
 .race-header h1 {
   margin: 0 0 1rem 0;
   color: #1f2937;
   font-size: 2.5rem;
   font-weight: 700;
+}
+
+.race-location {
+  margin-top: 1rem;
+  text-align: left;
+  display: inline-block;
+}
+
+.race-location h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.race-location p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 1rem;
 }
 
 .race-date {
