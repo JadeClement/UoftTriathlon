@@ -44,6 +44,20 @@ const RaceDetail = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🏁 Race data received:', data);
+        console.log('👥 Signups data:', data.signups);
+        
+        // Debug each signup
+        if (data.signups) {
+          data.signups.forEach((signup, index) => {
+            console.log(`👤 Signup ${index + 1}:`, {
+              name: signup.user_name,
+              profilePictureUrl: signup.userProfilePictureUrl,
+              hasProfilePicture: !!signup.userProfilePictureUrl
+            });
+          });
+        }
+        
         setRace(data.race);
         setSignups(data.signups || []);
         setIsSignedUp(data.isSignedUp || false);
@@ -190,10 +204,7 @@ const RaceDetail = () => {
                     <div className="signup-avatar">
                       {signup.userProfilePictureUrl ? (
                         <img 
-                          src={signup.userProfilePictureUrl.startsWith('http') 
-                            ? signup.userProfilePictureUrl 
-                            : `${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`
-                          }
+                          src={`${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`}
                           alt={signup.userName}
                           className="avatar-img"
                           onError={(e) => {
