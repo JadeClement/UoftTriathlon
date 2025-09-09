@@ -10,6 +10,8 @@ const RoleChangeNotification = ({ currentUser }) => {
   useEffect(() => {
     if (!currentUser) return;
 
+    console.log('🔔 RoleChangeNotification: Starting notification check for user:', currentUser.id);
+
     // Check for role change notifications
     const checkNotifications = async () => {
       try {
@@ -22,8 +24,10 @@ const RoleChangeNotification = ({ currentUser }) => {
           }
         });
 
+        console.log('🔔 RoleChangeNotification: Response status:', response.status);
         if (response.ok) {
           const data = await response.json();
+          console.log('🔔 RoleChangeNotification: Response data:', data);
           if (data.hasNotification) {
             setNotification(data);
             setShowNotification(true);
@@ -43,7 +47,7 @@ const RoleChangeNotification = ({ currentUser }) => {
           }
         }
       } catch (error) {
-        console.error('Error checking role change notifications:', error);
+        console.error('🔔 RoleChangeNotification: Error checking notifications:', error);
       }
     };
 

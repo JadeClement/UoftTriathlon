@@ -48,6 +48,13 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
       const mentionsExpired = /token.*expired|jwt.*expired|expired token/i.test(message);
 
       if (isAuthError || mentionsExpired) {
+        console.warn('🔒 Auth interceptor: Unauthorized response detected', { 
+          url, 
+          status: response.status, 
+          message,
+          isAuthError,
+          mentionsExpired
+        });
         if (typeof onUnauthorized === 'function') {
           onUnauthorized({ status: response.status, message });
         }
