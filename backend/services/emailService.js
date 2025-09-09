@@ -206,7 +206,7 @@ UofT Triathlon Club - Building champions, one triathlon at a time
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || process.env.WEB_URL || process.env.WEBSITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')}/forum" 
+                <a href="https://uoft-tri.club/forum" 
                    style="background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
                   Access the Forum
                 </a>
