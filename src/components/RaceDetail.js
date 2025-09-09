@@ -50,9 +50,13 @@ const RaceDetail = () => {
         // Debug each signup
         if (data.signups) {
           data.signups.forEach((signup, index) => {
+            const constructedUrl = signup.userProfilePictureUrl 
+              ? `${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`
+              : 'No profile picture URL';
             console.log(`👤 Signup ${index + 1}:`, {
               name: signup.user_name,
               profilePictureUrl: signup.userProfilePictureUrl,
+              constructedUrl: constructedUrl,
               hasProfilePicture: !!signup.userProfilePictureUrl
             });
           });
@@ -202,12 +206,16 @@ const RaceDetail = () => {
                 {signups.map((signup, index) => (
                   <div key={signup.id || index} className="signup-item">
                     <div className="signup-avatar">
-                      {signup.userProfilePictureUrl ? (
+                      {signup.userProfilePictureUrl && signup.userProfilePictureUrl !== 'null' && signup.userProfilePictureUrl.trim() !== '' ? (
                         <img 
                           src={`${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`}
                           alt={signup.user_name}
                           className="avatar-img"
+                          onLoad={() => {
+                            console.log(`✅ Profile picture loaded for ${signup.user_name}`);
+                          }}
                           onError={(e) => {
+                            console.log(`❌ Profile picture failed to load for ${signup.user_name}:`, e.target.src);
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
                           }}
@@ -215,7 +223,7 @@ const RaceDetail = () => {
                       ) : null}
                       <div 
                         className="avatar-placeholder" 
-                        style={{ display: signup.userProfilePictureUrl ? 'none' : 'flex' }}
+                        style={{ display: (signup.userProfilePictureUrl && signup.userProfilePictureUrl !== 'null' && signup.userProfilePictureUrl.trim() !== '') ? 'none' : 'flex' }}
                       >
                         {signup.user_name ? signup.user_name.charAt(0).toUpperCase() : '?'}
                       </div>
