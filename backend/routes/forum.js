@@ -255,7 +255,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         
         // Get workout details for notifications
         const workoutDetailsResult = await pool.query(
-          'SELECT title, workout_date FROM forum_posts WHERE id = $1', 
+          'SELECT title, workout_date, workout_time FROM forum_posts WHERE id = $1', 
           [id]
         );
         
@@ -284,7 +284,8 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
               waitlistPerson.phone_number,
               waitlistPerson.user_name,
               workoutDetails.title || 'Workout',
-              workoutDetails.workout_date
+              workoutDetails.workout_date,
+              workoutDetails.workout_time
             ).then(notificationResult => {
               if (notificationResult.sms) {
                 console.log('📱 SMS sent successfully to:', waitlistPerson.phone_number);

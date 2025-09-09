@@ -41,7 +41,7 @@ const sendWaitlistPromotionSMS = async (userPhone, userName, workoutTitle, worko
 };
 
 // Send both email and SMS (combo function)
-const sendWaitlistPromotionNotification = async (userEmail, userPhone, userName, workoutTitle, workoutDate) => {
+const sendWaitlistPromotionNotification = async (userEmail, userPhone, userName, workoutTitle, workoutDate, workoutTime = null) => {
   try {
     // Import email service
     const emailService = require('./emailService');

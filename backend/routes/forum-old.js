@@ -267,7 +267,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, (req, res)
                       console.log('✅ Successfully promoted to signups');
                       
                       // Get workout details for notifications
-                      db.get('SELECT title, workout_date FROM forum_posts WHERE id = ?', [id], (err, workout) => {
+                      db.get('SELECT title, workout_date, workout_time FROM forum_posts WHERE id = ?', [id], (err, workout) => {
                         if (err) {
                           console.error('❌ Error getting workout details for notifications:', err);
                         } else {
@@ -277,7 +277,8 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, (req, res)
                             waitlistPerson.phone_number,
                             waitlistPerson.user_name,
                             workout.title || 'Workout',
-                            workout.workout_date
+                            workout.workout_date,
+                            workout.workout_time
                           ).then(notificationResult => {
                             if (notificationResult.email) {
                               console.log('📧 Email sent successfully to:', waitlistPerson.email);
