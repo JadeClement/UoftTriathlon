@@ -205,6 +205,13 @@
   outline: none !important;
 }
 
+.race-location {
+  margin: 0.5rem 0 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 .race-card:hover .race-title h3 {
   color: #4169E1;
   text-decoration: underline;

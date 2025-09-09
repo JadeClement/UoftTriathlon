@@ -317,6 +317,7 @@ const Races = () => {
                 <div className="race-header">
                   <div className="race-title">
                     <h3>{race.name}</h3>
+                    {race.location && <p className="race-location">📍 {race.location}</p>}
                   </div>
                   <div className="race-date-info">
                     <span className="race-date">{formatDate(race.date)}</span>
@@ -324,7 +325,6 @@ const Races = () => {
                   </div>
                 </div>
                 <div className="race-details">
-                  {race.location && <p><strong>📍 Location:</strong> {race.location}</p>}
                   {race.description && <p><strong>📝 Description:</strong> {race.description}</p>}
                 </div>
                                   <div className="race-footer">
