@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Races.css';
 
 const Races = () => {
   const { currentUser, isMember } = useAuth();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -175,6 +177,10 @@ const Races = () => {
     return race.signups && race.signups.some(signup => signup.user_id === currentUser.id);
   };
 
+  const handleRaceClick = (raceId) => {
+    navigate(`/race/${raceId}`);
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -287,7 +293,7 @@ const Races = () => {
             </div>
           ) : (
             getFilteredRaces().map(race => (
-              <div key={race.id} className="race-card">
+              <div key={race.id} className="race-card" onClick={() => handleRaceClick(race.id)}>
                 <div className="race-header">
                   <h3>{race.name}</h3>
                   <span className="race-date">{formatDate(race.date)}</span>

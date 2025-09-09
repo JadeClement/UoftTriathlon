@@ -150,12 +150,27 @@
   padding: 1.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .race-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border: 2px solid #4169E1;
+  animation: pulse 0.6s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    box-shadow: 0 8px 25px rgba(65, 105, 225, 0.3);
+  }
+  100% {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
 }
 
 .race-header {
@@ -172,6 +187,14 @@
   color: #1f2937;
   font-size: 1.5rem;
   font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.race-card:hover .race-header h3 {
+  color: #4169E1;
+  text-decoration: underline;
+  transform: translateX(2px);
 }
 
 .race-date {

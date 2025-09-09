@@ -75,16 +75,20 @@ router.get('/:id', authenticateToken, requireMember, async (req, res) => {
     const signupsResult = await pool.query(`
       SELECT 
         rs.id, rs.user_id, rs.signup_time,
-        u.name as user_name, u.role as user_role
+        u.name as user_name, u.role as user_role, u.profile_picture_url as "userProfilePictureUrl"
       FROM race_signups rs
       JOIN users u ON rs.user_id = u.id
       WHERE rs.race_id = $1
       ORDER BY rs.signup_time ASC
     `, [id]);
 
+    // Check if current user is signed up
+    const isSignedUp = signupsResult.rows.some(signup => signup.user_id === req.user.id);
+
     res.json({ 
       race,
-      signups: signupsResult.rows || []
+      signups: signupsResult.rows || [],
+      isSignedUp
     });
   } catch (error) {
     console.error('Get race error:', error);

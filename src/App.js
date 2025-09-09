@@ -12,6 +12,7 @@ import Admin from './components/Admin';
 import Login from './components/Login';
 import WorkoutDetail from './components/WorkoutDetail';
 import EventDetail from './components/EventDetail';
+import RaceDetail from './components/RaceDetail';
 import Profile from './components/Profile';
 import FAQ from './components/FAQ';
 import Resources from './components/Resources';
@@ -158,6 +159,7 @@ function AppContent() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/workout/:id" element={<WorkoutDetail />} />
           <Route path="/event/:id" element={<EventDetail />} />
+          <Route path="/race/:id" element={<RaceDetail />} />
         </Routes>
       </main>
       <Footer />
