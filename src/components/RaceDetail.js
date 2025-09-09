@@ -190,21 +190,30 @@ const RaceDetail = () => {
                     <div className="signup-avatar">
                       {signup.userProfilePictureUrl ? (
                         <img 
-                          src={`${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`}
+                          src={signup.userProfilePictureUrl.startsWith('http') 
+                            ? signup.userProfilePictureUrl 
+                            : `${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`
+                          }
                           alt={signup.userName}
                           className="avatar-img"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
                         />
-                      ) : (
-                        <div className="avatar-placeholder">
-                          {signup.userName ? signup.userName.charAt(0).toUpperCase() : '?'}
-                        </div>
-                      )}
+                      ) : null}
+                      <div 
+                        className="avatar-placeholder" 
+                        style={{ display: signup.userProfilePictureUrl ? 'none' : 'flex' }}
+                      >
+                        {signup.userName ? signup.userName.charAt(0).toUpperCase() : '?'}
+                      </div>
                     </div>
                     <div className="signup-info">
                       <div className="signup-name">{signup.userName}</div>
                       <div className="signup-time">
-                        📅 {signup.signed_up_at && signup.signed_up_at !== 'Invalid Date' && signup.signed_up_at !== 'null'
-                          ? new Date(signup.signed_up_at).toLocaleDateString()
+                        📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null'
+                          ? new Date(signup.signup_time).toLocaleDateString()
                           : 'Recently'
                         }
                       </div>

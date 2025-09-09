@@ -108,15 +108,18 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  background: #f9fafb;
+  background: white;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
   transition: all 0.3s ease;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .signup-item:hover {
-  background: #f3f4f6;
+  background: #f8fafc;
   transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .signup-avatar {
@@ -154,6 +157,7 @@
   color: #1f2937;
   font-size: 1rem;
   margin-bottom: 0.25rem;
+  line-height: 1.2;
 }
 
 .signup-time {
@@ -162,6 +166,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  font-weight: 500;
 }
 
 .race-actions {
