@@ -20,9 +20,18 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     console.log('🔄 AuthContext useEffect running...');
 
-    // TEMPORARILY DISABLE FETCH INTERCEPTOR FOR DEBUGGING
-    console.log('🔒 Fetch interceptor DISABLED for debugging');
-    const remove = () => {};
+    // Install global fetch interceptor to handle expired/invalid tokens gracefully
+    const remove = installFetchInterceptor(
+      () => localStorage.getItem('triathlonToken'),
+      ({ status, message }) => {
+        console.warn('🔒 Auth interceptor caught unauthorized response:', status, message);
+        localStorage.removeItem('triathlonUser');
+        localStorage.removeItem('triathlonToken');
+        const params = new URLSearchParams();
+        params.set('reason', (message || 'session_expired'));
+        window.location.href = `/login?${params.toString()}`;
+      }
+    );
 
     // Check if user is logged in from localStorage (for now)
     const savedUser = localStorage.getItem('triathlonUser');

@@ -16,8 +16,12 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
     try {
       const url = typeof input === 'string' ? input : input.url;
       
-      // Don't intercept login/auth endpoints to avoid redirect loops
-      if (url && (url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/forgot-password'))) {
+      // Don't intercept auth endpoints or role notifications to avoid redirect loops
+      if (url && (
+        url.includes('/auth/') || 
+        url.includes('/users/role-change-notifications') ||
+        url.includes('/users/mark-role-notification-read')
+      )) {
         return originalFetch(input, init);
       }
       
@@ -56,14 +60,8 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
           mentionsExpired
         });
         
-        // Add persistent alert to see what's happening
-        alert(`🔒 AUTH ERROR DETECTED!\nURL: ${url}\nStatus: ${response.status}\nMessage: ${message}\n\nThis will redirect to login in 3 seconds...`);
-        
         if (typeof onUnauthorized === 'function') {
-          // Delay the redirect to give time to read logs
-          setTimeout(() => {
-            onUnauthorized({ status: response.status, message });
-          }, 3000);
+          onUnauthorized({ status: response.status, message });
         }
       }
 
