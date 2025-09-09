@@ -14,6 +14,13 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
 
   async function authAwareFetch(input, init = {}) {
     try {
+      const url = typeof input === 'string' ? input : input.url;
+      
+      // Don't intercept login/auth endpoints to avoid redirect loops
+      if (url && (url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/forgot-password'))) {
+        return originalFetch(input, init);
+      }
+      
       const token = typeof getToken === 'function' ? getToken() : null;
 
       const headers = new Headers(init && init.headers ? init.headers : {});

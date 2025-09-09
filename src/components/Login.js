@@ -38,7 +38,9 @@ const Login = () => {
 
     try {
       if (isLogin) {
-        await login(email, password);
+        console.log('🔐 Login: Starting login process for:', email);
+        const user = await login(email, password);
+        console.log('🔐 Login: Login successful, user:', user);
       } else {
         // Validate passwords match for signup
         if (password !== confirmPassword) {
@@ -60,6 +62,7 @@ const Login = () => {
           await login(email, password);
         }
       }
+      console.log('🔐 Login: Navigating to home page...');
       navigate('/');
     } catch (error) {
       // Customize error message for login failures
