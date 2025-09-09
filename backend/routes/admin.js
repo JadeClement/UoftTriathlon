@@ -220,6 +220,23 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Send member acceptance email if role was changed to 'member'
+    if (role === 'member') {
+      try {
+        const emailService = require('../services/emailService');
+        const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
+        
+        if (userDetails.rows.length > 0) {
+          const { name, email } = userDetails.rows[0];
+          await emailService.sendMemberAcceptance(email, name);
+          console.log(`📧 Member acceptance email sent to ${email}`);
+        }
+      } catch (emailError) {
+        console.error('❌ Failed to send member acceptance email:', emailError);
+        // Don't fail the update if email fails
+      }
+    }
+
     res.json({ message: 'Member updated successfully' });
   } catch (error) {
     console.error('Update member error:', error);
@@ -284,6 +301,23 @@ router.post('/members/:id/approve', authenticateToken, requireAdmin, async (req,
       INSERT INTO role_change_notifications (user_id, old_role, new_role)
       VALUES ($1, $2, $3)
     `, [id, 'pending', role]);
+
+    // Send member acceptance email if role is 'member'
+    if (role === 'member') {
+      try {
+        const emailService = require('../services/emailService');
+        const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
+        
+        if (userDetails.rows.length > 0) {
+          const { name, email } = userDetails.rows[0];
+          await emailService.sendMemberAcceptance(email, name);
+          console.log(`📧 Member acceptance email sent to ${email}`);
+        }
+      } catch (emailError) {
+        console.error('❌ Failed to send member acceptance email:', emailError);
+        // Don't fail the approval if email fails
+      }
+    }
 
     res.json({ message: 'Member approved successfully', newRole: role });
   } catch (error) {
