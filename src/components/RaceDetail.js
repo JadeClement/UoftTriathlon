@@ -205,7 +205,7 @@ const RaceDetail = () => {
                       {signup.userProfilePictureUrl ? (
                         <img 
                           src={`${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`}
-                          alt={signup.userName}
+                          alt={signup.user_name}
                           className="avatar-img"
                           onError={(e) => {
                             e.target.style.display = 'none';
@@ -217,11 +217,11 @@ const RaceDetail = () => {
                         className="avatar-placeholder" 
                         style={{ display: signup.userProfilePictureUrl ? 'none' : 'flex' }}
                       >
-                        {signup.userName ? signup.userName.charAt(0).toUpperCase() : '?'}
+                        {signup.user_name ? signup.user_name.charAt(0).toUpperCase() : '?'}
                       </div>
                     </div>
                     <div className="signup-info">
-                      <div className="signup-name">{signup.userName}</div>
+                      <div className="signup-name">{signup.user_name}</div>
                       <div className="signup-time">
                         📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null'
                           ? new Date(signup.signup_time).toLocaleDateString()
