@@ -17,7 +17,7 @@ const sendWaitlistPromotionSMS = async (userPhone, userName, workoutTitle, worko
     
     // Create the SMS message
     const message = await client.messages.create({
-      body: `🎉 UofT Triathlon Club: Hi ${userName}! You've been promoted from the waitlist for "${workoutTitle}" on ${formattedDate}. You're now officially signed up! Check the forum for details.`,
+      body: `🎉 UofT Triathlon Club: Hi ${userName}! You've been promoted from the waitlist for "${workoutTitle}" on ${formattedDate}. You're now officially signed up! Check the forum for details. If you can't make it, please cancel your signup.`,
       from: fromNumber,
       to: userPhone
     });
