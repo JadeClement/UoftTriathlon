@@ -55,8 +55,15 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
           isAuthError,
           mentionsExpired
         });
+        
+        // Add persistent alert to see what's happening
+        alert(`🔒 AUTH ERROR DETECTED!\nURL: ${url}\nStatus: ${response.status}\nMessage: ${message}\n\nThis will redirect to login in 3 seconds...`);
+        
         if (typeof onUnauthorized === 'function') {
-          onUnauthorized({ status: response.status, message });
+          // Delay the redirect to give time to read logs
+          setTimeout(() => {
+            onUnauthorized({ status: response.status, message });
+          }, 3000);
         }
       }
 

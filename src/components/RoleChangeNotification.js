@@ -10,6 +10,10 @@ const RoleChangeNotification = ({ currentUser }) => {
   useEffect(() => {
     if (!currentUser) return;
 
+    // TEMPORARILY DISABLE FOR DEBUGGING
+    console.log('🔔 RoleChangeNotification: DISABLED FOR DEBUGGING');
+    return;
+
     console.log('🔔 RoleChangeNotification: Starting notification check for user:', currentUser.id);
 
     // Check for role change notifications
@@ -25,6 +29,12 @@ const RoleChangeNotification = ({ currentUser }) => {
         });
 
         console.log('🔔 RoleChangeNotification: Response status:', response.status);
+        
+        // Add alert for debugging
+        if (!response.ok) {
+          alert(`🔔 ROLE NOTIFICATION ERROR!\nStatus: ${response.status}\nThis might be causing the redirect!`);
+        }
+        
         if (response.ok) {
           const data = await response.json();
           console.log('🔔 RoleChangeNotification: Response data:', data);
