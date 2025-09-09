@@ -292,7 +292,7 @@ const WorkoutDetail = () => {
         });
         
         if (waitlistResponse.ok) {
-          const waitlistData = await response.json();
+          const waitlistData = await waitlistResponse.json();
           setWaitlist(waitlistData.waitlist);
         }
       } else {
