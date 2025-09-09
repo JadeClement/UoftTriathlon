@@ -112,7 +112,7 @@ const CharterPrompt = () => {
       
       if (res.ok) {
         console.log('🔒 Charter: Success! Updating user and closing modal...');
-        updateUser({ charterAccepted: 1 });
+        updateUser({ charter_accepted: true });
         setOpen(false);
       } else {
         const errorText = await res.text();
@@ -125,7 +125,7 @@ const CharterPrompt = () => {
 
   // Don't render anything if checking token, no user, or if user already accepted
   const charterAccepted = currentUser?.charter_accepted || currentUser?.charterAccepted;
-  if (checkingToken || !currentUser || charterAccepted === 1 || charterAccepted === true) {
+  if (checkingToken || !currentUser || charterAccepted === true || charterAccepted === 1) {
     return null;
   }
 

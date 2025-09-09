@@ -155,7 +155,9 @@ router.put('/members/:id/charter', authenticateToken, requireAdmin, async (req, 
 router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone_number, role } = req.body;
+    const { name, email, phone_number, role, charterAccepted } = req.body;
+    
+    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted });
 
     // Check if this is the last administrator
     if (role && role !== 'administrator') {
@@ -195,6 +197,14 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       paramCount++;
       updates.push(`role = $${paramCount}`);
       values.push(role);
+    }
+
+    if (charterAccepted !== undefined) {
+      paramCount++;
+      updates.push(`charter_accepted = $${paramCount}`);
+      const charterValue = charterAccepted ? 1 : 0;
+      values.push(charterValue);
+      console.log('🔧 Charter update:', { charterAccepted, charterValue });
     }
 
     if (updates.length === 0) {
