@@ -39,6 +39,10 @@ const Login = () => {
     try {
       if (isLogin) {
         console.log('🔐 Login: Starting login process for:', email);
+        if (!email || !password) {
+          setErrorAndScroll('Email and password are required');
+          return;
+        }
         const user = await login(email, password);
         console.log('🔐 Login: Login successful, user:', user);
       } else {
@@ -48,19 +52,11 @@ const Login = () => {
           setLoading(false);
           return;
         }
-        if (!isLogin) {
-          if (!name || !email || !password || !phoneNumber) {
-            setErrorAndScroll('All fields are required');
-            return;
-          }
-          await signup(email, password, name, phoneNumber);
-        } else {
-          if (!email || !password) {
-            setErrorAndScroll('Email and password are required');
-            return;
-          }
-          await login(email, password);
+        if (!name || !email || !password || !phoneNumber) {
+          setErrorAndScroll('All fields are required');
+          return;
         }
+        await signup(email, password, name, phoneNumber);
       }
       console.log('🔐 Login: Navigating to home page...');
       navigate('/');
