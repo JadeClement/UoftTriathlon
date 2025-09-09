@@ -31,6 +31,49 @@ const Login = () => {
   const { signup, login } = useAuth();
   const navigate = useNavigate();
 
+  // Validation functions
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    // Check if it's 10 digits (North American format)
+    return digitsOnly.length === 10;
+  };
+
+  const formatPhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    // Format as (XXX) XXX-XXXX
+    if (digitsOnly.length === 10) {
+      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+    }
+    return phone; // Return original if not 10 digits
+  };
+
+  const handlePhoneNumberChange = (e) => {
+    const value = e.target.value;
+    // Remove all non-digit characters
+    const digitsOnly = value.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    if (digitsOnly.length <= 10) {
+      // Format as user types
+      let formatted = digitsOnly;
+      if (digitsOnly.length >= 6) {
+        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+      } else if (digitsOnly.length >= 3) {
+        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3)}`;
+      } else if (digitsOnly.length > 0) {
+        formatted = `(${digitsOnly}`;
+      }
+      setPhoneNumber(formatted);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -56,7 +99,24 @@ const Login = () => {
           setErrorAndScroll('All fields are required');
           return;
         }
-        await signup(email, password, name, phoneNumber);
+        
+        // Validate email format
+        if (!validateEmail(email)) {
+          setErrorAndScroll('Please enter a valid email address (e.g., user@example.com)');
+          setLoading(false);
+          return;
+        }
+        
+        // Validate phone number format
+        if (!validatePhoneNumber(phoneNumber)) {
+          setErrorAndScroll('Please enter a valid 10-digit phone number (e.g., 1234567890 or (123) 456-7890)');
+          setLoading(false);
+          return;
+        }
+        
+        // Format phone number before sending
+        const formattedPhone = formatPhoneNumber(phoneNumber);
+        await signup(email, password, name, formattedPhone);
       }
       console.log('🔐 Login: Navigating to home page...');
       navigate('/');
@@ -197,7 +257,8 @@ const Login = () => {
                   type="tel"
                   id="phoneNumber"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  onChange={handlePhoneNumberChange}
+                  placeholder="(123) 456-7890"
                   required
                 />
                 <small className="form-help">For SMS notifications when promoted from waitlists</small>

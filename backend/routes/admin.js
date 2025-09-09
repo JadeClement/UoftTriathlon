@@ -182,12 +182,22 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
     }
 
     if (email !== undefined) {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Please enter a valid email address' });
+      }
       paramCount++;
       updates.push(`email = $${paramCount}`);
       values.push(email);
     }
 
     if (phone_number !== undefined) {
+      // Validate phone number format (10 digits)
+      const phoneDigitsOnly = phone_number.replace(/\D/g, '');
+      if (phoneDigitsOnly.length !== 10) {
+        return res.status(400).json({ error: 'Please enter a valid 10-digit phone number' });
+      }
       paramCount++;
       updates.push(`phone_number = $${paramCount}`);
       values.push(phone_number);
