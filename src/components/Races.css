@@ -197,6 +197,13 @@
   transform: translateX(2px);
 }
 
+.race-date-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
 .race-date {
   background: #3b82f6;
   color: white;
@@ -205,6 +212,18 @@
   font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
+}
+
+.race-countdown {
+  background: #10b981;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .race-details {
@@ -373,6 +392,19 @@
   margin: 0 0 0.25rem 0;
   color: #6b7280;
   font-size: 0.875rem;
+}
+
+.calendar-countdown {
+  background: #10b981;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  margin: 0.25rem 0;
 }
 
 .calendar-race-actions {

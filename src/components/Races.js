@@ -191,6 +191,26 @@ const Races = () => {
     });
   };
 
+  const getDaysUntilRace = (dateString) => {
+    const raceDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    raceDate.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    const diffTime = raceDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return `Past (${Math.abs(diffDays)} days ago)`;
+    } else if (diffDays === 0) {
+      return 'Today!';
+    } else if (diffDays === 1) {
+      return 'Tomorrow';
+    } else {
+      return `${diffDays} days`;
+    }
+  };
+
   const getMonthName = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -296,7 +316,10 @@ const Races = () => {
               <div key={race.id} className="race-card" onClick={() => handleRaceClick(race.id)}>
                 <div className="race-header">
                   <h3>{race.name}</h3>
-                  <span className="race-date">{formatDate(race.date)}</span>
+                  <div className="race-date-info">
+                    <span className="race-date">{formatDate(race.date)}</span>
+                    <span className="race-countdown">{getDaysUntilRace(race.date)}</span>
+                  </div>
                 </div>
                 <div className="race-details">
                   {race.location && <p><strong>📍 Location:</strong> {race.location}</p>}
@@ -365,6 +388,7 @@ const Races = () => {
                     <div className="calendar-race-info">
                       <h4>{race.name}</h4>
                       {race.location && <p>{race.location}</p>}
+                      <p className="calendar-countdown">{getDaysUntilRace(race.date)}</p>
                       {currentUser && isMember(currentUser) && (
                         <span className="signup-count">
                           {race.signups ? race.signups.length : 0} signed up

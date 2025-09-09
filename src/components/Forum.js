@@ -851,14 +851,12 @@ const Forum = () => {
             ) : (
               <div className="posts-list">
                 {getFilteredWorkouts().filter(post => post && post.id).map(post => (
-                  <div key={post.id} className="post-card workout-post">
+                  <div key={post.id} className="post-card workout-post" onClick={() => window.location.href = `/workout/${post.id}`}>
                     <div className="post-header">
                       {post.title ? (
                         <div className="workout-title">
                           <h2>
-                            <a href={`/workout/${post.id}`} className="workout-title-link">
-                              {post.title}
-                            </a>
+                            {post.title}
                           </h2>
                         </div>
                       ) : (
@@ -1115,14 +1113,12 @@ const Forum = () => {
             ) : (
               <div className="posts-list">
                 {eventPosts.map(post => (
-                  <div key={post.id} className="post-card event-post">
+                  <div key={post.id} className="post-card event-post" onClick={() => window.location.href = `/event/${post.id}`}>
                     <div className="post-header">
                       {post.title && (
                         <div className="event-title">
                           <h3>
-                            <a href={`/event/${post.id}`} className="event-title-link">
-                              {post.title}
-                            </a>
+                            {post.title}
                           </h3>
                         </div>
                       )}
