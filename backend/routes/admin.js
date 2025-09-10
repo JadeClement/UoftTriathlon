@@ -181,9 +181,9 @@ router.put('/members/:id/charter', authenticateToken, requireAdmin, async (req, 
 router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone_number, role, charterAccepted } = req.body;
+    const { name, email, phone_number, role, charterAccepted, expiryDate } = req.body;
     
-    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted });
+    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, expiryDate });
 
     // Check if this is the last administrator
     if (role && role !== 'administrator') {
@@ -241,6 +241,15 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       const charterValue = charterAccepted ? 1 : 0;
       values.push(charterValue);
       console.log('🔧 Charter update:', { charterAccepted, charterValue });
+    }
+
+    if (expiryDate !== undefined) {
+      paramCount++;
+      updates.push(`expiry_date = $${paramCount}`);
+      // Convert empty string to null, otherwise use the date
+      const expiryValue = expiryDate === '' ? null : expiryDate;
+      values.push(expiryValue);
+      console.log('🔧 Expiry date update:', { expiryDate, expiryValue });
     }
 
     if (updates.length === 0) {
@@ -664,30 +673,65 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     // Import email service
     const emailService = require('../services/emailService');
 
-    // Send email to each recipient
+    // Send emails in parallel with batching to respect AWS SES rate limits
+    const BATCH_SIZE = 10; // Process 10 emails at a time
+    const DELAY_BETWEEN_BATCHES = 1000; // 1 second delay between batches
+    
     let successCount = 0;
     let errorCount = 0;
     const errors = [];
 
-    for (const recipient of recipientEmails) {
-      try {
-        // Personalize message with recipient name
-        const personalizedMessage = message.replace(/\[name\]/g, recipient.name);
-        
-        const result = await emailService.sendEmail(recipient.email, subject, personalizedMessage);
-        
+    // Split recipients into batches
+    const batches = [];
+    for (let i = 0; i < recipientEmails.length; i += BATCH_SIZE) {
+      batches.push(recipientEmails.slice(i, i + BATCH_SIZE));
+    }
+
+    console.log(`📧 Sending ${recipientEmails.length} emails in ${batches.length} batches of ${BATCH_SIZE}`);
+
+    // Process each batch
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      console.log(`📧 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} emails)`);
+      
+      // Send all emails in this batch in parallel
+      const batchPromises = batch.map(async (recipient) => {
+        try {
+          // Personalize message with recipient name
+          const personalizedMessage = message.replace(/\[name\]/g, recipient.name);
+          
+          const result = await emailService.sendEmail(recipient.email, subject, personalizedMessage);
+          
+          if (result.success) {
+            console.log(`✅ Bulk email sent to ${recipient.email}`);
+            return { success: true, email: recipient.email };
+          } else {
+            console.error(`❌ Failed to send bulk email to ${recipient.email}:`, result.error);
+            return { success: false, email: recipient.email, error: result.error };
+          }
+        } catch (error) {
+          console.error(`❌ Error sending bulk email to ${recipient.email}:`, error);
+          return { success: false, email: recipient.email, error: error.message };
+        }
+      });
+
+      // Wait for all emails in this batch to complete
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Count results
+      batchResults.forEach(result => {
         if (result.success) {
           successCount++;
-          console.log(`✅ Bulk email sent to ${recipient.email}`);
         } else {
           errorCount++;
-          errors.push(`${recipient.email}: ${result.error}`);
-          console.error(`❌ Failed to send bulk email to ${recipient.email}:`, result.error);
+          errors.push(`${result.email}: ${result.error}`);
         }
-      } catch (error) {
-        errorCount++;
-        errors.push(`${recipient.email}: ${error.message}`);
-        console.error(`❌ Error sending bulk email to ${recipient.email}:`, error);
+      });
+
+      // Add delay between batches to respect rate limits (except for the last batch)
+      if (batchIndex < batches.length - 1) {
+        console.log(`⏳ Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
       }
     }
 
