@@ -181,6 +181,11 @@ const Races = () => {
     navigate(`/race/${raceId}`);
   };
 
+  const handleEditRace = (raceId, e) => {
+    if (e) e.stopPropagation();
+    navigate(`/race/${raceId}`);
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -315,14 +320,33 @@ const Races = () => {
             getFilteredRaces().map(race => (
               <div key={race.id} className="race-card" onClick={() => handleRaceClick(race.id)}>
                 <div className="race-header">
-                  <div className="race-title">
-                    <h3>{race.name}</h3>
-                    {race.location && <p className="race-location">📍 {race.location}</p>}
+                  <div className="race-main">
+                    <h2 className="race-name">{race.name}</h2>
+                    {race.location && (
+                      <div className="race-meta">📍 {race.location}</div>
+                    )}
+                    <div className="race-meta">📅 {formatDate(race.date)}</div>
+                    <div className="race-countdown inline">{getDaysUntilRace(race.date)}</div>
                   </div>
-                  <div className="race-date-info">
-                    <span className="race-date">{formatDate(race.date)}</span>
-                    <span className="race-countdown">{getDaysUntilRace(race.date)}</span>
-                  </div>
+                  {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
+                    <div className="race-actions-top">
+                      <button 
+                        className="edit-btn"
+                        onClick={(e) => handleEditRace(race.id, e)}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button 
+                        className="delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRace(race.id);
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="race-details">
                   {race.description && <p><strong>📝 Description:</strong> {race.description}</p>}
@@ -358,17 +382,7 @@ const Races = () => {
                       )
                     )}
                     
-                    {/* Admin Delete Button */}
-                    {currentUser && (currentUser.role === 'admin' || currentUser.role === 'administrator') && (
-                      <div className="admin-actions">
-                        <button 
-                          className="delete-btn"
-                          onClick={() => handleDeleteRace(race.id)}
-                        >
-                          🗑️ Delete Race
-                        </button>
-                      </div>
-                    )}
+                    {/* Admin actions moved to top right */}
                   </div>
               </div>
             ))

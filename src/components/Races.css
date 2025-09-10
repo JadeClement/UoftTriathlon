@@ -187,23 +187,9 @@
   box-shadow: none !important;
 }
 
-.race-title {
-  flex: 1;
-}
-
-.race-title h3 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 1.25rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  display: inline-block;
-  background: none !important;
-  padding: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
+.race-main { flex: 1; }
+.race-name { margin: 0; color: #1f2937; font-size: 1.5rem; font-weight: 700; }
+.race-meta { color: #6b7280; font-size: 0.95rem; margin-top: 0.25rem; }
 
 .race-location {
   margin: 0.5rem 0 0 0;
@@ -247,12 +233,7 @@
   padding: 0 !important;
 }
 
-.race-date-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
+.race-date-info { display: none; }
 
 .race-date {
   background: #3b82f6;
@@ -275,6 +256,8 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+.race-countdown.inline { display: inline-block; margin-top: 0.25rem; }
 
 .race-details {
   margin-bottom: 1rem;
@@ -355,11 +338,7 @@
 }
 
 /* Admin Actions */
-.admin-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
+.race-actions-top { display: flex; gap: 0.5rem; }
 
 .delete-btn {
   background: #dc2626;
