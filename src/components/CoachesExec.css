@@ -138,6 +138,12 @@
   font-size: 0.95rem;
 }
 
+.coach-contact {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
 .coach-contact p {
   color: #374151;
   font-size: 0.9rem;
@@ -334,6 +340,11 @@
     line-height: 1.4;
   }
   
+  .coach-contact {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+  
   .coach-contact p {
     font-size: 0.8rem;
   }
@@ -388,6 +399,15 @@
   .coach-bio,
   .exec-bio {
     font-size: 0.8rem;
+  }
+  
+  .coach-contact {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+  
+  .coach-contact p {
+    font-size: 0.75rem;
   }
 }
 
