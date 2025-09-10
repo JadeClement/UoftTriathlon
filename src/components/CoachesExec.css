@@ -43,7 +43,7 @@
 
 .coach-card-link {
   flex: 1;
-  min-width: 300px;
+  min-width: 250px;
   text-decoration: none;
   color: inherit;
   display: block;
@@ -78,8 +78,8 @@
 }
 
 .coach-photo {
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   background: #e5e7eb;
   border-radius: 50%;
   display: flex;
@@ -103,12 +103,12 @@
 }
 
 .coach-emoji {
-  font-size: 2rem;
+  font-size: 1.5rem;
 }
 
 .coach-card h3 {
   color: #1E3A8A;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   margin-bottom: 0.5rem;
   font-weight: 600;
 }
