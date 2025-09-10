@@ -2,7 +2,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  padding-top: 6rem; /* Increased top padding for more space from navbar */
+  padding-top: 2rem; /* Reduced padding since navbar is at top */
   min-height: 100vh;
 }
 
@@ -20,7 +20,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  padding-top: 6rem;
+  padding-top: 2rem;
 }
 
 .races-header {
