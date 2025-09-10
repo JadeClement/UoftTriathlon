@@ -19,7 +19,7 @@
 .races-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 6rem 2rem 2rem 2rem; /* Add top padding to account for fixed navbar */
+  padding: 2rem;
 }
 
 .races-header {

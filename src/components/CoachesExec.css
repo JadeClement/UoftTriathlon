@@ -1,8 +1,8 @@
 .coaches-exec-container {
   margin-top: 0;
-  padding: 6rem 0 2rem 0; /* Add top padding to account for fixed navbar */
+  padding: 2rem 0;
   background: #f8fafc;
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - var(--navbar-height, 70px));
 }
 
 .container {
