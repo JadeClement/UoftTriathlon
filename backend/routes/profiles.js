@@ -83,6 +83,13 @@ function loadTeamMembers() {
       role: 'Webmaster',
       image: '/images/icon.png',
       bio: 'Ilan Gofman serves as our club\'s Webmaster, managing our digital infrastructure and ensuring that our online presence effectively serves our members. With technical expertise and a commitment to user experience, Ilan maintains the systems that keep our club connected and informed.'
+    },
+    'run-coach': {
+      id: 'run-coach',
+      name: 'Paulette Dalton',
+      role: 'Run Coach',
+      image: '',
+      bio: 'Coming soon!'
     }
   };
 }
