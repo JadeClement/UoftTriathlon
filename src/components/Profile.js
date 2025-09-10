@@ -74,6 +74,44 @@ const Profile = () => {
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState('');
 
+  // Phone number formatting functions (same as Login.js)
+  const validatePhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    // Check if it's 10 digits (North American format)
+    return digitsOnly.length === 10;
+  };
+
+  const formatPhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    // Format as (XXX) XXX-XXXX
+    if (digitsOnly.length === 10) {
+      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+    }
+    return phone; // Return original if not 10 digits
+  };
+
+  const handlePhoneNumberChange = (e) => {
+    const value = e.target.value;
+    // Remove all non-digit characters
+    const digitsOnly = value.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    if (digitsOnly.length <= 10) {
+      // Format as user types
+      let formatted = digitsOnly;
+      if (digitsOnly.length >= 6) {
+        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+      } else if (digitsOnly.length >= 3) {
+        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3)}`;
+      } else if (digitsOnly.length > 0) {
+        formatted = `(${digitsOnly}`;
+      }
+      setEditedPhone(formatted);
+    }
+  };
+
   // Check if this is a user profile page or team member page
   const isUserProfile = React.useMemo(() => {
     const result = !role;
@@ -184,7 +222,7 @@ const Profile = () => {
       const profileData = {
         name: editedName,
         email: editedEmail,
-        phone_number: editedPhone,
+        phone_number: formatPhoneNumber(editedPhone), // Format phone number before sending
         bio: editedBio
       };
 
@@ -303,7 +341,7 @@ const Profile = () => {
       const authUpdateData = {
         name: editedName,
         email: editedEmail,
-        phone_number: editedPhone,  // Match the database field name
+        phone_number: formatPhoneNumber(editedPhone),  // Format phone number before updating auth context
         bio: editedBio // Include bio in the auth context update
       };
       
@@ -553,13 +591,17 @@ const Profile = () => {
                       id="phone-input"
                       type="tel"
                       value={editedPhone}
-                      onChange={(e) => {
-                        setEditedPhone(e.target.value);
-                        if (error) setError(''); // Clear error when user starts typing
-                      }}
+                      onChange={handlePhoneNumberChange}
                       className="form-input"
-                      placeholder="Enter your phone number..."
+                      placeholder="(XXX) XXX-XXXX"
+                      pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
+                      title="Please enter a valid phone number in format (XXX) XXX-XXXX"
                     />
+                    {editedPhone && !validatePhoneNumber(editedPhone) && (
+                      <div className="error-message">
+                        Please enter a valid 10-digit phone number
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">
