@@ -2,12 +2,12 @@
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem 1rem;
-  padding-top: 120px; /* offset for Work in Progress banner + fixed navbar */
+  padding-top: 80px; /* offset for fixed navbar */
 }
 
 @media (max-width: 768px) {
   .page-container {
-    padding-top: 140px; /* offset for Work in Progress banner + fixed navbar on mobile */
+    padding-top: 100px; /* offset for fixed navbar on mobile */
   }
 }
 

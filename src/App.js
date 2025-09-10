@@ -23,8 +23,6 @@ import Logout from './components/Logout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
-import WorkInProgressBanner from './components/WorkInProgressBanner';
-import useBannerHeight from './hooks/useBannerHeight';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -170,14 +168,11 @@ function AppContent() {
 }
 
 function App() {
-  const { bannerHeight, bannerRef } = useBannerHeight();
-  
   return (
     <AuthProvider>
       <Router>
         <div className="App">
           <ScrollToTop />
-          <WorkInProgressBanner bannerRef={bannerRef} />
           <Navbar />
           <CharterPrompt />
           <AppContent />

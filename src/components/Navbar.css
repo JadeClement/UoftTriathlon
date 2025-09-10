@@ -117,13 +117,13 @@
 
 @media (max-width: 768px) {
   .navbar {
-    top: 90px; /* Moved further down to clear the banner completely */
+    top: 0; /* No banner, so navbar can be at the top */
   }
   
   .navbar-menu {
     position: fixed !important;
     left: -100% !important;
-    top: 138px !important; /* Adjusted for mobile banner (48px) + navbar (90px) */
+    top: 60px !important; /* Adjusted for mobile navbar */
     flex-direction: column !important;
     background: linear-gradient(135deg, #1E3A8A, #1E40AF) !important;
     width: 100% !important;

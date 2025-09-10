@@ -22,7 +22,7 @@ body {
 
 main {
   flex: 1;
-  padding-top: 0; /* no extra padding needed since navbar is positioned below banner */
+  padding-top: 0; /* no extra padding needed */
 }
 
 .container {
