@@ -256,19 +256,31 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Send member acceptance email if role was changed to 'member'
-    if (role === 'member') {
+    // Send email notification if role was changed
+    if (role !== undefined) {
+      console.log(`🔍 DEBUG: Role was changed in update, sending email notification for role: ${role}`);
       try {
         const emailService = require('../services/emailService');
         const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
         
         if (userDetails.rows.length > 0) {
           const { name, email } = userDetails.rows[0];
-          await emailService.sendMemberAcceptance(email, name);
-          console.log(`📧 Member acceptance email sent to ${email}`);
+          console.log(`🔍 DEBUG: Found user for role change email - Name: ${name}, Email: ${email}, New Role: ${role}`);
+          
+          if (role === 'member') {
+            await emailService.sendMemberAcceptance(email, name);
+            console.log(`📧 Member acceptance email sent to ${email}`);
+          } else {
+            // Send role change notification for other roles
+            await emailService.sendRoleChangeNotification(email, name, 'unknown', role);
+            console.log(`📧 Role change notification email sent to ${email} for role ${role}`);
+          }
+        } else {
+          console.log(`❌ DEBUG: No user found with id ${id} for role change email`);
         }
       } catch (emailError) {
-        console.error('❌ Failed to send member acceptance email:', emailError);
+        console.error('❌ Failed to send role change email:', emailError);
+        console.error('❌ DEBUG: Full error details for role change email:', emailError.stack);
         // Don't fail the update if email fails
       }
     }
