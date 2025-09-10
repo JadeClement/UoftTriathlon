@@ -135,11 +135,13 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { bio } = req.body;
+    const { name, bio, image } = req.body;
     const imageFile = req.file;
 
     console.log('🔄 Updating profile for:', id);
+    console.log('👤 New name:', name);
     console.log('📝 New bio:', bio);
+    console.log('🖼️ New image URL:', image);
     console.log('🖼️ Image file:', imageFile ? imageFile.filename : 'No new image');
 
     // Load current data
@@ -153,7 +155,9 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
     // Update the member data
     const updatedMember = {
       ...currentMember,
-      bio: bio || currentMember.bio
+      name: name || currentMember.name,
+      bio: bio || currentMember.bio,
+      image: image || currentMember.image
     };
 
     // Handle new image if uploaded
