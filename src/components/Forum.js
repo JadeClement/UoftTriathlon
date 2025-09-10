@@ -773,6 +773,9 @@ const Forum = () => {
             <p style={{margin: 0}}>
               You don't have access to the forum yet. Please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration! You will have to log out and then log back in to see this page.
             </p>
+            <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
+              <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. Just log out and log back in to see the forum!
+            </p>
           </div>
         </div>
       </div>
