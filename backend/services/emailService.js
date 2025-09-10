@@ -319,6 +319,113 @@ class EmailService {
       return { success: false, error: error.message };
     }
   }
+
+  // Send role change notification email
+  async sendRoleChangeNotification(userEmail, userName, oldRole, newRole) {
+    try {
+      console.log('📧 EmailService.sendRoleChangeNotification called with:', { userEmail, userName, oldRole, newRole, fromEmail: this.fromEmail });
+      
+      const getRoleDisplayName = (role) => {
+        switch (role) {
+          case 'pending': return 'Pending Member';
+          case 'member': return 'Member';
+          case 'exec': return 'Executive';
+          case 'administrator': return 'Administrator';
+          default: return role;
+        }
+      };
+
+      const oldRoleDisplay = getRoleDisplayName(oldRole);
+      const newRoleDisplay = getRoleDisplayName(newRole);
+      
+      const subject = `🎉 Your role has been updated to ${newRoleDisplay}!`;
+      
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Role Change Notification</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #1E3A8A, #1E40AF); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 28px;">🎉 Role Updated!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">UofT Triathlon Club</p>
+          </div>
+          
+          <div style="background: #f8fafc; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+            <h2 style="color: #1E3A8A; margin-top: 0;">Congratulations, ${userName}!</h2>
+            <p style="font-size: 16px; margin-bottom: 20px;">Your role in the UofT Triathlon Club has been updated:</p>
+            
+            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #10b981; margin: 20px 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                <span style="color: #6b7280; font-size: 14px;">Previous Role:</span>
+                <span style="color: #374151; font-weight: 500;">${oldRoleDisplay}</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="color: #6b7280; font-size: 14px;">New Role:</span>
+                <span style="color: #1f2937; font-weight: 600; font-size: 16px;">${newRoleDisplay}</span>
+              </div>
+            </div>
+            
+            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+              <h3 style="margin: 0 0 15px 0; color: #1f2937;">🎯 What This Means</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
+                ${newRole === 'member' ? `
+                  <li>Access to the club forum and all member discussions</li>
+                  <li>Ability to sign up for workouts and events</li>
+                  <li>Full participation in club activities</li>
+                ` : newRole === 'exec' ? `
+                  <li>All member privileges plus executive responsibilities</li>
+                  <li>Access to executive-only discussions and planning</li>
+                  <li>Ability to help organize club events and activities</li>
+                ` : newRole === 'administrator' ? `
+                  <li>Full administrative access to the club platform</li>
+                  <li>Ability to manage members and approve applications</li>
+                  <li>Access to all club data and administrative functions</li>
+                ` : `
+                  <li>Your role has been updated with new permissions</li>
+                  <li>Please log out and log back in to access your new privileges</li>
+                `}
+              </ul>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+              <p style="margin: 0; color: #92400e; font-size: 14px;">
+                <strong>📝 Important:</strong> To access your new permissions, please log out and log back into your account.
+              </p>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 14px; margin: 0;">
+              If you have any questions, please contact the club administrators.
+            </p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const textContent = `
+Congratulations ${userName}!
+
+Your role in the UofT Triathlon Club has been updated from ${oldRoleDisplay} to ${newRoleDisplay}.
+
+To access your new permissions, please log out and log back into your account.
+
+If you have any questions, please contact the club administrators.
+
+Best regards,
+UofT Triathlon Club
+      `;
+
+      return await this.sendEmail(userEmail, subject, htmlContent, textContent);
+    } catch (error) {
+      console.error('❌ Error sending role change notification email:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = new EmailService();

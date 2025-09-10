@@ -118,6 +118,23 @@ router.put('/members/:id/role', authenticateToken, requireAdmin, async (req, res
       VALUES ($1, $2, $3)
     `, [id, req.body.oldRole || 'unknown', role]);
 
+    // Send role change email notification
+    try {
+      const emailService = require('../services/emailService');
+      const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
+      
+      if (userDetails.rows.length > 0) {
+        const { name, email } = userDetails.rows[0];
+        const oldRole = req.body.oldRole || 'unknown';
+        
+        await emailService.sendRoleChangeNotification(email, name, oldRole, role);
+        console.log(`📧 Role change notification email sent to ${email} for role change from ${oldRole} to ${role}`);
+      }
+    } catch (emailError) {
+      console.error('❌ Failed to send role change email:', emailError);
+      // Don't fail the role update if email fails
+    }
+
     res.json({ message: 'Role updated successfully' });
   } catch (error) {
     console.error('Update role error:', error);
@@ -312,21 +329,26 @@ router.post('/members/:id/approve', authenticateToken, requireAdmin, async (req,
       VALUES ($1, $2, $3)
     `, [id, 'pending', role]);
 
-    // Send member acceptance email if role is 'member'
-    if (role === 'member') {
-      try {
-        const emailService = require('../services/emailService');
-        const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
+    // Send appropriate email based on role
+    try {
+      const emailService = require('../services/emailService');
+      const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
+      
+      if (userDetails.rows.length > 0) {
+        const { name, email } = userDetails.rows[0];
         
-        if (userDetails.rows.length > 0) {
-          const { name, email } = userDetails.rows[0];
+        if (role === 'member') {
           await emailService.sendMemberAcceptance(email, name);
           console.log(`📧 Member acceptance email sent to ${email}`);
+        } else {
+          // Send role change notification for exec/admin roles
+          await emailService.sendRoleChangeNotification(email, name, 'pending', role);
+          console.log(`📧 Role change notification email sent to ${email} for ${role} role`);
         }
-      } catch (emailError) {
-        console.error('❌ Failed to send member acceptance email:', emailError);
-        // Don't fail the approval if email fails
       }
+    } catch (emailError) {
+      console.error('❌ Failed to send role change email:', emailError);
+      // Don't fail the approval if email fails
     }
 
     res.json({ message: 'Member approved successfully', newRole: role });
