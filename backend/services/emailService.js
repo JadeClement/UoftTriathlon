@@ -344,7 +344,11 @@ class EmailService {
       const oldRoleDisplay = getRoleDisplayName(oldRole);
       const newRoleDisplay = getRoleDisplayName(newRole);
       
-      const subject = `🎉 Your role has been updated to ${newRoleDisplay}!`;
+      // Different subject and tone based on new role
+      const isPending = newRole === 'pending';
+      const subject = isPending 
+        ? `Your UofT Triathlon Club membership has expired`
+        : `🎉 Your role has been updated to ${newRoleDisplay}!`;
       
       const htmlContent = `
         <!DOCTYPE html>
@@ -355,30 +359,34 @@ class EmailService {
           <title>Role Change Notification</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #1E3A8A, #1E40AF); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
-            <h1 style="margin: 0; font-size: 28px;">🎉 Role Updated!</h1>
+          <div style="background: linear-gradient(135deg, ${isPending ? '#dc2626, #ef4444' : '#1E3A8A, #1E40AF'}); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 28px;">${isPending ? '⚠️ Membership Expired' : '🎉 Role Updated!'}</h1>
             <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">UofT Triathlon Club</p>
           </div>
           
           <div style="background: #f8fafc; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
-            <h2 style="color: #1E3A8A; margin-top: 0;">Congratulations, ${userName}!</h2>
-            <p style="font-size: 16px; margin-bottom: 20px;">Your role in the UofT Triathlon Club has been updated:</p>
+            <h2 style="color: ${isPending ? '#dc2626' : '#1E3A8A'}; margin-top: 0;">${isPending ? 'Hello' : 'Congratulations'}, ${userName}!</h2>
+            <p style="font-size: 16px; margin-bottom: 20px;">${isPending 
+              ? 'Your membership in the UofT Triathlon Club has expired and your role has been changed to pending.'
+              : 'Your role in the UofT Triathlon Club has been updated:'
+            }</p>
             
-            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #10b981; margin: 20px 0;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                <span style="color: #6b7280; font-size: 14px;">Previous Role:</span>
-                <span style="color: #374151; font-weight: 500;">${oldRoleDisplay}</span>
-              </div>
+            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid ${isPending ? '#dc2626' : '#10b981'}; margin: 20px 0;">
               <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="color: #6b7280; font-size: 14px;">New Role:</span>
+                <span style="color: #6b7280; font-size: 14px;">Current Role:</span>
                 <span style="color: #1f2937; font-weight: 600; font-size: 16px;">${newRoleDisplay}</span>
               </div>
             </div>
             
-            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #3b82f6; margin: 20px 0;">
-              <h3 style="margin: 0 0 15px 0; color: #1f2937;">🎯 What This Means</h3>
+            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid ${isPending ? '#dc2626' : '#3b82f6'}; margin: 20px 0;">
+              <h3 style="margin: 0 0 15px 0; color: #1f2937;">${isPending ? '⚠️ What This Means' : '🎯 What This Means'}</h3>
               <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
-                ${newRole === 'member' ? `
+                ${isPending ? `
+                  <li>You no longer have access to the club forum and member discussions</li>
+                  <li>You cannot sign up for workouts and events</li>
+                  <li>You will need to reapply for membership to regain access</li>
+                  <li>Contact club administrators if you believe this is an error</li>
+                ` : newRole === 'member' ? `
                   <li>Access to the club forum and all member discussions</li>
                   <li>Ability to sign up for workouts and events</li>
                   <li>Full participation in club activities</li>
@@ -397,11 +405,19 @@ class EmailService {
               </ul>
             </div>
             
+            ${!isPending ? `
             <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b; margin: 20px 0;">
               <p style="margin: 0; color: #92400e; font-size: 14px;">
                 <strong>📝 Important:</strong> To access your new permissions, please log out and log back into your account.
               </p>
             </div>
+            ` : `
+            <div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 4px solid #dc2626; margin: 20px 0;">
+              <p style="margin: 0; color: #991b1b; font-size: 14px;">
+                <strong>⚠️ Notice:</strong> Your access has been restricted. Please contact club administrators if you need assistance or believe this is an error.
+              </p>
+            </div>
+            `}
           </div>
           
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
@@ -413,10 +429,25 @@ class EmailService {
         </html>
       `;
 
-      const textContent = `
+      const textContent = isPending ? `
+Hello ${userName},
+
+Your membership in the UofT Triathlon Club has expired and your role has been changed to pending.
+
+This means:
+- You no longer have access to the club forum and member discussions
+- You cannot sign up for workouts and events
+- You will need to reapply for membership to regain access
+- Contact club administrators if you believe this is an error
+
+If you have any questions, please contact the club administrators.
+
+Best regards,
+UofT Triathlon Club
+      ` : `
 Congratulations ${userName}!
 
-Your role in the UofT Triathlon Club has been updated from ${oldRoleDisplay} to ${newRoleDisplay}.
+Your role in the UofT Triathlon Club has been updated to ${newRoleDisplay}.
 
 To access your new permissions, please log out and log back into your account.
 
