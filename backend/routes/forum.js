@@ -96,13 +96,24 @@ router.post('/posts', authenticateToken, requireMember, async (req, res) => {
       return res.status(400).json({ error: 'Content and type are required' });
     }
 
+    // Validate and convert capacity to integer
+    let capacityValue = null;
+    if (capacity && capacity !== '' && !isNaN(capacity)) {
+      capacityValue = parseInt(capacity, 10);
+    }
+
+    console.log('🔍 Create post parameters:', {
+      title, content, type, workoutType, workoutDate, workoutTime, 
+      capacity: capacity, capacityValue, eventDate
+    });
+
     const result = await pool.query(`
       INSERT INTO forum_posts (
         user_id, title, content, type, workout_type, workout_date, 
         workout_time, capacity, event_date, created_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [userId, title, content, type, workoutType, workoutDate, workoutTime, capacity, eventDate]);
+    `, [userId, title, content, type, workoutType, workoutDate, workoutTime, capacityValue, eventDate]);
 
     console.log('✅ Post created successfully, ID:', result.rows[0].id);
     
@@ -148,12 +159,23 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to edit this post' });
     }
 
+    // Validate and convert capacity to integer
+    let capacityValue = null;
+    if (capacity && capacity !== '' && !isNaN(capacity)) {
+      capacityValue = parseInt(capacity, 10);
+    }
+
+    console.log('🔍 Update post parameters:', {
+      title, content, workoutType, workoutDate, workoutTime, 
+      capacity: capacity, capacityValue, eventDate, id
+    });
+
     await pool.query(`
       UPDATE forum_posts 
       SET title = $1, content = $2, workout_type = $3, workout_date = $4, 
           workout_time = $5, capacity = $6, event_date = $7
       WHERE id = $8
-    `, [title, content, workoutType, workoutDate, workoutTime, capacity, eventDate, id]);
+    `, [title, content, workoutType, workoutDate, workoutTime, capacityValue, eventDate, id]);
 
     console.log('✅ Post updated successfully');
     res.json({ message: 'Post updated successfully' });
