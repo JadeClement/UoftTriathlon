@@ -187,9 +187,9 @@
   box-shadow: none !important;
 }
 
-.race-main { flex: 1; }
-.race-name { margin: 0; color: #1f2937; font-size: 1.5rem; font-weight: 700; }
-.race-meta { color: #6b7280; font-size: 0.95rem; margin-top: 0.25rem; }
+.race-main { flex: 1; display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.race-name { margin: 0; color: #1f2937; font-size: 1.75rem; font-weight: 700; text-align: left; }
+.race-meta { color: #6b7280; font-size: 0.95rem; margin-top: 0.25rem; text-align: left; }
 
 .race-location {
   margin: 0.5rem 0 0 0;
