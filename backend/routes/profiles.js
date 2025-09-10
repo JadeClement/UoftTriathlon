@@ -20,7 +20,12 @@ function loadTeamMembers() {
   try {
     if (fs.existsSync(dataFilePath)) {
       const data = fs.readFileSync(dataFilePath, 'utf8');
-      return JSON.parse(data);
+      const parsedData = JSON.parse(data);
+      console.log('📁 Loaded team members from JSON file:', Object.keys(parsedData));
+      console.log('🏃 Run coach data:', parsedData['run-coach']);
+      return parsedData;
+    } else {
+      console.log('⚠️ JSON file not found, using default data');
     }
   } catch (error) {
     console.error('Error loading team members from file:', error);

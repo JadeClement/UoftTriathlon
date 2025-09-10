@@ -228,12 +228,12 @@ const CoachesExec = () => {
                   <span className="coach-emoji">🚴‍♂️</span>
                 </div>
                 <h3>Run Coach</h3>
-                <p className="coach-name">[Coach Name]</p>
+                <p className="coach-name">{teamMembers['run-coach']?.name || 'Coach Name'}</p>
                 <p className="coach-bio">
                   {getBioPreview('run-coach')}
                 </p>
                 <div className="coach-contact">
-                  <p><strong>Contact:</strong> [Email]</p>
+                  <p><strong>Contact:</strong> {teamMembers['run-coach']?.email || 'Email not available'}</p>
                 </div>
               </div>
             </Link>
