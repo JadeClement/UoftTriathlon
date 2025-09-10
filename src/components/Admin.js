@@ -25,6 +25,44 @@ const Admin = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
+  // Phone number formatting functions (same as Login.js and Profile.js)
+  const validatePhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    // Check if it's 10 digits (North American format)
+    return digitsOnly.length === 10;
+  };
+
+  const formatPhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    // Format as (XXX) XXX-XXXX
+    if (digitsOnly.length === 10) {
+      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+    }
+    return phone; // Return original if not 10 digits
+  };
+
+  const handlePhoneNumberChange = (e) => {
+    const value = e.target.value;
+    // Remove all non-digit characters
+    const digitsOnly = value.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    if (digitsOnly.length <= 10) {
+      // Format as user types
+      let formatted = digitsOnly;
+      if (digitsOnly.length >= 6) {
+        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+      } else if (digitsOnly.length >= 3) {
+        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3)}`;
+      } else if (digitsOnly.length > 0) {
+        formatted = `(${digitsOnly}`;
+      }
+      setEditForm({...editForm, phoneNumber: formatted});
+    }
+  };
+
   // Load data from backend API
   useEffect(() => {
     if (!currentUser || !isAdmin(currentUser)) {
@@ -217,6 +255,7 @@ const Admin = () => {
     // Clean up the form data - convert empty strings to null for optional fields
     const cleanFormData = {
       ...editForm,
+      phoneNumber: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending
       expiryDate: editForm.expiryDate || null,
       charterAccepted: editForm.charterAccepted ? 1 : 0
     };
@@ -505,10 +544,16 @@ const Admin = () => {
                 <input
                   type="tel"
                   value={editForm.phoneNumber}
-                  onChange={(e) => setEditForm({...editForm, phoneNumber: e.target.value})}
-                  placeholder="+1 (555) 123-4567"
-                  pattern="[\+]?[1-9][\d]{0,15}"
+                  onChange={handlePhoneNumberChange}
+                  placeholder="(123) 456-7890"
+                  pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
+                  title="Please enter a valid phone number in format (123) 456-7890"
                 />
+                {editForm.phoneNumber && !validatePhoneNumber(editForm.phoneNumber) && (
+                  <div className="error-message">
+                    Please enter a valid 10-digit phone number
+                  </div>
+                )}
                 <small>For SMS notifications when promoted from waitlists</small>
               </div>
               
