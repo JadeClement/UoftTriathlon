@@ -546,8 +546,6 @@ const Admin = () => {
                   value={editForm.phoneNumber}
                   onChange={handlePhoneNumberChange}
                   placeholder="(123) 456-7890"
-                  pattern="\\([0-9]{3}\\) [0-9]{3}-[0-9]{4}"
-                  title="Please enter a valid phone number in format (123) 456-7890"
                 />
                 {editForm.phoneNumber && !validatePhoneNumber(editForm.phoneNumber) && (
                   <div className="error-message">
