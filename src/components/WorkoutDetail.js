@@ -92,10 +92,30 @@ const WorkoutDetail = () => {
         const workoutData = await workoutResponse.json();
         console.log('🔍 Workout details loaded:', workoutData);
         setWorkout(workoutData.workout);
+        setSignups(workoutData.signups || []);
+        setWaitlist(workoutData.waitlist || []);
       } else {
         console.error('❌ Failed to load workout details:', workoutResponse.status, workoutResponse.statusText);
         const errorData = await workoutResponse.json().catch(() => ({}));
         console.error('❌ Error details:', errorData);
+      }
+
+      // Check if attendance has already been submitted
+      const attendanceResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (attendanceResponse.ok) {
+        const attendanceData = await attendanceResponse.json();
+        console.log('🔍 Attendance data loaded:', attendanceData);
+        // If there are any attendance records, attendance has been submitted
+        setAttendanceSaved(attendanceData.attendance && attendanceData.attendance.length > 0);
+        console.log('📊 Attendance saved status:', attendanceData.attendance && attendanceData.attendance.length > 0);
+      } else {
+        console.log('ℹ️ No attendance data found or error loading attendance');
+        setAttendanceSaved(false);
       }
 
       // Load signups
@@ -145,25 +165,6 @@ const WorkoutDetail = () => {
       // Load comments (will be implemented with real backend data)
       setComments([]);
 
-      // Load attendance
-      const attendanceResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (attendanceResponse.ok) {
-        const attendanceData = await attendanceResponse.json();
-        console.log('📊 Attendance data loaded:', attendanceData);
-        setAttendance(attendanceData);
-        // If there's existing attendance data, mark as saved
-        if (Object.keys(attendanceData).length > 0) {
-          setAttendanceSaved(true);
-          console.log('✅ Attendance marked as saved');
-        } else {
-          console.log('📝 No attendance recorded yet - ready for submission');
-        }
-      }
 
       setLoading(false);
     } catch (error) {
