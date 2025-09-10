@@ -29,9 +29,6 @@ const ResetPassword = () => {
     console.log('🚀 New password length:', newPassword.length);
     console.log('🚀 Confirm password length:', confirmPassword.length);
     
-    // Also show an alert to make sure we can see something
-    alert('Reset password form submitted! Check console for details.');
-    
     if (!token) {
       console.log('❌ No token found in URL');
       setError('Invalid reset link. Please request a new password reset.');
