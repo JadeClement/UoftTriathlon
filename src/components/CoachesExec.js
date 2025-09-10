@@ -200,7 +200,7 @@ const CoachesExec = () => {
                   <div className="coach-photo">
                     <img 
                       src={teamMembers['swim-coach']?.image || "/images/icon.png"} 
-                      alt="Justin Konik - Swim Coach"
+                      alt={`${teamMembers['swim-coach']?.name || 'Coach Name'} - Swim Coach`}
                     />
                   </div>
                   <span className="coach-emoji">🏊‍♂️</span>
@@ -250,7 +250,7 @@ const CoachesExec = () => {
                   <div className="exec-photo">
                     <img 
                       src={teamMembers['co-president']?.image || "/images/icon.png"} 
-                      alt="Jade Clement - Co-President"
+                      alt={`${teamMembers['co-president']?.name || 'Co-President'} - Co-President`}
                     />
                   </div>
                   <span className="exec-emoji">👑</span>
@@ -269,7 +269,7 @@ const CoachesExec = () => {
                   <div className="exec-photo">
                     <img 
                       src={teamMembers['co-president-2']?.image || "/images/icon.png"} 
-                      alt="Marlene Garijo - Co-President"
+                      alt={`${teamMembers['co-president-2']?.name || 'Co-President'} - Co-President`}
                     />
                   </div>
                   <span className="exec-emoji">👑</span>
@@ -288,7 +288,7 @@ const CoachesExec = () => {
                   <div className="exec-photo">
                     <img 
                       src={teamMembers['treasurer']?.image || "/images/icon.png"} 
-                      alt="Edward Ing - Treasurer"
+                      alt={`${teamMembers['treasurer']?.name || 'Treasurer'} - Treasurer`}
                     />
                   </div>
                   <span className="exec-emoji">💰</span>
@@ -307,7 +307,7 @@ const CoachesExec = () => {
                   <div className="exec-photo">
                     <img 
                       src={teamMembers['secretary']?.image || "/images/icon.png"} 
-                      alt="Lauren Williams - Secretary"
+                      alt={`${teamMembers['secretary']?.name || 'Secretary'} - Secretary`}
                     />
                   </div>
                   <span className="exec-emoji">📝</span>
@@ -326,7 +326,7 @@ const CoachesExec = () => {
                   <div className="exec-photo">
                     <img 
                       src={teamMembers['social-coordinator']?.image || "/images/icon.png"} 
-                      alt="Katy Tiper - Social Coordinator/Recruitment"
+                      alt={`${teamMembers['social-coordinator']?.name || 'Social Coordinator'} - Social Coordinator/Recruitment`}
                     />
                   </div>
                   <span className="exec-emoji">🎉</span>
@@ -345,7 +345,7 @@ const CoachesExec = () => {
                   <div className="exec-photo">
                     <img 
                       src={teamMembers['social-media']?.image || "/images/icon.png"} 
-                      alt="Paulette Dalton - Social Media Manager"
+                      alt={`${teamMembers['social-media']?.name || 'Social Media Manager'} - Social Media Manager`}
                     />
                   </div>
                   <span className="exec-emoji">📱</span>
@@ -364,7 +364,7 @@ const CoachesExec = () => {
                   <div className="exec-photo">
                     <img 
                       src={teamMembers['webmaster']?.image || "/images/icon.png"} 
-                      alt="Ilan Gofman - Webmaster"
+                      alt={`${teamMembers['webmaster']?.name || 'Webmaster'} - Webmaster`}
                     />
                   </div>
                   <span className="exec-emoji">💻</span>

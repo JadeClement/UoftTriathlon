@@ -7,6 +7,7 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { pool } = require('../database-pg');
 
 // Path to the persistent data file
+// NOTE: team-profiles.json is the SINGLE SOURCE OF TRUTH for team member data
 const dataFilePath = path.join(__dirname, '../data/team-profiles.json');
 
 // Ensure data directory exists
@@ -31,70 +32,24 @@ function loadTeamMembers() {
     console.error('Error loading team members from file:', error);
   }
   
-  // Default data if no file exists
+  // Minimal fallback data if no file exists (should rarely happen)
+  console.log('⚠️ Using minimal fallback data - team-profiles.json should exist!');
   return {
     'swim-coach': {
       id: 'swim-coach',
-      name: 'Justin Konik',
+      name: 'Coach Name',
       role: 'Swim Coach',
-      image: '/images/swimcoach.png',
-      bio: 'Justin Konik is our dedicated swim coach with over 10 years of experience in competitive swimming and triathlon coaching. He specializes in stroke technique, endurance training, and helping athletes overcome their fear of open water swimming.'
-    },
-    'co-president': {
-      id: 'co-president',
-      name: 'Jade Clement',
-      role: 'Co-President',
-      image: '',
-      bio: 'Jade Clement is one of our Co-Presidents, leading the UofT Triathlon Club with passion and dedication. With a strong background in triathlon and a commitment to building community, Jade works tirelessly to ensure every member feels welcome and supported.'
-    },
-    'co-president-2': {
-      id: 'co-president-2',
-      name: 'Marlene Garijo',
-      role: 'Co-President',
-      image: '',
-      bio: 'Marlene Garijo serves as Co-President alongside Jade, bringing her unique perspective and energy to club leadership. With a background in competitive sports and event organization, Marlene excels at creating memorable experiences for club members.'
-    },
-    'treasurer': {
-      id: 'treasurer',
-      name: 'Edward Ing',
-      role: 'Treasurer',
-      image: '/images/exec_treasurer.jpg',
-      bio: 'Edward Ing serves as our club\'s Treasurer, managing the financial health of the UofT Triathlon Club with precision and care. With a background in finance and a passion for triathlon, Edward ensures that club resources are allocated effectively to benefit all members.'
-    },
-    'secretary': {
-      id: 'secretary',
-      name: 'Lauren Williams',
-      role: 'Secretary',
-      image: '',
-      bio: 'Lauren Williams is our club Secretary, responsible for maintaining clear communication and record-keeping within the club. With excellent organizational skills and attention to detail, Lauren ensures that important information reaches all members and that club activities are well-documented.'
-    },
-    'social-coordinator': {
-      id: 'social-coordinator',
-      name: 'Katy Tiper',
-      role: 'Social Coordinator/Recruitment',
-      image: '/images/team-photo4.jpg',
-      bio: 'Katy Tiper serves as our Social Coordinator and Recruitment specialist, bringing energy and creativity to building our club community. With a natural ability to connect people and organize engaging events, Katy plays a vital role in making our club welcoming to new and existing members.'
-    },
-    'social-media': {
-      id: 'social-media',
-      name: 'Paulette Dalton',
-      role: 'Social Media Manager',
-      image: '/images/exec_socialmedia.jpg',
-      bio: 'Paulette Dalton has been a long time member of the club (confirmed by this vintage jersey!) and is returning to your exec team this year as RECRUITMENT & RACE COORDINATOR. Paulette has been doing triathlons since 2002 (yes almost 20 years) and has completed 9 Ironmans and over 20 marathons (including The Boston Marathon 10 times). Paulette is also an NCCP Level 1 Triathlon Coach. This year you\'ll find her leading the Friday evening BRICKS and at most of the track workouts and Sunday swims. ASK HER ABOUT: anything bike related (training, aerodynamics, fit, nutrition…) Paulette also manages this Instagram account so send me all your club pics to post!'
-    },
-    'webmaster': {
-      id: 'webmaster',
-      name: 'Ilan Gofman',
-      role: 'Webmaster',
       image: '/images/icon.png',
-      bio: 'Ilan Gofman serves as our club\'s Webmaster, managing our digital infrastructure and ensuring that our online presence effectively serves our members. With technical expertise and a commitment to user experience, Ilan maintains the systems that keep our club connected and informed.'
+      email: '',
+      bio: 'Bio coming soon!'
     },
     'run-coach': {
       id: 'run-coach',
-      name: 'Paulette Dalton',
+      name: 'Coach Name',
       role: 'Run Coach',
-      image: '',
-      bio: 'Coming soon!'
+      image: '/images/icon.png',
+      email: '',
+      bio: 'Bio coming soon!'
     }
   };
 }
