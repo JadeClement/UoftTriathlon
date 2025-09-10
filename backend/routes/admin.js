@@ -413,7 +413,7 @@ router.post('/members/:id/reject', authenticateToken, requireAdmin, async (req, 
 // Notify role change
 router.post('/notify-role-change', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { userId, oldRole, newRole, message } = req.body;
+    const { userId, oldRole, newRole } = req.body;
 
     if (!userId || !oldRole || !newRole) {
       return res.status(400).json({ error: 'User ID, old role, and new role are required' });
@@ -421,9 +421,9 @@ router.post('/notify-role-change', authenticateToken, requireAdmin, async (req, 
 
     // Create role change notification
     await pool.query(`
-      INSERT INTO role_change_notifications (user_id, old_role, new_role, message)
-      VALUES ($1, $2, $3, $4)
-    `, [userId, oldRole, newRole, message || null]);
+      INSERT INTO role_change_notifications (user_id, old_role, new_role)
+      VALUES ($1, $2, $3)
+    `, [userId, oldRole, newRole]);
 
     res.json({ message: 'Role change notification created successfully' });
   } catch (error) {
