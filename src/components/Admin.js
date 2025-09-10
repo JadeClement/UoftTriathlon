@@ -427,7 +427,7 @@ const Admin = () => {
                       <td><span className={`role-badge ${member.role}`}>{member.role}</span></td>
                       <td>{member.phone_number || 'Not set'}</td>
                       <td>{member.joinDate}</td>
-                      <td>{member.expiryDate || 'Not set'}</td>
+                      <td>{member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</td>
                       <td>
                         <span className={`absence-count ${member.absences > 0 ? 'has-absences' : 'no-absences'}`}>
                           {member.absences || 0}
@@ -466,7 +466,7 @@ const Admin = () => {
                       <p><strong>Role:</strong> <span className="role-badge">{member.role}</span></p>
                       <p><strong>Phone Number:</strong> {member.phone_number || 'Not set'}</p>
                       <p><strong>Join Date:</strong> {member.joinDate}</p>
-                      <p><strong>Expiry Date:</strong> {member.expiryDate || 'Not set'}</p>
+                      <p><strong>Expiry Date:</strong> {member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</p>
       
                     </div>
                     <div className="approval-actions">
