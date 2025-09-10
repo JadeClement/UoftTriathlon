@@ -211,6 +211,7 @@ const Profile = () => {
   const handleSave = async () => {
     console.log('🚀 STARTING PROFILE SAVE - DEBUGGING ENABLED');
     setSaving(true);
+    console.log('🔄 Saving state set to true');
     
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -393,6 +394,7 @@ const Profile = () => {
 
       setEditMode(false);
       setSaving(false);
+      console.log('✅ Saving state set to false - save completed');
       setJustSaved(true);
       setError(''); // Clear any errors on successful save
       
@@ -403,6 +405,7 @@ const Profile = () => {
       console.error('❌ Error updating profile:', error);
       setError(error.message);
       setSaving(false);
+      console.log('❌ Saving state set to false - save failed');
     }
   };
 
