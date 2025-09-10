@@ -4,8 +4,10 @@ const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
 // Configure AWS SES
 console.log('🔑 EmailService: Setting up AWS SES...');
 console.log('🔑 EmailService: AWS Region:', process.env.AWS_REGION || 'us-east-1');
-console.log('🔑 EmailService: AWS Access Key ID:', process.env.AWS_ACCESS_KEY_ID ? 'SET' : 'NOT SET');
-console.log('🔑 EmailService: AWS Secret Access Key:', process.env.AWS_SECRET_ACCESS_KEY ? 'SET' : 'NOT SET');
+console.log('🔑 EmailService: AWS Access Key ID:', process.env.AWS_ACCESS_KEY_ID ? `SET (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)` : 'NOT SET');
+console.log('🔑 EmailService: AWS Secret Access Key:', process.env.AWS_SECRET_ACCESS_KEY ? `SET (${process.env.AWS_SECRET_ACCESS_KEY.substring(0, 8)}...)` : 'NOT SET');
+console.log('🔑 EmailService: AWS From Email:', process.env.AWS_FROM_EMAIL || 'NOT SET');
+console.log('🔑 EmailService: AWS From Name:', process.env.AWS_FROM_NAME || 'NOT SET');
 
 const sesClient = new SESClient({
   region: process.env.AWS_REGION || 'us-east-1',
