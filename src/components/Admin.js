@@ -23,7 +23,57 @@ const Admin = () => {
     expiryDate: ''
   });
 
+  // Email functionality
+  const [emailForm, setEmailForm] = useState({
+    to: '',
+    subject: '',
+    message: ''
+  });
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState('');
+  const [emailError, setEmailError] = useState('');
+
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+
+  // Email functions
+  const handleEmailChange = (e) => {
+    const { name, value } = e.target;
+    setEmailForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSendEmail = async (e) => {
+    e.preventDefault();
+    setSendingEmail(true);
+    setEmailError('');
+    setEmailSuccess('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(emailForm)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setEmailSuccess('Email sent successfully!');
+        setEmailForm({ to: '', subject: '', message: '' });
+      } else {
+        setEmailError(data.error || 'Failed to send email');
+      }
+    } catch (error) {
+      setEmailError('Error sending email: ' + error.message);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   // Phone number formatting functions (same as Login.js and Profile.js)
   const validatePhoneNumber = (phone) => {
@@ -391,6 +441,12 @@ const Admin = () => {
         >
           Pending Approval
         </button>
+        <button 
+          className={`tab-button ${activeTab === 'email' ? 'active' : ''}`}
+          onClick={() => setActiveTab('email')}
+        >
+          Send Email
+        </button>
       </div>
 
       <div className="admin-content">
@@ -488,6 +544,75 @@ const Admin = () => {
           </div>
         )}
 
+        {activeTab === 'email' && (
+          <div className="email-section">
+            <h2>Send Email</h2>
+            <div className="email-form-container">
+              <form onSubmit={handleSendEmail} className="email-form">
+                <div className="form-group">
+                  <label htmlFor="to">To:</label>
+                  <input
+                    type="email"
+                    id="to"
+                    name="to"
+                    value={emailForm.to}
+                    onChange={handleEmailChange}
+                    placeholder="recipient@example.com"
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="subject">Subject:</label>
+                  <input
+                    type="text"
+                    id="subject"
+                    name="subject"
+                    value={emailForm.subject}
+                    onChange={handleEmailChange}
+                    placeholder="Email subject"
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="message">Message:</label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    value={emailForm.message}
+                    onChange={handleEmailChange}
+                    placeholder="Type your message here..."
+                    rows="8"
+                    required
+                  />
+                </div>
+                
+                <div className="form-actions">
+                  <button 
+                    type="submit" 
+                    className="send-email-btn"
+                    disabled={sendingEmail}
+                  >
+                    {sendingEmail ? 'Sending...' : 'Send Email'}
+                  </button>
+                </div>
+                
+                {emailSuccess && (
+                  <div className="success-message">
+                    ✅ {emailSuccess}
+                  </div>
+                )}
+                
+                {emailError && (
+                  <div className="error-message">
+                    ❌ {emailError}
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
 

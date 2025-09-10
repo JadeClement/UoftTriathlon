@@ -536,4 +536,32 @@ router.delete('/race-management/:id', authenticateToken, requireAdmin, async (re
   }
 });
 
+// Send email route
+router.post('/send-email', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { to, subject, message } = req.body;
+
+    if (!to || !subject || !message) {
+      return res.status(400).json({ error: 'Missing required fields: to, subject, message' });
+    }
+
+    // Import email service
+    const emailService = require('../services/emailService');
+
+    // Send email using the existing email service
+    const result = await emailService.sendEmail(to, subject, message);
+
+    if (result.success) {
+      console.log(`✅ Admin email sent to ${to}: ${subject}`);
+      res.json({ message: 'Email sent successfully' });
+    } else {
+      console.error(`❌ Failed to send admin email to ${to}:`, result.error);
+      res.status(500).json({ error: 'Failed to send email: ' + result.error });
+    }
+  } catch (error) {
+    console.error('Admin send email error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
