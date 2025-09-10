@@ -765,12 +765,12 @@ const WorkoutDetail = () => {
                       <span className="signup-user">{signup.user_name}</span>
                     </div>
                     <span className="signup-date">
-                      📅 {signup.signed_up_at && signup.signed_up_at !== 'Invalid Date' && signup.signed_up_at !== 'null' 
-                        ? new Date(signup.signed_up_at).toLocaleDateString()
+                      📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
+                        ? new Date(signup.signup_time).toLocaleDateString()
                         : 'Recently'
                       }
-                      <span className="signup-time"> • 🕐 {signup.signed_up_at && signup.signed_up_at !== 'Invalid Date' && signup.signed_up_at !== 'null' 
-                        ? new Date(signup.signed_up_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                      <span className="signup-time"> • 🕐 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
+                        ? new Date(signup.signup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                         : 'Recently'
                       }</span>
                     </span>
