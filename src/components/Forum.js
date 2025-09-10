@@ -870,14 +870,20 @@ const Forum = () => {
                         <div className="workout-actions-admin">
                           <button 
                             className="edit-btn"
-                            onClick={() => startEdit(post)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEdit(post);
+                            }}
                             disabled={editingWorkout === post.id}
                           >
                             ✏️ Edit
                           </button>
                           <button 
                             className="delete-btn"
-                            onClick={() => handleDeleteWorkout(post.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteWorkout(post.id);
+                            }}
                             disabled={editingWorkout === post.id}
                           >
                             🗑️ Delete
@@ -1029,7 +1035,10 @@ const Forum = () => {
                       <div className="button-group">
                         <button 
                           className={`signup-btn ${isUserSignedUp(post.id) ? 'signed-up' : ''} ${isWorkoutFull(post.id) ? 'full' : ''}`}
-                          onClick={() => handleWorkoutSignUp(post.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWorkoutSignUp(post.id);
+                          }}
                           disabled={isWorkoutFull(post.id) && !isUserSignedUp(post.id)}
                         >
                           {isUserSignedUp(post.id) ? '✓ Signed Up' : isWorkoutFull(post.id) ? 'Full' : 'Sign Up'}
@@ -1039,7 +1048,10 @@ const Forum = () => {
                         {isUserSignedUp(post.id) && (
                           <button 
                             className="cancel-btn"
-                            onClick={() => handleCancelClick(post.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCancelClick(post.id);
+                            }}
                           >
                             Cancel
                           </button>
@@ -1049,7 +1061,10 @@ const Forum = () => {
                         {post.capacity && isWorkoutFull(post.id) && !isUserSignedUp(post.id) && (
                           <button 
                             className={`waitlist-btn ${isUserOnWaitlist(post.id) ? 'on-waitlist' : ''}`}
-                            onClick={() => isUserOnWaitlist(post.id) ? handleWaitlistLeave(post.id) : handleWaitlistJoin(post.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              isUserOnWaitlist(post.id) ? handleWaitlistLeave(post.id) : handleWaitlistJoin(post.id);
+                            }}
                           >
                             {isUserOnWaitlist(post.id) ? 'Leave Waitlist' : 'Join Waitlist'}
                           </button>
@@ -1127,7 +1142,10 @@ const Forum = () => {
                       {currentUser.id === post.user_id && (
                         <button 
                           className="delete-btn"
-                          onClick={() => handleDeleteEvent(post.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteEvent(post.id);
+                          }}
                         >
                           🗑️ Delete
                         </button>
@@ -1168,19 +1186,28 @@ const Forum = () => {
                       <div className="rsvp-buttons">
                         <button 
                           className={`rsvp-btn going ${getUserRsvpStatus(post.id) === 'going' ? 'active' : ''}`}
-                          onClick={() => handleEventRsvp(post.id, 'going')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEventRsvp(post.id, 'going');
+                          }}
                         >
                           {getUserRsvpStatus(post.id) === 'going' ? '✓ Going' : 'Going'}
                         </button>
                         <button 
                           className={`rsvp-btn maybe ${getUserRsvpStatus(post.id) === 'maybe' ? 'active' : ''}`}
-                          onClick={() => handleEventRsvp(post.id, 'maybe')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEventRsvp(post.id, 'maybe');
+                          }}
                         >
                           {getUserRsvpStatus(post.id) === 'maybe' ? '✓ Maybe' : 'Maybe'}
                         </button>
                         <button 
                           className={`rsvp-btn not-going ${getUserRsvpStatus(post.id) === 'not_going' ? 'active' : ''}`}
-                          onClick={() => handleEventRsvp(post.id, 'not_going')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEventRsvp(post.id, 'not_going');
+                          }}
                         >
                           {getUserRsvpStatus(post.id) === 'not_going' ? '✓ Not Going' : 'Not Going'}
                         </button>
