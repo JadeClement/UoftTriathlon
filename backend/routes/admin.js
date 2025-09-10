@@ -119,19 +119,28 @@ router.put('/members/:id/role', authenticateToken, requireAdmin, async (req, res
     `, [id, req.body.oldRole || 'unknown', role]);
 
     // Send role change email notification
+    console.log(`🔍 DEBUG: Starting role change email process for user ${id} from ${req.body.oldRole || 'unknown'} to ${role}`);
     try {
       const emailService = require('../services/emailService');
+      console.log(`🔍 DEBUG: EmailService loaded successfully for role change`);
+      
       const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
+      console.log(`🔍 DEBUG: User details query result for role change:`, userDetails.rows);
       
       if (userDetails.rows.length > 0) {
         const { name, email } = userDetails.rows[0];
         const oldRole = req.body.oldRole || 'unknown';
+        console.log(`🔍 DEBUG: Found user for role change - Name: ${name}, Email: ${email}, Old Role: ${oldRole}, New Role: ${role}`);
         
-        await emailService.sendRoleChangeNotification(email, name, oldRole, role);
+        const result = await emailService.sendRoleChangeNotification(email, name, oldRole, role);
+        console.log(`🔍 DEBUG: Role change notification email result:`, result);
         console.log(`📧 Role change notification email sent to ${email} for role change from ${oldRole} to ${role}`);
+      } else {
+        console.log(`❌ DEBUG: No user found with id ${id} for role change`);
       }
     } catch (emailError) {
       console.error('❌ Failed to send role change email:', emailError);
+      console.error('❌ DEBUG: Full error details for role change:', emailError.stack);
       // Don't fail the role update if email fails
     }
 
@@ -330,24 +339,35 @@ router.post('/members/:id/approve', authenticateToken, requireAdmin, async (req,
     `, [id, 'pending', role]);
 
     // Send appropriate email based on role
+    console.log(`🔍 DEBUG: Starting email process for user ${id} with role ${role}`);
     try {
       const emailService = require('../services/emailService');
+      console.log(`🔍 DEBUG: EmailService loaded successfully`);
+      
       const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
+      console.log(`🔍 DEBUG: User details query result:`, userDetails.rows);
       
       if (userDetails.rows.length > 0) {
         const { name, email } = userDetails.rows[0];
+        console.log(`🔍 DEBUG: Found user - Name: ${name}, Email: ${email}`);
         
         if (role === 'member') {
-          await emailService.sendMemberAcceptance(email, name);
+          console.log(`🔍 DEBUG: Sending member acceptance email to ${email}`);
+          const result = await emailService.sendMemberAcceptance(email, name);
+          console.log(`🔍 DEBUG: Member acceptance email result:`, result);
           console.log(`📧 Member acceptance email sent to ${email}`);
         } else {
-          // Send role change notification for exec/admin roles
-          await emailService.sendRoleChangeNotification(email, name, 'pending', role);
+          console.log(`🔍 DEBUG: Sending role change notification email to ${email} for role ${role}`);
+          const result = await emailService.sendRoleChangeNotification(email, name, 'pending', role);
+          console.log(`🔍 DEBUG: Role change notification email result:`, result);
           console.log(`📧 Role change notification email sent to ${email} for ${role} role`);
         }
+      } else {
+        console.log(`❌ DEBUG: No user found with id ${id}`);
       }
     } catch (emailError) {
       console.error('❌ Failed to send role change email:', emailError);
+      console.error('❌ DEBUG: Full error details:', emailError.stack);
       // Don't fail the approval if email fails
     }
 

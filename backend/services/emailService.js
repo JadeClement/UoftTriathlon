@@ -55,9 +55,11 @@ class EmailService {
       };
 
       const command = new SendEmailCommand(params);
+      console.log('🔍 DEBUG: About to send email via AWS SES with params:', JSON.stringify(params, null, 2));
       const result = await sesClient.send(command);
       
       console.log('✅ Email sent successfully:', result.MessageId);
+      console.log('🔍 DEBUG: Full AWS SES result:', JSON.stringify(result, null, 2));
       return { success: true, messageId: result.MessageId };
     } catch (error) {
       console.error('❌ Error sending email:', error);
@@ -324,6 +326,10 @@ class EmailService {
   async sendRoleChangeNotification(userEmail, userName, oldRole, newRole) {
     try {
       console.log('📧 EmailService.sendRoleChangeNotification called with:', { userEmail, userName, oldRole, newRole, fromEmail: this.fromEmail });
+      console.log('🔍 DEBUG: AWS credentials check - Access Key ID:', process.env.AWS_ACCESS_KEY_ID ? 'SET' : 'NOT SET');
+      console.log('🔍 DEBUG: AWS credentials check - Secret Access Key:', process.env.AWS_SECRET_ACCESS_KEY ? 'SET' : 'NOT SET');
+      console.log('🔍 DEBUG: AWS credentials check - Region:', process.env.AWS_REGION || 'us-east-1');
+      console.log('🔍 DEBUG: AWS credentials check - From Email:', this.fromEmail);
       
       const getRoleDisplayName = (role) => {
         switch (role) {
