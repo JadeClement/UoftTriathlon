@@ -564,4 +564,101 @@ router.post('/send-email', authenticateToken, requireAdmin, async (req, res) => 
   }
 });
 
+// Send bulk email route
+router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { subject, message, recipients } = req.body;
+
+    if (!subject || !message) {
+      return res.status(400).json({ error: 'Missing required fields: subject, message' });
+    }
+
+    // Check if at least one recipient group is selected
+    const selectedGroups = Object.values(recipients).some(selected => selected);
+    if (!selectedGroups) {
+      return res.status(400).json({ error: 'Please select at least one recipient group' });
+    }
+
+    // Build query to get recipients based on selected groups
+    let whereConditions = [];
+    let queryParams = [];
+    let paramCount = 0;
+
+    if (recipients.allMembers) {
+      whereConditions.push(`role = $${++paramCount}`);
+      queryParams.push('member');
+    }
+    if (recipients.execs) {
+      whereConditions.push(`role = $${++paramCount}`);
+      queryParams.push('exec');
+    }
+    if (recipients.admins) {
+      whereConditions.push(`role = $${++paramCount}`);
+      queryParams.push('administrator');
+    }
+
+    const whereClause = whereConditions.join(' OR ');
+    const query = `SELECT email, name FROM users WHERE is_active = true AND (${whereClause})`;
+    
+    const result = await pool.query(query, queryParams);
+    const recipientEmails = result.rows;
+
+    if (recipientEmails.length === 0) {
+      return res.status(400).json({ error: 'No recipients found for selected groups' });
+    }
+
+    // Import email service
+    const emailService = require('../services/emailService');
+
+    // Send email to each recipient
+    let successCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (const recipient of recipientEmails) {
+      try {
+        // Personalize message with recipient name
+        const personalizedMessage = message.replace(/\[name\]/g, recipient.name);
+        
+        const result = await emailService.sendEmail(recipient.email, subject, personalizedMessage);
+        
+        if (result.success) {
+          successCount++;
+          console.log(`✅ Bulk email sent to ${recipient.email}`);
+        } else {
+          errorCount++;
+          errors.push(`${recipient.email}: ${result.error}`);
+          console.error(`❌ Failed to send bulk email to ${recipient.email}:`, result.error);
+        }
+      } catch (error) {
+        errorCount++;
+        errors.push(`${recipient.email}: ${error.message}`);
+        console.error(`❌ Error sending bulk email to ${recipient.email}:`, error);
+      }
+    }
+
+    // Return results
+    if (errorCount === 0) {
+      res.json({ 
+        message: 'All emails sent successfully',
+        recipientCount: successCount
+      });
+    } else if (successCount > 0) {
+      res.json({ 
+        message: `Sent to ${successCount} recipients, ${errorCount} failed`,
+        recipientCount: successCount,
+        errors: errors.slice(0, 5) // Limit to first 5 errors
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Failed to send any emails',
+        errors: errors.slice(0, 5)
+      });
+    }
+  } catch (error) {
+    console.error('Admin send bulk email error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;

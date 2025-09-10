@@ -29,6 +29,15 @@ const Admin = () => {
     subject: '',
     message: ''
   });
+  const [bulkEmailForm, setBulkEmailForm] = useState({
+    subject: '',
+    message: '',
+    recipients: {
+      allMembers: false,
+      execs: false,
+      admins: false
+    }
+  });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -42,6 +51,24 @@ const Admin = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleBulkEmailChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      setBulkEmailForm(prev => ({
+        ...prev,
+        recipients: {
+          ...prev.recipients,
+          [name]: checked
+        }
+      }));
+    } else {
+      setBulkEmailForm(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSendEmail = async (e) => {
@@ -70,6 +97,53 @@ const Admin = () => {
       }
     } catch (error) {
       setEmailError('Error sending email: ' + error.message);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleSendBulkEmail = async (e) => {
+    e.preventDefault();
+    setSendingEmail(true);
+    setEmailError('');
+    setEmailSuccess('');
+
+    // Check if at least one recipient group is selected
+    const selectedGroups = Object.values(bulkEmailForm.recipients).some(selected => selected);
+    if (!selectedGroups) {
+      setEmailError('Please select at least one recipient group');
+      setSendingEmail(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/send-bulk-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(bulkEmailForm)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setEmailSuccess(`Bulk email sent successfully to ${data.recipientCount} recipients!`);
+        setBulkEmailForm({
+          subject: '',
+          message: '',
+          recipients: {
+            allMembers: false,
+            execs: false,
+            admins: false
+          }
+        });
+      } else {
+        setEmailError(data.error || 'Failed to send bulk email');
+      }
+    } catch (error) {
+      setEmailError('Error sending bulk email: ' + error.message);
     } finally {
       setSendingEmail(false);
     }
@@ -547,7 +621,10 @@ const Admin = () => {
         {activeTab === 'email' && (
           <div className="email-section">
             <h2>Send Email</h2>
+            
+            {/* Individual Email Form */}
             <div className="email-form-container">
+              <h3>Send to Individual</h3>
               <form onSubmit={handleSendEmail} className="email-form">
                 <div className="form-group">
                   <label htmlFor="to">To:</label>
@@ -583,7 +660,7 @@ const Admin = () => {
                     value={emailForm.message}
                     onChange={handleEmailChange}
                     placeholder="Type your message here..."
-                    rows="8"
+                    rows="6"
                     required
                   />
                 </div>
@@ -594,23 +671,99 @@ const Admin = () => {
                     className="send-email-btn"
                     disabled={sendingEmail}
                   >
-                    {sendingEmail ? 'Sending...' : 'Send Email'}
+                    {sendingEmail ? 'Sending...' : 'Send Individual Email'}
                   </button>
                 </div>
-                
-                {emailSuccess && (
-                  <div className="success-message">
-                    ✅ {emailSuccess}
-                  </div>
-                )}
-                
-                {emailError && (
-                  <div className="error-message">
-                    ❌ {emailError}
-                  </div>
-                )}
               </form>
             </div>
+
+            {/* Bulk Email Form */}
+            <div className="email-form-container">
+              <h3>Send to Groups</h3>
+              <form onSubmit={handleSendBulkEmail} className="email-form">
+                <div className="form-group">
+                  <label>Recipients:</label>
+                  <div className="checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="allMembers"
+                        checked={bulkEmailForm.recipients.allMembers}
+                        onChange={handleBulkEmailChange}
+                      />
+                      <span>All Members ({members.filter(m => m.role === 'member').length})</span>
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="execs"
+                        checked={bulkEmailForm.recipients.execs}
+                        onChange={handleBulkEmailChange}
+                      />
+                      <span>Executives ({members.filter(m => m.role === 'exec').length})</span>
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="admins"
+                        checked={bulkEmailForm.recipients.admins}
+                        onChange={handleBulkEmailChange}
+                      />
+                      <span>Administrators ({members.filter(m => m.role === 'administrator').length})</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="bulk-subject">Subject:</label>
+                  <input
+                    type="text"
+                    id="bulk-subject"
+                    name="subject"
+                    value={bulkEmailForm.subject}
+                    onChange={handleBulkEmailChange}
+                    placeholder="Email subject"
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="bulk-message">Message:</label>
+                  <textarea
+                    id="bulk-message"
+                    name="message"
+                    value={bulkEmailForm.message}
+                    onChange={handleBulkEmailChange}
+                    placeholder="Type your message here..."
+                    rows="6"
+                    required
+                  />
+                </div>
+                
+                <div className="form-actions">
+                  <button 
+                    type="submit" 
+                    className="send-email-btn bulk-btn"
+                    disabled={sendingEmail}
+                  >
+                    {sendingEmail ? 'Sending...' : 'Send Bulk Email'}
+                  </button>
+                </div>
+              </form>
+            </div>
+            
+            {/* Success/Error Messages */}
+            {emailSuccess && (
+              <div className="success-message">
+                ✅ {emailSuccess}
+              </div>
+            )}
+            
+            {emailError && (
+              <div className="error-message">
+                ❌ {emailError}
+              </div>
+            )}
           </div>
         )}
 
