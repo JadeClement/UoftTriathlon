@@ -9,7 +9,7 @@
     "init-db": "node database.js"
   },
   "dependencies": {
-    "@sendgrid/mail": "^8.1.5",
+    "@aws-sdk/client-ses": "^3.883.0",
     "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
