@@ -341,23 +341,21 @@ const Races = () => {
                       )}
                     </div>
                     {currentUser && isMember(currentUser) && (
-                      <div className="race-actions">
-                        {isUserSignedUp(race) ? (
-                          <button 
-                            className="cancel-btn"
-                            onClick={() => handleCancelSignup(race.id)}
-                          >
-                            🚫 Cancel
-                          </button>
-                        ) : (
-                          <button 
-                            className="signup-btn"
-                            onClick={() => handleSignUp(race.id)}
-                          >
-                            ✅ Going?
-                          </button>
-                        )}
-                      </div>
+                      isUserSignedUp(race) ? (
+                        <button 
+                          className="cancel-btn"
+                          onClick={() => handleCancelSignup(race.id)}
+                        >
+                          🚫 Cancel
+                        </button>
+                      ) : (
+                        <button 
+                          className="signup-btn"
+                          onClick={() => handleSignUp(race.id)}
+                        >
+                          ✅ Going?
+                        </button>
+                      )
                     )}
                     
                     {/* Admin Delete Button */}
@@ -398,23 +396,21 @@ const Races = () => {
                       )}
                     </div>
                     {currentUser && isMember(currentUser) && (
-                      <div className="calendar-race-actions">
-                        {isUserSignedUp(race) ? (
-                          <button 
-                            className="cancel-btn small"
-                            onClick={() => handleCancelSignup(race.id)}
-                          >
-                            Cancel
-                          </button>
-                        ) : (
-                          <button 
-                            className="signup-btn small"
-                            onClick={() => handleSignUp(race.id)}
-                          >
-                            Going?
-                          </button>
-                        )}
-                      </div>
+                      isUserSignedUp(race) ? (
+                        <button 
+                          className="cancel-btn small"
+                          onClick={() => handleCancelSignup(race.id)}
+                        >
+                          Cancel
+                        </button>
+                      ) : (
+                        <button 
+                          className="signup-btn small"
+                          onClick={() => handleSignUp(race.id)}
+                        >
+                          Going?
+                        </button>
+                      )
                     )}
                   </div>
                 ))}
