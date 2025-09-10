@@ -140,9 +140,7 @@
   font-size: 0.95rem;
   height: 80px; /* Fixed height for consistent card sizing */
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  text-align: left;
 }
 
 .coach-contact {
@@ -249,9 +247,7 @@
   font-size: 0.9rem;
   height: 60px; /* Fixed height for consistent card sizing */
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  text-align: left;
 }
 
 /* Contact Section */
