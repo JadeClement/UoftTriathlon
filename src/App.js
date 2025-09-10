@@ -19,6 +19,7 @@ import Resources from './components/Resources';
 import TeamGear from './components/TeamGear';
 import Footer from './components/Footer';
 import ResetPassword from './components/ResetPassword';
+import Logout from './components/Logout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
@@ -156,6 +157,7 @@ function AppContent() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:role/:name" element={<Profile />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/logout" element={<Logout />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/workout/:id" element={<WorkoutDetail />} />
           <Route path="/event/:id" element={<EventDetail />} />

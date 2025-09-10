@@ -275,9 +275,9 @@ class EmailService {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://uoft-tri.club/forum" 
+            <a href="https://uoft-tri.club/logout" 
                style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-              Access the Forum
+              Logout & Login to Access Forum
             </a>
           </div>
           
@@ -308,7 +308,7 @@ class EmailService {
         🔄 Important: Logout & Login
         To see all the new features, please logout and log back in to your account.
         
-        Access the forum: https://uoft-tri.club/forum
+        Logout and login: https://uoft-tri.club/logout
         
         UofT Triathlon Club | uoft-tri.club
       `;
