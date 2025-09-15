@@ -19,6 +19,7 @@ const WorkoutDetail = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [attendance, setAttendance] = useState({});
   const [attendanceSaved, setAttendanceSaved] = useState(false);
+  const [submittingAttendance, setSubmittingAttendance] = useState(false);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   const { 
@@ -411,12 +412,16 @@ const WorkoutDetail = () => {
   };
 
   const handleSubmitAttendance = async () => {
+    const token = localStorage.getItem('triathlonToken');
+    if (!token) {
+      console.error('No authentication token found');
+      return;
+    }
+
     try {
-      const token = localStorage.getItem('triathlonToken');
-      if (!token) {
-        console.error('No authentication token found');
-        return;
-      }
+      setSubmittingAttendance(true);
+      // Optimistically mark as submitted so the UI reflects it immediately
+      setAttendanceSaved(true);
 
       const response = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance`, {
         method: 'POST',
@@ -424,25 +429,26 @@ const WorkoutDetail = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          attendanceData: attendance
-        })
+        body: JSON.stringify({ attendanceData: attendance })
       });
 
       if (response.ok) {
         const result = await response.json();
         console.log('Attendance saved successfully:', result.message);
-        setAttendanceSaved(true); // Mark attendance as saved
-        // Show success message
-        alert('Attendance submitted successfully! This cannot be modified.');
       } else {
         const errorData = await response.json();
         console.error('Failed to save attendance:', errorData.error);
+        // Revert optimistic update on failure
+        setAttendanceSaved(false);
         alert(`Failed to save attendance: ${errorData.error}`);
       }
     } catch (error) {
       console.error('Error submitting attendance:', error);
+      // Revert optimistic update on failure
+      setAttendanceSaved(false);
       alert('Error submitting attendance. Please try again.');
+    } finally {
+      setSubmittingAttendance(false);
     }
   };
 
@@ -796,8 +802,9 @@ const WorkoutDetail = () => {
                         onClick={handleSubmitAttendance}
                         className="submit-attendance-btn"
                         title="Submit attendance and update absences (cannot be modified after submission)"
+                        disabled={submittingAttendance}
                       >
-                        📝 Submit Attendance
+                        {submittingAttendance ? 'Submitting...' : '📝 Submit Attendance'}
                       </button>
                     </>
                   )}
