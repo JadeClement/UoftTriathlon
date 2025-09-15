@@ -30,6 +30,14 @@ const Forum = () => {
     date: '',
     content: ''
   });
+  // Inline edit state for events (admin/exec)
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [eventEditForm, setEventEditForm] = useState({
+    title: '',
+    date: '',
+    content: ''
+  });
+  const [savingEvent, setSavingEvent] = useState(false);
   const [workoutSignups, setWorkoutSignups] = useState({});
   const [workoutWaitlists, setWorkoutWaitlists] = useState({});
   const [eventRsvps, setEventRsvps] = useState({});
@@ -241,6 +249,61 @@ const Forum = () => {
       console.log('📊 All event RSVPs loaded:', rsvpsData);
     } catch (error) {
       console.error('Error loading event RSVPs:', error);
+    }
+  };
+
+  // Event edit helpers
+  const startEventEdit = (eventPost) => {
+    setEditingEvent(eventPost.id);
+    setEventEditForm({
+      title: eventPost.title || '',
+      date: eventPost.event_date ? String(eventPost.event_date).split('T')[0] : '',
+      content: eventPost.content || ''
+    });
+  };
+
+  const cancelEventEdit = () => {
+    setEditingEvent(null);
+    setEventEditForm({ title: '', date: '', content: '' });
+  };
+
+  const updateEventField = (field, value) => {
+    setEventEditForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const saveEvent = async (eventId) => {
+    try {
+      setSavingEvent(true);
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) throw new Error('No authentication token found');
+
+      const body = {
+        title: eventEditForm.title,
+        eventDate: eventEditForm.date,
+        content: eventEditForm.content
+      };
+
+      const response = await fetch(`${API_BASE_URL}/forum/posts/${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update event');
+      }
+
+      setSavingEvent(false);
+      setEditingEvent(null);
+      await loadForumPosts();
+    } catch (error) {
+      console.error('Error updating event:', error);
+      setSavingEvent(false);
+      alert(error.message || 'Error updating event');
     }
   };
 
@@ -1182,25 +1245,90 @@ const Forum = () => {
                 {eventPosts.map(post => (
                   <div key={post.id} className="post-card event-post" onClick={() => window.location.href = `/event/${post.id}`}>
                     <div className="post-header">
-                      {post.title && (
-                        <div className="event-title">
-                          <h3>
-                            {post.title}
-                          </h3>
+                      {editingEvent === post.id ? (
+                        <div className="event-edit-form">
+                          <div className="form-group">
+                            <label htmlFor={`edit-event-title-${post.id}`}>Title:</label>
+                            <input
+                              id={`edit-event-title-${post.id}`}
+                              type="text"
+                              value={eventEditForm.title}
+                              onChange={(e) => updateEventField('title', e.target.value)}
+                              className="form-input"
+                              placeholder="Enter event title..."
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label htmlFor={`edit-event-date-${post.id}`}>Date:</label>
+                            <input
+                              id={`edit-event-date-${post.id}`}
+                              type="date"
+                              value={eventEditForm.date}
+                              onChange={(e) => updateEventField('date', e.target.value)}
+                              className="form-input"
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label htmlFor={`edit-event-content-${post.id}`}>Details:</label>
+                            <textarea
+                              id={`edit-event-content-${post.id}`}
+                              value={eventEditForm.content}
+                              onChange={(e) => updateEventField('content', e.target.value)}
+                              className="form-textarea"
+                              rows="3"
+                              placeholder="Enter event details..."
+                            />
+                          </div>
+
+                          <div className="edit-actions">
+                            <button 
+                              className="btn btn-primary" 
+                              onClick={(e) => { e.stopPropagation(); saveEvent(post.id); }}
+                              disabled={savingEvent}
+                            >
+                              {savingEvent ? 'Saving...' : 'Save Changes'}
+                            </button>
+                            <button 
+                              className="btn btn-secondary" 
+                              onClick={(e) => { e.stopPropagation(); cancelEventEdit(); }}
+                              disabled={savingEvent}
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                      )}
-                      
-                      {/* Delete button for event author */}
-                      {currentUser.id === post.user_id && (
-                        <button 
-                          className="delete-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteEvent(post.id);
-                          }}
-                        >
-                          🗑️ Delete
-                        </button>
+                      ) : (
+                        <>
+                          {post.title && (
+                            <div className="event-title">
+                              <h3>
+                                {post.title}
+                              </h3>
+                            </div>
+                          )}
+
+                          {/* Edit/Delete for author, exec, admin */}
+                          {(currentUser.id === post.user_id || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                            <div className="workout-actions-admin">
+                              <button 
+                                className="edit-btn"
+                                onClick={(e) => { e.stopPropagation(); startEventEdit(post); }}
+                                disabled={editingEvent === post.id}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button 
+                                className="delete-btn"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteEvent(post.id); }}
+                                disabled={editingEvent === post.id}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                     
