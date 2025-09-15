@@ -13,6 +13,9 @@ const EventDetail = () => {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [userRsvp, setUserRsvp] = useState(null); // 'going', 'maybe', 'not_going', or null
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', date: '', content: '' });
+  const [saving, setSaving] = useState(false);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -61,6 +64,11 @@ const EventDetail = () => {
         console.log('📊 RSVPs array:', eventData.rsvps);
         
         setEvent(eventData.event);
+        setEditForm({
+          title: eventData.event?.title || '',
+          date: eventData.event?.event_date ? String(eventData.event.event_date).split('T')[0] : '',
+          content: eventData.event?.content || ''
+        });
         
         // Load RSVPs from backend response
         if (eventData.rsvps) {
@@ -157,6 +165,69 @@ const EventDetail = () => {
     }
   };
 
+  const canManage = () => {
+    if (!currentUser || !event) return false;
+    return currentUser.id === event.user_id || currentUser.role === 'exec' || currentUser.role === 'administrator';
+  };
+
+  const saveEvent = async () => {
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) throw new Error('No authentication token found');
+
+      const response = await fetch(`${API_BASE_URL}/forum/posts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: editForm.title,
+          eventDate: editForm.date,
+          content: editForm.content
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update event');
+      }
+
+      setSaving(false);
+      setEditMode(false);
+      await loadEventDetails();
+      alert('Event updated successfully!');
+    } catch (error) {
+      setSaving(false);
+      console.error('Error updating event:', error);
+      alert(error.message || 'Error updating event');
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!window.confirm('Are you sure you want to delete this event?')) return;
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) throw new Error('No authentication token found');
+
+      const response = await fetch(`${API_BASE_URL}/forum/posts/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to delete event');
+      }
+
+      navigate('/forum?tab=events');
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert(error.message || 'Error deleting event');
+    }
+  };
+
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -199,7 +270,17 @@ const EventDetail = () => {
 
         <div className="event-detail-card">
           <div className="event-header">
-            <h1 className="event-title">{event.title}</h1>
+            <h1 className="event-title">{editMode ? (
+              <input
+                type="text"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                className="form-input"
+                placeholder="Event title"
+              />
+            ) : (
+              event.title
+            )}</h1>
             <div className="event-author">
               <div className="author-info">
                 {event.authorProfilePictureUrl ? (
@@ -220,19 +301,75 @@ const EventDetail = () => {
                 )}
                 <span className="author-name">Posted by {event.author_name}</span>
               </div>
+              {canManage() && (
+                <div className="workout-actions-admin">
+                  {!editMode ? (
+                    <>
+                      <button 
+                        className="edit-btn"
+                        onClick={() => setEditMode(true)}
+                        disabled={saving}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button 
+                        className="delete-btn"
+                        onClick={handleDeleteEvent}
+                        disabled={saving}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={saveEvent}
+                        disabled={saving}
+                      >
+                        {saving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => setEditMode(false)}
+                        disabled={saving}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {event.event_date && (
+          {(event.event_date || editMode) && (
             <div className="event-meta">
-              <span className="event-date">
-                📅 {new Date(event.event_date).toLocaleDateString()}
-              </span>
+              {editMode ? (
+                <input
+                  type="date"
+                  value={editForm.date}
+                  onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                  className="form-input"
+                />
+              ) : (
+                <span className="event-date">📅 {new Date(event.event_date).toLocaleDateString()}</span>
+              )}
             </div>
           )}
 
           <div className="event-content">
-            {event.content}
+            {editMode ? (
+              <textarea
+                value={editForm.content}
+                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                className="form-textarea"
+                rows="4"
+                placeholder="Event details..."
+              />
+            ) : (
+              event.content
+            )}
           </div>
 
           <div className="event-actions">
