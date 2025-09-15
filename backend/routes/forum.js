@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireMember } = require('../middleware/auth');
+const { authenticateToken, requireMember, requireAdmin } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
 

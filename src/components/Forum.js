@@ -313,6 +313,19 @@ const Forum = () => {
     return currentSignups >= workout.capacity;
   };
 
+  const isWorkoutArchived = (post) => {
+    if (!post || !post.workout_date) return false;
+    try {
+      const d = new Date(post.workout_date);
+      if (isNaN(d.getTime())) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return d < today;
+    } catch (_) {
+      return false;
+    }
+  };
+
   const isUserOnWaitlist = (workoutId) => {
     if (!workoutId) return false;
     return workoutWaitlists[workoutId]?.some(waitlist => waitlist && waitlist.user_id === currentUser.id) || false;
@@ -1070,19 +1083,21 @@ const Forum = () => {
                     {/* Sign-up button positioned at bottom right */}
                     <div className="workout-signup-section">
                       <div className="button-group">
-                        <button 
-                          className={`signup-btn ${isUserSignedUp(post.id) ? 'signed-up' : ''} ${isWorkoutFull(post.id) ? 'full' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleWorkoutSignUp(post.id);
-                          }}
-                          disabled={isWorkoutFull(post.id) && !isUserSignedUp(post.id)}
-                        >
-                          {isUserSignedUp(post.id) ? '✓ Signed Up' : isWorkoutFull(post.id) ? 'Full' : 'Sign Up'}
-                        </button>
+                        {!isWorkoutArchived(post) && (
+                          <button 
+                            className={`signup-btn ${isUserSignedUp(post.id) ? 'signed-up' : ''} ${isWorkoutFull(post.id) ? 'full' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleWorkoutSignUp(post.id);
+                            }}
+                            disabled={(isWorkoutFull(post.id) && !isUserSignedUp(post.id))}
+                          >
+                            {isUserSignedUp(post.id) ? '✓ Signed Up' : isWorkoutFull(post.id) ? 'Full' : 'Sign Up'}
+                          </button>
+                        )}
                         
                         {/* Cancel button for signed-up users */}
-                        {isUserSignedUp(post.id) && (
+                        {isUserSignedUp(post.id) && !isWorkoutArchived(post) && (
                           <button 
                             className="cancel-btn"
                             onClick={(e) => {
@@ -1095,7 +1110,7 @@ const Forum = () => {
                         )}
                         
                         {/* Waitlist button for full workouts */}
-                        {post.capacity && isWorkoutFull(post.id) && !isUserSignedUp(post.id) && (
+                        {post.capacity && isWorkoutFull(post.id) && !isUserSignedUp(post.id) && !isWorkoutArchived(post) && (
                           <button 
                             className={`waitlist-btn ${isUserOnWaitlist(post.id) ? 'on-waitlist' : ''}`}
                             onClick={(e) => {
