@@ -611,6 +611,44 @@ router.get('/workouts/:id/attendance', authenticateToken, requireMember, async (
   }
 });
 
+// Submit workout attendance (exec/admin only)
+router.post('/workouts/:id/attendance', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { attendanceData } = req.body;
+
+    // Frontend sends an object mapping userId -> boolean
+    if (!attendanceData || typeof attendanceData !== 'object' || Array.isArray(attendanceData)) {
+      return res.status(400).json({ error: 'Attendance data must be an object keyed by userId' });
+    }
+
+    // Load all signups for this workout to ensure we only record for signed up users
+    const signupsResult = await pool.query(
+      `SELECT user_id FROM workout_signups WHERE post_id = $1`,
+      [id]
+    );
+
+    const signups = signupsResult.rows || [];
+
+    for (const signup of signups) {
+      const attended = Boolean(attendanceData[signup.user_id]);
+
+      await pool.query(
+        `INSERT INTO workout_attendance (post_id, user_id, attended, recorded_at)
+         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+         ON CONFLICT (post_id, user_id)
+         DO UPDATE SET attended = EXCLUDED.attended, recorded_at = CURRENT_TIMESTAMP`,
+        [id, signup.user_id, attended]
+      );
+    }
+
+    res.json({ message: 'Attendance submitted successfully' });
+  } catch (error) {
+    console.error('Submit attendance error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Like/unlike a post
 router.post('/posts/:id/like', authenticateToken, requireMember, async (req, res) => {
   try {
