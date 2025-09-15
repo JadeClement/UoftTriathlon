@@ -34,6 +34,19 @@ const WorkoutDetail = () => {
   
   const [editMode, setEditMode] = useState(false);
 
+  const isWorkoutArchived = () => {
+    try {
+      if (!workout || !workout.workout_date) return false;
+      const d = new Date(workout.workout_date);
+      if (isNaN(d.getTime())) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return d < today;
+    } catch (_) {
+      return false;
+    }
+  };
+
   // Helpers for waitlist position display
   const getWaitlistPosition = () => {
     const idx = waitlist.findIndex(w => w.user_id === currentUser.id);
@@ -683,16 +696,18 @@ const WorkoutDetail = () => {
 
           <div className="workout-actions">
             <div className="button-group">
-              <button 
-                onClick={handleSignUp}
-                className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
-                disabled={workout.capacity && signups.length >= workout.capacity && !isSignedUp}
-              >
-                {isSignedUp ? '✓ Signed Up' : (workout.capacity && signups.length >= workout.capacity) ? 'Full' : 'Sign Up'}
-              </button>
+              {!isWorkoutArchived() && (
+                <button 
+                  onClick={handleSignUp}
+                  className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
+                  disabled={workout.capacity && signups.length >= workout.capacity && !isSignedUp}
+                >
+                  {isSignedUp ? '✓ Signed Up' : (workout.capacity && signups.length >= workout.capacity) ? 'Full' : 'Sign Up'}
+                </button>
+              )}
               
               {/* Cancel button for signed-up users */}
-              {isSignedUp && (
+              {isSignedUp && !isWorkoutArchived() && (
                 <button 
                   onClick={handleCancelClick}
                   className="cancel-btn"
@@ -702,7 +717,7 @@ const WorkoutDetail = () => {
               )}
               
               {/* Waitlist button for full workouts */}
-              {workout.capacity && signups.length >= workout.capacity && !isSignedUp && (
+              {workout.capacity && signups.length >= workout.capacity && !isSignedUp && !isWorkoutArchived() && (
                 <button 
                   onClick={isOnWaitlist ? handleWaitlistLeave : handleWaitlistJoin}
                   className={`waitlist-btn ${isOnWaitlist ? 'on-waitlist' : ''}`}
@@ -712,7 +727,7 @@ const WorkoutDetail = () => {
               )}
 
               {/* Position label when on waitlist */}
-              {workout.capacity && signups.length >= workout.capacity && isOnWaitlist && (
+              {workout.capacity && signups.length >= workout.capacity && isOnWaitlist && !isWorkoutArchived() && (
                 <span className="waitlist-position">
                   {`You're ${formatOrdinal(getWaitlistPosition())} on the waitlist`}
                 </span>
