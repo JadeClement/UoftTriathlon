@@ -16,6 +16,7 @@ const Forum = () => {
   const [showWorkoutForm, setShowWorkoutForm] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [workoutFilter, setWorkoutFilter] = useState('all');
+  const [timeFilter, setTimeFilter] = useState('upcoming'); // 'upcoming' | 'past'
   const [workoutForm, setWorkoutForm] = useState({
     title: '',
     type: 'spin',
@@ -728,13 +729,30 @@ const Forum = () => {
 
 
 
-  // Filter workouts based on selected filter
-  const getFilteredWorkouts = () => {
-    if (workoutFilter === 'all') {
-      return workoutPosts;
+  // Helpers for date filtering
+  const isPast = (dateStr) => {
+    try {
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return d < today;
+    } catch (_) {
+      return false;
     }
-    
-    return workoutPosts.filter(post => {
+  };
+
+  // Filter workouts based on selected filters (time + type)
+  const getFilteredWorkouts = () => {
+    const byTime = workoutPosts.filter(post => {
+      const past = isPast(post.workout_date);
+      return timeFilter === 'past' ? past : !past;
+    });
+
+    if (workoutFilter === 'all') return byTime;
+
+    return byTime.filter(post => {
       switch (workoutFilter) {
         case 'bike':
           return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
@@ -819,13 +837,29 @@ const Forum = () => {
               )}
             </div>
 
-            {/* Workout Filter Buttons */}
+            {/* Time Filters (row 1) */}
+            <div className="workout-filters">
+              <button 
+                className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
+                onClick={() => setTimeFilter('upcoming')}
+              >
+                ⏳ Upcoming
+              </button>
+              <button 
+                className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
+                onClick={() => setTimeFilter('past')}
+              >
+                🗂 Past
+              </button>
+            </div>
+
+            {/* Type Filters (row 2) */}
             <div className="workout-filters">
               <button 
                 className={`filter-btn ${workoutFilter === 'all' ? 'active' : ''}`}
                 onClick={() => setWorkoutFilter('all')}
               >
-                🏃‍♂️ All Workouts
+                🏁 All Types
               </button>
               <button 
                 className={`filter-btn ${workoutFilter === 'bike' ? 'active' : ''}`}
