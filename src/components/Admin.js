@@ -12,6 +12,8 @@ const Admin = () => {
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
+  const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
+  const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
 
   const [editingMember, setEditingMember] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -91,6 +93,46 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
+    }
+  };
+
+  const handleSendBulkEmail = async () => {
+    setBulkEmailStatus(null);
+    
+    if (!template.title && !template.intro && !template.bullets.some(b => b.trim()) && !template.body) {
+      setBulkEmailStatus({ type: 'error', text: 'Please provide template content.' });
+      return;
+    }
+    
+    try {
+      setSendingBulkEmail(true);
+      const token = localStorage.getItem('triathlonToken');
+      const resp = await fetch(`${API_BASE_URL}/admin/send-bulk-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          subject: template.title || 'UofT Tri Club Update',
+          message: template.body || '',
+          template: template,
+          recipients: {
+            members: true,
+            exec: true,
+            admin: true,
+            pending: false
+          }
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setBulkEmailStatus({ type: 'success', text: `Bulk email sent successfully to ${data.sentCount} recipients!` });
+        setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+      } else {
+        setBulkEmailStatus({ type: 'error', text: data.error || 'Failed to send bulk email' });
+      }
+    } catch (err) {
+      setBulkEmailStatus({ type: 'error', text: err.message });
+    } finally {
+      setSendingBulkEmail(false);
     }
   };
 
@@ -668,6 +710,37 @@ const Admin = () => {
                 </button>
               </div>
             </form>
+            
+            {/* Bulk Email Section */}
+            <div style={{ marginTop: '2rem', padding: '1.5rem', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#f9fafb' }}>
+              <h3 style={{ marginTop: 0, color: '#1f2937' }}>Send to All Members, Exec, and Admin</h3>
+              <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+                This will send the template above to all members, executives, and admins (excluding pending users).
+              </p>
+              
+              {bulkEmailStatus && (
+                <div className={`notice ${bulkEmailStatus.type}`} style={{ marginBottom: '1rem' }}>
+                  {bulkEmailStatus.text}
+                </div>
+              )}
+              
+              <button 
+                onClick={handleSendBulkEmail}
+                disabled={sendingBulkEmail}
+                className="btn btn-secondary"
+                style={{ 
+                  backgroundColor: '#dc2626', 
+                  color: 'white', 
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '6px',
+                  cursor: sendingBulkEmail ? 'not-allowed' : 'pointer',
+                  opacity: sendingBulkEmail ? 0.6 : 1
+                }}
+              >
+                {sendingBulkEmail ? 'Sending to All...' : 'Send to All Members, Exec & Admin'}
+              </button>
+            </div>
           </div>
         )}
 
