@@ -530,7 +530,6 @@ const Admin = () => {
               }
             }}>
               <div className="form-group" style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                <label style={{minWidth:100}}>Enabled</label>
                 <label className="toggle-switch">
                   <input type="checkbox" checked={!!bannerForm.enabled} onChange={(e)=> setBannerForm({ ...bannerForm, enabled: e.target.checked })} />
                   <span className="toggle-slider"></span>
