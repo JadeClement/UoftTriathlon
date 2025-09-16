@@ -706,7 +706,7 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     }
     if (recipients.admin || recipients.admins) {
       whereConditions.push(`role = $${++paramCount}`);
-      queryParams.push('admin');
+      queryParams.push('administrator');
     }
 
     if (whereConditions.length === 0) {
@@ -718,6 +718,10 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     
     console.log('🔍 Bulk email query:', query);
     console.log('🔍 Query params:', queryParams);
+    
+    // Debug: Check what roles actually exist in the database
+    const roleCheck = await pool.query('SELECT DISTINCT role FROM users WHERE is_active = true');
+    console.log('🔍 Available roles in database:', roleCheck.rows.map(r => r.role));
     
     const result = await pool.query(query, queryParams);
     const recipientEmails = result.rows;
