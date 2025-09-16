@@ -8,6 +8,7 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
+  const [banner, setBanner] = useState({ enabled: false, message: '' });
   const navigate = useNavigate();
   const { currentUser, isMember, isAdmin, logout } = useAuth();
   const profileRef = useRef(null);
@@ -35,6 +36,26 @@ const Navbar = () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
   }, [currentUser?.id, currentUser?.profile_picture_url]);
+
+  // Fetch site banner
+  useEffect(() => {
+    const loadBanner = async () => {
+      try {
+        const base = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+        const resp = await fetch(`${base}/site/banner`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        setBanner(data.banner || { enabled: false, message: '' });
+      } catch (_) {}
+    };
+    loadBanner();
+  }, []);
+
+  // Reflect banner height to CSS variable for page spacing
+  useEffect(() => {
+    const offset = banner.enabled && banner.message ? '32px' : '0px';
+    document.documentElement.style.setProperty('--banner-offset', offset);
+  }, [banner.enabled, banner.message]);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -71,7 +92,16 @@ const Navbar = () => {
   }, []);
 
   return (
-    <nav className="navbar">
+    <>
+    {banner.enabled && banner.message && (
+      <div style={{
+        background:'#dc2626', color:'#fff', textAlign:'center', padding:'8px 12px',
+        position:'fixed', top:0, left:0, right:0, zIndex:1010
+      }}>
+        <strong>{banner.message}</strong>
+      </div>
+    )}
+    <nav className="navbar" style={{ marginTop: banner.enabled && banner.message ? '32px' : 0 }}>
       <div className="navbar-container">
         <Link to="/" className="navbar-logo" onClick={closeMenu}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
@@ -241,6 +271,7 @@ const Navbar = () => {
         </div>
       </div>
     </nav>
+    </>
   );
 };
 

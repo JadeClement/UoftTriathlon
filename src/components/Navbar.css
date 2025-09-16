@@ -1,5 +1,6 @@
 :root {
   --navbar-height: 70px;
+  --banner-offset: 0px;
 }
 
 .navbar {

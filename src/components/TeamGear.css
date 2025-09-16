@@ -2,7 +2,7 @@
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem 1rem;
-  padding-top: 2rem;
+  padding-top: calc(2rem + var(--banner-offset, 0px));
 }
 
 @media (max-width: 768px) {
@@ -13,6 +13,7 @@
 
 .teamgear-page h1 {
   margin-bottom: 1rem;
+  color: #1E3A8A;
 }
 
 .teamgear-page p {
