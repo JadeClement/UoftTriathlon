@@ -37,9 +37,15 @@ const Navbar = () => {
     };
   }, [currentUser?.id, currentUser?.profile_picture_url]);
 
-  // Fetch site banner
+  // Fetch site banner (only for authenticated users with appropriate roles)
   useEffect(() => {
     const loadBanner = async () => {
+      // Only load banner for authenticated users with member, exec, or admin roles
+      if (!currentUser || (!isMember(currentUser) && !isAdmin(currentUser))) {
+        setBanner({ enabled: false, message: '' });
+        return;
+      }
+      
       try {
         const base = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
         const resp = await fetch(`${base}/site/banner`);
@@ -49,7 +55,7 @@ const Navbar = () => {
       } catch (_) {}
     };
     loadBanner();
-  }, []);
+  }, [currentUser, isMember, isAdmin]);
 
   // Reflect banner height to CSS variable for page spacing
   useEffect(() => {
@@ -93,7 +99,7 @@ const Navbar = () => {
 
   return (
     <>
-    {banner.enabled && banner.message && (
+    {banner.enabled && banner.message && currentUser && (isMember(currentUser) || isAdmin(currentUser)) && (
       <div style={{
         background:'#dc2626', color:'#fff', textAlign:'center', padding:'8px 12px',
         position:'fixed', top:0, left:0, right:0, zIndex:1010
@@ -101,7 +107,7 @@ const Navbar = () => {
         <strong>{banner.message}</strong>
       </div>
     )}
-    <nav className="navbar" style={{ marginTop: banner.enabled && banner.message ? '32px' : 0 }}>
+    <nav className="navbar" style={{ marginTop: banner.enabled && banner.message && currentUser && (isMember(currentUser) || isAdmin(currentUser)) ? '32px' : 0 }}>
       <div className="navbar-container">
         <Link to="/" className="navbar-logo" onClick={closeMenu}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
