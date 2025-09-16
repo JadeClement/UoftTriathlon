@@ -8,6 +8,7 @@ const Admin = () => {
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
+  const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
 
@@ -505,8 +506,13 @@ const Admin = () => {
             <form onSubmit={async (e) => {
               e.preventDefault();
               setEmailStatus(null);
-              if (!emailForm.to || !emailForm.subject || !emailForm.message) {
-                setEmailStatus({ type: 'error', text: 'Please fill out all fields.' });
+              if (!emailForm.to || !emailForm.subject) {
+                setEmailStatus({ type: 'error', text: 'Please provide recipient and subject.' });
+                return;
+              }
+              const hasTemplate = (template.title || template.intro || (template.bullets||[]).some(Boolean) || template.body);
+              if (!emailForm.message && !hasTemplate) {
+                setEmailStatus({ type: 'error', text: 'Provide either Message or Template content.' });
                 return;
               }
               try {
@@ -515,7 +521,7 @@ const Admin = () => {
                 const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify(emailForm)
+                  body: JSON.stringify({ ...emailForm, template })
                 });
                 if (!resp.ok) {
                   const err = await resp.json().catch(() => ({}));
@@ -523,6 +529,7 @@ const Admin = () => {
                 }
                 setEmailStatus({ type: 'success', text: 'Email sent successfully.' });
                 setEmailForm({ to: '', subject: '', message: '' });
+                setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
               } catch (err) {
                 setEmailStatus({ type: 'error', text: err.message });
               } finally {
@@ -538,9 +545,55 @@ const Admin = () => {
                 <input type="text" value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label>Message</label>
-                <textarea rows="6" value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} required />
+                <label>Message (optional if using template)</label>
+                <textarea rows="6" value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} />
               </div>
+
+              <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
+                <h3 style={{marginTop:0}}>Optional Template</h3>
+                <div className="form-group">
+                  <label>Banner Title</label>
+                  <input type="text" value={template.bannerTitle} onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} />
+                </div>
+                <div className="form-group">
+                  <label>Title</label>
+                  <input type="text" value={template.title} onChange={(e)=>setTemplate({...template, title:e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Intro</label>
+                  <textarea rows="3" value={template.intro} onChange={(e)=>setTemplate({...template, intro:e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Bullets</label>
+                  {(template.bullets||[]).map((b, idx)=> (
+                    <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
+                      <input type="text" value={b} onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} />
+                      <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
+                    </div>
+                  ))}
+                  <button type="button" className="action-btn small" onClick={()=> setTemplate({...template, bullets:[...template.bullets, '']})}>Add bullet</button>
+                </div>
+                <div className="form-group">
+                  <label>Body</label>
+                  <textarea rows="6" value={template.body} onChange={(e)=>setTemplate({...template, body:e.target.value})} />
+                </div>
+              </div>
+
+              <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
+                <h3 style={{marginTop:0}}>Preview</h3>
+                <div style={{background:'#dc2626', color:'#fff', padding:'12px', borderRadius:8, textAlign:'center', marginBottom:12}}>
+                  <strong>{template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}</strong>
+                </div>
+                {template.title && <h4>{template.title}</h4>}
+                {template.intro && <p>{template.intro}</p>}
+                {(template.bullets||[]).filter(Boolean).length>0 && (
+                  <ul>
+                    {template.bullets.filter(Boolean).map((b, i)=> <li key={i}>{b}</li>)}
+                  </ul>
+                )}
+                {(template.body || emailForm.message) && <p style={{whiteSpace:'pre-wrap'}}>{template.body || emailForm.message}</p>}
+              </div>
+
               {emailStatus && (
                 <div className={`notice ${emailStatus.type}`}>{emailStatus.text}</div>
               )}

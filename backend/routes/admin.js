@@ -602,25 +602,72 @@ router.delete('/race-management/:id', authenticateToken, requireAdmin, async (re
 // Send email route
 router.post('/send-email', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { to, subject, message } = req.body;
+    const { to, subject, message, html, template } = req.body;
 
-    if (!to || !subject || !message) {
-      return res.status(400).json({ error: 'Missing required fields: to, subject, message' });
+    if (!to || !subject) {
+      return res.status(400).json({ error: 'Missing required fields: to, subject' });
     }
 
     // Import email service
     const emailService = require('../services/emailService');
 
-    // Send email using the existing email service
-    const result = await emailService.sendEmail(to, subject, message);
-
-    if (result.success) {
-      console.log(`✅ Admin email sent to ${to}: ${subject}`);
-      res.json({ message: 'Email sent successfully' });
-    } else {
-      console.error(`❌ Failed to send admin email to ${to}:`, result.error);
-      res.status(500).json({ error: 'Failed to send email: ' + result.error });
+    // If raw HTML provided, use it directly
+    if (html) {
+      const textFallback = message || html.replace(/<[^>]+>/g, ' ');
+      const result = await emailService.sendEmail(to, subject, html, textFallback);
+      if (result.success) return res.json({ message: 'Email sent successfully' });
+      return res.status(500).json({ error: 'Failed to send email: ' + result.error });
     }
+
+    // Structured template rendering
+    const now = new Date();
+    const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    const bannerTitle = template?.bannerTitle || `UofT Tri Club – ${dateStr}`;
+    const title = template?.title || '';
+    const intro = template?.intro || '';
+    const bullets = Array.isArray(template?.bullets) ? template.bullets.filter(Boolean) : [];
+    const body = template?.body || message || '';
+
+    const escapeHtml = (s = '') => String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(subject)}</title>
+  <style>
+    .container{font-family: Arial, sans-serif; line-height:1.6; color:#333; max-width:600px; margin:0 auto; padding:20px}
+    .banner{background:#dc2626; color:#fff; padding:22px 24px; border-radius:10px; text-align:center; margin-bottom:24px}
+    .card{background:#f8fafc; padding:20px; border-radius:8px; margin-bottom:18px}
+    .btn{background:#dc2626; color:#fff !important; padding:10px 18px; text-decoration:none; border-radius:6px; display:inline-block}
+    .footer{color:#6b7280; font-size:13px; text-align:center; margin-top:24px; padding-top:16px; border-top:1px solid #e5e7eb}
+    ul{margin:0; padding-left:20px}
+  </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="banner"><h1 style="margin:0; font-size:22px;">${escapeHtml(bannerTitle)}</h1></div>
+      ${title ? `<div class="card"><h2 style="margin:0 0 10px 0; color:#111827;">${escapeHtml(title)}</h2>${intro ? `<p style=\"margin:0\">${escapeHtml(intro)}</p>` : ''}</div>` : ''}
+      ${bullets.length ? `<div class="card"><ul>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ul></div>` : ''}
+      ${body ? `<div class="card"><p style="white-space:pre-wrap; margin:0">${escapeHtml(body)}</p></div>` : ''}
+      <div class="footer">UofT Triathlon Club | <a href="https://uoft-tri.club" style="color:#3b82f6; text-decoration:none;">uoft-tri.club</a></div>
+    </div>
+  </body>
+</html>`;
+
+    const textContent = [bannerTitle, title, intro, ...(bullets.length ? ['- ' + bullets.join('\n- ')] : []), body]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const result = await emailService.sendEmail(to, subject, htmlContent, textContent);
+    if (result.success) {
+      return res.json({ message: 'Email sent successfully' });
+    }
+    return res.status(500).json({ error: 'Failed to send email: ' + result.error });
   } catch (error) {
     console.error('Admin send email error:', error);
     res.status(500).json({ error: 'Internal server error' });
