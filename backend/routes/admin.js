@@ -677,10 +677,10 @@ router.post('/send-email', authenticateToken, requireAdmin, async (req, res) => 
 // Send bulk email route
 router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { subject, message, recipients } = req.body;
+    const { subject, message, recipients, template } = req.body;
 
-    if (!subject || !message) {
-      return res.status(400).json({ error: 'Missing required fields: subject, message' });
+    if (!subject) {
+      return res.status(400).json({ error: 'Missing required field: subject' });
     }
 
     // Check if at least one recipient group is selected
@@ -724,6 +724,50 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     // Import email service
     const emailService = require('../services/emailService');
 
+    // Prepare template content
+    const now = new Date();
+    const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    const bannerTitle = template?.bannerTitle || `UofT Tri Club – ${dateStr}`;
+    const title = template?.title || '';
+    const intro = template?.intro || '';
+    const bullets = Array.isArray(template?.bullets) ? template.bullets.filter(Boolean) : [];
+    const body = template?.body || message || '';
+
+    const escapeHtml = (s = '') => String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(subject)}</title>
+  <style>
+    .container{font-family: Arial, sans-serif; line-height:1.6; color:#333; max-width:600px; margin:0 auto; padding:20px}
+    .banner{background:#dc2626; color:#fff; padding:22px 24px; border-radius:10px; text-align:center; margin-bottom:24px}
+    .card{background:#f8fafc; padding:20px; border-radius:8px; margin-bottom:18px}
+    .btn{background:#dc2626; color:#fff !important; padding:10px 18px; text-decoration:none; border-radius:6px; display:inline-block}
+    .footer{color:#6b7280; font-size:13px; text-align:center; margin-top:24px; padding-top:16px; border-top:1px solid #e5e7eb}
+    ul{margin:0; padding-left:20px}
+  </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="banner"><h1 style="margin:0; font-size:22px;">${escapeHtml(bannerTitle)}</h1></div>
+      ${title ? `<div class="card"><h2 style="margin:0 0 10px 0; color:#111827;">${escapeHtml(title)}</h2>${intro ? `<p style=\"margin:0\">${escapeHtml(intro)}</p>` : ''}</div>` : ''}
+      ${bullets.length ? `<div class="card"><ul>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ul></div>` : ''}
+      ${body ? `<div class="card"><p style="white-space:pre-wrap; margin:0">${escapeHtml(body)}</p></div>` : ''}
+      <div class="footer">UofT Triathlon Club | <a href="https://uoft-tri.club" style="color:#3b82f6; text-decoration:none;">uoft-tri.club</a></div>
+    </div>
+  </body>
+</html>`;
+
+    const textContent = [bannerTitle, title, intro, ...(bullets.length ? ['- ' + bullets.join('\n- ')] : []), body]
+      .filter(Boolean)
+      .join('\n\n');
+
     // Send emails in parallel with batching to respect AWS SES rate limits
     const BATCH_SIZE = 10; // Process 10 emails at a time
     const DELAY_BETWEEN_BATCHES = 1000; // 1 second delay between batches
@@ -748,10 +792,11 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
       // Send all emails in this batch in parallel
       const batchPromises = batch.map(async (recipient) => {
         try {
-          // Personalize message with recipient name
-          const personalizedMessage = message.replace(/\[name\]/g, recipient.name);
+          // Personalize content with recipient name
+          const personalizedHtml = htmlContent.replace(/\[name\]/g, recipient.name);
+          const personalizedText = textContent.replace(/\[name\]/g, recipient.name);
           
-          const result = await emailService.sendEmail(recipient.email, subject, personalizedMessage);
+          const result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText);
           
           if (result.success) {
             console.log(`✅ Bulk email sent to ${recipient.email}`);
