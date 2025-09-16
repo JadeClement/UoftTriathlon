@@ -720,7 +720,7 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     // Prepare template content
     const now = new Date();
     const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    const bannerTitle = template?.bannerTitle || `UofT Tri Club – ${dateStr}`;
+    const bannerTitle = template?.bannerTitle || `University of Toronto Triathlon Club – ${dateStr}`;
     const title = template?.title || '';
     const intro = template?.intro || '';
     const bullets = Array.isArray(template?.bullets) ? template.bullets.filter(Boolean) : [];
@@ -740,7 +740,7 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
   <style>
     body { margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-    .header { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #ffffff; padding: 32px 24px; text-align: center; }
+    .header { background: #dc2626; color: #ffffff; padding: 32px 24px; text-align: center; }
     .header h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
     .content { padding: 32px 24px; }
     .section { margin-bottom: 24px; }
@@ -749,9 +749,8 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     .title-section h2 { margin: 0 0 12px 0; color: #1e293b; font-size: 24px; font-weight: 600; line-height: 1.3; }
     .title-section p { margin: 0; color: #64748b; font-size: 16px; line-height: 1.6; }
     .bullets-section { background: #f8fafc; padding: 24px; border-radius: 12px; }
-    .bullets-section ul { margin: 0; padding-left: 0; list-style: none; }
-    .bullets-section li { position: relative; padding-left: 24px; margin-bottom: 12px; color: #475569; font-size: 16px; line-height: 1.6; }
-    .bullets-section li:before { content: '•'; color: #dc2626; font-weight: bold; position: absolute; left: 0; }
+    .bullets-section ol { margin: 0; padding-left: 20px; }
+    .bullets-section li { margin-bottom: 12px; color: #475569; font-size: 16px; line-height: 1.6; }
     .bullets-section li:last-child { margin-bottom: 0; }
     .body-section { background: #f8fafc; padding: 24px; border-radius: 12px; }
     .body-section p { margin: 0; color: #475569; font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
@@ -773,15 +772,14 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
       <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
     <div class="content">
-      ${title ? `
+      ${intro ? `
         <div class="section title-section">
-          <h2>${escapeHtml(title)}</h2>
-          ${intro ? `<p>${escapeHtml(intro)}</p>` : ''}
+          <p>${escapeHtml(intro)}</p>
         </div>
       ` : ''}
       ${bullets.length ? `
         <div class="section bullets-section">
-          <ul>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ul>
+          <ol>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ol>
         </div>
       ` : ''}
       ${body ? `
@@ -792,12 +790,13 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
+      <p style="font-style: italic; margin-top: 12px;">The UofT Tri Club Exec</p>
     </div>
   </div>
 </body>
 </html>`;
 
-    const textContent = [bannerTitle, title, intro, ...(bullets.length ? ['- ' + bullets.join('\n- ')] : []), body]
+    const textContent = [bannerTitle, intro, ...(bullets.length ? bullets.map((b, i) => `${i + 1}. ${b}`) : []), body]
       .filter(Boolean)
       .join('\n\n');
 

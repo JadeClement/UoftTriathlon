@@ -780,13 +780,13 @@ const Admin = () => {
                     }}>
                       {/* Header */}
                       <div style={{
-                        background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                        background: '#dc2626',
                         color: '#ffffff',
                         padding: '32px 24px',
                         textAlign: 'center'
                       }}>
                         <h1 style={{margin: 0, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px'}}>
-                          {template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}
+                          {template.bannerTitle || `University of Toronto Triathlon Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}
                         </h1>
                       </div>
                       
@@ -818,27 +818,18 @@ const Admin = () => {
                             borderRadius: '12px',
                             marginBottom: '24px'
                           }}>
-                            <ul style={{margin: 0, paddingLeft: 0, listStyle: 'none'}}>
+                            <ol style={{margin: 0, paddingLeft: '20px'}}>
                               {template.bullets.filter(Boolean).map((b, i)=> (
                                 <li key={i} style={{
-                                  position: 'relative',
-                                  paddingLeft: '24px',
                                   marginBottom: '12px',
                                   color: '#475569',
                                   fontSize: '16px',
                                   lineHeight: 1.6
                                 }}>
-                                  <span style={{
-                                    content: '"•"',
-                                    color: '#dc2626',
-                                    fontWeight: 'bold',
-                                    position: 'absolute',
-                                    left: 0
-                                  }}>•</span>
                                   {b}
                                 </li>
                               ))}
-                            </ul>
+                            </ol>
                           </div>
                         )}
                         
@@ -868,8 +859,11 @@ const Admin = () => {
                         textAlign: 'center',
                         borderTop: '1px solid #e2e8f0'
                       }}>
-                        <p style={{margin: 0, color: '#64748b', fontSize: '14px'}}>
+                        <p style={{margin: '0 0 12px 0', color: '#64748b', fontSize: '14px'}}>
                           UofT Triathlon Club | <a href="https://uoft-tri.club" style={{color: '#3b82f6', textDecoration: 'none', fontWeight: 500}}>uoft-tri.club</a>
+                        </p>
+                        <p style={{margin: 0, color: '#64748b', fontSize: '14px', fontStyle: 'italic'}}>
+                          The UofT Tri Club Exec
                         </p>
                       </div>
                     </div>
