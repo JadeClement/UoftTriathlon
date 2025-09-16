@@ -51,6 +51,12 @@ const Navbar = () => {
     loadBanner();
   }, []);
 
+  // Reflect banner height to CSS variable for page spacing
+  useEffect(() => {
+    const offset = banner.enabled && banner.message ? '32px' : '0px';
+    document.documentElement.style.setProperty('--banner-offset', offset);
+  }, [banner.enabled, banner.message]);
+
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
