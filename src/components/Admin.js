@@ -529,12 +529,13 @@ const Admin = () => {
                 alert(err.message);
               }
             }}>
-              <div className="form-group">
-                <label>Enabled</label>
-                <select value={bannerForm.enabled ? '1' : '0'} onChange={(e)=> setBannerForm({ ...bannerForm, enabled: e.target.value === '1' })}>
-                  <option value="0">Disabled</option>
-                  <option value="1">Enabled</option>
-                </select>
+              <div className="form-group" style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                <label style={{minWidth:100}}>Enabled</label>
+                <label className="toggle-switch">
+                  <input type="checkbox" checked={!!bannerForm.enabled} onChange={(e)=> setBannerForm({ ...bannerForm, enabled: e.target.checked })} />
+                  <span className="toggle-slider"></span>
+                </label>
+                <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
               </div>
               <div className="form-group">
                 <label>Message</label>
