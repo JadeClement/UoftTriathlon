@@ -190,6 +190,15 @@ async function initializeDatabase() {
     `);
     console.log('✅ Event RSVPs table created');
 
+    // Create site_settings table (key-value store)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS site_settings (
+        key VARCHAR(100) PRIMARY KEY,
+        value TEXT
+      )
+    `);
+    console.log('✅ Site settings table created');
+
     // Create indexes
     await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_forum_posts_user_id ON forum_posts(user_id)');

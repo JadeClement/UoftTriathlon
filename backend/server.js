@@ -27,6 +27,7 @@ const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/users');
 const profileRoutes = require('./routes/profiles');
 const raceRoutes = require('./routes/races');
+const siteRoutes = require('./routes/site');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -86,6 +87,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/races', raceRoutes);
+app.use('/api/site', siteRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {

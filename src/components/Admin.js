@@ -7,6 +7,7 @@ const Admin = () => {
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
+  const [bannerForm, setBannerForm] = useState({ enabled: false, message: '' });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -403,6 +404,12 @@ const Admin = () => {
         >
           Send Email
         </button>
+        <button 
+          className={`tab-button ${activeTab === 'banner' ? 'active' : ''}`}
+          onClick={() => setActiveTab('banner')}
+        >
+          Site Banner
+        </button>
       </div>
 
       <div className="admin-content">
@@ -497,6 +504,46 @@ const Admin = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'banner' && (
+          <div className="email-section">
+            <h2>Site Banner</h2>
+            <p>Toggle a banner at the top of the site with a message.</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const token = localStorage.getItem('triathlonToken');
+                const resp = await fetch(`${API_BASE_URL}/site/banner`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify(bannerForm)
+                });
+                if (!resp.ok) {
+                  const err = await resp.json().catch(() => ({}));
+                  throw new Error(err.error || 'Failed to update banner');
+                }
+                alert('Banner updated');
+              } catch (err) {
+                alert(err.message);
+              }
+            }}>
+              <div className="form-group">
+                <label>Enabled</label>
+                <select value={bannerForm.enabled ? '1' : '0'} onChange={(e)=> setBannerForm({ ...bannerForm, enabled: e.target.value === '1' })}>
+                  <option value="0">Disabled</option>
+                  <option value="1">Enabled</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Message</label>
+                <input type="text" value={bannerForm.message} onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} placeholder="Work in progress…" />
+              </div>
+              <div className="modal-actions">
+                <button type="submit" className="btn btn-primary">Save Banner</button>
+              </div>
+            </form>
           </div>
         )}
 
