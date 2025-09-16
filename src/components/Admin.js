@@ -771,19 +771,107 @@ const Admin = () => {
                 <div style={{ flex: 1, minWidth: '400px' }}>
                   <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
                     <h3 style={{marginTop:0}}>Preview</h3>
-                    <div style={{background:'#dc2626', color:'#fff', padding:'12px', borderRadius:8, textAlign:'center', marginBottom:12}}>
-                      <strong>{template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}</strong>
-                    </div>
-                    {template.title && <h4 style={{color: '#1E3A8A', marginTop: 0}}>{template.title}</h4>}
-                    {template.intro && <p style={{fontSize: '16px', marginBottom: '20px'}}>{template.intro}</p>}
-                    {(template.bullets||[]).filter(Boolean).length>0 && (
-                      <ul style={{margin: '15px 0', paddingLeft: '20px', color: '#4b5563'}}>
-                        {template.bullets.filter(Boolean).map((b, i)=> <li key={i}>{b}</li>)}
-                      </ul>
-                    )}
-                    {template.body && <p style={{fontSize: '16px', marginBottom: '20px', whiteSpace:'pre-wrap'}}>{template.body}</p>}
-                    <div style={{textAlign: 'center', color: '#6b7280', fontSize: '14px', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #e5e7eb'}}>
-                      <p>UofT Triathlon Club | <a href="https://uoft-tri.club" style={{color: '#3b82f6'}}>uoft-tri.club</a></p>
+                    <div style={{
+                      maxWidth: '600px',
+                      margin: '0 auto',
+                      backgroundColor: '#ffffff',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                    }}>
+                      {/* Header */}
+                      <div style={{
+                        background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                        color: '#ffffff',
+                        padding: '32px 24px',
+                        textAlign: 'center'
+                      }}>
+                        <h1 style={{margin: 0, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px'}}>
+                          {template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}
+                        </h1>
+                      </div>
+                      
+                      {/* Content */}
+                      <div style={{ padding: '32px 24px' }}>
+                        {template.title && (
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            borderLeft: '4px solid #dc2626',
+                            marginBottom: '24px'
+                          }}>
+                            <h2 style={{margin: '0 0 12px 0', color: '#1e293b', fontSize: '24px', fontWeight: 600, lineHeight: 1.3}}>
+                              {template.title}
+                            </h2>
+                            {template.intro && (
+                              <p style={{margin: 0, color: '#64748b', fontSize: '16px', lineHeight: 1.6}}>
+                                {template.intro}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {(template.bullets||[]).filter(Boolean).length>0 && (
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            marginBottom: '24px'
+                          }}>
+                            <ul style={{margin: 0, paddingLeft: 0, listStyle: 'none'}}>
+                              {template.bullets.filter(Boolean).map((b, i)=> (
+                                <li key={i} style={{
+                                  position: 'relative',
+                                  paddingLeft: '24px',
+                                  marginBottom: '12px',
+                                  color: '#475569',
+                                  fontSize: '16px',
+                                  lineHeight: 1.6
+                                }}>
+                                  <span style={{
+                                    content: '"•"',
+                                    color: '#dc2626',
+                                    fontWeight: 'bold',
+                                    position: 'absolute',
+                                    left: 0
+                                  }}>•</span>
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {template.body && (
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px'
+                          }}>
+                            <p style={{
+                              margin: 0,
+                              color: '#475569',
+                              fontSize: '16px',
+                              lineHeight: 1.6,
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              {template.body}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Footer */}
+                      <div style={{
+                        background: '#f1f5f9',
+                        padding: '24px',
+                        textAlign: 'center',
+                        borderTop: '1px solid #e2e8f0'
+                      }}>
+                        <p style={{margin: 0, color: '#64748b', fontSize: '14px'}}>
+                          UofT Triathlon Club | <a href="https://uoft-tri.club" style={{color: '#3b82f6', textDecoration: 'none', fontWeight: 500}}>uoft-tri.club</a>
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
