@@ -792,7 +792,7 @@ const Admin = () => {
                       
                       {/* Content */}
                       <div style={{ padding: '32px 24px' }}>
-                        {template.title && (
+                        {template.intro && (
                           <div style={{
                             background: '#f8fafc',
                             padding: '24px',
@@ -800,14 +800,9 @@ const Admin = () => {
                             borderLeft: '4px solid #dc2626',
                             marginBottom: '24px'
                           }}>
-                            <h2 style={{margin: '0 0 12px 0', color: '#1e293b', fontSize: '24px', fontWeight: 600, lineHeight: 1.3}}>
-                              {template.title}
-                            </h2>
-                            {template.intro && (
-                              <p style={{margin: 0, color: '#64748b', fontSize: '16px', lineHeight: 1.6}}>
-                                {template.intro}
-                              </p>
-                            )}
+                            <p style={{margin: 0, color: '#64748b', fontSize: '16px', lineHeight: 1.6}}>
+                              {template.intro}
+                            </p>
                           </div>
                         )}
                         
