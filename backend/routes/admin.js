@@ -694,17 +694,21 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     let queryParams = [];
     let paramCount = 0;
 
-    if (recipients.allMembers) {
+    if (recipients.members || recipients.allMembers) {
       whereConditions.push(`role = $${++paramCount}`);
       queryParams.push('member');
     }
-    if (recipients.execs) {
+    if (recipients.exec || recipients.execs) {
       whereConditions.push(`role = $${++paramCount}`);
       queryParams.push('exec');
     }
-    if (recipients.admins) {
+    if (recipients.admin || recipients.admins) {
       whereConditions.push(`role = $${++paramCount}`);
-      queryParams.push('administrator');
+      queryParams.push('admin');
+    }
+
+    if (whereConditions.length === 0) {
+      return res.status(400).json({ error: 'No valid recipient groups selected' });
     }
 
     const whereClause = whereConditions.join(' OR ');
