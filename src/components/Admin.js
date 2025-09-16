@@ -682,50 +682,64 @@ const Admin = () => {
                     </label>
                   </div>
 
-                  {/* Recipient field - only show for individual */}
+                  {/* Individual Email Fields */}
                   {emailType === 'individual' && (
-                    <div className="form-group">
-                      <label>To</label>
-                      <input 
-                        type="email" 
-                        value={emailForm.to} 
-                        onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} 
-                        placeholder="recipient@example.com"
-                        required 
-                      />
-                    </div>
+                    <>
+                      <div className="form-group">
+                        <label>To</label>
+                        <input 
+                          type="email" 
+                          value={emailForm.to} 
+                          onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} 
+                          placeholder="recipient@example.com"
+                          required 
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Message</label>
+                        <textarea 
+                          rows="8" 
+                          value={emailForm.message} 
+                          onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
+                          placeholder="Type your message here..."
+                          required 
+                        />
+                      </div>
+                    </>
                   )}
 
-                  {/* Template Section */}
-                  <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
-                    <h3 style={{marginTop:0}}>Email Template</h3>
-                    <div className="form-group">
-                      <label>Banner Title</label>
-                      <input type="text" value={template.bannerTitle} onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} />
+                  {/* Template Section - only show for everyone */}
+                  {emailType === 'everyone' && (
+                    <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
+                      <h3 style={{marginTop:0}}>Email Template</h3>
+                      <div className="form-group">
+                        <label>Banner Title</label>
+                        <input type="text" value={template.bannerTitle} onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} />
+                      </div>
+                      <div className="form-group">
+                        <label>Title</label>
+                        <input type="text" value={template.title} onChange={(e)=>setTemplate({...template, title:e.target.value})} placeholder="Email subject/title" />
+                      </div>
+                      <div className="form-group">
+                        <label>Intro</label>
+                        <textarea rows="3" value={template.intro} onChange={(e)=>setTemplate({...template, intro:e.target.value})} placeholder="Introduction text..." />
+                      </div>
+                      <div className="form-group">
+                        <label>Bullets</label>
+                        {(template.bullets||[]).map((b, idx)=> (
+                          <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
+                            <input type="text" value={b} onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} placeholder="Bullet point..." />
+                            <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
+                          </div>
+                        ))}
+                        <button type="button" className="action-btn small" onClick={()=> setTemplate({...template, bullets:[...template.bullets, '']})}>Add bullet</button>
+                      </div>
+                      <div className="form-group">
+                        <label>Body</label>
+                        <textarea rows="6" value={template.body} onChange={(e)=>setTemplate({...template, body:e.target.value})} placeholder="Main email content..." />
+                      </div>
                     </div>
-                    <div className="form-group">
-                      <label>Title</label>
-                      <input type="text" value={template.title} onChange={(e)=>setTemplate({...template, title:e.target.value})} placeholder="Email subject/title" />
-                    </div>
-                    <div className="form-group">
-                      <label>Intro</label>
-                      <textarea rows="3" value={template.intro} onChange={(e)=>setTemplate({...template, intro:e.target.value})} placeholder="Introduction text..." />
-                    </div>
-                    <div className="form-group">
-                      <label>Bullets</label>
-                      {(template.bullets||[]).map((b, idx)=> (
-                        <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
-                          <input type="text" value={b} onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} placeholder="Bullet point..." />
-                          <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
-                        </div>
-                      ))}
-                      <button type="button" className="action-btn small" onClick={()=> setTemplate({...template, bullets:[...template.bullets, '']})}>Add bullet</button>
-                    </div>
-                    <div className="form-group">
-                      <label>Body</label>
-                      <textarea rows="6" value={template.body} onChange={(e)=>setTemplate({...template, body:e.target.value})} placeholder="Main email content..." />
-                    </div>
-                  </div>
+                  )}
 
                   {/* Status Messages */}
                   {(emailStatus || bulkEmailStatus) && (
@@ -752,26 +766,28 @@ const Admin = () => {
                 </form>
               </div>
 
-              {/* Right side - Preview */}
-              <div style={{ flex: 1, minWidth: '400px' }}>
-                <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
-                  <h3 style={{marginTop:0}}>Preview</h3>
-                  <div style={{background:'#dc2626', color:'#fff', padding:'12px', borderRadius:8, textAlign:'center', marginBottom:12}}>
-                    <strong>{template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}</strong>
-                  </div>
-                  {template.title && <h4 style={{color: '#1E3A8A', marginTop: 0}}>{template.title}</h4>}
-                  {template.intro && <p style={{fontSize: '16px', marginBottom: '20px'}}>{template.intro}</p>}
-                  {(template.bullets||[]).filter(Boolean).length>0 && (
-                    <ul style={{margin: '15px 0', paddingLeft: '20px', color: '#4b5563'}}>
-                      {template.bullets.filter(Boolean).map((b, i)=> <li key={i}>{b}</li>)}
-                    </ul>
-                  )}
-                  {template.body && <p style={{fontSize: '16px', marginBottom: '20px', whiteSpace:'pre-wrap'}}>{template.body}</p>}
-                  <div style={{textAlign: 'center', color: '#6b7280', fontSize: '14px', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #e5e7eb'}}>
-                    <p>UofT Triathlon Club | <a href="https://uoft-tri.club" style={{color: '#3b82f6'}}>uoft-tri.club</a></p>
+              {/* Right side - Preview (only for everyone emails) */}
+              {emailType === 'everyone' && (
+                <div style={{ flex: 1, minWidth: '400px' }}>
+                  <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
+                    <h3 style={{marginTop:0}}>Preview</h3>
+                    <div style={{background:'#dc2626', color:'#fff', padding:'12px', borderRadius:8, textAlign:'center', marginBottom:12}}>
+                      <strong>{template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}</strong>
+                    </div>
+                    {template.title && <h4 style={{color: '#1E3A8A', marginTop: 0}}>{template.title}</h4>}
+                    {template.intro && <p style={{fontSize: '16px', marginBottom: '20px'}}>{template.intro}</p>}
+                    {(template.bullets||[]).filter(Boolean).length>0 && (
+                      <ul style={{margin: '15px 0', paddingLeft: '20px', color: '#4b5563'}}>
+                        {template.bullets.filter(Boolean).map((b, i)=> <li key={i}>{b}</li>)}
+                      </ul>
+                    )}
+                    {template.body && <p style={{fontSize: '16px', marginBottom: '20px', whiteSpace:'pre-wrap'}}>{template.body}</p>}
+                    <div style={{textAlign: 'center', color: '#6b7280', fontSize: '14px', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #e5e7eb'}}>
+                      <p>UofT Triathlon Club | <a href="https://uoft-tri.club" style={{color: '#3b82f6'}}>uoft-tri.club</a></p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
