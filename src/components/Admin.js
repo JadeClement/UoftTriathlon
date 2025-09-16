@@ -7,6 +7,9 @@ const Admin = () => {
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
+  const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState(null);
 
   const [editingMember, setEditingMember] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -393,6 +396,12 @@ const Admin = () => {
         >
           Pending Approval
         </button>
+        <button 
+          className={`tab-button ${activeTab === 'email' ? 'active' : ''}`}
+          onClick={() => setActiveTab('email')}
+        >
+          Send Email
+        </button>
       </div>
 
       <div className="admin-content">
@@ -487,6 +496,60 @@ const Admin = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'email' && (
+          <div className="email-section">
+            <h2>Send Individual Email</h2>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setEmailStatus(null);
+              if (!emailForm.to || !emailForm.subject || !emailForm.message) {
+                setEmailStatus({ type: 'error', text: 'Please fill out all fields.' });
+                return;
+              }
+              try {
+                setSendingEmail(true);
+                const token = localStorage.getItem('triathlonToken');
+                const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify(emailForm)
+                });
+                if (!resp.ok) {
+                  const err = await resp.json().catch(() => ({}));
+                  throw new Error(err.error || 'Failed to send email');
+                }
+                setEmailStatus({ type: 'success', text: 'Email sent successfully.' });
+                setEmailForm({ to: '', subject: '', message: '' });
+              } catch (err) {
+                setEmailStatus({ type: 'error', text: err.message });
+              } finally {
+                setSendingEmail(false);
+              }
+            }}>
+              <div className="form-group">
+                <label>To</label>
+                <input type="email" value={emailForm.to} onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label>Subject</label>
+                <input type="text" value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label>Message</label>
+                <textarea rows="6" value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} required />
+              </div>
+              {emailStatus && (
+                <div className={`notice ${emailStatus.type}`}>{emailStatus.text}</div>
+              )}
+              <div className="modal-actions">
+                <button type="submit" className="btn btn-primary" disabled={sendingEmail}>
+                  {sendingEmail ? 'Sending...' : 'Send Email'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
