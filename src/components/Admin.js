@@ -79,6 +79,21 @@ const Admin = () => {
     loadAdminData();
   }, [currentUser, isAdmin]);
 
+  const loadBannerData = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/site/banner`);
+      if (response.ok) {
+        const data = await response.json();
+        setBannerForm({
+          enabled: data.banner?.enabled || false,
+          message: data.banner?.message || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading banner data:', error);
+    }
+  };
+
   const loadAdminData = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -86,6 +101,9 @@ const Admin = () => {
         console.error('No authentication token found');
         return;
       }
+
+      // Load banner data
+      await loadBannerData();
 
       // Load all members
       const membersResponse = await fetch(`${API_BASE_URL}/admin/members`, {
