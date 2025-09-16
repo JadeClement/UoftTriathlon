@@ -567,6 +567,9 @@ const Admin = () => {
         {activeTab === 'email' && (
           <div className="email-section">
             <h2>Send Individual Email</h2>
+            <div className="admin-warning">
+              <p><strong>🚧 Work in Progress:</strong> This email feature is currently under development and may not be fully functional.</p>
+            </div>
             <form onSubmit={async (e) => {
               e.preventDefault();
               setEmailStatus(null);
