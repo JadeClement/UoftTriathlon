@@ -220,130 +220,120 @@ router.delete('/posts/:id', authenticateToken, requireMember, async (req, res) =
 
 // Toggle workout signup
 router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req, res) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    // Check if workout exists and has capacity
-    const workoutResult = await pool.query(
-      'SELECT id, capacity FROM forum_posts WHERE id = $1 AND type = $2 AND is_deleted = false', 
-      [id, 'workout']
-    );
+    await client.query('BEGIN');
 
+    // Verify workout exists and lock the row for capacity checks
+    const workoutResult = await client.query(
+      `SELECT id, capacity 
+       FROM forum_posts 
+       WHERE id = $1 AND type = 'workout' AND is_deleted = false 
+       FOR UPDATE`,
+      [id]
+    );
     if (workoutResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Workout not found' });
     }
 
-    const workout = workoutResult.rows[0];
-
-    // Check if user is already signed up
-    const existingSignupResult = await pool.query(
-      'SELECT id FROM workout_signups WHERE user_id = $1 AND post_id = $2', 
+    // Check if user already signed up (toggle remove)
+    const existingSignup = await client.query(
+      'SELECT id FROM workout_signups WHERE user_id = $1 AND post_id = $2',
       [userId, id]
     );
 
-    if (existingSignupResult.rows.length > 0) {
+    if (existingSignup.rows.length > 0) {
       // Remove signup
-      console.log('➖ Removing signup...');
-      await pool.query('DELETE FROM workout_signups WHERE id = $1', [existingSignupResult.rows[0].id]);
+      await client.query('DELETE FROM workout_signups WHERE id = $1', [existingSignup.rows[0].id]);
 
-      console.log('✅ Signup removed successfully');
-      
-      // Check if there are people on the waitlist to promote
-      const waitlistResult = await pool.query(`
-        SELECT ww.id, ww.user_id, u.name as user_name, u.email, u.phone_number 
-        FROM workout_waitlist ww 
-        JOIN users u ON ww.user_id = u.id 
-        WHERE ww.post_id = $1 
-        ORDER BY ww.joined_at ASC 
-        LIMIT 1
-      `, [id]);
-
-      if (waitlistResult.rows.length > 0) {
-        const waitlistPerson = waitlistResult.rows[0];
-        // Promote first person from waitlist
-        console.log('🎉 Promoting person from waitlist, ID:', waitlistPerson.id, 'Name:', waitlistPerson.user_name);
-        
-        // Remove from waitlist and add to signups
-        await pool.query('DELETE FROM workout_waitlist WHERE id = $1', [waitlistPerson.id]);
-        console.log('✅ Removed from waitlist');
-        
-        // Add to signups
-        await pool.query(
-          'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)', 
-          [waitlistPerson.user_id, id]
-        );
-        console.log('✅ Successfully promoted to signups');
-        
-        // Get workout details for notifications
-        const workoutDetailsResult = await pool.query(
-          'SELECT title, workout_date, workout_time FROM forum_posts WHERE id = $1', 
-          [id]
-        );
-        
-        if (workoutDetailsResult.rows.length > 0) {
-          const workoutDetails = workoutDetailsResult.rows[0];
-          
-          // Send email notification using new email service
-          try {
-            await emailService.sendWaitlistPromotion(
-              waitlistPerson.email,
-              waitlistPerson.user_name,
-              workoutDetails.title || 'Workout',
-              workoutDetails.workout_date,
-              workoutDetails.workout_time,
-              id // workout ID for the cancellation link
-            );
-            console.log('📧 Email sent successfully to:', waitlistPerson.email);
-          } catch (error) {
-            console.log('❌ Failed to send email to:', waitlistPerson.email, error.message);
-          }
-
-          // Send SMS notification (keeping existing SMS functionality)
-          if (waitlistPerson.phone_number) {
-            sendWaitlistPromotionNotification(
-              waitlistPerson.email,
-              waitlistPerson.phone_number,
-              waitlistPerson.user_name,
-              workoutDetails.title || 'Workout',
-              workoutDetails.workout_date,
-              workoutDetails.workout_time
-            ).then(notificationResult => {
-              if (notificationResult.sms) {
-                console.log('📱 SMS sent successfully to:', waitlistPerson.phone_number);
-              } else {
-                console.log('❌ Failed to send SMS to:', waitlistPerson.phone_number);
-              }
-            }).catch((error) => {
-              console.log('❌ SMS notification failed:', error.message);
-            });
-          } else {
-            console.log('📱 No phone number available for SMS');
-          }
-        }
-      }
-      
-      res.json({ 
-        message: 'Signup removed successfully',
-        signedUp: false
-      });
-    } else {
-      // Add signup
-      console.log('➕ Adding new signup...');
-      const signupResult = await pool.query(
-        'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id', 
-        [userId, id]
+      // Promote first waitlisted user if any (avoid race using SKIP LOCKED)
+      const waitlistResult = await client.query(
+        `SELECT ww.id, ww.user_id, u.name as user_name, u.email, u.phone_number
+         FROM workout_waitlist ww
+         JOIN users u ON ww.user_id = u.id
+         WHERE ww.post_id = $1
+         ORDER BY ww.joined_at ASC
+         FOR UPDATE SKIP LOCKED
+         LIMIT 1`,
+        [id]
       );
 
-      console.log('✅ Signup added successfully, ID:', signupResult.rows[0].id);
-      res.json({ 
-        message: 'Signed up successfully',
-        signedUp: true
-      });
+      if (waitlistResult.rows.length > 0) {
+        const w = waitlistResult.rows[0];
+        await client.query('DELETE FROM workout_waitlist WHERE id = $1', [w.id]);
+        await client.query(
+          'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+          [w.user_id, id]
+        );
+        // Notifications are best-effort after commit
+        setImmediate(async () => {
+          try {
+            const details = await pool.query('SELECT title, workout_date, workout_time FROM forum_posts WHERE id = $1', [id]);
+            if (details.rows.length > 0) {
+              await emailService.sendWaitlistPromotion(
+                w.email,
+                w.user_name,
+                details.rows[0].title || 'Workout',
+                details.rows[0].workout_date,
+                details.rows[0].workout_time,
+                id
+              );
+            }
+          } catch (e) {
+            console.log('Waitlist promotion notification error:', e.message);
+          }
+        });
+      }
+
+      await client.query('COMMIT');
+      return res.json({ message: 'Signup removed successfully', signedUp: false });
     }
+
+    // Attempt atomic insert only if capacity not reached (treat NULL capacity as unlimited)
+    const insertResult = await client.query(
+      `WITH w AS (
+         SELECT COALESCE(capacity, 2147483647) AS capacity
+         FROM forum_posts WHERE id = $1 AND type = 'workout' AND is_deleted = false
+       ),
+       c AS (
+         SELECT COUNT(*)::int AS cnt FROM workout_signups WHERE post_id = $1
+       )
+       INSERT INTO workout_signups (user_id, post_id, signup_time)
+       SELECT $2, $1, CURRENT_TIMESTAMP
+       FROM w, c
+       WHERE c.cnt < w.capacity
+       RETURNING id`,
+      [id, userId]
+    );
+
+    if (insertResult.rows.length === 0) {
+      // Full: join waitlist if not already on it
+      const existingWait = await client.query(
+        'SELECT id FROM workout_waitlist WHERE user_id = $1 AND post_id = $2',
+        [userId, id]
+      );
+      if (existingWait.rows.length === 0) {
+        await client.query(
+          'INSERT INTO workout_waitlist (user_id, post_id) VALUES ($1, $2)',
+          [userId, id]
+        );
+      }
+      await client.query('COMMIT');
+      return res.json({ message: 'Workout is full. You have been added to the waitlist.', signedUp: false, joinedWaitlist: true });
+    }
+
+    await client.query('COMMIT');
+    return res.json({ message: 'Signed up successfully', signedUp: true });
   } catch (error) {
+    await (async () => { try { await client.query('ROLLBACK'); } catch (_) {} })();
     console.error('❌ Signup error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 });
 
