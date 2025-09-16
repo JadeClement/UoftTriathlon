@@ -37,11 +37,13 @@ const WorkoutDetail = () => {
   const isWorkoutArchived = () => {
     try {
       if (!workout || !workout.workout_date) return false;
-      const d = new Date(workout.workout_date);
-      if (isNaN(d.getTime())) return false;
+      const base = workout.workout_date.split('T')[0];
+      const [y, m, d] = base.split('-').map(Number);
+      const dateOnly = new Date(Date.UTC(y, m - 1, d));
+      if (isNaN(dateOnly.getTime())) return false;
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return d < today;
+      today.setUTCHours(0, 0, 0, 0);
+      return dateOnly < today;
     } catch (_) {
       return false;
     }
@@ -572,7 +574,7 @@ const WorkoutDetail = () => {
               <span className="workout-type-badge">{workout.workout_type}</span>
               {workout.workout_date && (
                 <span className="workout-date">
-                  📅 {new Date(workout.workout_date).toLocaleDateString()}
+                  📅 {(() => { const b = workout.workout_date.split('T')[0]; const [y,m,d] = b.split('-').map(Number); return new Date(Date.UTC(y,m-1,d)).toLocaleDateString(undefined,{ timeZone: 'UTC' }); })()}
                   {workout.workout_time && (
                     <span className="workout-time"> • 🕐 {workout.workout_time}</span>
                   )}

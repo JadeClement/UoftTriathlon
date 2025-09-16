@@ -805,14 +805,30 @@ const Forum = () => {
 
 
 
+  // Date helpers (treat YYYY-MM-DD as UTC to avoid TZ shifting)
+  const parseDateOnlyUTC = (dateStr) => {
+    if (!dateStr) return null;
+    const base = (typeof dateStr === 'string') ? dateStr.split('T')[0] : dateStr;
+    const parts = base.split('-');
+    if (parts.length !== 3) return new Date(dateStr);
+    const [y, m, d] = parts.map(Number);
+    return new Date(Date.UTC(y, m - 1, d));
+  };
+
+  const formatDateOnlyUTC = (dateStr) => {
+    const d = parseDateOnlyUTC(dateStr);
+    if (!d || isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { timeZone: 'UTC' });
+  };
+
   // Helpers for date filtering
   const isPast = (dateStr) => {
     try {
       if (!dateStr) return false;
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return false;
+      const d = parseDateOnlyUTC(dateStr);
+      if (!d || isNaN(d.getTime())) return false;
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      today.setUTCHours(0, 0, 0, 0);
       return d < today;
     } catch (_) {
       return false;
@@ -824,6 +840,13 @@ const Forum = () => {
     const byTime = workoutPosts.filter(post => {
       const past = isPast(post.workout_date);
       return timeFilter === 'past' ? past : !past;
+    });
+
+    // Sort by actual workout_date, not created_at
+    byTime.sort((a, b) => {
+      const da = a && a.workout_date ? parseDateOnlyUTC(a.workout_date) : new Date(0);
+      const db = b && b.workout_date ? parseDateOnlyUTC(b.workout_date) : new Date(0);
+      return timeFilter === 'past' ? db - da : da - db; // past: newest first, upcoming: soonest first
     });
 
     if (workoutFilter === 'all') return byTime;
@@ -1128,7 +1151,7 @@ const Forum = () => {
                             <span className="workout-type-badge">{post.workout_type}</span>
                             {post.workout_date && (
                               <span className="workout-date">
-                                📅 {new Date(post.workout_date).toLocaleDateString()}
+                                📅 {formatDateOnlyUTC(post.workout_date)}
                                 {post.workout_time && (
                                   <span className="workout-time"> • 🕐 {post.workout_time}</span>
                                 )}
