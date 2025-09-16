@@ -679,6 +679,8 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
   try {
     const { subject, message, recipients, template } = req.body;
 
+    console.log('🔍 Bulk email request body:', { subject, message, recipients, template });
+
     if (!subject) {
       return res.status(400).json({ error: 'Missing required field: subject' });
     }
@@ -712,10 +714,16 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     }
 
     const whereClause = whereConditions.join(' OR ');
-    const query = `SELECT email, name FROM users WHERE is_active = true AND (${whereClause})`;
+    const query = `SELECT email, name, role, is_active FROM users WHERE is_active = true AND (${whereClause})`;
+    
+    console.log('🔍 Bulk email query:', query);
+    console.log('🔍 Query params:', queryParams);
     
     const result = await pool.query(query, queryParams);
     const recipientEmails = result.rows;
+    
+    console.log('🔍 Found recipients:', recipientEmails.length);
+    console.log('🔍 Recipients:', recipientEmails.map(r => ({ email: r.email, name: r.name, role: r.role, is_active: r.is_active })));
 
     if (recipientEmails.length === 0) {
       return res.status(400).json({ error: 'No recipients found for selected groups' });
