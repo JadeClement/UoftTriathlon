@@ -1035,6 +1035,19 @@
   gap: 0.25rem;
 }
 
+.status-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.status-badge.late {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .attendance-filters {

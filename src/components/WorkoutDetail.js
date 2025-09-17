@@ -18,6 +18,7 @@ const WorkoutDetail = () => {
   const [isOnWaitlist, setIsOnWaitlist] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [attendance, setAttendance] = useState({});
+  const [lateStatus, setLateStatus] = useState({});
   const [attendanceSaved, setAttendanceSaved] = useState(false);
   const [submittingAttendance, setSubmittingAttendance] = useState(false);
   const [swimMembers, setSwimMembers] = useState([]);
@@ -153,6 +154,18 @@ const WorkoutDetail = () => {
         // If there are any attendance records, attendance has been submitted
         setAttendanceSaved(attendanceData.attendance && attendanceData.attendance.length > 0);
         console.log('📊 Attendance saved status:', attendanceData.attendance && attendanceData.attendance.length > 0);
+        
+        // Process attendance and late status
+        if (attendanceData.attendance && attendanceData.attendance.length > 0) {
+          const attendanceMap = {};
+          const lateMap = {};
+          attendanceData.attendance.forEach(record => {
+            attendanceMap[record.user_id] = record.attended;
+            lateMap[record.user_id] = record.late || false;
+          });
+          setAttendance(attendanceMap);
+          setLateStatus(lateMap);
+        }
       } else {
         console.log('ℹ️ No attendance data found or error loading attendance');
         setAttendanceSaved(false);
@@ -450,6 +463,18 @@ const WorkoutDetail = () => {
     }));
   };
 
+  const handleLateChange = (userId, isLate) => {
+    console.log('📝 Late status change:', { userId, isLate, type: typeof userId });
+    if (!userId) {
+      console.error('❌ Invalid user ID:', userId);
+      return;
+    }
+    setLateStatus(prev => ({
+      ...prev,
+      [userId]: isLate
+    }));
+  };
+
   const handleSubmitAttendance = async () => {
     const token = localStorage.getItem('triathlonToken');
     if (!token) {
@@ -470,6 +495,7 @@ const WorkoutDetail = () => {
         },
         body: JSON.stringify({ 
           attendanceData: attendance,
+          lateData: lateStatus,
           isSwimWorkout: isSwimWorkout
         })
       });
@@ -787,22 +813,39 @@ const WorkoutDetail = () => {
                 <div className="signups-list">
                   {swimMembers.map(member => (
                     <div key={member.user_id} className="signup-item">
-                      {/* Attendance checkbox for executives and administrators */}
-                      <div className="attendance-checkbox">
-                        <input
-                          type="checkbox"
-                          id={`attendance-${member.user_id}`}
-                          checked={attendance[member.user_id] || false}
-                          onChange={(e) => {
-                            console.log('🔍 Checkbox change for member:', member);
-                            handleAttendanceChange(member.user_id, e.target.checked);
-                          }}
-                          disabled={attendanceSaved}
-                          title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as present"}
-                        />
-                        <label htmlFor={`attendance-${member.user_id}`} className="sr-only">
-                          Mark {member.user_name} as present
-                        </label>
+                      {/* Attendance and Late checkboxes for executives and administrators */}
+                      <div className="attendance-controls">
+                        <div className="attendance-checkbox">
+                          <input
+                            type="checkbox"
+                            id={`attendance-${member.user_id}`}
+                            checked={attendance[member.user_id] || false}
+                            onChange={(e) => {
+                              console.log('🔍 Checkbox change for member:', member);
+                              handleAttendanceChange(member.user_id, e.target.checked);
+                            }}
+                            disabled={attendanceSaved}
+                            title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as present"}
+                          />
+                          <label htmlFor={`attendance-${member.user_id}`} className="sr-only">
+                            Mark {member.user_name} as present
+                          </label>
+                        </div>
+                        
+                        <div className="late-checkbox">
+                          <label htmlFor={`late-${member.user_id}`} className="late-label">Late?</label>
+                          <input
+                            type="checkbox"
+                            id={`late-${member.user_id}`}
+                            checked={lateStatus[member.user_id] || false}
+                            onChange={(e) => {
+                              console.log('🔍 Late checkbox change for member:', member);
+                              handleLateChange(member.user_id, e.target.checked);
+                            }}
+                            disabled={attendanceSaved}
+                            title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as late"}
+                          />
+                        </div>
                       </div>
                       
                       <div className="signup-user-info">

@@ -794,3 +794,37 @@
   cursor: not-allowed;
 }
 
+/* Late checkbox styles */
+.attendance-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.late-checkbox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.late-label {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 12px;
+  margin: 0;
+}
+
+.late-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #dc2626;
+  cursor: pointer;
+}
+
+.late-checkbox input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

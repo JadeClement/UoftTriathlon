@@ -586,7 +586,7 @@ router.get('/workouts/:id/attendance', authenticateToken, requireMember, async (
 
     const attendanceResult = await pool.query(`
       SELECT 
-        wa.id, wa.user_id, wa.attended, wa.recorded_at,
+        wa.id, wa.user_id, wa.attended, wa.late, wa.recorded_at,
         u.name as user_name, u.role as user_role
       FROM workout_attendance wa
       JOIN users u ON wa.user_id = u.id
@@ -648,7 +648,7 @@ router.get('/workouts/:id/attendance-members', authenticateToken, requireExec, a
 router.post('/workouts/:id/attendance', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { attendanceData, isSwimWorkout = false } = req.body;
+    const { attendanceData, lateData = {}, isSwimWorkout = false } = req.body;
 
     // Frontend sends an object mapping userId -> boolean
     if (!attendanceData || typeof attendanceData !== 'object' || Array.isArray(attendanceData)) {
@@ -677,13 +677,14 @@ router.post('/workouts/:id/attendance', authenticateToken, requireAdmin, async (
 
     for (const userId of userIdsToProcess) {
       const attended = Boolean(attendanceData[userId]);
+      const late = Boolean(lateData[userId]);
 
       await pool.query(
-        `INSERT INTO workout_attendance (post_id, user_id, attended, recorded_at)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+        `INSERT INTO workout_attendance (post_id, user_id, attended, late, recorded_at)
+         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
          ON CONFLICT (post_id, user_id)
-         DO UPDATE SET attended = EXCLUDED.attended, recorded_at = CURRENT_TIMESTAMP`,
-        [id, userId, attended]
+         DO UPDATE SET attended = EXCLUDED.attended, late = EXCLUDED.late, recorded_at = CURRENT_TIMESTAMP`,
+        [id, userId, attended, late]
       );
     }
 

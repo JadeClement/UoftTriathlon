@@ -1034,6 +1034,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
         wa.id,
         wa.user_id,
         wa.attended,
+        wa.late,
         wa.recorded_at,
         u.name as user_name,
         u.email,

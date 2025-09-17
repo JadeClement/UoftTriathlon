@@ -1385,9 +1385,16 @@ const Admin = () => {
                           </div>
                         </div>
                         <div className="attendance-status">
-                          <span className={`status-badge ${record.attended ? 'attended' : 'absent'}`}>
-                            {record.attended ? '✓ Attended' : '✗ Absent'}
-                          </span>
+                          <div className="status-badges">
+                            <span className={`status-badge ${record.attended ? 'attended' : 'absent'}`}>
+                              {record.attended ? '✓ Attended' : '✗ Absent'}
+                            </span>
+                            {record.late && (
+                              <span className="status-badge late">
+                                ⏰ Late
+                              </span>
+                            )}
+                          </div>
                           <div className="recorded-time">
                             {new Date(record.recorded_at).toLocaleString()}
                           </div>
