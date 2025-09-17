@@ -39,7 +39,7 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
 
 // Get all members with pagination
 // Allow exec and admin to view members; restrict mutating routes to admin below
-router.get('/members', authenticateToken, requireExec, async (req, res) => {
+router.get('/members', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
     const { page = 1, limit = 50, search = '', role = '' } = req.query;
     const offset = (page - 1) * limit;
