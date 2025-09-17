@@ -869,7 +869,7 @@ const WorkoutDetail = () => {
                         </span>
                       </div>
                       <span className="signup-date">
-                        {member.is_signed_up ? '📅 Signed up' : '📝 Not signed up'}
+                        {member.is_signed_up && '📅 Signed up'}
                       </span>
                     </div>
                   ))}
