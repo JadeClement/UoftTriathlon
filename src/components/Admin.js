@@ -664,6 +664,7 @@ const Admin = () => {
         {activeTab === 'email' && (
           <div className="email-section">
             <h2>Send Email</h2>
+            <p style={{ color: '#f59e0b', fontWeight: '600', marginBottom: '1rem' }}>** Still in progress</p>
             <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
               {/* Left side - Form */}
               <div style={{ flex: 1, minWidth: '400px' }}>
