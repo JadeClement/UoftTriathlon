@@ -5,7 +5,7 @@ const FAQ = () => {
   return (
     <div className="page-container faq-page">
       <h1>Frequently Asked Questions</h1>
-      <p>If you don’t see the answer to your question, please email <a href="mailto:info@uofttriathlon.com">info@uofttriathlon.com</a>.</p>
+      <p>If you don't see the answer to your question, please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a>.</p>
 
       <div className="faq-list">
         <h3>Q: How do I join?</h3>

@@ -7,7 +7,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 // Test email configuration
 const msg = {
   to: 'jadecathclement@gmail.com', // CHANGE THIS to your actual email
-  from: 'info@uofttriathlon.com', // This should match your verified sender
+  from: 'info@uoft-tri.club', // This should match your verified sender
   subject: '🧪 Test Email from UofT Triathlon Club',
   text: 'This is a test email to verify SendGrid is working correctly!',
   html: `

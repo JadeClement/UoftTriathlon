@@ -8,7 +8,7 @@ async function testAdminLogin() {
     
     // Login as admin
     const loginResponse = await axios.post(`${API_BASE}/auth/login`, {
-      email: 'admin@uofttriathlon.com',
+      email: 'info@uoft-tri.club',
       password: 'admin123'
     });
     

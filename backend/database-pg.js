@@ -229,28 +229,28 @@ async function seedDatabase() {
     console.log('🌱 Seeding initial data...');
     
     // Check if admin user already exists
-    const adminExists = await pool.query('SELECT id FROM users WHERE email = $1', ['admin@uofttri.com']);
+    const adminExists = await pool.query('SELECT id FROM users WHERE email = $1', ['info@uoft-tri.club']);
     
     if (adminExists.rows.length === 0) {
       // Create admin user (you'll need to set a proper password hash)
       await pool.query(`
         INSERT INTO users (name, email, password_hash, role, charter_accepted)
         VALUES ($1, $2, $3, $4, $5)
-      `, ['Admin User', 'admin@uofttri.com', 'temp_password_hash', 'administrator', true]);
+      `, ['Admin User', 'info@uoft-tri.club', 'temp_password_hash', 'administrator', true]);
       console.log('✅ Admin user created');
     } else {
       console.log('✅ Admin user already exists');
     }
 
     // Check if Jade's account exists
-    const jadeExists = await pool.query('SELECT id FROM users WHERE email = $1', ['jade@uofttri.com']);
+    const jadeExists = await pool.query('SELECT id FROM users WHERE email = $1', ['info@uoft-tri.club']);
     
     if (jadeExists.rows.length === 0) {
       // Create Jade's account
       await pool.query(`
         INSERT INTO users (name, email, password_hash, role, charter_accepted)
         VALUES ($1, $2, $3, $4, $5)
-      `, ['Jade Clement', 'jade@uofttri.com', 'temp_password_hash', 'administrator', true]);
+      `, ['Jade Clement', 'info@uoft-tri.club', 'temp_password_hash', 'administrator', true]);
       console.log('✅ Jade\'s account created');
     } else {
       console.log('✅ Jade\'s account already exists');

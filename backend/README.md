@@ -81,7 +81,7 @@ A complete Node.js + Express + SQLite backend for the UofT Triathlon Club websit
 
 After running `npm run init-db`, you'll have a default admin account:
 
-- **Email**: `admin@uofttriathlon.com`
+- **Email**: `info@uoft-tri.club`
 - **Password**: `admin123`
 - **Role**: Administrator
 

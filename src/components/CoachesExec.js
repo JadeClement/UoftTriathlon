@@ -566,7 +566,7 @@ const CoachesExec = () => {
         <div className="contact-section">
           <h2 className="section-subtitle">Get in Touch</h2>
           <p className="contact-info">
-            For general inquiries about the club, please email <a href="mailto:info@uofttriathlon.com">info@uofttriathlon.com</a>.
+            For general inquiries about the club, please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a>.
           </p>
          
         </div>

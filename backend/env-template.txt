@@ -12,11 +12,11 @@ TWILIO_PHONE_NUMBER=+1234567890
 # SendGrid Configuration
 # Get your API key from SendGrid Dashboard: https://app.sendgrid.com/settings/api_keys
 SENDGRID_API_KEY=your_sendgrid_api_key_here
-SENDGRID_FROM_EMAIL=info@uofttriathlon.com
+SENDGRID_FROM_EMAIL=info@uoft-tri.club
 
 # Example:
 # SENDGRID_API_KEY=SG.1234567890abcdef1234567890abcdef
-# SENDGRID_FROM_EMAIL=info@uofttriathlon.com
+# SENDGRID_FROM_EMAIL=info@uoft-tri.club
 
 # JWT Configuration
 # Generate a secure random string for JWT signing
@@ -35,4 +35,4 @@ SMTP_PORT=587
 SMTP_USER=your_smtp_username
 SMTP_PASS=your_smtp_password_or_app_password
 SMTP_SECURE=false
-SMTP_FROM="UofT Triathlon Club" <no-reply@uofttriathlon.com>
+SMTP_FROM="UofT Triathlon Club" <info@uoft-tri.club>

@@ -379,7 +379,7 @@ async function seedInitialData() {
   console.log('🌱 Seeding initial data...');
   
   // Check if admin user already exists
-  db.get('SELECT id FROM users WHERE email = ?', ['admin@uofttriathlon.com'], async (err, row) => {
+  db.get('SELECT id FROM users WHERE email = ?', ['info@uoft-tri.club'], async (err, row) => {
     if (err) {
       console.error('❌ Error checking admin user:', err.message);
       return;
@@ -392,12 +392,12 @@ async function seedInitialData() {
       db.run(`
         INSERT INTO users (email, password, name, role, join_date, expiry_date, payment_confirmed, is_active)
         VALUES (?, ?, ?, 'administrator', DATE('now'), DATE('now', '+1 year'), 1, 1)
-      `, ['admin@uofttriathlon.com', hashedPassword, 'Club Administrator'], function(err) {
+      `, ['info@uoft-tri.club', hashedPassword, 'Club Administrator'], function(err) {
         if (err) {
           console.error('❌ Error creating admin user:', err.message);
         } else {
           console.log('✅ Admin user created with ID:', this.lastID);
-          console.log('🔑 Admin credentials: admin@uofttriathlon.com / admin123');
+          console.log('🔑 Admin credentials: info@uoft-tri.club / admin123');
         }
       });
     } else {
