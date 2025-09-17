@@ -10,7 +10,7 @@ const Navbar = () => {
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [banner, setBanner] = useState({ enabled: false, message: '' });
   const navigate = useNavigate();
-  const { currentUser, isMember, isAdmin, logout } = useAuth();
+  const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
   const profileRef = useRef(null);
   const moreRef = useRef(null);
   
@@ -195,7 +195,7 @@ const Navbar = () => {
             </Link>
           )}
           
-          {currentUser && isAdmin(currentUser) && (
+          {currentUser && (isAdmin(currentUser) || isExec(currentUser)) && (
             <Link
               to="/admin"
               className={`navbar-link ${isActive('/admin') ? 'active' : ''}`}
