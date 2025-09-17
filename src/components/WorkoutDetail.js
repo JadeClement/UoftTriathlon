@@ -723,58 +723,63 @@ const WorkoutDetail = () => {
             </div>
           )}
 
-          <div className="workout-actions">
-            <div className="button-group">
-              {!isWorkoutArchived() && (
-                <button 
-                  onClick={handleSignUp}
-                  className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
-                  disabled={workout.capacity && signups.length >= workout.capacity && !isSignedUp}
-                >
-                  {isSignedUp ? '✓ Signed Up' : (workout.capacity && signups.length >= workout.capacity) ? 'Full' : 'Sign Up'}
-                </button>
-              )}
-              
-              {/* Cancel button for signed-up users */}
-              {isSignedUp && !isWorkoutArchived() && (
-                <button 
-                  onClick={handleCancelClick}
-                  className="cancel-btn"
-                >
-                  Cancel
-                </button>
-              )}
-              
-              {/* Waitlist button for full workouts */}
-              {workout.capacity && signups.length >= workout.capacity && !isSignedUp && !isWorkoutArchived() && (
-                <button 
-                  onClick={isOnWaitlist ? handleWaitlistLeave : handleWaitlistJoin}
-                  className={`waitlist-btn ${isOnWaitlist ? 'on-waitlist' : ''}`}
-                >
-                  {isOnWaitlist ? 'Leave Waitlist' : 'Join Waitlist'}
-                </button>
-              )}
+          {/* Only show signup/waitlist buttons for non-swim workouts */}
+          {!isSwimWorkout && (
+            <div className="workout-actions">
+              <div className="button-group">
+                {!isWorkoutArchived() && (
+                  <button 
+                    onClick={handleSignUp}
+                    className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
+                    disabled={workout.capacity && signups.length >= workout.capacity && !isSignedUp}
+                  >
+                    {isSignedUp ? '✓ Signed Up' : (workout.capacity && signups.length >= workout.capacity) ? 'Full' : 'Sign Up'}
+                  </button>
+                )}
+                
+                {/* Cancel button for signed-up users */}
+                {isSignedUp && !isWorkoutArchived() && (
+                  <button 
+                    onClick={handleCancelClick}
+                    className="cancel-btn"
+                  >
+                    Cancel
+                  </button>
+                )}
+                
+                {/* Waitlist button for full workouts */}
+                {workout.capacity && signups.length >= workout.capacity && !isSignedUp && !isWorkoutArchived() && (
+                  <button 
+                    onClick={isOnWaitlist ? handleWaitlistLeave : handleWaitlistJoin}
+                    className={`waitlist-btn ${isOnWaitlist ? 'on-waitlist' : ''}`}
+                  >
+                    {isOnWaitlist ? 'Leave Waitlist' : 'Join Waitlist'}
+                  </button>
+                )}
 
-              {/* Position label when on waitlist */}
-              {workout.capacity && signups.length >= workout.capacity && isOnWaitlist && !isWorkoutArchived() && (
-                <span className="waitlist-position">
-                  {`You're ${formatOrdinal(getWaitlistPosition())} on the waitlist`}
-                </span>
-              )}
+                {/* Position label when on waitlist */}
+                {workout.capacity && signups.length >= workout.capacity && isOnWaitlist && !isWorkoutArchived() && (
+                  <span className="waitlist-position">
+                    {`You're ${formatOrdinal(getWaitlistPosition())} on the waitlist`}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        <div className="signups-section">
-          <h2>
-            {isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') 
-              ? `Swim Attendance (${swimMembers.length})` 
-              : `Who's Coming (${signups.length}${workout.capacity ? `/${workout.capacity}` : ''})`
-            }
-          </h2>
-          
-          {/* Show swim members for swim workouts when user is exec/admin */}
-          {isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') ? (
+        {/* Only show signups section for non-swim workouts OR swim workouts when user is exec/admin */}
+        {(!isSwimWorkout || (isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator'))) && (
+          <div className="signups-section">
+            <h2>
+              {isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') 
+                ? `Swim Attendance (${swimMembers.length})` 
+                : `Who's Coming (${signups.length}${workout.capacity ? `/${workout.capacity}` : ''})`
+              }
+            </h2>
+            
+            {/* Show swim members for swim workouts when user is exec/admin */}
+            {isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') ? (
             swimMembers.length === 0 ? (
               <p className="no-signups">Loading members...</p>
             ) : (
@@ -939,10 +944,11 @@ const WorkoutDetail = () => {
               </>
             )
           )}
-        </div>
+          </div>
+        )}
 
-        {/* Waitlist section */}
-        {workout.capacity && waitlist.length > 0 && (
+        {/* Waitlist section - only show for non-swim workouts */}
+        {!isSwimWorkout && workout.capacity && waitlist.length > 0 && (
           <div className="waitlist-section">
             <h2>Waitlist ({waitlist.length})</h2>
             <div className="waitlist-list">
