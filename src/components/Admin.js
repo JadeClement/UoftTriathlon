@@ -1057,9 +1057,6 @@ const Admin = () => {
                           {workout.workout_date && (
                             <div className="workout-date">
                               {new Date(workout.workout_date).toLocaleDateString()}
-                              {workout.workout_time && (
-                                <div className="workout-time">{workout.workout_time}</div>
-                              )}
                             </div>
                           )}
                         </td>
