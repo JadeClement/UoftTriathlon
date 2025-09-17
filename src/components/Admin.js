@@ -16,6 +16,19 @@ const Admin = () => {
   const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
   const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
 
+  // Attendance dashboard state
+  const [attendanceWorkouts, setAttendanceWorkouts] = useState([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceFilters, setAttendanceFilters] = useState({
+    type: 'all',
+    status: 'all',
+    page: 1
+  });
+  const [attendancePagination, setAttendancePagination] = useState({});
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
+  const [attendanceDetails, setAttendanceDetails] = useState(null);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+
   const [editingMember, setEditingMember] = useState(null);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -81,6 +94,15 @@ const Admin = () => {
 
     loadAdminData();
   }, [currentUser, isAdmin]);
+
+  // Load attendance data when filters change
+  useEffect(() => {
+    if (!currentUser || !isAdmin(currentUser)) {
+      return;
+    }
+
+    loadAttendanceData();
+  }, [attendanceFilters, currentUser, isAdmin]);
 
   const loadBannerData = async () => {
     try {
@@ -223,6 +245,78 @@ const Admin = () => {
     } catch (error) {
       console.error('Error loading admin data:', error);
     }
+  };
+
+  // Load attendance dashboard data
+  const loadAttendanceData = async () => {
+    try {
+      setAttendanceLoading(true);
+      const token = localStorage.getItem('triathlonToken');
+      
+      const params = new URLSearchParams({
+        page: attendanceFilters.page,
+        type: attendanceFilters.type,
+        status: attendanceFilters.status
+      });
+
+      const response = await fetch(`${API_BASE_URL}/admin/attendance-dashboard?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAttendanceWorkouts(data.workouts);
+        setAttendancePagination(data.pagination);
+      } else {
+        console.error('Failed to load attendance data');
+      }
+    } catch (error) {
+      console.error('Error loading attendance data:', error);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  // Load detailed attendance for a specific workout
+  const loadAttendanceDetails = async (workoutId) => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      
+      const response = await fetch(`${API_BASE_URL}/admin/attendance-dashboard/${workoutId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAttendanceDetails(data);
+        setShowAttendanceModal(true);
+      } else {
+        console.error('Failed to load attendance details');
+      }
+    } catch (error) {
+      console.error('Error loading attendance details:', error);
+    }
+  };
+
+  // Handle attendance filter changes
+  const handleAttendanceFilterChange = (filterType, value) => {
+    setAttendanceFilters(prev => ({
+      ...prev,
+      [filterType]: value,
+      page: 1 // Reset to first page when changing filters
+    }));
+  };
+
+  // Handle attendance pagination
+  const handleAttendancePageChange = (newPage) => {
+    setAttendanceFilters(prev => ({
+      ...prev,
+      page: newPage
+    }));
   };
 
   const approveMember = (member) => {
@@ -510,6 +604,12 @@ const Admin = () => {
           onClick={() => setActiveTab('banner')}
         >
           Site Banner
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'attendance' ? 'active' : ''}`}
+          onClick={() => setActiveTab('attendance')}
+        >
+          Attendance
         </button>
       </div>
 
@@ -878,6 +978,142 @@ const Admin = () => {
           </div>
         )}
 
+        {/* Attendance Dashboard Tab */}
+        {activeTab === 'attendance' && (
+          <div className="attendance-section">
+            <h2>Attendance Dashboard</h2>
+            
+            {/* Filters */}
+            <div className="attendance-filters">
+              <div className="filter-group">
+                <label>Workout Type:</label>
+                <select 
+                  value={attendanceFilters.type} 
+                  onChange={(e) => handleAttendanceFilterChange('type', e.target.value)}
+                >
+                  <option value="all">All Types</option>
+                  <option value="swim">Swim</option>
+                  <option value="bike">Bike</option>
+                  <option value="run">Run</option>
+                  <option value="brick">Brick</option>
+                </select>
+              </div>
+              
+              <div className="filter-group">
+                <label>Status:</label>
+                <select 
+                  value={attendanceFilters.status} 
+                  onChange={(e) => handleAttendanceFilterChange('status', e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Attendance Table */}
+            {attendanceLoading ? (
+              <div className="loading">Loading attendance data...</div>
+            ) : (
+              <div className="attendance-table-container">
+                <table className="attendance-table">
+                  <thead>
+                    <tr>
+                      <th>Workout</th>
+                      <th>Type</th>
+                      <th>Date</th>
+                      <th>Status</th>
+                      <th>Attendance</th>
+                      <th>Submitted By</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendanceWorkouts.map(workout => (
+                      <tr key={workout.id} className="attendance-row">
+                        <td className="workout-title">{workout.title}</td>
+                        <td>
+                          <span className={`workout-type-badge ${workout.workout_type?.toLowerCase()}`}>
+                            {workout.workout_type}
+                          </span>
+                        </td>
+                        <td>
+                          {workout.workout_date && (
+                            <div className="workout-date">
+                              {new Date(workout.workout_date).toLocaleDateString()}
+                              {workout.workout_time && (
+                                <div className="workout-time">{workout.workout_time}</div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`status-badge ${workout.attendance_status}`}>
+                            {workout.attendance_status === 'submitted' ? '✓ Submitted' : '⏳ Pending'}
+                          </span>
+                        </td>
+                        <td>
+                          {workout.attendance_status === 'submitted' ? (
+                            <div className="attendance-stats">
+                              <span className="attended-count">{workout.attended_count || 0} attended</span>
+                              <span className="total-count">of {workout.total_attendance_records || 0} total</span>
+                            </div>
+                          ) : (
+                            <span className="no-attendance">No attendance recorded</span>
+                          )}
+                        </td>
+                        <td>
+                          {workout.submitted_by ? (
+                            <div className="submitted-by">
+                              <span>{workout.submitted_by}</span>
+                              {workout.last_attendance_submitted && (
+                                <div className="submitted-time">
+                                  {new Date(workout.last_attendance_submitted).toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="not-submitted">-</span>
+                          )}
+                        </td>
+                        <td>
+                          <button 
+                            className="view-details-btn"
+                            onClick={() => loadAttendanceDetails(workout.id)}
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                {attendancePagination.pages > 1 && (
+                  <div className="pagination">
+                    <button 
+                      onClick={() => handleAttendancePageChange(attendancePagination.page - 1)}
+                      disabled={attendancePagination.page <= 1}
+                    >
+                      Previous
+                    </button>
+                    <span>
+                      Page {attendancePagination.page} of {attendancePagination.pages}
+                    </span>
+                    <button 
+                      onClick={() => handleAttendancePageChange(attendancePagination.page + 1)}
+                      disabled={attendancePagination.page >= attendancePagination.pages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
 
@@ -1007,6 +1243,146 @@ const Admin = () => {
                 <button type="button" className="btn btn-secondary" onClick={cancelApproval}>Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance Details Modal */}
+      {showAttendanceModal && attendanceDetails && (
+        <div className="modal-overlay">
+          <div className="modal attendance-modal">
+            <div className="modal-header">
+              <h2>Attendance Details: {attendanceDetails.workout.title}</h2>
+              <button 
+                className="close-btn"
+                onClick={() => setShowAttendanceModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="attendance-details-content">
+              {/* Workout Info */}
+              <div className="workout-info-section">
+                <h3>Workout Information</h3>
+                <div className="workout-info-grid">
+                  <div><strong>Type:</strong> {attendanceDetails.workout.workout_type}</div>
+                  <div><strong>Date:</strong> {attendanceDetails.workout.workout_date && new Date(attendanceDetails.workout.workout_date).toLocaleDateString()}</div>
+                  <div><strong>Time:</strong> {attendanceDetails.workout.workout_time || 'Not specified'}</div>
+                  <div><strong>Capacity:</strong> {attendanceDetails.workout.capacity || 'Unlimited'}</div>
+                </div>
+                {attendanceDetails.workout.content && (
+                  <div className="workout-description">
+                    <strong>Description:</strong>
+                    <p>{attendanceDetails.workout.content}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Attendance Summary */}
+              {attendanceDetails.summary && (
+                <div className="attendance-summary-section">
+                  <h3>Attendance Summary</h3>
+                  <div className="summary-stats">
+                    <div className="stat-item">
+                      <span className="stat-number">{attendanceDetails.summary.attended_count}</span>
+                      <span className="stat-label">Attended</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-number">{attendanceDetails.summary.absent_count}</span>
+                      <span className="stat-label">Absent</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-number">{attendanceDetails.summary.total_records}</span>
+                      <span className="stat-label">Total Records</span>
+                    </div>
+                  </div>
+                  <div className="submission-info">
+                    <div><strong>First Submitted:</strong> {attendanceDetails.summary.first_submitted ? new Date(attendanceDetails.summary.first_submitted).toLocaleString() : 'N/A'}</div>
+                    <div><strong>Last Updated:</strong> {attendanceDetails.summary.last_submitted ? new Date(attendanceDetails.summary.last_submitted).toLocaleString() : 'N/A'}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Signups List */}
+              {attendanceDetails.signups.length > 0 && (
+                <div className="signups-section">
+                  <h3>Signups ({attendanceDetails.signups.length})</h3>
+                  <div className="signups-list">
+                    {attendanceDetails.signups.map(signup => (
+                      <div key={signup.id} className="signup-item">
+                        <div className="signup-user-info">
+                          {signup.profile_picture_url ? (
+                            <img 
+                              src={`${API_BASE_URL.replace('/api', '')}${signup.profile_picture_url}`} 
+                              alt="Profile" 
+                              className="user-avatar"
+                            />
+                          ) : (
+                            <div className="user-avatar-placeholder">
+                              <img 
+                                src="/images/default_profile.png" 
+                                alt="Profile" 
+                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                              />
+                            </div>
+                          )}
+                          <div className="user-details">
+                            <span className="user-name">{signup.user_name}</span>
+                            <span className="user-role">{signup.role}</span>
+                          </div>
+                        </div>
+                        <div className="signup-time">
+                          {new Date(signup.signup_time).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Attendance Records */}
+              {attendanceDetails.attendance.length > 0 && (
+                <div className="attendance-records-section">
+                  <h3>Attendance Records ({attendanceDetails.attendance.length})</h3>
+                  <div className="attendance-list">
+                    {attendanceDetails.attendance.map(record => (
+                      <div key={record.id} className={`attendance-item ${record.attended ? 'attended' : 'absent'}`}>
+                        <div className="attendance-user-info">
+                          {record.profile_picture_url ? (
+                            <img 
+                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
+                              alt="Profile" 
+                              className="user-avatar"
+                            />
+                          ) : (
+                            <div className="user-avatar-placeholder">
+                              <img 
+                                src="/images/default_profile.png" 
+                                alt="Profile" 
+                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                              />
+                            </div>
+                          )}
+                          <div className="user-details">
+                            <span className="user-name">{record.user_name}</span>
+                            <span className="user-role">{record.role}</span>
+                          </div>
+                        </div>
+                        <div className="attendance-status">
+                          <span className={`status-badge ${record.attended ? 'attended' : 'absent'}`}>
+                            {record.attended ? '✓ Attended' : '✗ Absent'}
+                          </span>
+                          <div className="recorded-time">
+                            {new Date(record.recorded_at).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
