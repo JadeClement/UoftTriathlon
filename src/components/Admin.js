@@ -102,19 +102,18 @@ const Admin = () => {
     setEmailStatus(null);
     setBulkEmailStatus(null);
     
-    if (!template.title && !template.intro && !template.bullets.some(b => b.trim()) && !template.body) {
-      const errorMsg = 'Please provide template content.';
-      if (emailType === 'individual') {
-        setEmailStatus({ type: 'error', text: errorMsg });
-      } else {
-        setBulkEmailStatus({ type: 'error', text: errorMsg });
-      }
-      return;
-    }
-    
     if (emailType === 'individual' && !emailForm.to) {
       setEmailStatus({ type: 'error', text: 'Please provide recipient email.' });
       return;
+    }
+    
+    // Only require template content for bulk emails
+    if (emailType === 'everyone') {
+      const hasTemplateContent = (template.title || template.intro || (template.bullets && template.bullets.some(b => (b || '').trim())) || template.body);
+      if (!hasTemplateContent) {
+        setBulkEmailStatus({ type: 'error', text: 'Please provide template content.' });
+        return;
+      }
     }
     
     try {
