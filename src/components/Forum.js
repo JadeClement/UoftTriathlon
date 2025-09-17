@@ -1166,7 +1166,7 @@ const Forum = () => {
                     {/* Sign-up button positioned at bottom right */}
                     <div className="workout-signup-section">
                       <div className="button-group">
-                        {!isWorkoutArchived(post) && (
+                        {!isWorkoutArchived(post) && post.workout_type !== 'swim' && (
                           <button 
                             className={`signup-btn ${isUserSignedUp(post.id) ? 'signed-up' : ''} ${isWorkoutFull(post.id) ? 'full' : ''}`}
                             onClick={(e) => {
@@ -1180,7 +1180,7 @@ const Forum = () => {
                         )}
                         
                         {/* Cancel button for signed-up users */}
-                        {isUserSignedUp(post.id) && !isWorkoutArchived(post) && (
+                        {isUserSignedUp(post.id) && !isWorkoutArchived(post) && post.workout_type !== 'swim' && (
                           <button 
                             className="cancel-btn"
                             onClick={(e) => {
@@ -1193,7 +1193,7 @@ const Forum = () => {
                         )}
                         
                         {/* Waitlist button for full workouts */}
-                        {post.capacity && isWorkoutFull(post.id) && !isUserSignedUp(post.id) && !isWorkoutArchived(post) && (
+                        {post.capacity && isWorkoutFull(post.id) && !isUserSignedUp(post.id) && !isWorkoutArchived(post) && post.workout_type !== 'swim' && (
                           <button 
                             className={`waitlist-btn ${isUserOnWaitlist(post.id) ? 'on-waitlist' : ''}`}
                             onClick={(e) => {

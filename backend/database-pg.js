@@ -102,6 +102,21 @@ async function initializeDatabase() {
     `);
     console.log('✅ Workout attendance table created');
 
+    // Add late column to workout_attendance table if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE workout_attendance 
+        ADD COLUMN late BOOLEAN DEFAULT FALSE
+      `);
+      console.log('✅ Late column added to workout_attendance table');
+    } catch (error) {
+      if (error.code === '42701') {
+        console.log('✅ Late column already exists in workout_attendance table');
+      } else {
+        console.error('❌ Error adding late column:', error.message);
+      }
+    }
+
     // Create workout_waitlist table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS workout_waitlist (

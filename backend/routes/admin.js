@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireAdmin, requireExec } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -884,6 +884,196 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
     }
   } catch (error) {
     console.error('Admin send bulk email error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get attendance dashboard data
+router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), async (req, res) => {
+  try {
+    const { page = 1, limit = 20, type = '', status = '' } = req.query;
+    const offset = (page - 1) * limit;
+
+    let whereClause = "WHERE p.type = 'workout'";
+    let params = [];
+    let paramCount = 0;
+
+    // Filter by workout type
+    if (type && type !== 'all') {
+      paramCount++;
+      whereClause += ` AND p.workout_type = $${paramCount}`;
+      params.push(type);
+    }
+
+    // Filter by attendance status
+    if (status === 'submitted') {
+      whereClause += ` AND EXISTS (SELECT 1 FROM workout_attendance wa WHERE wa.post_id = p.id)`;
+    } else if (status === 'pending') {
+      whereClause += ` AND NOT EXISTS (SELECT 1 FROM workout_attendance wa WHERE wa.post_id = p.id)`;
+    }
+
+    // Get workouts with attendance status
+    const workoutsQuery = `
+      SELECT 
+        p.id,
+        p.title,
+        p.workout_type,
+        p.workout_date,
+        p.workout_time,
+        p.capacity,
+        p.created_at,
+        CASE 
+          WHEN EXISTS (SELECT 1 FROM workout_attendance wa WHERE wa.post_id = p.id) 
+          THEN 'submitted'
+          ELSE 'pending'
+        END as attendance_status,
+        (
+          SELECT COUNT(*) 
+          FROM workout_attendance wa 
+          WHERE wa.post_id = p.id AND wa.attended = true
+        ) as attended_count,
+        (
+          SELECT COUNT(*) 
+          FROM workout_attendance wa 
+          WHERE wa.post_id = p.id
+        ) as total_attendance_records,
+        (
+          SELECT COUNT(*) 
+          FROM workout_attendance wa 
+          WHERE wa.post_id = p.id AND wa.late = true
+        ) as late_count,
+        (
+          SELECT wa.recorded_at 
+          FROM workout_attendance wa 
+          WHERE wa.post_id = p.id 
+          ORDER BY wa.recorded_at DESC 
+          LIMIT 1
+        ) as last_attendance_submitted,
+        (
+          SELECT u.name 
+          FROM workout_attendance wa 
+          JOIN users u ON wa.user_id = u.id 
+          WHERE wa.post_id = p.id 
+          ORDER BY wa.recorded_at DESC 
+          LIMIT 1
+        ) as submitted_by
+      FROM forum_posts p
+      ${whereClause}
+      ORDER BY p.workout_date DESC, p.created_at DESC
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+    `;
+
+    params.push(parseInt(limit), offset);
+    const workoutsResult = await pool.query(workoutsQuery, params);
+
+    // Get total count for pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM forum_posts p
+      ${whereClause}
+    `;
+    const countResult = await pool.query(countQuery, params.slice(0, -2));
+    const total = parseInt(countResult.rows[0].total);
+
+    res.json({
+      workouts: workoutsResult.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get attendance dashboard error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get detailed attendance for a specific workout
+router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('exec'), async (req, res) => {
+  try {
+    const { workoutId } = req.params;
+
+    // Get workout details
+    const workoutQuery = `
+      SELECT 
+        p.id,
+        p.title,
+        p.workout_type,
+        p.workout_date,
+        p.workout_time,
+        p.capacity,
+        p.content
+      FROM forum_posts p
+      WHERE p.id = $1 AND p.type = 'workout'
+    `;
+    const workoutResult = await pool.query(workoutQuery, [workoutId]);
+
+    if (workoutResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+
+    const workout = workoutResult.rows[0];
+
+    // Get signups for this workout
+    const signupsQuery = `
+      SELECT 
+        ws.id,
+        ws.user_id,
+        ws.signup_time,
+        u.name as user_name,
+        u.email,
+        u.role,
+        NULL as profile_picture_url
+      FROM workout_signups ws
+      JOIN users u ON ws.user_id = u.id
+      WHERE ws.post_id = $1
+      ORDER BY ws.signup_time ASC
+    `;
+    const signupsResult = await pool.query(signupsQuery, [workoutId]);
+
+    // Get attendance records
+    const attendanceQuery = `
+      SELECT 
+        wa.id,
+        wa.user_id,
+        wa.attended,
+        wa.late,
+        wa.recorded_at,
+        u.name as user_name,
+        u.email,
+        u.role,
+        NULL as profile_picture_url
+      FROM workout_attendance wa
+      JOIN users u ON wa.user_id = u.id
+      WHERE wa.post_id = $1
+      ORDER BY wa.recorded_at DESC
+    `;
+    const attendanceResult = await pool.query(attendanceQuery, [workoutId]);
+
+    // Get attendance summary
+    const summaryQuery = `
+      SELECT 
+        COUNT(*) as total_records,
+        COUNT(CASE WHEN attended = true THEN 1 END) as attended_count,
+        COUNT(CASE WHEN attended = false THEN 1 END) as absent_count,
+        COUNT(CASE WHEN late = true THEN 1 END) as late_count,
+        MIN(recorded_at) as first_submitted,
+        MAX(recorded_at) as last_submitted
+      FROM workout_attendance
+      WHERE post_id = $1
+    `;
+    const summaryResult = await pool.query(summaryQuery, [workoutId]);
+
+    res.json({
+      workout,
+      signups: signupsResult.rows,
+      attendance: attendanceResult.rows,
+      summary: summaryResult.rows[0]
+    });
+  } catch (error) {
+    console.error('Get workout attendance details error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
