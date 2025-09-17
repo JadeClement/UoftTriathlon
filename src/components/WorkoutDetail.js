@@ -878,26 +878,17 @@ const WorkoutDetail = () => {
                 {/* Submit attendance button for executives and administrators */}
                 {swimMembers.length > 0 && (
                   <div className="attendance-submit">
-                    {attendanceSaved ? (
-                      <div className="attendance-locked">
-                        <span className="locked-icon">🔒</span>
-                        <span className="locked-text">Attendance Submitted - Cannot be Modified</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="attendance-debug">
-                          <small>📊 {swimMembers.length} members • {Object.keys(attendance).length} attendance records</small>
-                        </div>
-                        <button 
-                          onClick={handleSubmitAttendance}
-                          className="submit-attendance-btn"
-                          title="Submit attendance and update absences (cannot be modified after submission)"
-                          disabled={submittingAttendance}
-                        >
-                          {submittingAttendance ? 'Submitting...' : '📝 Submit Swim Attendance'}
-                        </button>
-                      </>
-                    )}
+                    <div className="attendance-debug">
+                      <small>📊 {swimMembers.length} members • {Object.keys(attendance).length} attendance records</small>
+                    </div>
+                    <button 
+                      onClick={handleSubmitAttendance}
+                      className={`submit-attendance-btn ${attendanceSaved ? 'saved' : ''}`}
+                      title="Submit attendance and update absences"
+                      disabled={submittingAttendance}
+                    >
+                      {submittingAttendance ? 'Submitting...' : attendanceSaved ? '✅ Swim Attendance Submitted' : '📝 Submit Swim Attendance'}
+                    </button>
                   </div>
                 )}
               </>
@@ -969,26 +960,17 @@ const WorkoutDetail = () => {
                 {/* Submit attendance button for executives and administrators */}
                 {currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') && signups.length > 0 && (
                   <div className="attendance-submit">
-                    {attendanceSaved ? (
-                      <div className="attendance-locked">
-                        <span className="locked-icon">🔒</span>
-                        <span className="locked-text">Attendance Submitted - Cannot be Modified</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="attendance-debug">
-                          <small>📊 {signups.length} signups • {Object.keys(attendance).length} attendance records</small>
-                        </div>
-                        <button 
-                          onClick={handleSubmitAttendance}
-                          className="submit-attendance-btn"
-                          title="Submit attendance and update absences (cannot be modified after submission)"
-                          disabled={submittingAttendance}
-                        >
-                          {submittingAttendance ? 'Submitting...' : '📝 Submit Attendance'}
-                        </button>
-                      </>
-                    )}
+                    <div className="attendance-debug">
+                      <small>📊 {signups.length} signups • {Object.keys(attendance).length} attendance records</small>
+                    </div>
+                    <button 
+                      onClick={handleSubmitAttendance}
+                      className={`submit-attendance-btn ${attendanceSaved ? 'saved' : ''}`}
+                      title="Submit attendance and update absences"
+                      disabled={submittingAttendance}
+                    >
+                      {submittingAttendance ? 'Submitting...' : attendanceSaved ? '✅ Attendance Submitted' : '📝 Submit Attendance'}
+                    </button>
                   </div>
                 )}
               </>
