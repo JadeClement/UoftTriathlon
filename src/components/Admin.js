@@ -292,18 +292,25 @@ const Admin = () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       
+      console.log('🔍 Loading attendance details for workout:', workoutId);
+      console.log('🔍 API URL:', `${API_BASE_URL}/admin/attendance-dashboard/${workoutId}`);
+      
       const response = await fetch(`${API_BASE_URL}/admin/attendance-dashboard/${workoutId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
+      console.log('🔍 Details response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 Attendance details received:', data);
         setAttendanceDetails(data);
         setShowAttendanceModal(true);
       } else {
-        console.error('Failed to load attendance details');
+        const errorText = await response.text();
+        console.error('Failed to load attendance details:', response.status, errorText);
       }
     } catch (error) {
       console.error('Error loading attendance details:', error);
