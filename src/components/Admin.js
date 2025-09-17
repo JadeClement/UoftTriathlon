@@ -1069,7 +1069,6 @@ const Admin = () => {
                           {workout.attendance_status === 'submitted' ? (
                             <div className="attendance-stats">
                               <span className="attended-count">{workout.attended_count || 0} attended</span>
-                              <span className="total-count">of {workout.total_attendance_records || 0} total</span>
                               {workout.late_count > 0 && (
                                 <span className="late-count">• {workout.late_count} late</span>
                               )}
