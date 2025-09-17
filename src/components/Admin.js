@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import './Admin.css';
 
 const Admin = () => {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, isExec } = useAuth();
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
@@ -75,12 +75,13 @@ const Admin = () => {
 
   // Load data from backend API
   useEffect(() => {
-    if (!currentUser || !isAdmin(currentUser)) {
+    // Allow admins and execs (exec implies admin via role hierarchy)
+    if (!currentUser || !isExec(currentUser)) {
       return;
     }
 
     loadAdminData();
-  }, [currentUser, isAdmin]);
+  }, [currentUser, isExec]);
 
   const loadBannerData = async () => {
     try {
@@ -462,9 +463,9 @@ const Admin = () => {
   // Debug: Log current user info
   console.log('Current user:', currentUser);
   console.log('Is admin check:', isAdmin(currentUser));
-
-  // Check if current user is admin
-  if (!currentUser || !isAdmin(currentUser)) {
+  
+  // Allow admins and execs to access dashboard
+  if (!currentUser || !isExec(currentUser)) {
     return (
       <div className="admin-container">
         <div className="admin-access-denied">
@@ -493,12 +494,14 @@ const Admin = () => {
         >
           All Members
         </button>
-        <button 
-          className={`tab-button ${activeTab === 'pending' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pending')}
-        >
-          Pending Approval
-        </button>
+        {isAdmin(currentUser) && (
+          <button 
+            className={`tab-button ${activeTab === 'pending' ? 'active' : ''}`}
+            onClick={() => setActiveTab('pending')}
+          >
+            Pending Approval
+          </button>
+        )}
         <button 
           className={`tab-button ${activeTab === 'email' ? 'active' : ''}`}
           onClick={() => setActiveTab('email')}
@@ -534,7 +537,7 @@ const Admin = () => {
                     <th>Expiry Date</th>
                     <th>Absences</th>
                     <th>Charter Accepted</th>
-                    <th>Actions</th>
+                    {isAdmin(currentUser) && <th>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -557,10 +560,12 @@ const Admin = () => {
                         </span>
                       </td>
 
-                      <td>
-                        <button className="action-btn small" onClick={() => editMember(member)}>Edit</button>
-                        <button className="action-btn small danger" onClick={() => removeMember(member.id)}>Delete</button>
-                      </td>
+                      {isAdmin(currentUser) && (
+                        <td>
+                          <button className="action-btn small" onClick={() => editMember(member)}>Edit</button>
+                          <button className="action-btn small danger" onClick={() => removeMember(member.id)}>Delete</button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -569,7 +574,7 @@ const Admin = () => {
           </div>
         )}
 
-        {activeTab === 'pending' && (
+        {isAdmin(currentUser) && activeTab === 'pending' && (
           <div className="pending-section">
             <h2>Pending Approval</h2>
             {pendingMembers.length === 0 ? (

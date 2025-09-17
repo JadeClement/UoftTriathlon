@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requireExec } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -38,7 +38,8 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get all members with pagination
-router.get('/members', authenticateToken, requireAdmin, async (req, res) => {
+// Allow exec and admin to view members; restrict mutating routes to admin below
+router.get('/members', authenticateToken, requireExec, async (req, res) => {
   try {
     const { page = 1, limit = 50, search = '', role = '' } = req.query;
     const offset = (page - 1) * limit;
