@@ -259,18 +259,26 @@ const Admin = () => {
         status: attendanceFilters.status
       });
 
+      console.log('🔍 Loading attendance data with params:', params.toString());
+      console.log('🔍 API URL:', `${API_BASE_URL}/admin/attendance-dashboard?${params}`);
+
       const response = await fetch(`${API_BASE_URL}/admin/attendance-dashboard?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response headers:', response.headers);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 Attendance data received:', data);
         setAttendanceWorkouts(data.workouts);
         setAttendancePagination(data.pagination);
       } else {
-        console.error('Failed to load attendance data');
+        const errorText = await response.text();
+        console.error('Failed to load attendance data:', response.status, errorText);
       }
     } catch (error) {
       console.error('Error loading attendance data:', error);
