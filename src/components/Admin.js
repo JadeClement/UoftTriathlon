@@ -1073,6 +1073,9 @@ const Admin = () => {
                             <div className="attendance-stats">
                               <span className="attended-count">{workout.attended_count || 0} attended</span>
                               <span className="total-count">of {workout.total_attendance_records || 0} total</span>
+                              {workout.late_count > 0 && (
+                                <span className="late-count">• {workout.late_count} late</span>
+                              )}
                             </div>
                           ) : (
                             <span className="no-attendance">No attendance recorded</span>
@@ -1311,6 +1314,12 @@ const Admin = () => {
                       <span className="stat-number">{attendanceDetails.summary.total_records}</span>
                       <span className="stat-label">Total Records</span>
                     </div>
+                    {attendanceDetails.summary.late_count > 0 && (
+                      <div className="stat-item">
+                        <span className="stat-number">{attendanceDetails.summary.late_count}</span>
+                        <span className="stat-label">Late</span>
+                      </div>
+                    )}
                   </div>
                   <div className="submission-info">
                     <div><strong>First Submitted:</strong> {attendanceDetails.summary.first_submitted ? new Date(attendanceDetails.summary.first_submitted).toLocaleString() : 'N/A'}</div>

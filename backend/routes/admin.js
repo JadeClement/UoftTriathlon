@@ -937,6 +937,11 @@ router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), asyn
           WHERE wa.post_id = p.id
         ) as total_attendance_records,
         (
+          SELECT COUNT(*) 
+          FROM workout_attendance wa 
+          WHERE wa.post_id = p.id AND wa.late = true
+        ) as late_count,
+        (
           SELECT wa.recorded_at 
           FROM workout_attendance wa 
           WHERE wa.post_id = p.id 
@@ -1054,6 +1059,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
         COUNT(*) as total_records,
         COUNT(CASE WHEN attended = true THEN 1 END) as attended_count,
         COUNT(CASE WHEN attended = false THEN 1 END) as absent_count,
+        COUNT(CASE WHEN late = true THEN 1 END) as late_count,
         MIN(recorded_at) as first_submitted,
         MAX(recorded_at) as last_submitted
       FROM workout_attendance
