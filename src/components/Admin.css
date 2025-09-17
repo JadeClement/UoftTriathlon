@@ -864,9 +864,10 @@
 
 /* Attendance Details Modal */
 .attendance-modal {
-  max-width: 800px;
-  max-height: 90vh;
+  max-width: 1000px;
+  max-height: 95vh;
   overflow-y: auto;
+  width: 95vw;
 }
 
 .modal-header {
@@ -1053,6 +1054,46 @@
   background: #fef2f2;
   color: #dc2626;
   border: 1px solid #fecaca;
+}
+
+/* New Attendance Sections */
+.attended-section,
+.late-section,
+.absent-section {
+  margin-bottom: 2rem;
+}
+
+.attended-section h3 {
+  color: #059669;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+}
+
+.late-section h3 {
+  color: #dc2626;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+}
+
+.absent-section h3 {
+  color: #6b7280;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+}
+
+.attendance-item.late-member {
+  border-left: 4px solid #dc2626;
+  background: #fef2f2;
+}
+
+.attendance-item.attended {
+  border-left: 4px solid #059669;
+  background: #f0fdf4;
+}
+
+.attendance-item.absent {
+  border-left: 4px solid #6b7280;
+  background: #f9fafb;
 }
 
 /* Mobile Responsiveness */

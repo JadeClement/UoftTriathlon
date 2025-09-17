@@ -1361,13 +1361,16 @@ const Admin = () => {
                 </div>
               )}
 
-              {/* Attendance Records */}
-              {attendanceDetails.attendance.length > 0 && (
-                <div className="attendance-records-section">
-                  <h3>Attendance Records ({attendanceDetails.attendance.length})</h3>
+              {/* Who Was There - Attended Members */}
+              {attendanceDetails.attendance.filter(record => record.attended).length > 0 && (
+                <div className="attended-section">
+                  <h3>✅ Who Was There ({attendanceDetails.attendance.filter(record => record.attended).length})</h3>
                   <div className="attendance-list">
-                    {attendanceDetails.attendance.map(record => (
-                      <div key={record.id} className={`attendance-item ${record.attended ? 'attended' : 'absent'}`}>
+                    {attendanceDetails.attendance
+                      .filter(record => record.attended)
+                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                      .map(record => (
+                      <div key={record.id} className="attendance-item attended">
                         <div className="attendance-user-info">
                           {record.profile_picture_url ? (
                             <img 
@@ -1391,8 +1394,8 @@ const Admin = () => {
                         </div>
                         <div className="attendance-status">
                           <div className="status-badges">
-                            <span className={`status-badge ${record.attended ? 'attended' : 'absent'}`}>
-                              {record.attended ? '✓ Attended' : '✗ Absent'}
+                            <span className="status-badge attended">
+                              ✓ Attended
                             </span>
                             {record.late && (
                               <span className="status-badge late">
@@ -1400,9 +1403,90 @@ const Admin = () => {
                               </span>
                             )}
                           </div>
-                          <div className="recorded-time">
-                            {new Date(record.recorded_at).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Who Was Late - Only Late Members */}
+              {attendanceDetails.attendance.filter(record => record.attended && record.late).length > 0 && (
+                <div className="late-section">
+                  <h3>⏰ Who Was Late ({attendanceDetails.attendance.filter(record => record.attended && record.late).length})</h3>
+                  <div className="attendance-list">
+                    {attendanceDetails.attendance
+                      .filter(record => record.attended && record.late)
+                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                      .map(record => (
+                      <div key={record.id} className="attendance-item late-member">
+                        <div className="attendance-user-info">
+                          {record.profile_picture_url ? (
+                            <img 
+                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
+                              alt="Profile" 
+                              className="user-avatar"
+                            />
+                          ) : (
+                            <div className="user-avatar-placeholder">
+                              <img 
+                                src="/images/default_profile.png" 
+                                alt="Profile" 
+                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                              />
+                            </div>
+                          )}
+                          <div className="user-details">
+                            <span className="user-name">{record.user_name}</span>
+                            <span className="user-role">{record.role}</span>
                           </div>
+                        </div>
+                        <div className="attendance-status">
+                          <span className="status-badge late">
+                            ⏰ Late
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Who Was Absent */}
+              {attendanceDetails.attendance.filter(record => !record.attended).length > 0 && (
+                <div className="absent-section">
+                  <h3>❌ Who Was Absent ({attendanceDetails.attendance.filter(record => !record.attended).length})</h3>
+                  <div className="attendance-list">
+                    {attendanceDetails.attendance
+                      .filter(record => !record.attended)
+                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                      .map(record => (
+                      <div key={record.id} className="attendance-item absent">
+                        <div className="attendance-user-info">
+                          {record.profile_picture_url ? (
+                            <img 
+                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
+                              alt="Profile" 
+                              className="user-avatar"
+                            />
+                          ) : (
+                            <div className="user-avatar-placeholder">
+                              <img 
+                                src="/images/default_profile.png" 
+                                alt="Profile" 
+                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                              />
+                            </div>
+                          )}
+                          <div className="user-details">
+                            <span className="user-name">{record.user_name}</span>
+                            <span className="user-role">{record.role}</span>
+                          </div>
+                        </div>
+                        <div className="attendance-status">
+                          <span className="status-badge absent">
+                            ✗ Absent
+                          </span>
                         </div>
                       </div>
                     ))}
