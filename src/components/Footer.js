@@ -31,7 +31,7 @@ const Footer = () => {
           <div className="footer-section">
             <h4>Contact</h4>
             <p>📍 UofT Athletic Centre</p>
-            <p>📧 info@uofttriathlon.com</p>
+            <p>📧 info@uoft-tri.club</p>
             <div className="social-links">
               <a 
                 href="https://www.instagram.com/uoft_tri_club/" 
