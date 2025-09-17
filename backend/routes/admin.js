@@ -1024,10 +1024,9 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
         u.name as user_name,
         u.email,
         u.role,
-        up.profile_picture_url
+        NULL as profile_picture_url
       FROM workout_signups ws
       JOIN users u ON ws.user_id = u.id
-      LEFT JOIN user_profiles up ON u.id = up.user_id
       WHERE ws.post_id = $1
       ORDER BY ws.signup_time ASC
     `;
@@ -1044,10 +1043,9 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
         u.name as user_name,
         u.email,
         u.role,
-        up.profile_picture_url
+        NULL as profile_picture_url
       FROM workout_attendance wa
       JOIN users u ON wa.user_id = u.id
-      LEFT JOIN user_profiles up ON u.id = up.user_id
       WHERE wa.post_id = $1
       ORDER BY wa.recorded_at DESC
     `;
