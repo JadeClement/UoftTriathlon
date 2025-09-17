@@ -341,6 +341,18 @@
 .signup-user {
   font-weight: 600;
   color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.signed-up-badge {
+  background: #10b981;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 .user-avatar {

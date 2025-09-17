@@ -20,6 +20,8 @@ const WorkoutDetail = () => {
   const [attendance, setAttendance] = useState({});
   const [attendanceSaved, setAttendanceSaved] = useState(false);
   const [submittingAttendance, setSubmittingAttendance] = useState(false);
+  const [swimMembers, setSwimMembers] = useState([]);
+  const [isSwimWorkout, setIsSwimWorkout] = useState(false);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   const { 
@@ -110,6 +112,28 @@ const WorkoutDetail = () => {
         setWorkout(workoutData.workout);
         setSignups(workoutData.signups || []);
         setWaitlist(workoutData.waitlist || []);
+        
+        // Check if this is a swim workout and user is exec/admin
+        const isSwim = workoutData.workout?.workout_type === 'swim';
+        const isExec = currentUser?.role === 'exec' || currentUser?.role === 'administrator';
+        setIsSwimWorkout(isSwim);
+        
+        // Load swim members if this is a swim workout and user is exec/admin
+        if (isSwim && isExec) {
+          const swimMembersResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance-members`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (swimMembersResponse.ok) {
+            const swimMembersData = await swimMembersResponse.json();
+            console.log('🏊‍♂️ Swim members loaded:', swimMembersData);
+            setSwimMembers(swimMembersData.members || []);
+          } else {
+            console.error('❌ Failed to load swim members:', swimMembersResponse.status);
+          }
+        }
       } else {
         console.error('❌ Failed to load workout details:', workoutResponse.status, workoutResponse.statusText);
         const errorData = await workoutResponse.json().catch(() => ({}));
@@ -444,7 +468,10 @@ const WorkoutDetail = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ attendanceData: attendance })
+        body: JSON.stringify({ 
+          attendanceData: attendance,
+          isSwimWorkout: isSwimWorkout
+        })
       });
 
       if (response.ok) {
@@ -739,45 +766,41 @@ const WorkoutDetail = () => {
         </div>
 
         <div className="signups-section">
-          <h2>Who's Coming ({signups.length}{workout.capacity ? `/${workout.capacity}` : ''})</h2>
-          {signups.length === 0 ? (
-            <p className="no-signups">No one has signed up yet. Be the first!</p>
-          ) : (
-            <>
-              <div className="signups-list">
-                {signups.map(signup => (
-                  <div key={signup.id} className="signup-item">
-                    {/* Attendance checkbox for executives and administrators */}
-                    {currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+          <h2>
+            {isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') 
+              ? `Swim Attendance (${swimMembers.length})` 
+              : `Who's Coming (${signups.length}${workout.capacity ? `/${workout.capacity}` : ''})`
+            }
+          </h2>
+          
+          {/* Show swim members for swim workouts when user is exec/admin */}
+          {isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') ? (
+            swimMembers.length === 0 ? (
+              <p className="no-signups">Loading members...</p>
+            ) : (
+              <>
+                <div className="signups-list">
+                  {swimMembers.map(member => (
+                    <div key={member.user_id} className="signup-item">
+                      {/* Attendance checkbox for executives and administrators */}
                       <div className="attendance-checkbox">
                         <input
                           type="checkbox"
-                          id={`attendance-${signup.user_id}`}
-                          checked={attendance[signup.user_id] || false}
+                          id={`attendance-${member.user_id}`}
+                          checked={attendance[member.user_id] || false}
                           onChange={(e) => {
-                            console.log('🔍 Checkbox change for signup:', signup);
-                            handleAttendanceChange(signup.user_id, e.target.checked);
+                            console.log('🔍 Checkbox change for member:', member);
+                            handleAttendanceChange(member.user_id, e.target.checked);
                           }}
                           disabled={attendanceSaved}
                           title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as present"}
                         />
-                        <label htmlFor={`attendance-${signup.user_id}`} className="sr-only">
-                          Mark {signup.user_name} as present
+                        <label htmlFor={`attendance-${member.user_id}`} className="sr-only">
+                          Mark {member.user_name} as present
                         </label>
                       </div>
-                    )}
-                    
-                    <div className="signup-user-info">
-                      {signup.userProfilePictureUrl ? (
-                        <img 
-                          src={`${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`} 
-                          alt="Profile" 
-                          className="user-avatar"
-                          onError={(e) => {
-                            e.target.src = '/images/icon.png';
-                          }}
-                        />
-                      ) : (
+                      
+                      <div className="signup-user-info">
                         <div className="user-avatar-placeholder">
                           <img 
                             src="/images/default_profile.png" 
@@ -785,49 +808,136 @@ const WorkoutDetail = () => {
                             style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
                           />
                         </div>
-                      )}
-                      <span className="signup-user">{signup.user_name}</span>
-                    </div>
-                    <span className="signup-date">
-                      📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
-                        ? new Date(signup.signup_time).toLocaleDateString()
-                        : 'Recently'
-                      }
-                      <span className="signup-time"> • 🕐 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
-                        ? new Date(signup.signup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-                        : 'Recently'
-                      }</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Submit attendance button for executives and administrators */}
-              {currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') && signups.length > 0 && (
-                <div className="attendance-submit">
-                  {attendanceSaved ? (
-                    <div className="attendance-locked">
-                      <span className="locked-icon">🔒</span>
-                      <span className="locked-text">Attendance Submitted - Cannot be Modified</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="attendance-debug">
-                        <small>📊 {signups.length} signups • {Object.keys(attendance).length} attendance records</small>
+                        <span className="signup-user">
+                          {member.user_name}
+                          {member.is_signed_up && <span className="signed-up-badge">✓ Signed up</span>}
+                        </span>
                       </div>
-                      <button 
-                        onClick={handleSubmitAttendance}
-                        className="submit-attendance-btn"
-                        title="Submit attendance and update absences (cannot be modified after submission)"
-                        disabled={submittingAttendance}
-                      >
-                        {submittingAttendance ? 'Submitting...' : '📝 Submit Attendance'}
-                      </button>
-                    </>
-                  )}
+                      <span className="signup-date">
+                        {member.is_signed_up ? '📅 Signed up' : '📝 Not signed up'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </>
+                
+                {/* Submit attendance button for executives and administrators */}
+                {swimMembers.length > 0 && (
+                  <div className="attendance-submit">
+                    {attendanceSaved ? (
+                      <div className="attendance-locked">
+                        <span className="locked-icon">🔒</span>
+                        <span className="locked-text">Attendance Submitted - Cannot be Modified</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="attendance-debug">
+                          <small>📊 {swimMembers.length} members • {Object.keys(attendance).length} attendance records</small>
+                        </div>
+                        <button 
+                          onClick={handleSubmitAttendance}
+                          className="submit-attendance-btn"
+                          title="Submit attendance and update absences (cannot be modified after submission)"
+                          disabled={submittingAttendance}
+                        >
+                          {submittingAttendance ? 'Submitting...' : '📝 Submit Swim Attendance'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            /* Regular signups display for non-swim workouts */
+            signups.length === 0 ? (
+              <p className="no-signups">No one has signed up yet. Be the first!</p>
+            ) : (
+              <>
+                <div className="signups-list">
+                  {signups.map(signup => (
+                    <div key={signup.id} className="signup-item">
+                      {/* Attendance checkbox for executives and administrators */}
+                      {currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                        <div className="attendance-checkbox">
+                          <input
+                            type="checkbox"
+                            id={`attendance-${signup.user_id}`}
+                            checked={attendance[signup.user_id] || false}
+                            onChange={(e) => {
+                              console.log('🔍 Checkbox change for signup:', signup);
+                              handleAttendanceChange(signup.user_id, e.target.checked);
+                            }}
+                            disabled={attendanceSaved}
+                            title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as present"}
+                          />
+                          <label htmlFor={`attendance-${signup.user_id}`} className="sr-only">
+                            Mark {signup.user_name} as present
+                          </label>
+                        </div>
+                      )}
+                      
+                      <div className="signup-user-info">
+                        {signup.userProfilePictureUrl ? (
+                          <img 
+                            src={`${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`} 
+                            alt="Profile" 
+                            className="user-avatar"
+                            onError={(e) => {
+                              e.target.src = '/images/icon.png';
+                            }}
+                          />
+                        ) : (
+                          <div className="user-avatar-placeholder">
+                            <img 
+                              src="/images/default_profile.png" 
+                              alt="Profile" 
+                              style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                            />
+                          </div>
+                        )}
+                        <span className="signup-user">{signup.user_name}</span>
+                      </div>
+                      <span className="signup-date">
+                        📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
+                          ? new Date(signup.signup_time).toLocaleDateString()
+                          : 'Recently'
+                        }
+                        <span className="signup-time"> • 🕐 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
+                          ? new Date(signup.signup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                          : 'Recently'
+                        }</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Submit attendance button for executives and administrators */}
+                {currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') && signups.length > 0 && (
+                  <div className="attendance-submit">
+                    {attendanceSaved ? (
+                      <div className="attendance-locked">
+                        <span className="locked-icon">🔒</span>
+                        <span className="locked-text">Attendance Submitted - Cannot be Modified</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="attendance-debug">
+                          <small>📊 {signups.length} signups • {Object.keys(attendance).length} attendance records</small>
+                        </div>
+                        <button 
+                          onClick={handleSubmitAttendance}
+                          className="submit-attendance-btn"
+                          title="Submit attendance and update absences (cannot be modified after submission)"
+                          disabled={submittingAttendance}
+                        >
+                          {submittingAttendance ? 'Submitting...' : '📝 Submit Attendance'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
+            )
           )}
         </div>
 

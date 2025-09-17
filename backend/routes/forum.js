@@ -601,34 +601,89 @@ router.get('/workouts/:id/attendance', authenticateToken, requireMember, async (
   }
 });
 
+// Get all members for swim workout attendance (exec/admin only)
+router.get('/workouts/:id/attendance-members', authenticateToken, requireExec, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // First get the workout details to check if it's a swim workout
+    const workoutResult = await pool.query(`
+      SELECT workout_type FROM forum_posts WHERE id = $1
+    `, [id]);
+
+    if (workoutResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+
+    const workoutType = workoutResult.rows[0].workout_type;
+    
+    // Only allow this for swim workouts
+    if (workoutType !== 'swim') {
+      return res.status(400).json({ error: 'This feature is only available for swim workouts' });
+    }
+
+    // Get all active members (member, exec, administrator roles)
+    const membersResult = await pool.query(`
+      SELECT 
+        u.id as user_id, 
+        u.name as user_name, 
+        u.email as user_email,
+        u.role as user_role,
+        CASE WHEN ws.user_id IS NOT NULL THEN true ELSE false END as is_signed_up
+      FROM users u
+      LEFT JOIN workout_signups ws ON u.id = ws.user_id AND ws.post_id = $1
+      WHERE u.is_active = true 
+        AND u.role IN ('member', 'exec', 'administrator')
+      ORDER BY u.name
+    `, [id]);
+
+    res.json({ members: membersResult.rows || [] });
+  } catch (error) {
+    console.error('Get swim workout members error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Submit workout attendance (exec/admin only)
 router.post('/workouts/:id/attendance', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { attendanceData } = req.body;
+    const { attendanceData, isSwimWorkout = false } = req.body;
 
     // Frontend sends an object mapping userId -> boolean
     if (!attendanceData || typeof attendanceData !== 'object' || Array.isArray(attendanceData)) {
       return res.status(400).json({ error: 'Attendance data must be an object keyed by userId' });
     }
 
-    // Load all signups for this workout to ensure we only record for signed up users
-    const signupsResult = await pool.query(
-      `SELECT user_id FROM workout_signups WHERE post_id = $1`,
-      [id]
-    );
+    let userIdsToProcess = [];
 
-    const signups = signupsResult.rows || [];
+    if (isSwimWorkout) {
+      // For swim workouts, process all members (not just signups)
+      const membersResult = await pool.query(`
+        SELECT u.id as user_id
+        FROM users u
+        WHERE u.is_active = true 
+          AND u.role IN ('member', 'exec', 'administrator')
+      `);
+      userIdsToProcess = membersResult.rows.map(row => row.user_id);
+    } else {
+      // For other workouts, only process signups
+      const signupsResult = await pool.query(
+        `SELECT user_id FROM workout_signups WHERE post_id = $1`,
+        [id]
+      );
+      userIdsToProcess = signupsResult.rows.map(row => row.user_id);
+    }
 
-    for (const signup of signups) {
-      const attended = Boolean(attendanceData[signup.user_id]);
+    for (const userId of userIdsToProcess) {
+      const attended = Boolean(attendanceData[userId]);
 
       await pool.query(
         `INSERT INTO workout_attendance (post_id, user_id, attended, recorded_at)
          VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
          ON CONFLICT (post_id, user_id)
          DO UPDATE SET attended = EXCLUDED.attended, recorded_at = CURRENT_TIMESTAMP`,
-        [id, signup.user_id, attended]
+        [id, userId, attended]
       );
     }
 
