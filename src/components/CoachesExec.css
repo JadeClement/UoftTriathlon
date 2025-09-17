@@ -42,9 +42,12 @@
   align-items: stretch;
 }
 
-.coach-card-link {
+.coach-card-container {
   flex: 1;
   min-width: 250px;
+}
+
+.coach-card-link {
   text-decoration: none;
   color: inherit;
   display: block;
@@ -298,7 +301,7 @@
     gap: 1rem;
   }
   
-  .coach-card-link {
+  .coach-card-container {
     min-width: unset;
     width: 100%;
   }
