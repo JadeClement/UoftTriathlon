@@ -504,6 +504,8 @@ const WorkoutDetail = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('Attendance saved successfully:', result.message);
+        // Exit edit mode after successful submission
+        setEditingAttendance(false);
       } else {
         const errorData = await response.json();
         console.error('Failed to save attendance:', errorData.error);
