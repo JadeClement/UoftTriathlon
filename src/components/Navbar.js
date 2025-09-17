@@ -53,7 +53,8 @@ const Navbar = () => {
 
   // Reflect banner height to CSS variable for page spacing
   useEffect(() => {
-    const offset = banner.enabled && banner.message ? '32px' : '0px';
+    const isMobile = window.innerWidth <= 768;
+    const offset = banner.enabled && banner.message ? (isMobile ? '24px' : '28px') : '0px';
     document.documentElement.style.setProperty('--banner-offset', offset);
   }, [banner.enabled, banner.message]);
 
@@ -98,7 +99,7 @@ const Navbar = () => {
         <strong>{banner.message}</strong>
       </div>
     )}
-    <nav className="navbar" style={{ marginTop: banner.enabled && banner.message ? '32px' : 0 }}>
+    <nav className="navbar" style={{ marginTop: banner.enabled && banner.message ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
       <div className="navbar-container">
         <Link to="/" className="navbar-logo" onClick={closeMenu}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
