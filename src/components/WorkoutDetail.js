@@ -823,6 +823,10 @@ const WorkoutDetail = () => {
                             onChange={(e) => {
                               console.log('🔍 Checkbox change for member:', member);
                               handleAttendanceChange(member.user_id, e.target.checked);
+                              // Clear late status if attendance is unchecked
+                              if (!e.target.checked) {
+                                handleLateChange(member.user_id, false);
+                              }
                             }}
                             disabled={attendanceSaved}
                             title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as present"}
@@ -832,20 +836,23 @@ const WorkoutDetail = () => {
                           </label>
                         </div>
                         
-                        <div className="late-checkbox">
-                          <label htmlFor={`late-${member.user_id}`} className="late-label">Late?</label>
-                          <input
-                            type="checkbox"
-                            id={`late-${member.user_id}`}
-                            checked={lateStatus[member.user_id] || false}
-                            onChange={(e) => {
-                              console.log('🔍 Late checkbox change for member:', member);
-                              handleLateChange(member.user_id, e.target.checked);
-                            }}
-                            disabled={attendanceSaved}
-                            title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as late"}
-                          />
-                        </div>
+                        {/* Late checkbox only shows when attendance is checked */}
+                        {attendance[member.user_id] && (
+                          <div className="late-checkbox">
+                            <label htmlFor={`late-${member.user_id}`} className="late-label">Late?</label>
+                            <input
+                              type="checkbox"
+                              id={`late-${member.user_id}`}
+                              checked={lateStatus[member.user_id] || false}
+                              onChange={(e) => {
+                                console.log('🔍 Late checkbox change for member:', member);
+                                handleLateChange(member.user_id, e.target.checked);
+                              }}
+                              disabled={attendanceSaved}
+                              title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as late"}
+                            />
+                          </div>
+                        )}
                       </div>
                       
                       <div className="signup-user-info">
