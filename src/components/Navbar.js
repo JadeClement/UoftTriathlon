@@ -94,10 +94,7 @@ const Navbar = () => {
   return (
     <>
     {banner.enabled && banner.message && (
-      <div style={{
-        background:'#dc2626', color:'#fff', textAlign:'center', padding:'8px 12px',
-        position:'fixed', top:0, left:0, right:0, zIndex:1010
-      }}>
+      <div className="site-banner active">
         <strong>{banner.message}</strong>
       </div>
     )}

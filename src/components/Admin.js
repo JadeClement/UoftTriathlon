@@ -638,8 +638,17 @@ const Admin = () => {
                 <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
               </div>
               <div className="form-group">
-                <label>Message</label>
-                <input type="text" value={bannerForm.message} onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} placeholder="Work in progress…" />
+                <label>Message (max 50 characters)</label>
+                <input 
+                  type="text" 
+                  value={bannerForm.message} 
+                  onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} 
+                  placeholder="Work in progress…" 
+                  maxLength={50}
+                />
+                <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
+                  {bannerForm.message.length}/50 characters
+                </div>
               </div>
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Save Banner</button>
