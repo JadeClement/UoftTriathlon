@@ -21,6 +21,7 @@ const WorkoutDetail = () => {
   const [lateStatus, setLateStatus] = useState({});
   const [attendanceSaved, setAttendanceSaved] = useState(false);
   const [submittingAttendance, setSubmittingAttendance] = useState(false);
+  const [editingAttendance, setEditingAttendance] = useState(false);
   const [swimMembers, setSwimMembers] = useState([]);
   const [isSwimWorkout, setIsSwimWorkout] = useState(false);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
@@ -520,6 +521,16 @@ const WorkoutDetail = () => {
     }
   };
 
+  const handleEditAttendance = () => {
+    setEditingAttendance(true);
+  };
+
+  const handleCancelEditAttendance = () => {
+    setEditingAttendance(false);
+    // Reload attendance data to reset any unsaved changes
+    loadWorkoutDetails();
+  };
+
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -828,8 +839,8 @@ const WorkoutDetail = () => {
                                 handleLateChange(member.user_id, false);
                               }
                             }}
-                            disabled={attendanceSaved}
-                            title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as present"}
+                            disabled={attendanceSaved && !editingAttendance}
+                            title={attendanceSaved && !editingAttendance ? "Click 'Edit Attendance' to modify" : "Mark as present"}
                           />
                           <label htmlFor={`attendance-${member.user_id}`} className="sr-only">
                             Mark {member.user_name} as present
@@ -848,8 +859,8 @@ const WorkoutDetail = () => {
                                 console.log('🔍 Late checkbox change for member:', member);
                                 handleLateChange(member.user_id, e.target.checked);
                               }}
-                              disabled={attendanceSaved}
-                              title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as late"}
+                              disabled={attendanceSaved && !editingAttendance}
+                              title={attendanceSaved && !editingAttendance ? "Click 'Edit Attendance' to modify" : "Mark as late"}
                             />
                           </div>
                         )}
@@ -881,14 +892,40 @@ const WorkoutDetail = () => {
                     <div className="attendance-debug">
                       <small>📊 {swimMembers.length} members • {Object.keys(attendance).length} attendance records</small>
                     </div>
-                    <button 
-                      onClick={handleSubmitAttendance}
-                      className={`submit-attendance-btn ${attendanceSaved ? 'saved' : ''}`}
-                      title="Submit attendance and update absences"
-                      disabled={submittingAttendance}
-                    >
-                      {submittingAttendance ? 'Submitting...' : attendanceSaved ? '✅ Swim Attendance Submitted' : '📝 Submit Swim Attendance'}
-                    </button>
+                    {attendanceSaved && !editingAttendance ? (
+                      <div className="attendance-actions">
+                        <button 
+                          onClick={handleEditAttendance}
+                          className="edit-attendance-btn"
+                          title="Edit attendance"
+                        >
+                          ✏️ Edit Attendance
+                        </button>
+                        <div className="attendance-status">
+                          ✅ Swim Attendance Submitted
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="attendance-actions">
+                        <button 
+                          onClick={handleSubmitAttendance}
+                          className={`submit-attendance-btn ${attendanceSaved ? 'saved' : ''}`}
+                          title="Submit attendance and update absences"
+                          disabled={submittingAttendance}
+                        >
+                          {submittingAttendance ? 'Submitting...' : '📝 Submit Swim Attendance'}
+                        </button>
+                        {editingAttendance && (
+                          <button 
+                            onClick={handleCancelEditAttendance}
+                            className="cancel-edit-btn"
+                            title="Cancel editing"
+                          >
+                            ❌ Cancel
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -913,8 +950,8 @@ const WorkoutDetail = () => {
                               console.log('🔍 Checkbox change for signup:', signup);
                               handleAttendanceChange(signup.user_id, e.target.checked);
                             }}
-                            disabled={attendanceSaved}
-                            title={attendanceSaved ? "Attendance already submitted - cannot modify" : "Mark as present"}
+                            disabled={attendanceSaved && !editingAttendance}
+                            title={attendanceSaved && !editingAttendance ? "Click 'Edit Attendance' to modify" : "Mark as present"}
                           />
                           <label htmlFor={`attendance-${signup.user_id}`} className="sr-only">
                             Mark {signup.user_name} as present
@@ -963,14 +1000,40 @@ const WorkoutDetail = () => {
                     <div className="attendance-debug">
                       <small>📊 {signups.length} signups • {Object.keys(attendance).length} attendance records</small>
                     </div>
-                    <button 
-                      onClick={handleSubmitAttendance}
-                      className={`submit-attendance-btn ${attendanceSaved ? 'saved' : ''}`}
-                      title="Submit attendance and update absences"
-                      disabled={submittingAttendance}
-                    >
-                      {submittingAttendance ? 'Submitting...' : attendanceSaved ? '✅ Attendance Submitted' : '📝 Submit Attendance'}
-                    </button>
+                    {attendanceSaved && !editingAttendance ? (
+                      <div className="attendance-actions">
+                        <button 
+                          onClick={handleEditAttendance}
+                          className="edit-attendance-btn"
+                          title="Edit attendance"
+                        >
+                          ✏️ Edit Attendance
+                        </button>
+                        <div className="attendance-status">
+                          ✅ Attendance Submitted
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="attendance-actions">
+                        <button 
+                          onClick={handleSubmitAttendance}
+                          className={`submit-attendance-btn ${attendanceSaved ? 'saved' : ''}`}
+                          title="Submit attendance and update absences"
+                          disabled={submittingAttendance}
+                        >
+                          {submittingAttendance ? 'Submitting...' : '📝 Submit Attendance'}
+                        </button>
+                        {editingAttendance && (
+                          <button 
+                            onClick={handleCancelEditAttendance}
+                            className="cancel-edit-btn"
+                            title="Cancel editing"
+                          >
+                            ❌ Cancel
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </>
