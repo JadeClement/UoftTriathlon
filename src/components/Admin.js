@@ -12,6 +12,9 @@ const Admin = () => {
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
+  const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
+  const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
+  const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
 
   const [editingMember, setEditingMember] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -91,6 +94,86 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    setEmailStatus(null);
+    setBulkEmailStatus(null);
+    
+    if (!template.title && !template.intro && !template.bullets.some(b => b.trim()) && !template.body) {
+      const errorMsg = 'Please provide template content.';
+      if (emailType === 'individual') {
+        setEmailStatus({ type: 'error', text: errorMsg });
+      } else {
+        setBulkEmailStatus({ type: 'error', text: errorMsg });
+      }
+      return;
+    }
+    
+    if (emailType === 'individual' && !emailForm.to) {
+      setEmailStatus({ type: 'error', text: 'Please provide recipient email.' });
+      return;
+    }
+    
+    try {
+      if (emailType === 'individual') {
+        setSendingEmail(true);
+        const token = localStorage.getItem('triathlonToken');
+        const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ 
+            to: emailForm.to, 
+            subject: template.title || 'UofT Tri Club Update',
+            message: emailForm.message || '',
+            template: template 
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          setEmailStatus({ type: 'success', text: 'Email sent successfully!' });
+          setEmailForm({ to: '', subject: '', message: '' });
+          setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+        } else {
+          setEmailStatus({ type: 'error', text: data.error || 'Failed to send email' });
+        }
+        setSendingEmail(false);
+      } else {
+        setSendingBulkEmail(true);
+        const token = localStorage.getItem('triathlonToken');
+        const resp = await fetch(`${API_BASE_URL}/admin/send-bulk-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            subject: template.title || 'UofT Tri Club Update',
+            message: template.body || '',
+            template: template,
+            recipients: {
+              members: true,
+              exec: true,
+              admin: true,
+              pending: false
+            }
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          setBulkEmailStatus({ type: 'success', text: `Bulk email sent successfully to ${data.sentCount} recipients!` });
+          setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+        } else {
+          setBulkEmailStatus({ type: 'error', text: data.error || 'Failed to send bulk email' });
+        }
+        setSendingBulkEmail(false);
+      }
+    } catch (err) {
+      if (emailType === 'individual') {
+        setEmailStatus({ type: 'error', text: err.message });
+        setSendingEmail(false);
+      } else {
+        setBulkEmailStatus({ type: 'error', text: err.message });
+        setSendingBulkEmail(false);
+      }
     }
   };
 
@@ -555,8 +638,17 @@ const Admin = () => {
                 <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
               </div>
               <div className="form-group">
-                <label>Message</label>
-                <input type="text" value={bannerForm.message} onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} placeholder="Work in progress…" />
+                <label>Message (max 50 characters)</label>
+                <input 
+                  type="text" 
+                  value={bannerForm.message} 
+                  onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} 
+                  placeholder="Work in progress…" 
+                  maxLength={50}
+                />
+                <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
+                  {bannerForm.message.length}/50 characters
+                </div>
               </div>
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Save Banner</button>
@@ -564,111 +656,225 @@ const Admin = () => {
             </form>
           </div>
         )}
+
         {activeTab === 'email' && (
           <div className="email-section">
-            <h2>Send Individual Email</h2>
-            <div className="admin-warning">
-              <p><strong>🚧 Work in Progress:</strong> This email feature is currently under development and may not be fully functional.</p>
-            </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setEmailStatus(null);
-              if (!emailForm.to || !emailForm.subject) {
-                setEmailStatus({ type: 'error', text: 'Please provide recipient and subject.' });
-                return;
-              }
-              const hasTemplate = (template.title || template.intro || (template.bullets||[]).some(Boolean) || template.body);
-              if (!emailForm.message && !hasTemplate) {
-                setEmailStatus({ type: 'error', text: 'Provide either Message or Template content.' });
-                return;
-              }
-              try {
-                setSendingEmail(true);
-                const token = localStorage.getItem('triathlonToken');
-                const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify({ ...emailForm, template })
-                });
-                if (!resp.ok) {
-                  const err = await resp.json().catch(() => ({}));
-                  throw new Error(err.error || 'Failed to send email');
-                }
-                setEmailStatus({ type: 'success', text: 'Email sent successfully.' });
-                setEmailForm({ to: '', subject: '', message: '' });
-                setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
-              } catch (err) {
-                setEmailStatus({ type: 'error', text: err.message });
-              } finally {
-                setSendingEmail(false);
-              }
-            }}>
-              <div className="form-group">
-                <label>To</label>
-                <input type="email" value={emailForm.to} onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Subject</label>
-                <input type="text" value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Message (optional if using template)</label>
-                <textarea rows="6" value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} />
-              </div>
+            <h2>Send Email</h2>
+            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+              {/* Left side - Form */}
+              <div style={{ flex: 1, minWidth: '400px' }}>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  await handleSendEmail();
+                }}>
+                  {/* Email Type Selection */}
+                  <div className="form-group" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input 
+                        type="radio" 
+                        name="emailType" 
+                        value="individual" 
+                        checked={emailType === 'individual'} 
+                        onChange={(e) => setEmailType(e.target.value)}
+                      />
+                      Individual
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input 
+                        type="radio" 
+                        name="emailType" 
+                        value="everyone" 
+                        checked={emailType === 'everyone'} 
+                        onChange={(e) => setEmailType(e.target.value)}
+                      />
+                      Everyone (Members, Exec, Admin)
+                    </label>
+                  </div>
 
-              <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
-                <h3 style={{marginTop:0}}>Optional Template</h3>
-                <div className="form-group">
-                  <label>Banner Title</label>
-                  <input type="text" value={template.bannerTitle} onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} />
-                </div>
-                <div className="form-group">
-                  <label>Title</label>
-                  <input type="text" value={template.title} onChange={(e)=>setTemplate({...template, title:e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label>Intro</label>
-                  <textarea rows="3" value={template.intro} onChange={(e)=>setTemplate({...template, intro:e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label>Bullets</label>
-                  {(template.bullets||[]).map((b, idx)=> (
-                    <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
-                      <input type="text" value={b} onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} />
-                      <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
+                  {/* Individual Email Fields */}
+                  {emailType === 'individual' && (
+                    <>
+                      <div className="form-group">
+                        <label>To</label>
+                        <input 
+                          type="email" 
+                          value={emailForm.to} 
+                          onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} 
+                          placeholder="recipient@example.com"
+                          required 
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Message</label>
+                        <textarea 
+                          rows="8" 
+                          value={emailForm.message} 
+                          onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
+                          placeholder="Type your message here..."
+                          required 
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Template Section - only show for everyone */}
+                  {emailType === 'everyone' && (
+                    <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
+                      <h3 style={{marginTop:0}}>Email Template</h3>
+                      <div className="form-group">
+                        <label>Banner Title</label>
+                        <input type="text" value={template.bannerTitle} onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} />
+                      </div>
+                      <div className="form-group">
+                        <label>Title</label>
+                        <input type="text" value={template.title} onChange={(e)=>setTemplate({...template, title:e.target.value})} placeholder="Email subject/title" />
+                      </div>
+                      <div className="form-group">
+                        <label>Intro</label>
+                        <textarea rows="3" value={template.intro} onChange={(e)=>setTemplate({...template, intro:e.target.value})} placeholder="Introduction text..." />
+                      </div>
+                      <div className="form-group">
+                        <label>Bullets</label>
+                        {(template.bullets||[]).map((b, idx)=> (
+                          <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
+                            <input type="text" value={b} onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} placeholder="Bullet point..." />
+                            <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
+                          </div>
+                        ))}
+                        <button type="button" className="action-btn small" onClick={()=> setTemplate({...template, bullets:[...template.bullets, '']})}>Add bullet</button>
+                      </div>
+                      <div className="form-group">
+                        <label>Body</label>
+                        <textarea rows="6" value={template.body} onChange={(e)=>setTemplate({...template, body:e.target.value})} placeholder="Main email content..." />
+                      </div>
                     </div>
-                  ))}
-                  <button type="button" className="action-btn small" onClick={()=> setTemplate({...template, bullets:[...template.bullets, '']})}>Add bullet</button>
-                </div>
-                <div className="form-group">
-                  <label>Body</label>
-                  <textarea rows="6" value={template.body} onChange={(e)=>setTemplate({...template, body:e.target.value})} />
-                </div>
+                  )}
+
+                  {/* Status Messages */}
+                  {(emailStatus || bulkEmailStatus) && (
+                    <div className={`notice ${(emailStatus || bulkEmailStatus).type}`} style={{ marginBottom: '1rem' }}>
+                      {(emailStatus || bulkEmailStatus).text}
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <div className="modal-actions">
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary" 
+                      disabled={sendingEmail || sendingBulkEmail}
+                      style={{ 
+                        backgroundColor: emailType === 'everyone' ? '#dc2626' : '#3b82f6',
+                        width: '100%'
+                      }}
+                    >
+                      {sendingEmail ? 'Sending...' : sendingBulkEmail ? 'Sending to All...' : 
+                       emailType === 'everyone' ? 'Send to Everyone' : 'Send Email'}
+                    </button>
+                  </div>
+                </form>
               </div>
 
-              <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
-                <h3 style={{marginTop:0}}>Preview</h3>
-                <div style={{background:'#dc2626', color:'#fff', padding:'12px', borderRadius:8, textAlign:'center', marginBottom:12}}>
-                  <strong>{template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}</strong>
+              {/* Right side - Preview (only for everyone emails) */}
+              {emailType === 'everyone' && (
+                <div style={{ flex: 1, minWidth: '400px' }}>
+                  <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
+                    <h3 style={{marginTop:0}}>Preview</h3>
+                    <div style={{
+                      maxWidth: '600px',
+                      margin: '0 auto',
+                      backgroundColor: '#ffffff',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                    }}>
+                      {/* Header */}
+                      <div style={{
+                        background: '#dc2626',
+                        color: '#ffffff',
+                        padding: '32px 24px',
+                        textAlign: 'center'
+                      }}>
+                        <h1 style={{margin: 0, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px'}}>
+                          {template.bannerTitle || `University of Toronto Triathlon Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}
+                        </h1>
+                      </div>
+                      
+                      {/* Content */}
+                      <div style={{ padding: '32px 24px' }}>
+                        {template.intro && (
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            borderLeft: '4px solid #dc2626',
+                            marginBottom: '24px'
+                          }}>
+                            <p style={{margin: 0, color: '#64748b', fontSize: '16px', lineHeight: 1.6}}>
+                              {template.intro}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {(template.bullets||[]).filter(Boolean).length>0 && (
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            marginBottom: '24px'
+                          }}>
+                            <ol style={{margin: 0, paddingLeft: '20px'}}>
+                              {template.bullets.filter(Boolean).map((b, i)=> (
+                                <li key={i} style={{
+                                  marginBottom: '12px',
+                                  color: '#475569',
+                                  fontSize: '16px',
+                                  lineHeight: 1.6
+                                }}>
+                                  {b}
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+                        
+                        {template.body && (
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px'
+                          }}>
+                            <p style={{
+                              margin: 0,
+                              color: '#475569',
+                              fontSize: '16px',
+                              lineHeight: 1.6,
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              {template.body}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Footer */}
+                      <div style={{
+                        background: '#f1f5f9',
+                        padding: '24px',
+                        textAlign: 'center',
+                        borderTop: '1px solid #e2e8f0'
+                      }}>
+                        <p style={{margin: '0 0 12px 0', color: '#64748b', fontSize: '14px'}}>
+                          UofT Triathlon Club | <a href="https://uoft-tri.club" style={{color: '#3b82f6', textDecoration: 'none', fontWeight: 500}}>uoft-tri.club</a>
+                        </p>
+                        <p style={{margin: 0, color: '#64748b', fontSize: '14px', fontStyle: 'italic'}}>
+                          The UofT Tri Club Exec
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                {template.title && <h4>{template.title}</h4>}
-                {template.intro && <p>{template.intro}</p>}
-                {(template.bullets||[]).filter(Boolean).length>0 && (
-                  <ul>
-                    {template.bullets.filter(Boolean).map((b, i)=> <li key={i}>{b}</li>)}
-                  </ul>
-                )}
-                {(template.body || emailForm.message) && <p style={{whiteSpace:'pre-wrap'}}>{template.body || emailForm.message}</p>}
-              </div>
-              {emailStatus && (
-                <div className={`notice ${emailStatus.type}`}>{emailStatus.text}</div>
               )}
-              <div className="modal-actions">
-                <button type="submit" className="btn btn-primary" disabled={sendingEmail}>
-                  {sendingEmail ? 'Sending...' : 'Send Email'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         )}
 

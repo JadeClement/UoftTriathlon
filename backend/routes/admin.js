@@ -602,27 +602,125 @@ router.delete('/race-management/:id', authenticateToken, requireAdmin, async (re
 // Send email route
 router.post('/send-email', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { to, subject, message, html, template } = req.body;
+    const { to, subject, message } = req.body;
 
-    if (!to || !subject) {
-      return res.status(400).json({ error: 'Missing required fields: to, subject' });
+    if (!to || !subject || !message) {
+      return res.status(400).json({ error: 'Missing required fields: to, subject, message' });
     }
 
     // Import email service
     const emailService = require('../services/emailService');
 
-    // If raw HTML provided, use it directly
-    if (html) {
-      const textFallback = message || html.replace(/<[^>]+>/g, ' ');
-      const result = await emailService.sendEmail(to, subject, html, textFallback);
-      if (result.success) return res.json({ message: 'Email sent successfully' });
-      return res.status(500).json({ error: 'Failed to send email: ' + result.error });
+    // Simple HTML wrapper for individual emails
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .content { padding: 32px 24px; }
+    .message { color: #475569; font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
+    .footer { background: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .footer p { margin: 0; color: #64748b; font-size: 14px; }
+    .footer a { color: #3b82f6; text-decoration: none; font-weight: 500; }
+    @media (max-width: 600px) {
+      .email-container { margin: 0; }
+      .content, .footer { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="content">
+      <div class="message">${message.replace(/\n/g, '<br>')}</div>
+    </div>
+    <div class="footer">
+      <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const result = await emailService.sendEmail(to, subject, htmlContent, message);
+    if (result.success) {
+      return res.json({ message: 'Email sent successfully' });
+    }
+    return res.status(500).json({ error: 'Failed to send email: ' + result.error });
+  } catch (error) {
+    console.error('Admin send email error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Send bulk email route
+router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { subject, message, recipients, template } = req.body;
+
+    console.log('🔍 Bulk email request body:', { subject, message, recipients, template });
+
+    if (!subject) {
+      return res.status(400).json({ error: 'Missing required field: subject' });
     }
 
-    // Structured template rendering
+    // Check if at least one recipient group is selected
+    const selectedGroups = Object.values(recipients).some(selected => selected);
+    if (!selectedGroups) {
+      return res.status(400).json({ error: 'Please select at least one recipient group' });
+    }
+
+    // Build query to get recipients based on selected groups
+    let whereConditions = [];
+    let queryParams = [];
+    let paramCount = 0;
+
+    if (recipients.members || recipients.allMembers) {
+      whereConditions.push(`role = $${++paramCount}`);
+      queryParams.push('member');
+    }
+    if (recipients.exec || recipients.execs) {
+      whereConditions.push(`role = $${++paramCount}`);
+      queryParams.push('exec');
+    }
+    if (recipients.admin || recipients.admins) {
+      whereConditions.push(`role = $${++paramCount}`);
+      queryParams.push('administrator');
+    }
+
+    if (whereConditions.length === 0) {
+      return res.status(400).json({ error: 'No valid recipient groups selected' });
+    }
+
+    const whereClause = whereConditions.join(' OR ');
+    const query = `SELECT email, name, role, is_active FROM users WHERE is_active = true AND (${whereClause})`;
+    
+    console.log('🔍 Bulk email query:', query);
+    console.log('🔍 Query params:', queryParams);
+    
+    // Debug: Check what roles actually exist in the database
+    const roleCheck = await pool.query('SELECT DISTINCT role FROM users WHERE is_active = true');
+    console.log('🔍 Available roles in database:', roleCheck.rows.map(r => r.role));
+    
+    const result = await pool.query(query, queryParams);
+    const recipientEmails = result.rows;
+    
+    console.log('🔍 Found recipients:', recipientEmails.length);
+    console.log('🔍 Recipients:', recipientEmails.map(r => ({ email: r.email, name: r.name, role: r.role, is_active: r.is_active })));
+
+    if (recipientEmails.length === 0) {
+      return res.status(400).json({ error: 'No recipients found for selected groups' });
+    }
+
+    // Import email service
+    const emailService = require('../services/emailService');
+
+    // Prepare template content
     const now = new Date();
     const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    const bannerTitle = template?.bannerTitle || `UofT Tri Club – ${dateStr}`;
+    const bannerTitle = template?.bannerTitle || `University of Toronto Triathlon Club – ${dateStr}`;
     const title = template?.title || '';
     const intro = template?.intro || '';
     const bullets = Array.isArray(template?.bullets) ? template.bullets.filter(Boolean) : [];
@@ -640,85 +738,67 @@ router.post('/send-email', authenticateToken, requireAdmin, async (req, res) => 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(subject)}</title>
   <style>
-    .container{font-family: Arial, sans-serif; line-height:1.6; color:#333; max-width:600px; margin:0 auto; padding:20px}
-    .banner{background:#dc2626; color:#fff; padding:22px 24px; border-radius:10px; text-align:center; margin-bottom:24px}
-    .card{background:#f8fafc; padding:20px; border-radius:8px; margin-bottom:18px}
-    .btn{background:#dc2626; color:#fff !important; padding:10px 18px; text-decoration:none; border-radius:6px; display:inline-block}
-    .footer{color:#6b7280; font-size:13px; text-align:center; margin-top:24px; padding-top:16px; border-top:1px solid #e5e7eb}
-    ul{margin:0; padding-left:20px}
+    body { margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .header { background: #dc2626; color: #ffffff; padding: 32px 24px; text-align: center; }
+    .header h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .content { padding: 32px 24px; }
+    .section { margin-bottom: 24px; }
+    .section:last-child { margin-bottom: 0; }
+    .title-section { background: #f8fafc; padding: 24px; border-radius: 12px; border-left: 4px solid #dc2626; }
+    .title-section h2 { margin: 0 0 12px 0; color: #1e293b; font-size: 24px; font-weight: 600; line-height: 1.3; }
+    .title-section p { margin: 0; color: #64748b; font-size: 16px; line-height: 1.6; }
+    .bullets-section { background: #f8fafc; padding: 24px; border-radius: 12px; }
+    .bullets-section ol { margin: 0; padding-left: 20px; }
+    .bullets-section li { margin-bottom: 12px; color: #475569; font-size: 16px; line-height: 1.6; }
+    .bullets-section li:last-child { margin-bottom: 0; }
+    .body-section { background: #f8fafc; padding: 24px; border-radius: 12px; }
+    .body-section p { margin: 0; color: #475569; font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
+    .footer { background: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .footer p { margin: 0; color: #64748b; font-size: 14px; }
+    .footer a { color: #3b82f6; text-decoration: none; font-weight: 500; }
+    .footer a:hover { text-decoration: underline; }
+    @media (max-width: 600px) {
+      .email-container { margin: 0; }
+      .header, .content, .footer { padding: 20px; }
+      .header h1 { font-size: 24px; }
+      .title-section h2 { font-size: 20px; }
+    }
   </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="banner"><h1 style="margin:0; font-size:22px;">${escapeHtml(bannerTitle)}</h1></div>
-      ${title ? `<div class="card"><h2 style="margin:0 0 10px 0; color:#111827;">${escapeHtml(title)}</h2>${intro ? `<p style=\"margin:0\">${escapeHtml(intro)}</p>` : ''}</div>` : ''}
-      ${bullets.length ? `<div class="card"><ul>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ul></div>` : ''}
-      ${body ? `<div class="card"><p style="white-space:pre-wrap; margin:0">${escapeHtml(body)}</p></div>` : ''}
-      <div class="footer">UofT Triathlon Club | <a href="https://uoft-tri.club" style="color:#3b82f6; text-decoration:none;">uoft-tri.club</a></div>
+</head>
+<body>
+  <div class="email-container">
+    <div class="header">
+      <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
-  </body>
+    <div class="content">
+      ${intro ? `
+        <div class="section title-section">
+          <p>${escapeHtml(intro)}</p>
+        </div>
+      ` : ''}
+      ${bullets.length ? `
+        <div class="section bullets-section">
+          <ol>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ol>
+        </div>
+      ` : ''}
+      ${body ? `
+        <div class="section body-section">
+          <p>${escapeHtml(body)}</p>
+        </div>
+      ` : ''}
+    </div>
+    <div class="footer">
+      <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
+      <p style="font-style: italic; margin-top: 12px;">The UofT Tri Club Exec</p>
+    </div>
+  </div>
+</body>
 </html>`;
 
-    const textContent = [bannerTitle, title, intro, ...(bullets.length ? ['- ' + bullets.join('\n- ')] : []), body]
+    const textContent = [bannerTitle, intro, ...(bullets.length ? bullets.map((b, i) => `${i + 1}. ${b}`) : []), body]
       .filter(Boolean)
       .join('\n\n');
-
-    const result = await emailService.sendEmail(to, subject, htmlContent, textContent);
-    if (result.success) {
-      return res.json({ message: 'Email sent successfully' });
-    }
-    return res.status(500).json({ error: 'Failed to send email: ' + result.error });
-  } catch (error) {
-    console.error('Admin send email error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Send bulk email route
-router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { subject, message, recipients } = req.body;
-
-    if (!subject || !message) {
-      return res.status(400).json({ error: 'Missing required fields: subject, message' });
-    }
-
-    // Check if at least one recipient group is selected
-    const selectedGroups = Object.values(recipients).some(selected => selected);
-    if (!selectedGroups) {
-      return res.status(400).json({ error: 'Please select at least one recipient group' });
-    }
-
-    // Build query to get recipients based on selected groups
-    let whereConditions = [];
-    let queryParams = [];
-    let paramCount = 0;
-
-    if (recipients.allMembers) {
-      whereConditions.push(`role = $${++paramCount}`);
-      queryParams.push('member');
-    }
-    if (recipients.execs) {
-      whereConditions.push(`role = $${++paramCount}`);
-      queryParams.push('exec');
-    }
-    if (recipients.admins) {
-      whereConditions.push(`role = $${++paramCount}`);
-      queryParams.push('administrator');
-    }
-
-    const whereClause = whereConditions.join(' OR ');
-    const query = `SELECT email, name FROM users WHERE is_active = true AND (${whereClause})`;
-    
-    const result = await pool.query(query, queryParams);
-    const recipientEmails = result.rows;
-
-    if (recipientEmails.length === 0) {
-      return res.status(400).json({ error: 'No recipients found for selected groups' });
-    }
-
-    // Import email service
-    const emailService = require('../services/emailService');
 
     // Send emails in parallel with batching to respect AWS SES rate limits
     const BATCH_SIZE = 10; // Process 10 emails at a time
@@ -744,10 +824,11 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
       // Send all emails in this batch in parallel
       const batchPromises = batch.map(async (recipient) => {
         try {
-          // Personalize message with recipient name
-          const personalizedMessage = message.replace(/\[name\]/g, recipient.name);
+          // Personalize content with recipient name
+          const personalizedHtml = htmlContent.replace(/\[name\]/g, recipient.name);
+          const personalizedText = textContent.replace(/\[name\]/g, recipient.name);
           
-          const result = await emailService.sendEmail(recipient.email, subject, personalizedMessage);
+          const result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText);
           
           if (result.success) {
             console.log(`✅ Bulk email sent to ${recipient.email}`);

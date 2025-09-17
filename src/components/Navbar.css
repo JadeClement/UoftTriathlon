@@ -3,6 +3,41 @@
   --banner-offset: 0px;
 }
 
+/* Site Banner Styles */
+.site-banner {
+  background: #dc2626;
+  color: #fff;
+  text-align: center;
+  padding: 6px 12px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1010;
+  font-size: 14px;
+  line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.site-banner.active {
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .site-banner {
+    font-size: 12px;
+    padding: 4px 8px;
+    line-height: 1.2;
+    height: 24px;
+  }
+}
+
 .navbar {
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
   padding: 1rem 0;
@@ -122,13 +157,13 @@
 
 @media (max-width: 768px) {
   .navbar {
-    top: 0; /* No banner, so navbar can be at the top */
+    top: 0; /* Will be adjusted by marginTop when banner is active */
   }
   
   .navbar-menu {
     position: fixed !important;
     left: -100% !important;
-    top: 60px !important; /* Adjusted for mobile navbar */
+    top: calc(60px + var(--banner-offset, 0px)) !important; /* Adjusted for mobile navbar and banner */
     flex-direction: column !important;
     background: linear-gradient(135deg, #1E3A8A, #1E40AF) !important;
     width: 100% !important;
