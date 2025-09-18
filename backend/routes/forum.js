@@ -249,21 +249,40 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
     if (existingSignup.rows.length > 0) {
       // Check if cancellation is within 24 hours of workout start
       const workoutDetails = await client.query(
-        `SELECT workout_date, workout_time FROM forum_posts WHERE id = $1`,
+        `SELECT workout_date, workout_time, title FROM forum_posts WHERE id = $1`,
         [id]
       );
       
       let within24hrs = false;
+      let workoutTitle = 'Unknown Workout';
       if (workoutDetails.rows.length > 0) {
         const workout = workoutDetails.rows[0];
+        workoutTitle = workout.title || 'Untitled Workout';
         const workoutDateTime = new Date(`${workout.workout_date}T${workout.workout_time}`);
         const now = new Date();
         const hoursUntilWorkout = (workoutDateTime - now) / (1000 * 60 * 60);
         within24hrs = hoursUntilWorkout <= 24;
+        
+        console.log(`🔄 Workout Cancellation Check:`, {
+          workoutId: id,
+          workoutTitle,
+          workoutDateTime: workoutDateTime.toISOString(),
+          currentTime: now.toISOString(),
+          hoursUntilWorkout: hoursUntilWorkout.toFixed(2),
+          within24hrs,
+          userId: userId
+        });
       }
 
       // Create cancellation record if within 24 hours
       if (within24hrs) {
+        console.log(`⚠️ CANCELLATION WITHIN 24 HOURS - Processing Absence:`, {
+          workoutId: id,
+          workoutTitle,
+          userId: userId,
+          action: 'Marking as absent due to late cancellation'
+        });
+
         await client.query(`
           INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_24hrs, marked_absent)
           VALUES ($1, $2, CURRENT_TIMESTAMP, true, true)
@@ -282,12 +301,42 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
             recorded_at = CURRENT_TIMESTAMP
         `, [id, userId]);
 
+        // Get current absence count before incrementing
+        const currentAbsencesResult = await client.query(
+          'SELECT absences FROM users WHERE id = $1',
+          [userId]
+        );
+        const currentAbsences = currentAbsencesResult.rows[0]?.absences || 0;
+
         // Increment user's absence count
         await client.query(
           'UPDATE users SET absences = absences + 1 WHERE id = $1',
           [userId]
         );
+
+        // Get updated absence count
+        const updatedAbsencesResult = await client.query(
+          'SELECT absences FROM users WHERE id = $1',
+          [userId]
+        );
+        const updatedAbsences = updatedAbsencesResult.rows[0]?.absences || 0;
+
+        console.log(`📊 USER ABSENCE COUNT UPDATED:`, {
+          userId: userId,
+          workoutId: id,
+          workoutTitle,
+          previousAbsences: currentAbsences,
+          newAbsences: updatedAbsences,
+          increment: updatedAbsences - currentAbsences
+        });
       } else {
+        console.log(`✅ CANCELLATION OUTSIDE 24 HOURS - No Absence:`, {
+          workoutId: id,
+          workoutTitle,
+          userId: userId,
+          action: 'Cancellation recorded but no absence marked'
+        });
+
         // Outside 24 hours - just create cancellation record without marking absent
         await client.query(`
           INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_24hrs, marked_absent)
@@ -346,6 +395,15 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
       const message = within24hrs 
         ? 'Signup cancelled. This counts as an absence due to cancellation within 24 hours.'
         : 'Signup cancelled successfully.';
+      
+      console.log(`✅ CANCELLATION COMPLETED:`, {
+        workoutId: id,
+        workoutTitle,
+        userId: userId,
+        within24hrs,
+        markedAbsent: within24hrs,
+        message
+      });
         
       return res.json({ 
         message, 

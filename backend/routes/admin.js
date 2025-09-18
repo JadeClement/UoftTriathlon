@@ -1133,6 +1133,31 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
     `;
     const summaryResult = await pool.query(summaryQuery, [workoutId]);
 
+    // Log attendance details for debugging
+    const cancelledUsers = attendanceResult.rows.filter(record => record.attendance_type === 'cancelled');
+    if (cancelledUsers.length > 0) {
+      console.log(`📋 ATTENDANCE DASHBOARD - Cancelled Users Found:`, {
+        workoutId,
+        workoutTitle: workout.title,
+        cancelledCount: cancelledUsers.length,
+        cancelledUsers: cancelledUsers.map(user => ({
+          userId: user.user_id,
+          userName: user.user_name,
+          cancelledAt: user.recorded_at
+        }))
+      });
+    }
+
+    console.log(`📊 ATTENDANCE SUMMARY:`, {
+      workoutId,
+      workoutTitle: workout.title,
+      totalRecords: summaryResult.rows[0].total_records,
+      attendedCount: summaryResult.rows[0].attended_count,
+      absentCount: summaryResult.rows[0].absent_count,
+      cancelledCount: summaryResult.rows[0].cancelled_count,
+      lateCount: summaryResult.rows[0].late_count
+    });
+
     res.json({
       workout,
       signups: signupsResult.rows,
