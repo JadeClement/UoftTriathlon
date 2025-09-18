@@ -129,6 +129,20 @@ async function initializeDatabase() {
     `);
     console.log('✅ Workout waitlist table created');
 
+    // Create workout_cancellations table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS workout_cancellations (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER REFERENCES forum_posts(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        cancelled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        within_24hrs BOOLEAN DEFAULT TRUE,
+        marked_absent BOOLEAN DEFAULT FALSE,
+        UNIQUE(post_id, user_id)
+      )
+    `);
+    console.log('✅ Workout cancellations table created');
+
     // Create races table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS races (

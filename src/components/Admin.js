@@ -1452,13 +1452,55 @@ const Admin = () => {
                 </div>
               )}
 
-              {/* Who Was Absent */}
-              {attendanceDetails.attendance.filter(record => !record.attended).length > 0 && (
-                <div className="absent-section">
-                  <h3>❌ Who Was Absent ({attendanceDetails.attendance.filter(record => !record.attended).length})</h3>
+              {/* Who Cancelled Within 24 Hours */}
+              {attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length > 0 && (
+                <div className="cancelled-section">
+                  <h3>🚫 Who Cancelled Within 24 Hours ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length})</h3>
                   <div className="attendance-list">
                     {attendanceDetails.attendance
-                      .filter(record => !record.attended)
+                      .filter(record => !record.attended && record.attendance_type === 'cancelled')
+                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                      .map(record => (
+                      <div key={record.id} className="attendance-item cancelled">
+                        <div className="attendance-user-info">
+                          {record.profile_picture_url ? (
+                            <img 
+                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
+                              alt="Profile" 
+                              className="user-avatar"
+                            />
+                          ) : (
+                            <div className="user-avatar-placeholder">
+                              <img 
+                                src="/images/default_profile.png" 
+                                alt="Profile" 
+                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                              />
+                            </div>
+                          )}
+                          <div className="user-details">
+                            <span className="user-name">{record.user_name}</span>
+                            <span className="user-role">{record.role}</span>
+                          </div>
+                        </div>
+                        <div className="attendance-status">
+                          <span className="status-badge cancelled">
+                            🚫 Cancelled (Absent)
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Who Was Absent (Not Cancelled) */}
+              {attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type !== 'cancelled').length > 0 && (
+                <div className="absent-section">
+                  <h3>❌ Who Was Absent ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type !== 'cancelled').length})</h3>
+                  <div className="attendance-list">
+                    {attendanceDetails.attendance
+                      .filter(record => !record.attended && record.attendance_type !== 'cancelled')
                       .sort((a, b) => a.user_name.localeCompare(b.user_name))
                       .map(record => (
                       <div key={record.id} className="attendance-item absent">

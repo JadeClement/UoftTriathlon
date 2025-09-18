@@ -247,6 +247,58 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
     );
 
     if (existingSignup.rows.length > 0) {
+      // Check if cancellation is within 24 hours of workout start
+      const workoutDetails = await client.query(
+        `SELECT workout_date, workout_time FROM forum_posts WHERE id = $1`,
+        [id]
+      );
+      
+      let within24hrs = false;
+      if (workoutDetails.rows.length > 0) {
+        const workout = workoutDetails.rows[0];
+        const workoutDateTime = new Date(`${workout.workout_date}T${workout.workout_time}`);
+        const now = new Date();
+        const hoursUntilWorkout = (workoutDateTime - now) / (1000 * 60 * 60);
+        within24hrs = hoursUntilWorkout <= 24;
+      }
+
+      // Create cancellation record if within 24 hours
+      if (within24hrs) {
+        await client.query(`
+          INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_24hrs, marked_absent)
+          VALUES ($1, $2, CURRENT_TIMESTAMP, true, true)
+          ON CONFLICT (post_id, user_id) DO UPDATE SET
+            cancelled_at = CURRENT_TIMESTAMP,
+            within_24hrs = true,
+            marked_absent = true
+        `, [id, userId]);
+
+        // Mark as absent in attendance table
+        await client.query(`
+          INSERT INTO workout_attendance (post_id, user_id, attended, recorded_at)
+          VALUES ($1, $2, false, CURRENT_TIMESTAMP)
+          ON CONFLICT (post_id, user_id) DO UPDATE SET
+            attended = false,
+            recorded_at = CURRENT_TIMESTAMP
+        `, [id, userId]);
+
+        // Increment user's absence count
+        await client.query(
+          'UPDATE users SET absences = absences + 1 WHERE id = $1',
+          [userId]
+        );
+      } else {
+        // Outside 24 hours - just create cancellation record without marking absent
+        await client.query(`
+          INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_24hrs, marked_absent)
+          VALUES ($1, $2, CURRENT_TIMESTAMP, false, false)
+          ON CONFLICT (post_id, user_id) DO UPDATE SET
+            cancelled_at = CURRENT_TIMESTAMP,
+            within_24hrs = false,
+            marked_absent = false
+        `, [id, userId]);
+      }
+
       // Remove signup
       await client.query('DELETE FROM workout_signups WHERE id = $1', [existingSignup.rows[0].id]);
 
@@ -290,7 +342,17 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
       }
 
       await client.query('COMMIT');
-      return res.json({ message: 'Signup removed successfully', signedUp: false });
+      
+      const message = within24hrs 
+        ? 'Signup cancelled. This counts as an absence due to cancellation within 24 hours.'
+        : 'Signup cancelled successfully.';
+        
+      return res.json({ 
+        message, 
+        signedUp: false, 
+        within24hrs,
+        markedAbsent: within24hrs
+      });
     }
 
     // Attempt atomic insert only if capacity not reached (treat NULL capacity as unlimited)

@@ -1043,9 +1043,14 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
         u.name as user_name,
         u.email,
         u.role,
-        NULL as profile_picture_url
+        NULL as profile_picture_url,
+        CASE 
+          WHEN wc.marked_absent = true THEN 'cancelled'
+          ELSE 'attended'
+        END as attendance_type
       FROM workout_attendance wa
       JOIN users u ON wa.user_id = u.id
+      LEFT JOIN workout_cancellations wc ON wa.post_id = wc.post_id AND wa.user_id = wc.user_id
       WHERE wa.post_id = $1
       ORDER BY wa.recorded_at DESC
     `;
@@ -1056,12 +1061,14 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
       SELECT 
         COUNT(*) as total_records,
         COUNT(CASE WHEN attended = true THEN 1 END) as attended_count,
-        COUNT(CASE WHEN attended = false THEN 1 END) as absent_count,
+        COUNT(CASE WHEN attended = false AND wc.marked_absent = false THEN 1 END) as absent_count,
+        COUNT(CASE WHEN attended = false AND wc.marked_absent = true THEN 1 END) as cancelled_count,
         COUNT(CASE WHEN late = true THEN 1 END) as late_count,
         MIN(recorded_at) as first_submitted,
         MAX(recorded_at) as last_submitted
-      FROM workout_attendance
-      WHERE post_id = $1
+      FROM workout_attendance wa
+      LEFT JOIN workout_cancellations wc ON wa.post_id = wc.post_id AND wa.user_id = wc.user_id
+      WHERE wa.post_id = $1
     `;
     const summaryResult = await pool.query(summaryQuery, [workoutId]);
 
