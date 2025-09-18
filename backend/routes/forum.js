@@ -3,6 +3,7 @@ const { pool } = require('../database-pg');
 const { authenticateToken, requireMember, requireAdmin, requireExec } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
+const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
 
 const router = express.Router();
 
@@ -259,75 +260,26 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         const workout = workoutDetails.rows[0];
         workoutTitle = workout.title || 'Untitled Workout';
         
-        // Validate and create workout datetime safely
-        let workoutDateTime;
-        let hoursUntilWorkout = 0;
+        // Use standardized date utilities
+        const workoutDateTime = combineDateTime(workout.workout_date, workout.workout_time);
         
-        try {
-          // Handle different date/time formats
-          const dateStr = workout.workout_date;
-          const timeStr = workout.workout_time;
-          
-          console.log(`🔍 Raw workout data:`, {
-            workoutId: id,
-            dateStr,
-            timeStr,
-            dateType: typeof dateStr,
-            timeType: typeof timeStr
+        if (!workoutDateTime) {
+          console.log(`⚠️ Invalid workout date/time for workout ${id}:`, { 
+            date: workout.workout_date, 
+            time: workout.workout_time 
           });
-          
-          if (!dateStr || !timeStr) {
-            console.log(`⚠️ Missing date or time for workout ${id}:`, { dateStr, timeStr });
-            within24hrs = false;
-          } else {
-            // Handle different date formats
-            let dateTimeStr;
-            
-            // Check if dateStr is already a Date object or Date string
-            if (dateStr instanceof Date || (typeof dateStr === 'string' && (dateStr.includes('GMT') || dateStr.includes('UTC') || dateStr.includes('T')))) {
-              // workout_date is already a Date object or Date string, we need to replace the time part
-              const baseDate = new Date(dateStr);
-              const [hours, minutes, seconds] = timeStr.split(':');
-              baseDate.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds || 0), 0);
-              workoutDateTime = baseDate;
-              console.log(`🔍 Using existing Date object with new time:`, { 
-                originalDate: dateStr, 
-                timeStr, 
-                finalDateTime: workoutDateTime.toISOString() 
-              });
-            } else {
-              // workout_date is just a date string, combine with time
-              dateTimeStr = `${dateStr}T${timeStr}`;
-              console.log(`🔍 Attempting to parse:`, { dateTimeStr });
-              workoutDateTime = new Date(dateTimeStr);
-            }
-            
-            // Check if date is valid
-            if (isNaN(workoutDateTime.getTime())) {
-              console.log(`⚠️ Invalid date format for workout ${id}:`, { dateTimeStr });
-              within24hrs = false;
-            } else {
-              const now = new Date();
-              hoursUntilWorkout = (workoutDateTime - now) / (1000 * 60 * 60);
-              
-              // Check if workout is within 24 hours
-              // If hoursUntilWorkout is negative, the workout is in the past (shouldn't happen normally)
-              // If hoursUntilWorkout is between 0 and 24, it's within 24 hours
-              // If hoursUntilWorkout is > 24, it's more than 24 hours away
-              within24hrs = hoursUntilWorkout >= 0 && hoursUntilWorkout <= 24;
-              
-              console.log(`🕐 Time calculation details:`, {
-                workoutDateTime: workoutDateTime.toISOString(),
-                currentTime: now.toISOString(),
-                hoursUntilWorkout: hoursUntilWorkout.toFixed(2),
-                isInPast: hoursUntilWorkout < 0,
-                isWithin24hrs: within24hrs
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`❌ Error parsing workout date/time for workout ${id}:`, error);
           within24hrs = false;
+        } else {
+          within24hrs = isWithinHours(workoutDateTime, 24);
+          const hoursUntilWorkout = getHoursUntil(workoutDateTime);
+          
+          console.log(`🕐 Time calculation details:`, {
+            workoutDateTime: workoutDateTime.toISOString(),
+            currentTime: new Date().toISOString(),
+            hoursUntilWorkout: hoursUntilWorkout.toFixed(2),
+            isInPast: hoursUntilWorkout < 0,
+            isWithin24hrs: within24hrs
+          });
         }
         
         console.log(`🔄 Workout Cancellation Check:`, {
