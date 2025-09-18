@@ -258,16 +258,44 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
       if (workoutDetails.rows.length > 0) {
         const workout = workoutDetails.rows[0];
         workoutTitle = workout.title || 'Untitled Workout';
-        const workoutDateTime = new Date(`${workout.workout_date}T${workout.workout_time}`);
-        const now = new Date();
-        const hoursUntilWorkout = (workoutDateTime - now) / (1000 * 60 * 60);
-        within24hrs = hoursUntilWorkout <= 24;
+        
+        // Validate and create workout datetime safely
+        let workoutDateTime;
+        let hoursUntilWorkout = 0;
+        
+        try {
+          // Handle different date/time formats
+          const dateStr = workout.workout_date;
+          const timeStr = workout.workout_time;
+          
+          if (!dateStr || !timeStr) {
+            console.log(`⚠️ Missing date or time for workout ${id}:`, { dateStr, timeStr });
+            within24hrs = false;
+          } else {
+            // Try different date formats
+            const dateTimeStr = `${dateStr}T${timeStr}`;
+            workoutDateTime = new Date(dateTimeStr);
+            
+            // Check if date is valid
+            if (isNaN(workoutDateTime.getTime())) {
+              console.log(`⚠️ Invalid date format for workout ${id}:`, { dateTimeStr });
+              within24hrs = false;
+            } else {
+              const now = new Date();
+              hoursUntilWorkout = (workoutDateTime - now) / (1000 * 60 * 60);
+              within24hrs = hoursUntilWorkout <= 24;
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Error parsing workout date/time for workout ${id}:`, error);
+          within24hrs = false;
+        }
         
         console.log(`🔄 Workout Cancellation Check:`, {
           workoutId: id,
           workoutTitle,
-          workoutDateTime: workoutDateTime.toISOString(),
-          currentTime: now.toISOString(),
+          workoutDateTime: workoutDateTime && !isNaN(workoutDateTime.getTime()) ? workoutDateTime.toISOString() : 'Invalid Date',
+          currentTime: new Date().toISOString(),
           hoursUntilWorkout: hoursUntilWorkout.toFixed(2),
           within24hrs,
           userId: userId
