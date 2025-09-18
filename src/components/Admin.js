@@ -1069,6 +1069,9 @@ const Admin = () => {
                           {workout.attendance_status === 'submitted' ? (
                             <div className="attendance-stats">
                               <span className="attended-count">{workout.attended_count || 0} attended</span>
+                              {workout.cancelled_count > 0 && (
+                                <span className="cancelled-count">• {workout.cancelled_count} cancelled</span>
+                              )}
                               {workout.late_count > 0 && (
                                 <span className="late-count">• {workout.late_count} late</span>
                               )}
@@ -1310,6 +1313,12 @@ const Admin = () => {
                       <span className="stat-number">{attendanceDetails.summary.total_records}</span>
                       <span className="stat-label">Total Records</span>
                     </div>
+                    {attendanceDetails.summary.cancelled_count > 0 && (
+                      <div className="stat-item">
+                        <span className="stat-number">{attendanceDetails.summary.cancelled_count}</span>
+                        <span className="stat-label">Cancelled</span>
+                      </div>
+                    )}
                     {attendanceDetails.summary.late_count > 0 && (
                       <div className="stat-item">
                         <span className="stat-number">{attendanceDetails.summary.late_count}</span>
