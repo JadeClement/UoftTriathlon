@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './CoachesExec.css';
 
 const CoachesExec = () => {
   const location = useLocation();
+  const { currentUser, isAdmin, isExec } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -269,13 +271,15 @@ const CoachesExec = () => {
           <h2 className="section-subtitle">Our Coaches</h2>
           <div className="coaches-grid">
             <div className="coach-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('swim-coach')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('swim-coach')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/swim-coach/justin-konik" className="coach-card-link">
                 <div className="coach-card">
                   <div className="coach-avatar">
@@ -300,13 +304,15 @@ const CoachesExec = () => {
             </div>
 
             <div className="coach-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('run-coach')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('run-coach')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/run-coach/run-coach" className="coach-card-link">
                 <div className="coach-card">
                   <div className="coach-avatar">
@@ -337,13 +343,15 @@ const CoachesExec = () => {
           <h2 className="section-subtitle">Executive Team</h2>
           <div className="exec-grid">
             <div className="exec-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('co-president')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('co-president')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/co-president/jade-clement" className="exec-card-link">
                 <div className="exec-card">
                   <div className="exec-avatar">
@@ -365,13 +373,15 @@ const CoachesExec = () => {
             </div>
 
             <div className="exec-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('co-president-2')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('co-president-2')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/co-president-2/marlene-garijo" className="exec-card-link">
                 <div className="exec-card">
                   <div className="exec-avatar">
@@ -393,13 +403,15 @@ const CoachesExec = () => {
             </div>
 
             <div className="exec-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('treasurer')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('treasurer')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/treasurer/edward-ing" className="exec-card-link">
                 <div className="exec-card">
                   <div className="exec-avatar">
@@ -421,13 +433,15 @@ const CoachesExec = () => {
             </div>
 
             <div className="exec-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('secretary')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('secretary')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/secretary/lauren-williams" className="exec-card-link">
                 <div className="exec-card">
                   <div className="exec-avatar">
@@ -449,13 +463,15 @@ const CoachesExec = () => {
             </div>
 
             <div className="exec-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('social-coordinator')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('social-coordinator')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/social-coordinator/katy-tiper" className="exec-card-link">
                 <div className="exec-card">
                   <div className="exec-avatar">
@@ -477,13 +493,15 @@ const CoachesExec = () => {
             </div>
 
             <div className="exec-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('social-media')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('social-media')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/social-media/paulette-dalton" className="exec-card-link">
                 <div className="exec-card">
                   <div className="exec-avatar">
@@ -505,13 +523,15 @@ const CoachesExec = () => {
             </div>
 
             <div className="exec-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('webmaster')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('webmaster')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/webmaster/ilan-gofman" className="exec-card-link">
                 <div className="exec-card">
                   <div className="exec-avatar">
@@ -533,13 +553,15 @@ const CoachesExec = () => {
             </div>
 
             <div className="exec-card-container">
-              <button 
-                className="edit-button"
-                onClick={() => handleEditClick('workout-coordinator')}
-                title="Edit profile"
-              >
-                ✏️
-              </button>
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditClick('workout-coordinator')}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
               <Link to="/profile/workout-coordinator/workout-coordinator" className="exec-card-link">
                 <div className="exec-card">
                   <div className="exec-avatar">
@@ -573,7 +595,7 @@ const CoachesExec = () => {
       </div>
 
       {/* Edit Modal */}
-      {editingMember && (
+      {editingMember && (isAdmin(currentUser) || isExec(currentUser)) && (
         <div className="edit-modal-overlay" onClick={handleCloseEdit}>
           <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="edit-modal-header">
