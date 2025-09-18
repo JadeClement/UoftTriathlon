@@ -287,7 +287,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           workoutTitle,
           workoutDateTime: workoutDateTime && !isNaN(workoutDateTime.getTime()) ? workoutDateTime.toISOString() : 'Invalid Date',
           currentTime: new Date().toISOString(),
-          hoursUntilWorkout: hoursUntilWorkout.toFixed(2),
+          hoursUntilWorkout: workoutDateTime ? getHoursUntil(workoutDateTime).toFixed(2) : 'N/A',
           within24hrs,
           userId: userId
         });
