@@ -283,9 +283,9 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
             // Handle different date formats
             let dateTimeStr;
             
-            // Check if dateStr is already a Date object string
-            if (dateStr.includes('GMT') || dateStr.includes('UTC')) {
-              // workout_date is already a full Date object, we need to replace the time part
+            // Check if dateStr is already a Date object or Date string
+            if (dateStr instanceof Date || (typeof dateStr === 'string' && (dateStr.includes('GMT') || dateStr.includes('UTC') || dateStr.includes('T')))) {
+              // workout_date is already a Date object or Date string, we need to replace the time part
               const baseDate = new Date(dateStr);
               const [hours, minutes, seconds] = timeStr.split(':');
               baseDate.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds || 0), 0);
