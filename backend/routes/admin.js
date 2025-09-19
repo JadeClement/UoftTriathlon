@@ -931,17 +931,30 @@ router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), asyn
           SELECT COUNT(*) 
           FROM workout_attendance wa 
           WHERE wa.post_id = p.id AND wa.attended = true
+        ) + (
+          SELECT COUNT(*) 
+          FROM workout_cancellations wc 
+          WHERE wc.post_id = p.id AND wc.marked_absent = true
         ) as attended_count,
         (
           SELECT COUNT(*) 
           FROM workout_attendance wa 
           WHERE wa.post_id = p.id
+        ) + (
+          SELECT COUNT(*) 
+          FROM workout_cancellations wc 
+          WHERE wc.post_id = p.id AND wc.marked_absent = true
         ) as total_attendance_records,
         (
           SELECT COUNT(*) 
           FROM workout_attendance wa 
           WHERE wa.post_id = p.id AND wa.late = true
         ) as late_count,
+        (
+          SELECT COUNT(*) 
+          FROM workout_cancellations wc 
+          WHERE wc.post_id = p.id AND wc.marked_absent = true
+        ) as cancelled_count,
         (
           SELECT wa.recorded_at 
           FROM workout_attendance wa 
@@ -1033,38 +1046,118 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
     `;
     const signupsResult = await pool.query(signupsQuery, [workoutId]);
 
-    // Get attendance records
+    // Get attendance records - include both attendance records and cancellations
     const attendanceQuery = `
-      SELECT 
-        wa.id,
-        wa.user_id,
-        wa.attended,
-        wa.late,
-        wa.recorded_at,
-        u.name as user_name,
-        u.email,
-        u.role,
-        NULL as profile_picture_url
-      FROM workout_attendance wa
-      JOIN users u ON wa.user_id = u.id
-      WHERE wa.post_id = $1
-      ORDER BY wa.recorded_at DESC
+      WITH all_attendance AS (
+        SELECT 
+          wa.id,
+          wa.user_id,
+          wa.attended,
+          wa.late,
+          wa.recorded_at,
+          u.name as user_name,
+          u.email,
+          u.role,
+          NULL as profile_picture_url,
+          CASE 
+            WHEN wc.marked_absent = true THEN 'cancelled'
+            ELSE 'attended'
+          END as attendance_type
+        FROM workout_attendance wa
+        JOIN users u ON wa.user_id = u.id
+        LEFT JOIN workout_cancellations wc ON wa.post_id = wc.post_id AND wa.user_id = wc.user_id
+        WHERE wa.post_id = $1
+        
+        UNION ALL
+        
+        SELECT 
+          wc.id + 1000000 as id, -- Offset to avoid ID conflicts
+          wc.user_id,
+          false as attended,
+          false as late,
+          wc.cancelled_at as recorded_at,
+          u.name as user_name,
+          u.email,
+          u.role,
+          NULL as profile_picture_url,
+          'cancelled' as attendance_type
+        FROM workout_cancellations wc
+        JOIN users u ON wc.user_id = u.id
+        WHERE wc.post_id = $1 AND wc.marked_absent = true
+        AND NOT EXISTS (
+          SELECT 1 FROM workout_attendance wa2 
+          WHERE wa2.post_id = wc.post_id AND wa2.user_id = wc.user_id
+        )
+      )
+      SELECT * FROM all_attendance
+      ORDER BY recorded_at DESC
     `;
     const attendanceResult = await pool.query(attendanceQuery, [workoutId]);
 
-    // Get attendance summary
+    // Get attendance summary - include both attendance records and cancellations
     const summaryQuery = `
+      WITH all_records AS (
+        SELECT 
+          wa.user_id,
+          wa.attended,
+          wa.late,
+          wa.recorded_at,
+          wc.marked_absent as cancelled_absent
+        FROM workout_attendance wa
+        LEFT JOIN workout_cancellations wc ON wa.post_id = wc.post_id AND wa.user_id = wc.user_id
+        WHERE wa.post_id = $1
+        
+        UNION ALL
+        
+        SELECT 
+          wc.user_id,
+          false as attended,
+          false as late,
+          wc.cancelled_at as recorded_at,
+          wc.marked_absent as cancelled_absent
+        FROM workout_cancellations wc
+        WHERE wc.post_id = $1 AND wc.marked_absent = true
+        AND NOT EXISTS (
+          SELECT 1 FROM workout_attendance wa2 
+          WHERE wa2.post_id = wc.post_id AND wa2.user_id = wc.user_id
+        )
+      )
       SELECT 
         COUNT(*) as total_records,
         COUNT(CASE WHEN attended = true THEN 1 END) as attended_count,
-        COUNT(CASE WHEN attended = false THEN 1 END) as absent_count,
+        COUNT(CASE WHEN attended = false AND (cancelled_absent = false OR cancelled_absent IS NULL) THEN 1 END) as absent_count,
+        COUNT(CASE WHEN attended = false AND cancelled_absent = true THEN 1 END) as cancelled_count,
         COUNT(CASE WHEN late = true THEN 1 END) as late_count,
         MIN(recorded_at) as first_submitted,
         MAX(recorded_at) as last_submitted
-      FROM workout_attendance
-      WHERE post_id = $1
+      FROM all_records
     `;
     const summaryResult = await pool.query(summaryQuery, [workoutId]);
+
+    // Log attendance details for debugging
+    const cancelledUsers = attendanceResult.rows.filter(record => record.attendance_type === 'cancelled');
+    if (cancelledUsers.length > 0) {
+      console.log(`📋 ATTENDANCE DASHBOARD - Cancelled Users Found:`, {
+        workoutId,
+        workoutTitle: workout.title,
+        cancelledCount: cancelledUsers.length,
+        cancelledUsers: cancelledUsers.map(user => ({
+          userId: user.user_id,
+          userName: user.user_name,
+          cancelledAt: user.recorded_at
+        }))
+      });
+    }
+
+    console.log(`📊 ATTENDANCE SUMMARY:`, {
+      workoutId,
+      workoutTitle: workout.title,
+      totalRecords: summaryResult.rows[0].total_records,
+      attendedCount: summaryResult.rows[0].attended_count,
+      absentCount: summaryResult.rows[0].absent_count,
+      cancelledCount: summaryResult.rows[0].cancelled_count,
+      lateCount: summaryResult.rows[0].late_count
+    });
 
     res.json({
       workout,

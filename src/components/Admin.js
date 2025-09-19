@@ -779,17 +779,16 @@ const Admin = () => {
         {activeTab === 'email' && (
           <div className="email-section">
             <h2>Send Email</h2>
-            <p style={{ color: '#f59e0b', fontWeight: '600', marginBottom: '1rem' }}>** Still in progress</p>
-            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+            <div className="email-layout">
               {/* Left side - Form */}
-              <div style={{ flex: 1, minWidth: '400px' }}>
+              <div className="email-form-panel">
                 <form onSubmit={async (e) => {
                   e.preventDefault();
                   await handleSendEmail();
                 }}>
                   {/* Email Type Selection */}
-                  <div className="form-group" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <div className="form-group email-type-group">
+                    <label>
                       <input 
                         type="radio" 
                         name="emailType" 
@@ -799,7 +798,7 @@ const Admin = () => {
                       />
                       Individual
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <label>
                       <input 
                         type="radio" 
                         name="emailType" 
@@ -897,7 +896,7 @@ const Admin = () => {
 
               {/* Right side - Preview (only for everyone emails) */}
               {emailType === 'everyone' && (
-                <div style={{ flex: 1, minWidth: '400px' }}>
+                <div className="email-preview-panel">
                   <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
                     <h3 style={{marginTop:0}}>Preview</h3>
                     <div style={{
@@ -1074,6 +1073,9 @@ const Admin = () => {
                           {workout.attendance_status === 'submitted' ? (
                             <div className="attendance-stats">
                               <span className="attended-count">{workout.attended_count || 0} attended</span>
+                              {workout.cancelled_count > 0 && (
+                                <span className="cancelled-count">• {workout.cancelled_count} cancelled</span>
+                              )}
                               {workout.late_count > 0 && (
                                 <span className="late-count">• {workout.late_count} late</span>
                               )}
@@ -1315,6 +1317,12 @@ const Admin = () => {
                       <span className="stat-number">{attendanceDetails.summary.total_records}</span>
                       <span className="stat-label">Total Records</span>
                     </div>
+                    {attendanceDetails.summary.cancelled_count > 0 && (
+                      <div className="stat-item">
+                        <span className="stat-number">{attendanceDetails.summary.cancelled_count}</span>
+                        <span className="stat-label">Cancelled</span>
+                      </div>
+                    )}
                     {attendanceDetails.summary.late_count > 0 && (
                       <div className="stat-item">
                         <span className="stat-number">{attendanceDetails.summary.late_count}</span>
@@ -1457,13 +1465,55 @@ const Admin = () => {
                 </div>
               )}
 
-              {/* Who Was Absent */}
-              {attendanceDetails.attendance.filter(record => !record.attended).length > 0 && (
-                <div className="absent-section">
-                  <h3>❌ Who Was Absent ({attendanceDetails.attendance.filter(record => !record.attended).length})</h3>
+              {/* Who Cancelled Within 24 Hours */}
+              {attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length > 0 && (
+                <div className="cancelled-section">
+                  <h3>🚫 Who Cancelled Within 24 Hours ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length})</h3>
                   <div className="attendance-list">
                     {attendanceDetails.attendance
-                      .filter(record => !record.attended)
+                      .filter(record => !record.attended && record.attendance_type === 'cancelled')
+                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                      .map(record => (
+                      <div key={record.id} className="attendance-item cancelled">
+                        <div className="attendance-user-info">
+                          {record.profile_picture_url ? (
+                            <img 
+                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
+                              alt="Profile" 
+                              className="user-avatar"
+                            />
+                          ) : (
+                            <div className="user-avatar-placeholder">
+                              <img 
+                                src="/images/default_profile.png" 
+                                alt="Profile" 
+                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                              />
+                            </div>
+                          )}
+                          <div className="user-details">
+                            <span className="user-name">{record.user_name}</span>
+                            <span className="user-role">{record.role}</span>
+                          </div>
+                        </div>
+                        <div className="attendance-status">
+                          <span className="status-badge cancelled">
+                            🚫 Cancelled (Absent)
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Who Was Absent (Not Cancelled) */}
+              {attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type !== 'cancelled').length > 0 && (
+                <div className="absent-section">
+                  <h3>❌ Who Was Absent ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type !== 'cancelled').length})</h3>
+                  <div className="attendance-list">
+                    {attendanceDetails.attendance
+                      .filter(record => !record.attended && record.attendance_type !== 'cancelled')
                       .sort((a, b) => a.user_name.localeCompare(b.user_name))
                       .map(record => (
                       <div key={record.id} className="attendance-item absent">

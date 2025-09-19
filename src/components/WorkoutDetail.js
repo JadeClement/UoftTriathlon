@@ -412,7 +412,16 @@ const WorkoutDetail = () => {
       });
 
       if (response.ok) {
+        const data = await response.json();
         setIsSignedUp(false);
+        
+        // Show appropriate message based on 24-hour rule
+        if (data.within24hrs && data.markedAbsent) {
+          alert('⚠️ ' + data.message + '\n\nThis cancellation has been recorded as an absence.');
+        } else {
+          alert('✅ ' + data.message);
+        }
+        
         // Reload signups
         const signupsResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/signups`, {
           headers: {

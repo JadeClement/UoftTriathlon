@@ -3,6 +3,7 @@ const { pool } = require('../database-pg');
 const { authenticateToken, requireMember, requireAdmin, requireExec } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
+const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
 
 const router = express.Router();
 
@@ -247,6 +248,125 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
     );
 
     if (existingSignup.rows.length > 0) {
+      // Check if cancellation is within 24 hours of workout start
+      const workoutDetails = await client.query(
+        `SELECT workout_date, workout_time, title FROM forum_posts WHERE id = $1`,
+        [id]
+      );
+      
+      let within24hrs = false;
+      let workoutTitle = 'Unknown Workout';
+      if (workoutDetails.rows.length > 0) {
+        const workout = workoutDetails.rows[0];
+        workoutTitle = workout.title || 'Untitled Workout';
+        
+        // Use standardized date utilities
+        const workoutDateTime = combineDateTime(workout.workout_date, workout.workout_time);
+        
+        if (!workoutDateTime) {
+          console.log(`⚠️ Invalid workout date/time for workout ${id}:`, { 
+            date: workout.workout_date, 
+            time: workout.workout_time 
+          });
+          within24hrs = false;
+        } else {
+          within24hrs = isWithinHours(workoutDateTime, 24);
+          const hoursUntilWorkout = getHoursUntil(workoutDateTime);
+          
+          console.log(`🕐 Time calculation details:`, {
+            workoutDateTime: workoutDateTime.toISOString(),
+            currentTime: new Date().toISOString(),
+            hoursUntilWorkout: hoursUntilWorkout.toFixed(2),
+            isInPast: hoursUntilWorkout < 0,
+            isWithin24hrs: within24hrs
+          });
+        }
+        
+        console.log(`🔄 Workout Cancellation Check:`, {
+          workoutId: id,
+          workoutTitle,
+          workoutDateTime: workoutDateTime && !isNaN(workoutDateTime.getTime()) ? workoutDateTime.toISOString() : 'Invalid Date',
+          currentTime: new Date().toISOString(),
+          hoursUntilWorkout: workoutDateTime ? getHoursUntil(workoutDateTime).toFixed(2) : 'N/A',
+          within24hrs,
+          userId: userId
+        });
+      }
+
+      // Create cancellation record if within 24 hours
+      if (within24hrs) {
+        console.log(`⚠️ CANCELLATION WITHIN 24 HOURS - Processing Absence:`, {
+          workoutId: id,
+          workoutTitle,
+          userId: userId,
+          action: 'Marking as absent due to late cancellation'
+        });
+
+        await client.query(`
+          INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_24hrs, marked_absent)
+          VALUES ($1, $2, CURRENT_TIMESTAMP, true, true)
+          ON CONFLICT (post_id, user_id) DO UPDATE SET
+            cancelled_at = CURRENT_TIMESTAMP,
+            within_24hrs = true,
+            marked_absent = true
+        `, [id, userId]);
+
+        // Mark as absent in attendance table
+        await client.query(`
+          INSERT INTO workout_attendance (post_id, user_id, attended, recorded_at)
+          VALUES ($1, $2, false, CURRENT_TIMESTAMP)
+          ON CONFLICT (post_id, user_id) DO UPDATE SET
+            attended = false,
+            recorded_at = CURRENT_TIMESTAMP
+        `, [id, userId]);
+
+        // Get current absence count before incrementing
+        const currentAbsencesResult = await client.query(
+          'SELECT absences FROM users WHERE id = $1',
+          [userId]
+        );
+        const currentAbsences = currentAbsencesResult.rows[0]?.absences || 0;
+
+        // Increment user's absence count
+        await client.query(
+          'UPDATE users SET absences = absences + 1 WHERE id = $1',
+          [userId]
+        );
+
+        // Get updated absence count
+        const updatedAbsencesResult = await client.query(
+          'SELECT absences FROM users WHERE id = $1',
+          [userId]
+        );
+        const updatedAbsences = updatedAbsencesResult.rows[0]?.absences || 0;
+
+        console.log(`📊 USER ABSENCE COUNT UPDATED:`, {
+          userId: userId,
+          workoutId: id,
+          workoutTitle,
+          previousAbsences: currentAbsences,
+          newAbsences: updatedAbsences,
+          increment: updatedAbsences - currentAbsences
+        });
+      } else {
+        console.log(`✅ CANCELLATION OUTSIDE 24 HOURS - No Absence:`, {
+          workoutId: id,
+          workoutTitle,
+          userId: userId,
+          action: 'Cancellation recorded but no absence marked'
+        });
+
+        // Outside 24 hours - just create cancellation record without marking absent
+        await client.query(`
+          INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_24hrs, marked_absent)
+          VALUES ($1, $2, CURRENT_TIMESTAMP, false, false)
+          ON CONFLICT (post_id, user_id) DO UPDATE SET
+            cancelled_at = CURRENT_TIMESTAMP,
+            within_24hrs = false,
+            marked_absent = false
+        `, [id, userId]);
+      }
+
       // Remove signup
       await client.query('DELETE FROM workout_signups WHERE id = $1', [existingSignup.rows[0].id]);
 
@@ -290,7 +410,26 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
       }
 
       await client.query('COMMIT');
-      return res.json({ message: 'Signup removed successfully', signedUp: false });
+      
+      const message = within24hrs 
+        ? 'Signup cancelled. This counts as an absence due to cancellation within 24 hours.'
+        : 'Signup cancelled successfully.';
+      
+      console.log(`✅ CANCELLATION COMPLETED:`, {
+        workoutId: id,
+        workoutTitle,
+        userId: userId,
+        within24hrs,
+        markedAbsent: within24hrs,
+        message
+      });
+        
+      return res.json({ 
+        message, 
+        signedUp: false, 
+        within24hrs,
+        markedAbsent: within24hrs
+      });
     }
 
     // Attempt atomic insert only if capacity not reached (treat NULL capacity as unlimited)
