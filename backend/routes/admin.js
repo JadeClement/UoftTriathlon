@@ -894,7 +894,7 @@ router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), asyn
     const { page = 1, limit = 20, type = '', status = '' } = req.query;
     const offset = (page - 1) * limit;
 
-    let whereClause = "WHERE p.type = 'workout'";
+    let whereClause = "WHERE p.type = 'workout' AND p.is_deleted = false";
     let params = [];
     let paramCount = 0;
 
@@ -1019,7 +1019,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
         p.capacity,
         p.content
       FROM forum_posts p
-      WHERE p.id = $1 AND p.type = 'workout'
+      WHERE p.id = $1 AND p.type = 'workout' AND p.is_deleted = false
     `;
     const workoutResult = await pool.query(workoutQuery, [workoutId]);
 
