@@ -126,6 +126,19 @@ const Forum = () => {
         const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
         console.log('🔍 Valid posts:', validPosts);
         
+        // Debug workout data structure
+        validPosts.forEach(post => {
+          if (post.type === 'workout') {
+            console.log('🔍 Workout post data:', {
+              id: post.id,
+              title: post.title,
+              workout_type: post.workout_type,
+              capacity: post.capacity,
+              workout_date: post.workout_date
+            });
+          }
+        });
+        
         setWorkoutPosts(validPosts);
         
         // Load signup data for all workouts
@@ -889,6 +902,9 @@ const Forum = () => {
           }}>
             <p style={{margin: 0}}>
               You don't have access to the forum yet. Please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration! You will have to log out and then log back in to see this page.
+            </p>
+            <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
+              <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!
             </p>
           </div>
         </div>
