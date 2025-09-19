@@ -126,18 +126,6 @@ const Forum = () => {
         const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
         console.log('🔍 Valid posts:', validPosts);
         
-        // Debug workout data structure
-        validPosts.forEach(post => {
-          if (post.type === 'workout') {
-            console.log('🔍 Workout post data:', {
-              id: post.id,
-              title: post.title,
-              workout_type: post.workout_type,
-              capacity: post.capacity,
-              workout_date: post.workout_date
-            });
-          }
-        });
         
         setWorkoutPosts(validPosts);
         
@@ -370,15 +358,7 @@ const Forum = () => {
   const isUserSignedUp = (workoutId) => {
     if (!workoutId) return false;
     const signups = workoutSignups[workoutId] || [];
-    const isSignedUp = signups.some(signup => signup && signup.user_id === currentUser.id);
-    console.log(`🔍 isUserSignedUp for workout ${workoutId}:`, {
-      workoutId,
-      currentUser: currentUser.id,
-      currentUserEmail: currentUser.email,
-      signups,
-      isSignedUp
-    });
-    return isSignedUp;
+    return signups.some(signup => signup && signup.user_id === currentUser.id);
   };
 
   const isWorkoutFull = (workoutId) => {
@@ -392,11 +372,18 @@ const Forum = () => {
   const isWorkoutArchived = (post) => {
     if (!post || !post.workout_date) return false;
     try {
-      const d = new Date(post.workout_date);
-      if (isNaN(d.getTime())) return false;
+      // Parse the workout date and get just the date part (YYYY-MM-DD)
+      const workoutDate = new Date(post.workout_date);
+      if (isNaN(workoutDate.getTime())) return false;
+      
+      // Get today's date in the same timezone as the workout date
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return d < today;
+      
+      // Compare dates by converting both to YYYY-MM-DD format
+      const workoutDateStr = workoutDate.toISOString().split('T')[0];
+      const todayStr = today.toISOString().split('T')[0];
+      
+      return workoutDateStr < todayStr;
     } catch (_) {
       return false;
     }

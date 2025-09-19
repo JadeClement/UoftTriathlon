@@ -41,13 +41,19 @@ const WorkoutDetail = () => {
   const isWorkoutArchived = () => {
     try {
       if (!workout || !workout.workout_date) return false;
-      const base = workout.workout_date.split('T')[0];
-      const [y, m, d] = base.split('-').map(Number);
-      const dateOnly = new Date(Date.UTC(y, m - 1, d));
-      if (isNaN(dateOnly.getTime())) return false;
+      
+      // Parse the workout date and get just the date part (YYYY-MM-DD)
+      const workoutDate = new Date(workout.workout_date);
+      if (isNaN(workoutDate.getTime())) return false;
+      
+      // Get today's date
       const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-      return dateOnly < today;
+      
+      // Compare dates by converting both to YYYY-MM-DD format
+      const workoutDateStr = workoutDate.toISOString().split('T')[0];
+      const todayStr = today.toISOString().split('T')[0];
+      
+      return workoutDateStr < todayStr;
     } catch (_) {
       return false;
     }
