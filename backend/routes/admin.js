@@ -765,9 +765,13 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
       <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
     <div class="content">
-      ${intro ? `<p>${escapeHtml(intro)}</p>` : ''}
-      ${bullets.length ? `<ol>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ol>` : ''}
-      ${body ? `<p style="white-space: pre-wrap;">${escapeHtml(body)}</p>` : ''}
+      <p>
+        ${intro ? escapeHtml(intro) : ''}
+        ${intro && bullets.length ? '<br><br>' : ''}
+        ${bullets.length ? bullets.map((b, i) => `${i + 1}. ${escapeHtml(b)}`).join('<br>') : ''}
+        ${(intro || bullets.length) && body ? '<br><br>' : ''}
+        ${body ? escapeHtml(body) : ''}
+      </p>
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
