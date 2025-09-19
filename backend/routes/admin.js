@@ -945,7 +945,7 @@ router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), asyn
         (
           SELECT u.name 
           FROM workout_attendance wa 
-          JOIN users u ON wa.user_id = u.id 
+          JOIN users u ON wa.submitted_by = u.id 
           WHERE wa.post_id = p.id 
           ORDER BY wa.recorded_at DESC 
           LIMIT 1
@@ -1039,12 +1039,14 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
           u.email,
           u.role,
           NULL as profile_picture_url,
+          sub.name as submitted_by_name,
           CASE 
             WHEN wc.marked_absent = true THEN 'cancelled'
             ELSE 'attended'
           END as attendance_type
         FROM workout_attendance wa
         JOIN users u ON wa.user_id = u.id
+        LEFT JOIN users sub ON wa.submitted_by = sub.id
         LEFT JOIN workout_cancellations wc ON wa.post_id = wc.post_id AND wa.user_id = wc.user_id
         WHERE wa.post_id = $1
         
@@ -1060,6 +1062,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
           u.email,
           u.role,
           NULL as profile_picture_url,
+          NULL as submitted_by_name,
           'cancelled' as attendance_type
         FROM workout_cancellations wc
         JOIN users u ON wc.user_id = u.id

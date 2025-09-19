@@ -830,11 +830,11 @@ router.post('/workouts/:id/attendance', authenticateToken, requireAdmin, async (
       const late = Boolean(lateData[userId]);
 
       await pool.query(
-        `INSERT INTO workout_attendance (post_id, user_id, attended, late, recorded_at)
-         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        `INSERT INTO workout_attendance (post_id, user_id, attended, late, submitted_by, recorded_at)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
          ON CONFLICT (post_id, user_id)
-         DO UPDATE SET attended = EXCLUDED.attended, late = EXCLUDED.late, recorded_at = CURRENT_TIMESTAMP`,
-        [id, userId, attended, late]
+         DO UPDATE SET attended = EXCLUDED.attended, late = EXCLUDED.late, submitted_by = EXCLUDED.submitted_by, recorded_at = CURRENT_TIMESTAMP`,
+        [id, userId, attended, late, req.user.id]
       );
     }
 
