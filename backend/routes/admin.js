@@ -946,14 +946,7 @@ router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), asyn
           ORDER BY wa.recorded_at DESC 
           LIMIT 1
         ) as last_attendance_submitted,
-        (
-          SELECT COALESCE(u.name, 'Unknown') 
-          FROM workout_attendance wa 
-          LEFT JOIN users u ON wa.submitted_by = u.id 
-          WHERE wa.post_id = p.id 
-          ORDER BY wa.recorded_at DESC 
-          LIMIT 1
-        ) as submitted_by
+        'Unknown' as submitted_by
       FROM forum_posts p
       ${whereClause}
       ORDER BY p.workout_date DESC, p.created_at DESC
@@ -1043,7 +1036,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('e
           u.email,
           u.role,
           NULL as profile_picture_url,
-          COALESCE(sub.name, 'Unknown') as submitted_by_name,
+          'Unknown' as submitted_by_name,
           CASE 
             WHEN wc.marked_absent = true THEN 'cancelled'
             ELSE 'attended'
