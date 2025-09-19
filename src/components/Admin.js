@@ -1016,60 +1016,19 @@ const Admin = () => {
                       </div>
                       
                       {/* Content */}
-                      <div style={{ padding: '32px 24px' }}>
-                        {template.intro && (
-                          <div style={{
-                            background: '#f8fafc',
-                            padding: '24px',
-                            borderRadius: '12px',
-                            borderLeft: '4px solid #dc2626',
-                            marginBottom: '24px'
-                          }}>
-                            <p style={{margin: 0, color: '#64748b', fontSize: '16px', lineHeight: 1.6}}>
-                              {template.intro}
-                            </p>
-                          </div>
-                        )}
-                        
-                        {(template.bullets||[]).filter(Boolean).length>0 && (
-                          <div style={{
-                            background: '#f8fafc',
-                            padding: '24px',
-                            borderRadius: '12px',
-                            marginBottom: '24px'
-                          }}>
-                            <ol style={{margin: 0, paddingLeft: '20px'}}>
-                              {template.bullets.filter(Boolean).map((b, i)=> (
-                                <li key={i} style={{
-                                  marginBottom: '12px',
-                                  color: '#475569',
-                                  fontSize: '16px',
-                                  lineHeight: 1.6
-                                }}>
-                                  {b}
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        )}
-                        
-                        {template.body && (
-                          <div style={{
-                            background: '#f8fafc',
-                            padding: '24px',
-                            borderRadius: '12px'
-                          }}>
-                            <p style={{
-                              margin: 0,
-                              color: '#475569',
-                              fontSize: '16px',
-                              lineHeight: 1.6,
-                              whiteSpace: 'pre-wrap'
-                            }}>
-                              {template.body}
-                            </p>
-                          </div>
-                        )}
+                      <div style={{ padding: '24px 22px' }}>
+                        <p style={{
+                          margin: 0,
+                          color: '#475569',
+                          fontSize: '16px',
+                          lineHeight: 1.6
+                        }}>
+                          {template.intro || ''}
+                          {template.intro && (template.bullets||[]).filter(Boolean).length > 0 && <><br/><br/></>}
+                          {(template.bullets||[]).filter(Boolean).map((b, i) => `${i + 1}. ${b}`).join('<br/>')}
+                          {((template.intro || (template.bullets||[]).filter(Boolean).length > 0) && template.body) && <><br/><br/></>}
+                          {template.body || ''}
+                        </p>
                       </div>
                       
                       {/* Footer */}
