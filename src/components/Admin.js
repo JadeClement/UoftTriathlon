@@ -775,16 +775,16 @@ const Admin = () => {
         {activeTab === 'email' && (
           <div className="email-section">
             <h2>Send Email</h2>
-            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+            <div className="email-layout">
               {/* Left side - Form */}
-              <div style={{ flex: 1, minWidth: '400px' }}>
+              <div className="email-form-panel">
                 <form onSubmit={async (e) => {
                   e.preventDefault();
                   await handleSendEmail();
                 }}>
                   {/* Email Type Selection */}
-                  <div className="form-group" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <div className="form-group email-type-group">
+                    <label>
                       <input 
                         type="radio" 
                         name="emailType" 
@@ -794,7 +794,7 @@ const Admin = () => {
                       />
                       Individual
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <label>
                       <input 
                         type="radio" 
                         name="emailType" 
@@ -892,7 +892,7 @@ const Admin = () => {
 
               {/* Right side - Preview (only for everyone emails) */}
               {emailType === 'everyone' && (
-                <div style={{ flex: 1, minWidth: '400px' }}>
+                <div className="email-preview-panel">
                   <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
                     <h3 style={{marginTop:0}}>Preview</h3>
                     <div style={{
