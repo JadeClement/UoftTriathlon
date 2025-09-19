@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireMember, requireAdmin, requireExec } = require('../middleware/auth');
+const { authenticateToken, requireMember, requireAdmin, requireExec, requireRole } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
 const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
@@ -795,7 +795,7 @@ router.get('/workouts/:id/attendance-members', authenticateToken, requireExec, a
 });
 
 // Submit workout attendance (exec/admin only)
-router.post('/workouts/:id/attendance', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/workouts/:id/attendance', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
     const { id } = req.params;
     const { attendanceData, lateData = {}, isSwimWorkout = false } = req.body;
