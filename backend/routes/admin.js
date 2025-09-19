@@ -894,7 +894,7 @@ router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), asyn
     const { page = 1, limit = 20, type = '', status = '' } = req.query;
     const offset = (page - 1) * limit;
 
-    let whereClause = "WHERE p.type = 'workout' AND p.is_deleted = false";
+    let whereClause = "WHERE p.type = 'workout'";
     let params = [];
     let paramCount = 0;
 

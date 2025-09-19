@@ -186,7 +186,7 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
   }
 });
 
-// Delete forum post (soft delete)
+// Delete forum post (hard delete for workouts, soft delete for others)
 router.delete('/posts/:id', authenticateToken, requireMember, async (req, res) => {
   try {
     const { id } = req.params;
@@ -194,7 +194,7 @@ router.delete('/posts/:id', authenticateToken, requireMember, async (req, res) =
 
     // Check if user can delete this post (author or admin/exec)
     const postResult = await pool.query(
-      'SELECT user_id FROM forum_posts WHERE id = $1 AND is_deleted = false', 
+      'SELECT user_id, type FROM forum_posts WHERE id = $1 AND is_deleted = false', 
       [id]
     );
 
@@ -209,9 +209,20 @@ router.delete('/posts/:id', authenticateToken, requireMember, async (req, res) =
       return res.status(403).json({ error: 'Not authorized to delete this post' });
     }
 
-    await pool.query('UPDATE forum_posts SET is_deleted = true WHERE id = $1', [id]);
+    if (post.type === 'workout') {
+      // Hard delete for workouts - delete all related data first
+      await pool.query('DELETE FROM workout_signups WHERE post_id = $1', [id]);
+      await pool.query('DELETE FROM workout_attendance WHERE post_id = $1', [id]);
+      await pool.query('DELETE FROM workout_waitlist WHERE post_id = $1', [id]);
+      await pool.query('DELETE FROM workout_cancellations WHERE post_id = $1', [id]);
+      await pool.query('DELETE FROM forum_posts WHERE id = $1', [id]);
+      console.log('✅ Workout hard deleted successfully');
+    } else {
+      // Soft delete for other forum posts
+      await pool.query('UPDATE forum_posts SET is_deleted = true WHERE id = $1', [id]);
+      console.log('✅ Post soft deleted successfully');
+    }
 
-    console.log('✅ Post deleted successfully');
     res.json({ message: 'Post deleted successfully' });
   } catch (error) {
     console.error('Delete post error:', error);
