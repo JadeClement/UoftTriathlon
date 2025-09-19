@@ -707,9 +707,9 @@ const Admin = () => {
       
                     </div>
                     <div className="approval-actions">
-                                              <button 
+                        <button 
                           className="approve-btn"
-                          onClick={() => approveMember(member)}
+                          onClick={() => editMember(member)}
                         >
                           ✅ Approve
                         </button>
