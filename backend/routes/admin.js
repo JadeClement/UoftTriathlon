@@ -741,29 +741,21 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
   <style>
     body { margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-    .header { background: #dc2626; color: #ffffff; padding: 32px 24px; text-align: center; }
-    .header h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-    .content { padding: 32px 24px; }
-    .section { margin-bottom: 24px; }
-    .section:last-child { margin-bottom: 0; }
-    .title-section { background: #f8fafc; padding: 24px; border-radius: 12px; border-left: 4px solid #dc2626; }
-    .title-section h2 { margin: 0 0 12px 0; color: #1e293b; font-size: 24px; font-weight: 600; line-height: 1.3; }
-    .title-section p { margin: 0; color: #64748b; font-size: 16px; line-height: 1.6; }
-    .bullets-section { background: #f8fafc; padding: 24px; border-radius: 12px; }
-    .bullets-section ol { margin: 0; padding-left: 20px; }
-    .bullets-section li { margin-bottom: 12px; color: #475569; font-size: 16px; line-height: 1.6; }
-    .bullets-section li:last-child { margin-bottom: 0; }
-    .body-section { background: #f8fafc; padding: 24px; border-radius: 12px; }
-    .body-section p { margin: 0; color: #475569; font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
-    .footer { background: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .header { background: #dc2626; color: #ffffff; padding: 28px 22px; text-align: center; }
+    .header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; }
+    .content { padding: 24px 22px; }
+    .content p { margin: 0 0 14px 0; color: #475569; font-size: 16px; line-height: 1.6; }
+    .content ol { margin: 0 0 14px 22px; padding: 0; }
+    .content li { margin: 0 0 8px 0; color: #475569; font-size: 16px; line-height: 1.6; }
+    .footer { background: #f1f5f9; padding: 18px 22px; text-align: center; border-top: 1px solid #e2e8f0; }
     .footer p { margin: 0; color: #64748b; font-size: 14px; }
     .footer a { color: #3b82f6; text-decoration: none; font-weight: 500; }
     .footer a:hover { text-decoration: underline; }
     @media (max-width: 600px) {
       .email-container { margin: 0; }
-      .header, .content, .footer { padding: 20px; }
-      .header h1 { font-size: 24px; }
-      .title-section h2 { font-size: 20px; }
+      .header { padding: 22px 18px; }
+      .header h1 { font-size: 22px; }
+      .content { padding: 18px; }
     }
   </style>
 </head>
@@ -773,21 +765,9 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
       <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
     <div class="content">
-      ${intro ? `
-        <div class="section title-section">
-          <p>${escapeHtml(intro)}</p>
-        </div>
-      ` : ''}
-      ${bullets.length ? `
-        <div class="section bullets-section">
-          <ol>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ol>
-        </div>
-      ` : ''}
-      ${body ? `
-        <div class="section body-section">
-          <p>${escapeHtml(body)}</p>
-        </div>
-      ` : ''}
+      ${intro ? `<p>${escapeHtml(intro)}</p>` : ''}
+      ${bullets.length ? `<ol>${bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ol>` : ''}
+      ${body ? `<p style="white-space: pre-wrap;">${escapeHtml(body)}</p>` : ''}
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
