@@ -15,6 +15,11 @@ const Admin = () => {
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
   const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
+  
+  // Individual email recipient selection
+  const [selectedRecipients, setSelectedRecipients] = useState([]);
+  const [recipientSearch, setRecipientSearch] = useState('');
+  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
 
   // Attendance dashboard state
   const [attendanceWorkouts, setAttendanceWorkouts] = useState([]);
@@ -105,6 +110,20 @@ const Admin = () => {
     loadAttendanceData();
   }, [attendanceFilters, currentUser, isAdmin]);
 
+  // Close recipient dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showRecipientDropdown && !event.target.closest('.recipient-selection')) {
+        setShowRecipientDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showRecipientDropdown]);
+
   const loadBannerData = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/site/banner`);
@@ -120,12 +139,30 @@ const Admin = () => {
     }
   };
 
+  // Handle recipient selection
+  const addRecipient = (member) => {
+    if (!selectedRecipients.find(r => r.id === member.id)) {
+      setSelectedRecipients([...selectedRecipients, member]);
+    }
+    setRecipientSearch('');
+    setShowRecipientDropdown(false);
+  };
+
+  const removeRecipient = (memberId) => {
+    setSelectedRecipients(selectedRecipients.filter(r => r.id !== memberId));
+  };
+
+  const filteredMembers = members.filter(member => 
+    member.name.toLowerCase().includes(recipientSearch.toLowerCase()) ||
+    member.email.toLowerCase().includes(recipientSearch.toLowerCase())
+  );
+
   const handleSendEmail = async () => {
     setEmailStatus(null);
     setBulkEmailStatus(null);
     
-    if (emailType === 'individual' && !emailForm.to) {
-      setEmailStatus({ type: 'error', text: 'Please provide recipient email.' });
+    if (emailType === 'individual' && selectedRecipients.length === 0) {
+      setEmailStatus({ type: 'error', text: 'Please select at least one recipient.' });
       return;
     }
     
@@ -142,23 +179,38 @@ const Admin = () => {
       if (emailType === 'individual') {
         setSendingEmail(true);
         const token = localStorage.getItem('triathlonToken');
-        const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ 
-            to: emailForm.to, 
-            subject: template.title || 'UofT Tri Club Update',
-            message: emailForm.message || '',
-            template: template 
+        
+        // Send to each selected recipient
+        const emailPromises = selectedRecipients.map(recipient => 
+          fetch(`${API_BASE_URL}/admin/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ 
+              to: recipient.email, 
+              subject: template.title || 'UofT Tri Club Update',
+              message: emailForm.message || '',
+              template: template 
+            })
           })
-        });
-        const data = await resp.json();
-        if (resp.ok) {
-          setEmailStatus({ type: 'success', text: 'Email sent successfully!' });
-          setEmailForm({ to: '', subject: '', message: '' });
-          setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
-        } else {
-          setEmailStatus({ type: 'error', text: data.error || 'Failed to send email' });
+        );
+        
+        try {
+          const responses = await Promise.all(emailPromises);
+          const results = await Promise.all(responses.map(resp => resp.json()));
+          
+          const successCount = responses.filter(resp => resp.ok).length;
+          const errorCount = responses.length - successCount;
+          
+          if (errorCount === 0) {
+            setEmailStatus({ type: 'success', text: `Email sent successfully to ${successCount} recipient(s)!` });
+            setSelectedRecipients([]);
+            setEmailForm({ to: '', subject: '', message: '' });
+            setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+          } else {
+            setEmailStatus({ type: 'error', text: `Sent to ${successCount} recipients, failed to send to ${errorCount} recipients.` });
+          }
+        } catch (error) {
+          setEmailStatus({ type: 'error', text: 'Failed to send emails' });
         }
         setSendingEmail(false);
       } else {
@@ -814,14 +866,59 @@ const Admin = () => {
                   {emailType === 'individual' && (
                     <>
                       <div className="form-group">
-                        <label>To</label>
-                        <input 
-                          type="email" 
-                          value={emailForm.to} 
-                          onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} 
-                          placeholder="recipient@example.com"
-                          required 
-                        />
+                        <label>Recipients</label>
+                        <div className="recipient-selection">
+                          <div className="recipient-input-container">
+                            <input 
+                              type="text" 
+                              value={recipientSearch} 
+                              onChange={(e) => {
+                                setRecipientSearch(e.target.value);
+                                setShowRecipientDropdown(true);
+                              }}
+                              onFocus={() => setShowRecipientDropdown(true)}
+                              placeholder="Search members by name or email..."
+                              className="recipient-search-input"
+                            />
+                            {showRecipientDropdown && recipientSearch && (
+                              <div className="recipient-dropdown">
+                                {filteredMembers.slice(0, 10).map(member => (
+                                  <div 
+                                    key={member.id}
+                                    className="recipient-option"
+                                    onClick={() => addRecipient(member)}
+                                  >
+                                    <div className="recipient-option-info">
+                                      <span className="recipient-name">{member.name}</span>
+                                      <span className="recipient-email">{member.email}</span>
+                                      <span className="recipient-role">{member.role}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                                {filteredMembers.length === 0 && (
+                                  <div className="recipient-option no-results">No members found</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {selectedRecipients.length > 0 && (
+                            <div className="selected-recipients">
+                              {selectedRecipients.map(recipient => (
+                                <div key={recipient.id} className="recipient-tag">
+                                  <span className="recipient-tag-name">{recipient.name}</span>
+                                  <span className="recipient-tag-email">({recipient.email})</span>
+                                  <button 
+                                    type="button"
+                                    className="recipient-tag-remove"
+                                    onClick={() => removeRecipient(recipient.id)}
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="form-group">
                         <label>Message</label>
