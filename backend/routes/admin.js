@@ -68,7 +68,7 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
     const membersResult = await pool.query(`
       SELECT 
         id, email, name, role, created_at,
-        join_date, expiry_date, phone_number, absences, charter_accepted
+        join_date, expiry_date, phone_number, absences, charter_accepted, sport
       FROM users
       ${whereClause}
       ORDER BY created_at DESC
@@ -182,7 +182,7 @@ router.put('/members/:id/charter', authenticateToken, requireAdmin, async (req, 
 router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone_number, role, charterAccepted, expiryDate } = req.body;
+    const { name, email, phone_number, role, charterAccepted, expiryDate, sport } = req.body;
     
     console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, expiryDate });
 
@@ -251,6 +251,17 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       const expiryValue = expiryDate === '' ? null : expiryDate;
       values.push(expiryValue);
       console.log('🔧 Expiry date update:', { expiryDate, expiryValue });
+    }
+
+    if (sport !== undefined) {
+      // Validate sport
+      if (!['triathlon', 'duathlon', 'run_only'].includes(sport)) {
+        return res.status(400).json({ error: 'Invalid sport. Must be triathlon, duathlon, or run_only' });
+      }
+      paramCount++;
+      updates.push(`sport = $${paramCount}`);
+      values.push(sport);
+      console.log('🔧 Sport update:', { sport });
     }
 
     if (updates.length === 0) {

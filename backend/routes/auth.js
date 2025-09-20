@@ -47,10 +47,10 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const result = await pool.query(`
-      INSERT INTO users (name, email, password_hash, phone_number, role, created_at)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-      RETURNING id, name, email, phone_number, role
-    `, [name, email, hashedPassword, phoneNumber, 'pending']);
+      INSERT INTO users (name, email, password_hash, phone_number, role, sport, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+      RETURNING id, name, email, phone_number, role, sport
+    `, [name, email, hashedPassword, phoneNumber, 'pending', 'triathlon']);
 
     const user = result.rows[0];
 
@@ -72,7 +72,8 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         phone_number: user.phone_number,
-        role: user.role
+        role: user.role,
+        sport: user.sport
       },
       token
     });

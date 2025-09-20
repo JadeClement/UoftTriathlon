@@ -47,6 +47,7 @@ async function initializeDatabase() {
         profile_picture_url VARCHAR(500),
         phone_number VARCHAR(50),
         absences INTEGER DEFAULT 0,
+        sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only')),
         charter_accepted BOOLEAN DEFAULT FALSE,
         charter_accepted_at TIMESTAMP,
         reset_token VARCHAR(255),
@@ -244,6 +245,21 @@ async function initializeDatabase() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_user_id ON event_rsvps(user_id)');
     
     console.log('✅ Database indexes created');
+
+    // Add sport column to users table if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only'))
+      `);
+      console.log('✅ sport column added to users table');
+    } catch (error) {
+      if (error.code === '42701') {
+        console.log('✅ sport column already exists in users table');
+      } else {
+        console.error('❌ Error adding sport column:', error.message);
+      }
+    }
 
     console.log('✅ PostgreSQL database initialization completed');
   } catch (error) {

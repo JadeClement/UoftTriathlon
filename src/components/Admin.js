@@ -41,7 +41,8 @@ const Admin = () => {
     role: '',
     expiryDate: '',
     phoneNumber: '',
-    charterAccepted: false
+    charterAccepted: false,
+    sport: 'triathlon'
   });
   const [approvingMember, setApprovingMember] = useState(null);
   const [approvalForm, setApprovalForm] = useState({
@@ -499,7 +500,8 @@ const Admin = () => {
       role: member.role,
       expiryDate: member.expiryDate || '',
       phoneNumber: member.phone_number || '',
-      charterAccepted: initialCharterAccepted
+      charterAccepted: initialCharterAccepted,
+      sport: member.sport || 'triathlon'
     });
     console.log('📝 Edit form set to:', {
       name: member.name,
@@ -1240,6 +1242,19 @@ const Admin = () => {
                   value={editForm.expiryDate}
                   onChange={(e) => setEditForm({...editForm, expiryDate: e.target.value})}
                 />
+              </div>
+
+              <div className="form-group">
+                <label>Sport:</label>
+                <select
+                  value={editForm.sport || 'triathlon'}
+                  onChange={(e) => setEditForm({...editForm, sport: e.target.value})}
+                  required
+                >
+                  <option value="triathlon">Triathlon</option>
+                  <option value="duathlon">Duathlon</option>
+                  <option value="run_only">Run Only</option>
+                </select>
               </div>
               
               <div className="form-group">
