@@ -183,8 +183,9 @@ export const AuthProvider = ({ children }) => {
       'public': 0,
       'pending': 1,
       'member': 2,
-      'exec': 3,
-      'administrator': 4
+      'leader': 3,
+      'exec': 4,
+      'administrator': 5
     };
     
     return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
