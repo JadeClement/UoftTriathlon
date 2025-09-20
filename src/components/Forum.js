@@ -5,7 +5,7 @@ import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import './Forum.css';
 
 const Forum = () => {
-  const { currentUser, isMember, isExec, getUserRole } = useAuth();
+  const { currentUser, isMember, isExec, isLeader, getUserRole } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('workouts');
   const [workoutPosts, setWorkoutPosts] = useState([]);
@@ -874,7 +874,7 @@ const Forum = () => {
   }
 
   // Gate for pending users: show message instead of forum content
-  if (!isMember(currentUser)) {
+  if (!isMember(currentUser) && !isLeader(currentUser) && !isExec(currentUser)) {
     return (
       <div className="forum-container">
         <div className="container">

@@ -705,6 +705,7 @@ const Admin = () => {
                     <th>Expiry Date</th>
                     <th>Absences</th>
                     <th>Charter Accepted</th>
+                    <th>Sport</th>
                     {(isAdmin(currentUser) || isExec(currentUser)) && <th>Actions</th>}
                   </tr>
                 </thead>
@@ -725,6 +726,14 @@ const Admin = () => {
                       <td>
                         <span className={`charter-status ${member.charterAccepted ? 'accepted' : 'not-accepted'}`}>
                           {member.charterAccepted ? '✅ Yes' : '❌ No'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="sport-badge">
+                          {member.sport === 'triathlon' ? '🏊‍♂️🚴‍♂️🏃‍♂️ Triathlon' : 
+                           member.sport === 'duathlon' ? '🚴‍♂️🏃‍♂️ Duathlon' : 
+                           member.sport === 'run_only' ? '🏃‍♂️ Run Only' : 
+                           'Unknown'}
                         </span>
                       </td>
 
