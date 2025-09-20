@@ -47,6 +47,74 @@ const Forum = () => {
   const [promotedWorkout, setPromotedWorkout] = useState(null);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
+  // Function to check if a workout type is allowed for the user's sport
+  const isWorkoutTypeAllowed = (workoutType) => {
+    if (!currentUser || !currentUser.sport) return true; // Show all if no sport preference
+    
+    const sport = currentUser.sport;
+    
+    switch (sport) {
+      case 'run_only':
+        return workoutType === 'run';
+      case 'duathlon':
+        return ['run', 'outdoor-ride', 'brick'].includes(workoutType);
+      case 'triathlon':
+        return ['run', 'outdoor-ride', 'brick', 'swim', 'spin'].includes(workoutType);
+      default:
+        return true; // Show all for unknown sports
+    }
+  };
+
+  // Function to get allowed workout types for the current user's sport
+  const getAllowedWorkoutTypes = () => {
+    if (!currentUser || !currentUser.sport) {
+      // Show all types if no sport preference
+      return [
+        { value: 'spin', label: 'Spin' },
+        { value: 'outdoor-ride', label: 'Outdoor Ride' },
+        { value: 'run', label: 'Run' },
+        { value: 'swim', label: 'Swim' },
+        { value: 'brick', label: 'Brick (Bike + Run)' },
+        { value: 'other', label: 'Other' }
+      ];
+    }
+    
+    const sport = currentUser.sport;
+    
+    switch (sport) {
+      case 'run_only':
+        return [
+          { value: 'run', label: 'Run' },
+          { value: 'other', label: 'Other' }
+        ];
+      case 'duathlon':
+        return [
+          { value: 'run', label: 'Run' },
+          { value: 'outdoor-ride', label: 'Outdoor Ride' },
+          { value: 'brick', label: 'Brick (Bike + Run)' },
+          { value: 'other', label: 'Other' }
+        ];
+      case 'triathlon':
+        return [
+          { value: 'run', label: 'Run' },
+          { value: 'outdoor-ride', label: 'Outdoor Ride' },
+          { value: 'brick', label: 'Brick (Bike + Run)' },
+          { value: 'swim', label: 'Swim' },
+          { value: 'spin', label: 'Spin' },
+          { value: 'other', label: 'Other' }
+        ];
+      default:
+        return [
+          { value: 'spin', label: 'Spin' },
+          { value: 'outdoor-ride', label: 'Outdoor Ride' },
+          { value: 'run', label: 'Run' },
+          { value: 'swim', label: 'Swim' },
+          { value: 'brick', label: 'Brick (Bike + Run)' },
+          { value: 'other', label: 'Other' }
+        ];
+    }
+  };
+  
   const { 
     editingWorkout, 
     editForm, 
@@ -835,9 +903,15 @@ const Forum = () => {
     }
   };
 
-  // Filter workouts based on selected filters (time + type)
+  // Filter workouts based on selected filters (time + type + sport)
   const getFilteredWorkouts = () => {
-    const byTime = workoutPosts.filter(post => {
+    // First filter by sport preference
+    const bySport = workoutPosts.filter(post => {
+      return isWorkoutTypeAllowed(post.workout_type);
+    });
+
+    // Then filter by time
+    const byTime = bySport.filter(post => {
       const past = isPast(post.workout_date);
       return timeFilter === 'past' ? past : !past;
     });
@@ -1487,12 +1561,11 @@ const Forum = () => {
                     onChange={(e) => setWorkoutForm({...workoutForm, type: e.target.value})}
                     required
                   >
-                    <option value="spin">Spin</option>
-                    <option value="outdoor-ride">Outdoor Ride</option>
-                    <option value="run">Run</option>
-                    <option value="swim">Swim</option>
-                    <option value="brick">Brick (Bike + Run)</option>
-                    <option value="other">Other</option>
+                    {getAllowedWorkoutTypes().map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
