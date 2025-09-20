@@ -926,7 +926,7 @@ const Forum = () => {
           <div className="workouts-section">
             <div className="section-header">
               <h2>Workout Posts</h2>
-              {isExec(currentUser) && (
+              {(isExec(currentUser) || isLeader(currentUser)) && (
                 <button 
                   className="new-post-btn"
                   onClick={() => setShowWorkoutForm(true)}
