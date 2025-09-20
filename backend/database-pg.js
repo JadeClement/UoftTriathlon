@@ -40,7 +40,7 @@ async function initializeDatabase() {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'pending',
+        role VARCHAR(50) DEFAULT 'pending' CHECK(role IN ('pending', 'member', 'leader', 'exec', 'administrator')),
         join_date DATE,
         expiry_date DATE,
         bio TEXT,

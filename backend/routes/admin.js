@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireAdmin, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requireRole, requireLeader } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -884,7 +884,7 @@ router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res
 });
 
 // Get attendance dashboard data
-router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), async (req, res) => {
+router.get('/attendance-dashboard', authenticateToken, requireLeader, async (req, res) => {
   try {
     const { page = 1, limit = 20, type = '', status = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -999,7 +999,7 @@ router.get('/attendance-dashboard', authenticateToken, requireRole('exec'), asyn
 });
 
 // Get detailed attendance for a specific workout
-router.get('/attendance-dashboard/:workoutId', authenticateToken, requireRole('exec'), async (req, res) => {
+router.get('/attendance-dashboard/:workoutId', authenticateToken, requireLeader, async (req, res) => {
   try {
     const { workoutId } = req.params;
 

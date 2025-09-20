@@ -198,6 +198,10 @@ export const AuthProvider = ({ children }) => {
     return hasPermission(user, 'exec');
   };
 
+  const isLeader = (user) => {
+    return hasPermission(user, 'leader');
+  };
+
   const isMember = (user) => {
     return hasPermission(user, 'member');
   };
@@ -299,6 +303,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAdmin,
     isExec,
+    isLeader,
     isMember,
     hasPermission,
     getUserRole,
