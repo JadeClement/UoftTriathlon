@@ -49,20 +49,33 @@ const Forum = () => {
   
   // Function to check if a workout type is allowed for the user's sport
   const isWorkoutTypeAllowed = (workoutType) => {
-    if (!currentUser || !currentUser.sport) return true; // Show all if no sport preference
+    console.log('🔍 isWorkoutTypeAllowed debug:', {
+      currentUser: currentUser,
+      sport: currentUser?.sport,
+      workoutType: workoutType
+    });
+    
+    if (!currentUser || !currentUser.sport) {
+      console.log('🔍 No sport preference, showing all workouts');
+      return true; // Show all if no sport preference
+    }
     
     const sport = currentUser.sport;
+    const isAllowed = (() => {
+      switch (sport) {
+        case 'run_only':
+          return workoutType === 'run';
+        case 'duathlon':
+          return ['run', 'outdoor-ride', 'brick'].includes(workoutType);
+        case 'triathlon':
+          return ['run', 'outdoor-ride', 'brick', 'swim', 'spin'].includes(workoutType);
+        default:
+          return true; // Show all for unknown sports
+      }
+    })();
     
-    switch (sport) {
-      case 'run_only':
-        return workoutType === 'run';
-      case 'duathlon':
-        return ['run', 'outdoor-ride', 'brick'].includes(workoutType);
-      case 'triathlon':
-        return ['run', 'outdoor-ride', 'brick', 'swim', 'spin'].includes(workoutType);
-      default:
-        return true; // Show all for unknown sports
-    }
+    console.log('🔍 Sport filtering result:', { sport, workoutType, isAllowed });
+    return isAllowed;
   };
 
   // Function to get allowed workout types for the current user's sport

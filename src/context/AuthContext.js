@@ -87,7 +87,8 @@ export const AuthProvider = ({ children }) => {
       const normalizedUser = {
         ...user,
         charterAccepted: user.charter_accepted || user.charterAccepted,
-        phoneNumber: user.phone_number || user.phoneNumber
+        phoneNumber: user.phone_number || user.phoneNumber,
+        sport: user.sport // Preserve sport field
       };
       
       // Remove duplicate fields to keep only normalized versions
@@ -140,7 +141,8 @@ export const AuthProvider = ({ children }) => {
         charterAccepted: user.charter_accepted || user.charterAccepted,
         profilePictureUrl: user.profile_picture_url || user.profilePictureUrl,
         phoneNumber: user.phone_number || user.phoneNumber,
-        bio: user.bio
+        bio: user.bio,
+        sport: user.sport // Preserve sport field
       };
       
       // Remove duplicate fields to keep only normalized versions
