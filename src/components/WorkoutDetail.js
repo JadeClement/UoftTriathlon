@@ -123,7 +123,7 @@ const WorkoutDetail = () => {
         
         // Check if this is a swim workout and user is exec/admin
         const isSwim = workoutData.workout?.workout_type === 'swim';
-        const isExec = currentUser?.role === 'exec' || currentUser?.role === 'administrator';
+        const isExec = currentUser?.role === 'exec' || currentUser?.role === 'administrator' || currentUser?.role === 'leader';
         setIsSwimWorkout(isSwim);
         
         // Load swim members if this is a swim workout and user is exec/admin
@@ -822,18 +822,18 @@ const WorkoutDetail = () => {
           )}
         </div>
 
-        {/* Only show signups section for non-swim workouts OR swim workouts when user is exec/admin */}
-        {(!isSwimWorkout || (isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator'))) && (
+        {/* Only show signups section for non-swim workouts OR swim workouts when user is leader/exec/admin */}
+        {(!isSwimWorkout || (isSwimWorkout && currentUser && (currentUser.role === 'leader' || currentUser.role === 'exec' || currentUser.role === 'administrator'))) && (
           <div className="signups-section">
             <h2>
-              {isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') 
+              {isSwimWorkout && currentUser && (currentUser.role === 'leader' || currentUser.role === 'exec' || currentUser.role === 'administrator') 
                 ? `Swim Attendance (${swimMembers.length})` 
                 : `Who's Coming (${signups.length}${workout.capacity ? `/${workout.capacity}` : ''})`
               }
             </h2>
             
-            {/* Show swim members for swim workouts when user is exec/admin */}
-            {isSwimWorkout && currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') ? (
+            {/* Show swim members for swim workouts when user is leader/exec/admin */}
+            {isSwimWorkout && currentUser && (currentUser.role === 'leader' || currentUser.role === 'exec' || currentUser.role === 'administrator') ? (
             swimMembers.length === 0 ? (
               <p className="no-signups">Loading members...</p>
             ) : (
@@ -956,8 +956,8 @@ const WorkoutDetail = () => {
                 <div className="signups-list">
                   {signups.map(signup => (
                     <div key={signup.id} className="signup-item">
-                      {/* Attendance checkbox for executives and administrators */}
-                      {currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                      {/* Attendance checkbox for leaders, executives, and administrators */}
+                      {currentUser && (currentUser.role === 'leader' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
                         <div className="attendance-checkbox">
                           <input
                             type="checkbox"
@@ -1011,8 +1011,8 @@ const WorkoutDetail = () => {
                   ))}
                 </div>
                 
-                {/* Submit attendance button for executives and administrators */}
-                {currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator') && signups.length > 0 && (
+                {/* Submit attendance button for leaders, executives and administrators */}
+                {currentUser && (currentUser.role === 'leader' || currentUser.role === 'exec' || currentUser.role === 'administrator') && signups.length > 0 && (
                   <div className="attendance-submit">
                     <div className="attendance-debug">
                       <small>📊 {signups.length} signups • {Object.keys(attendance).length} attendance records</small>

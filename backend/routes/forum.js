@@ -778,8 +778,8 @@ router.get('/workouts/:id/attendance', authenticateToken, requireMember, async (
   }
 });
 
-// Get all members for swim workout attendance (exec/admin only)
-router.get('/workouts/:id/attendance-members', authenticateToken, requireExec, async (req, res) => {
+// Get all members for swim workout attendance (leader/exec/admin only)
+router.get('/workouts/:id/attendance-members', authenticateToken, requireLeader, async (req, res) => {
   try {
     const { id } = req.params;
 
