@@ -421,8 +421,8 @@ const WorkoutDetail = () => {
         const data = await response.json();
         setIsSignedUp(false);
         
-        // Show appropriate message based on 24-hour rule
-        if (data.within24hrs && data.markedAbsent) {
+        // Show appropriate message based on 12-hour rule
+        if (data.within12hrs && data.markedAbsent) {
           alert('⚠️ ' + data.message + '\n\nThis cancellation has been recorded as an absence.');
         } else {
           alert('✅ ' + data.message);

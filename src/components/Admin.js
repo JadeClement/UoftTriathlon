@@ -1546,10 +1546,10 @@ const Admin = () => {
                 </div>
               )}
 
-              {/* Who Cancelled Within 24 Hours */}
+              {/* Who Cancelled Within 12 Hours */}
               {attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length > 0 && (
                 <div className="cancelled-section">
-                  <h3>🚫 Who Cancelled Within 24 Hours ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length})</h3>
+                  <h3>🚫 Who Cancelled Within 12 Hours ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length})</h3>
                   <div className="attendance-list">
                     {attendanceDetails.attendance
                       .filter(record => !record.attended && record.attendance_type === 'cancelled')
