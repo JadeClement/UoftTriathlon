@@ -286,13 +286,13 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
     );
 
     if (existingSignup.rows.length > 0) {
-      // Check if cancellation is within 24 hours of workout start
+      // Check if cancellation is within 12 hours of workout start
       const workoutDetails = await client.query(
         `SELECT workout_date, workout_time, title FROM forum_posts WHERE id = $1`,
         [id]
       );
       
-      let within24hrs = false;
+      let within12hrs = false;
       let workoutTitle = 'Unknown Workout';
       if (workoutDetails.rows.length > 0) {
         const workout = workoutDetails.rows[0];
@@ -306,9 +306,9 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
             date: workout.workout_date, 
             time: workout.workout_time 
           });
-          within24hrs = false;
+          within12hrs = false;
         } else {
-          within24hrs = isWithinHours(workoutDateTime, 24);
+          within12hrs = isWithinHours(workoutDateTime, 12);
           const hoursUntilWorkout = getHoursUntil(workoutDateTime);
           
           console.log(`🕐 Time calculation details:`, {
@@ -316,7 +316,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
             currentTime: new Date().toISOString(),
             hoursUntilWorkout: hoursUntilWorkout.toFixed(2),
             isInPast: hoursUntilWorkout < 0,
-            isWithin24hrs: within24hrs
+            isWithin12hrs: within12hrs
           });
         }
         
@@ -326,14 +326,14 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           workoutDateTime: workoutDateTime && !isNaN(workoutDateTime.getTime()) ? workoutDateTime.toISOString() : 'Invalid Date',
           currentTime: new Date().toISOString(),
           hoursUntilWorkout: workoutDateTime ? getHoursUntil(workoutDateTime).toFixed(2) : 'N/A',
-          within24hrs,
+          within12hrs,
           userId: userId
         });
       }
 
-      // Create cancellation record if within 24 hours
-      if (within24hrs) {
-        console.log(`⚠️ CANCELLATION WITHIN 24 HOURS - Processing Absence:`, {
+      // Create cancellation record if within 12 hours
+      if (within12hrs) {
+        console.log(`⚠️ CANCELLATION WITHIN 12 HOURS - Processing Absence:`, {
           workoutId: id,
           workoutTitle,
           userId: userId,
@@ -341,11 +341,11 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         });
 
         await client.query(`
-          INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_24hrs, marked_absent)
+          INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_12hrs, marked_absent)
           VALUES ($1, $2, CURRENT_TIMESTAMP, true, true)
           ON CONFLICT (post_id, user_id) DO UPDATE SET
             cancelled_at = CURRENT_TIMESTAMP,
-            within_24hrs = true,
+            within_12hrs = true,
             marked_absent = true
         `, [id, userId]);
 
@@ -394,13 +394,13 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           action: 'Cancellation recorded but no absence marked'
         });
 
-        // Outside 24 hours - just create cancellation record without marking absent
+        // Outside 12 hours - just create cancellation record without marking absent
         await client.query(`
-          INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_24hrs, marked_absent)
+          INSERT INTO workout_cancellations (post_id, user_id, cancelled_at, within_12hrs, marked_absent)
           VALUES ($1, $2, CURRENT_TIMESTAMP, false, false)
           ON CONFLICT (post_id, user_id) DO UPDATE SET
             cancelled_at = CURRENT_TIMESTAMP,
-            within_24hrs = false,
+            within_12hrs = false,
             marked_absent = false
         `, [id, userId]);
       }
@@ -449,24 +449,24 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
 
       await client.query('COMMIT');
       
-      const message = within24hrs 
-        ? 'Signup cancelled. This counts as an absence due to cancellation within 24 hours.'
+      const message = within12hrs 
+        ? 'Signup cancelled. This counts as an absence due to cancellation within 12 hours.'
         : 'Signup cancelled successfully.';
       
       console.log(`✅ CANCELLATION COMPLETED:`, {
         workoutId: id,
         workoutTitle,
         userId: userId,
-        within24hrs,
-        markedAbsent: within24hrs,
+        within12hrs,
+        markedAbsent: within12hrs,
         message
       });
         
       return res.json({ 
         message, 
         signedUp: false, 
-        within24hrs,
-        markedAbsent: within24hrs
+        within12hrs,
+        markedAbsent: within12hrs
       });
     }
 

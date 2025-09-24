@@ -137,7 +137,7 @@ async function initializeDatabase() {
         post_id INTEGER REFERENCES forum_posts(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         cancelled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        within_24hrs BOOLEAN DEFAULT TRUE,
+        within_12hrs BOOLEAN DEFAULT TRUE,
         marked_absent BOOLEAN DEFAULT FALSE,
         UNIQUE(post_id, user_id)
       )
@@ -258,6 +258,21 @@ async function initializeDatabase() {
         console.log('✅ sport column already exists in users table');
       } else {
         console.error('❌ Error adding sport column:', error.message);
+      }
+    }
+
+    // Rename within_24hrs to within_12hrs in workout_cancellations table
+    try {
+      await pool.query(`
+        ALTER TABLE workout_cancellations
+        RENAME COLUMN within_24hrs TO within_12hrs
+      `);
+      console.log('✅ within_24hrs column renamed to within_12hrs in workout_cancellations table');
+    } catch (error) {
+      if (error.code === '42703') {
+        console.log('✅ within_12hrs column already exists in workout_cancellations table');
+      } else {
+        console.error('❌ Error renaming within_24hrs column:', error.message);
       }
     }
 
