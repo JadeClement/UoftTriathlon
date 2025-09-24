@@ -1533,7 +1533,7 @@ const Forum = () => {
             <div className="modal cancel-modal">
               <h2>Cancel Workout Signup</h2>
               <div className="cancel-warning">
-                <p>⚠️ <strong>Important:</strong> If you cancel less than 24 hours in advance, it will count as an absence.</p>
+                <p>⚠️ <strong>Important:</strong> If you cancel less than 12 hours in advance, it will count as an absence.</p>
                 <p>Your absences are recorded and once you have three, you will be suspended from signing up for a week.</p>
                 <p>This is to keep it fair for all members!</p>
               </div>

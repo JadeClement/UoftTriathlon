@@ -1171,7 +1171,7 @@ const WorkoutDetail = () => {
               <h2>Cancel Workout Signup</h2>
               <p>Are you sure you want to cancel your signup for this workout?</p>
               <p className="warning-text">
-                <strong>Warning:</strong> If you cancel less than 24 hours in advance, it will count as an absence. 
+                <strong>Warning:</strong> If you cancel less than 12 hours in advance, it will count as an absence. 
                 Your absences are recorded and once you have three, you will be suspended from signing up for a week. 
                 This is to keep it fair for all members!
               </p>
