@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireAdmin, requireRole, requireCoach, requireLeader } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('../middleware/auth');
 
 const router = express.Router();
 

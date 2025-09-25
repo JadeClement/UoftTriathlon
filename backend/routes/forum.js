@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireMember, requireAdmin, requireExec, requireCoach, requireLeader, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireMember, requireAdmin, requireExec, requireCoach, requireRole } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
 const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
@@ -19,12 +19,12 @@ const requireMemberOrCoachForWorkouts = (req, res, next) => {
 
   // For workout posts, allow members and coaches
   if (req.body.type === 'workout') {
-    if (['member', 'coach', 'leader', 'exec', 'administrator'].includes(userRole)) {
+    if (['member', 'coach', 'exec', 'administrator'].includes(userRole)) {
       return next();
     }
   } else {
     // For other posts, only allow members and above
-    if (['member', 'coach', 'leader', 'exec', 'administrator'].includes(userRole)) {
+    if (['member', 'coach', 'exec', 'administrator'].includes(userRole)) {
       return next();
     }
   }
@@ -778,7 +778,7 @@ router.get('/workouts/:id/attendance', authenticateToken, requireMember, async (
   }
 });
 
-// Get all members for swim workout attendance (leader/exec/admin only)
+// Get all members for swim workout attendance (coach/exec/admin only)
 router.get('/workouts/:id/attendance-members', authenticateToken, requireCoach, async (req, res) => {
   try {
     const { id } = req.params;
@@ -821,7 +821,7 @@ router.get('/workouts/:id/attendance-members', authenticateToken, requireCoach, 
   }
 });
 
-// Submit workout attendance (leader/exec/admin only)
+// Submit workout attendance (coach/exec/admin only)
 router.post('/workouts/:id/attendance', authenticateToken, requireCoach, async (req, res) => {
   try {
     const { id } = req.params;

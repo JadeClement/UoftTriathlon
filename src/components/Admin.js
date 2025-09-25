@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import './Admin.css';
 
 const Admin = () => {
-  const { currentUser, isAdmin, isExec, isCoach, isLeader } = useAuth();
+  const { currentUser, isAdmin, isExec, isCoach } = useAuth();
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
@@ -626,7 +626,7 @@ const Admin = () => {
   console.log('Current user:', currentUser);
   console.log('Is admin check:', isAdmin(currentUser));
   
-  // Allow admins, execs, and leaders to access dashboard
+  // Allow admins, execs, and coaches to access dashboard
   if (!currentUser || (!isAdmin(currentUser) && !isExec(currentUser) && !isCoach(currentUser))) {
     return (
       <div className="admin-container">

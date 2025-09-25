@@ -186,7 +186,6 @@ export const AuthProvider = ({ children }) => {
     'pending': 1,
     'member': 2,
     'coach': 3,
-    'leader': 3, // Backward compatibility
     'exec': 4,
     'administrator': 5
   };
@@ -206,9 +205,6 @@ export const AuthProvider = ({ children }) => {
     return hasPermission(user, 'coach');
   };
 
-  const isLeader = (user) => {
-    return hasPermission(user, 'leader');
-  };
 
   const isMember = (user) => {
     return hasPermission(user, 'member');
@@ -312,7 +308,6 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     isExec,
     isCoach,
-    isLeader,
     isMember,
     hasPermission,
     getUserRole,

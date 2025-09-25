@@ -5,7 +5,7 @@ import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import './Forum.css';
 
 const Forum = () => {
-  const { currentUser, isMember, isExec, isCoach, isLeader, getUserRole } = useAuth();
+  const { currentUser, isMember, isExec, isCoach, getUserRole } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('workouts');
   const [workoutPosts, setWorkoutPosts] = useState([]);

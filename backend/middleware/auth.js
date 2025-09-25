@@ -63,7 +63,6 @@ const requireRole = (requiredRole) => {
       'pending': 1,
       'member': 2,
       'coach': 3,
-      'leader': 3,
       'exec': 4,
       'administrator': 5
     };
@@ -97,7 +96,6 @@ const requireMember = (req, res, next) => {
     'pending': 1,
     'member': 2,
     'coach': 3,
-    'leader': 3,
     'exec': 4,
     'administrator': 5
   };
@@ -116,9 +114,8 @@ const requireMember = (req, res, next) => {
   }
 };
 
-// Middleware to check if user is coach (leader) or higher
+// Middleware to check if user is coach or higher
 const requireCoach = requireRole('coach');
-const requireLeader = requireRole('leader');
 
 // Middleware to check if user is exec or higher
 const requireExec = requireRole('exec');
@@ -197,7 +194,6 @@ module.exports = {
   requireAdmin,
   requireMember,
   requireCoach,
-  requireLeader,
   requireExec,
   requireOwnProfile,
   allowOwnProfile,

@@ -40,7 +40,7 @@ async function initializeDatabase() {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'pending' CHECK(role IN ('pending', 'member', 'coach', 'leader', 'exec', 'administrator')),
+        role VARCHAR(50) DEFAULT 'pending' CHECK(role IN ('pending', 'member', 'coach', 'exec', 'administrator')),
         join_date DATE,
         expiry_date DATE,
         bio TEXT,
@@ -290,6 +290,21 @@ async function initializeDatabase() {
       }
     } catch (error) {
       console.error('❌ Error converting leader roles to coach:', error.message);
+    }
+
+    // Migration to update CHECK constraint to remove 'leader' role
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        DROP CONSTRAINT IF EXISTS users_role_check
+      `);
+      await pool.query(`
+        ALTER TABLE users
+        ADD CONSTRAINT users_role_check CHECK(role IN ('pending', 'member', 'coach', 'exec', 'administrator'))
+      `);
+      console.log('✅ Updated role CHECK constraint to remove "leader" role');
+    } catch (error) {
+      console.error('❌ Error updating role CHECK constraint:', error.message);
     }
 
     console.log('✅ PostgreSQL database initialization completed');
