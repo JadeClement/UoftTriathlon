@@ -1031,9 +1031,10 @@ const Admin = () => {
                         {/* Intro with preserved line breaks */}
                         {template.intro && (
                           <p
-                            style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6 }}
-                            dangerouslySetInnerHTML={{ __html: String(template.intro).replace(/\r\n/g, '\n').replace(/\n/g, '<br/>') }}
-                          />
+                            style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
+                          >
+                            {template.intro}
+                          </p>
                         )}
                         {/* Bullets as numbered lines */}
                         {(template.bullets||[]).filter(Boolean).length > 0 && (
@@ -1048,9 +1049,10 @@ const Admin = () => {
                         {/* Body with preserved line breaks */}
                         {template.body && (
                           <p
-                            style={{ margin: (template.intro || (template.bullets||[]).filter(Boolean).length>0) ? '14px 0 0 0' : 0, color: '#475569', fontSize: '16px', lineHeight: 1.6 }}
-                            dangerouslySetInnerHTML={{ __html: String(template.body).replace(/\r\n/g, '\n').replace(/\n/g, '<br/>') }}
-                          />
+                            style={{ margin: (template.intro || (template.bullets||[]).filter(Boolean).length>0) ? '14px 0 0 0' : 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
+                          >
+                            {template.body}
+                          </p>
                         )}
                       </div>
                       
