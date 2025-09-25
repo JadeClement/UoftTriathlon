@@ -146,7 +146,7 @@ class EmailService {
         UofT Triathlon Club | uoft-tri.club
       `;
 
-      return await this.sendEmail(userEmail, subject, htmlContent, textContent);
+      return await this.sendEmail(userEmail, subject, htmlContent, textContent, this.fromEmail);
     } catch (error) {
       console.error('❌ Error sending waitlist promotion email:', error);
       return { success: false, error: error.message };
@@ -223,7 +223,7 @@ class EmailService {
         UofT Triathlon Club | uoft-tri.club
       `;
 
-      return await this.sendEmail(userEmail, subject, htmlContent, textContent);
+      return await this.sendEmail(userEmail, subject, htmlContent, textContent, this.fromEmail);
     } catch (error) {
       console.error('❌ Error sending password reset email:', error);
       return { success: false, error: error.message };
@@ -318,7 +318,7 @@ class EmailService {
         UofT Triathlon Club | uoft-tri.club
       `;
 
-      return await this.sendEmail(userEmail, subject, htmlContent, textContent);
+      return await this.sendEmail(userEmail, subject, htmlContent, textContent, this.fromEmail);
     } catch (error) {
       console.error('❌ Error sending member acceptance email:', error);
       return { success: false, error: error.message };
@@ -460,7 +460,7 @@ Best regards,
 UofT Triathlon Club
       `;
 
-      return await this.sendEmail(userEmail, subject, htmlContent, textContent);
+      return await this.sendEmail(userEmail, subject, htmlContent, textContent, this.fromEmail);
     } catch (error) {
       console.error('❌ Error sending role change notification email:', error);
       return { success: false, error: error.message };
