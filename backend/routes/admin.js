@@ -611,8 +611,8 @@ router.delete('/race-management/:id', authenticateToken, requireAdmin, async (re
   }
 });
 
-// Send email route
-router.post('/send-email', authenticateToken, requireAdmin, async (req, res) => {
+// Send email route (execs and admins)
+router.post('/send-email', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
     const { to, subject, message } = req.body;
 
@@ -667,8 +667,8 @@ router.post('/send-email', authenticateToken, requireAdmin, async (req, res) => 
   }
 });
 
-// Send bulk email route
-router.post('/send-bulk-email', authenticateToken, requireAdmin, async (req, res) => {
+// Send bulk email route (execs and admins)
+router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
     const { subject, message, recipients, template } = req.body;
 
