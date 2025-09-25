@@ -743,6 +743,11 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
+    // Preserve author formatting (line breaks) for intro/body
+    const preserveNewlines = (s = '') => String(s)
+      .replace(/\r\n/g, '\n')
+      .replace(/\n/g, '<br>');
+
     const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -776,13 +781,9 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
     <div class="content">
-      <p>
-        ${intro ? escapeHtml(intro) : ''}
-        ${intro && bullets.length ? '<br><br>' : ''}
-        ${bullets.length ? bullets.map((b, i) => `${i + 1}. ${escapeHtml(b)}`).join('<br>') : ''}
-        ${(intro || bullets.length) && body ? '<br><br>' : ''}
-        ${body ? escapeHtml(body) : ''}
-      </p>
+      ${intro ? `<p>${preserveNewlines(escapeHtml(intro))}</p>` : ''}
+      ${bullets.length ? `<p>${bullets.map((b, i) => `${i + 1}. ${escapeHtml(b)}`).join('<br>')}</p>` : ''}
+      ${body ? `<p>${preserveNewlines(escapeHtml(body))}</p>` : ''}
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>

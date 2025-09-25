@@ -1028,18 +1028,30 @@ const Admin = () => {
                       
                       {/* Content */}
                       <div style={{ padding: '24px 22px' }}>
-                        <p style={{
-                          margin: 0,
-                          color: '#475569',
-                          fontSize: '16px',
-                          lineHeight: 1.6
-                        }}>
-                          {template.intro || ''}
-                          {template.intro && (template.bullets||[]).filter(Boolean).length > 0 && <><br/><br/></>}
-                          {(template.bullets||[]).filter(Boolean).map((b, i) => `${i + 1}. ${b}`).join('<br/>')}
-                          {((template.intro || (template.bullets||[]).filter(Boolean).length > 0) && template.body) && <><br/><br/></>}
-                          {template.body || ''}
-                        </p>
+                        {/* Intro with preserved line breaks */}
+                        {template.intro && (
+                          <p
+                            style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6 }}
+                            dangerouslySetInnerHTML={{ __html: String(template.intro).replace(/\r\n/g, '\n').replace(/\n/g, '<br/>') }}
+                          />
+                        )}
+                        {/* Bullets as numbered lines */}
+                        {(template.bullets||[]).filter(Boolean).length > 0 && (
+                          <p style={{ margin: '14px 0 0 0', color: '#475569', fontSize: '16px', lineHeight: 1.6 }}>
+                            {(template.bullets||[])
+                              .filter(Boolean)
+                              .map((b, i) => (
+                                <span key={i}>{i + 1}. {b}<br/></span>
+                              ))}
+                          </p>
+                        )}
+                        {/* Body with preserved line breaks */}
+                        {template.body && (
+                          <p
+                            style={{ margin: (template.intro || (template.bullets||[]).filter(Boolean).length>0) ? '14px 0 0 0' : 0, color: '#475569', fontSize: '16px', lineHeight: 1.6 }}
+                            dangerouslySetInnerHTML={{ __html: String(template.body).replace(/\r\n/g, '\n').replace(/\n/g, '<br/>') }}
+                          />
+                        )}
                       </div>
                       
                       {/* Footer */}
