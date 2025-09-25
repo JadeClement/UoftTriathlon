@@ -181,14 +181,15 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (user, requiredRole) => {
     const userRole = getUserRole(user);
-    const roleHierarchy = {
-      'public': 0,
-      'pending': 1,
-      'member': 2,
-      'leader': 3,
-      'exec': 4,
-      'administrator': 5
-    };
+  const roleHierarchy = {
+    'public': 0,
+    'pending': 1,
+    'member': 2,
+    'coach': 3,
+    'leader': 3, // Backward compatibility
+    'exec': 4,
+    'administrator': 5
+  };
     
     return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
   };
@@ -199,6 +200,10 @@ export const AuthProvider = ({ children }) => {
 
   const isExec = (user) => {
     return hasPermission(user, 'exec');
+  };
+
+  const isCoach = (user) => {
+    return hasPermission(user, 'coach');
   };
 
   const isLeader = (user) => {
@@ -306,6 +311,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAdmin,
     isExec,
+    isCoach,
     isLeader,
     isMember,
     hasPermission,

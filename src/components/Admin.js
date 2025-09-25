@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import './Admin.css';
 
 const Admin = () => {
-  const { currentUser, isAdmin, isExec, isLeader } = useAuth();
+  const { currentUser, isAdmin, isExec, isCoach, isLeader } = useAuth();
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
@@ -104,12 +104,12 @@ const Admin = () => {
 
   // Load attendance data when filters change
   useEffect(() => {
-    if (!currentUser || (!isAdmin(currentUser) && !isExec(currentUser) && !isLeader(currentUser))) {
+    if (!currentUser || (!isAdmin(currentUser) && !isExec(currentUser) && !isCoach(currentUser))) {
       return;
     }
 
     loadAttendanceData();
-  }, [attendanceFilters, currentUser, isAdmin, isExec, isLeader]);
+  }, [attendanceFilters, currentUser, isAdmin, isExec, isCoach]);
 
   // Close recipient dropdown when clicking outside
   useEffect(() => {
@@ -627,7 +627,7 @@ const Admin = () => {
   console.log('Is admin check:', isAdmin(currentUser));
   
   // Allow admins, execs, and leaders to access dashboard
-  if (!currentUser || (!isAdmin(currentUser) && !isExec(currentUser) && !isLeader(currentUser))) {
+  if (!currentUser || (!isAdmin(currentUser) && !isExec(currentUser) && !isCoach(currentUser))) {
     return (
       <div className="admin-container">
         <div className="admin-access-denied">
@@ -1253,7 +1253,7 @@ const Admin = () => {
                 >
                   <option value="pending">Pending</option>
                   <option value="member">Member</option>
-                  <option value="leader">Leader</option>
+                  <option value="coach">Coach</option>
                   <option value="exec">Executive</option>
                   <option value="administrator">Administrator</option>
                 </select>

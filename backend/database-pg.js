@@ -40,7 +40,7 @@ async function initializeDatabase() {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'pending' CHECK(role IN ('pending', 'member', 'leader', 'exec', 'administrator')),
+        role VARCHAR(50) DEFAULT 'pending' CHECK(role IN ('pending', 'member', 'coach', 'leader', 'exec', 'administrator')),
         join_date DATE,
         expiry_date DATE,
         bio TEXT,
@@ -274,6 +274,22 @@ async function initializeDatabase() {
       } else {
         console.error('❌ Error renaming within_24hrs column:', error.message);
       }
+    }
+
+    // Migration to convert 'leader' roles to 'coach'
+    try {
+      const result = await pool.query(`
+        UPDATE users 
+        SET role = 'coach' 
+        WHERE role = 'leader'
+      `);
+      if (result.rowCount > 0) {
+        console.log(`✅ Converted ${result.rowCount} 'leader' roles to 'coach'`);
+      } else {
+        console.log('✅ No users with "leader" role found to convert');
+      }
+    } catch (error) {
+      console.error('❌ Error converting leader roles to coach:', error.message);
     }
 
     console.log('✅ PostgreSQL database initialization completed');

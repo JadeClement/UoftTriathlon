@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireMember, requireAdmin, requireExec, requireLeader, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireMember, requireAdmin, requireExec, requireCoach, requireLeader, requireRole } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
 const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
@@ -9,29 +9,29 @@ const router = express.Router();
 
 // CORS is handled by main server middleware
 
-// Custom middleware to allow members and leaders to create workouts, but only members for general posts
-const requireMemberOrLeaderForWorkouts = (req, res, next) => {
+// Custom middleware to allow members and coaches to create workouts, but only members for general posts
+const requireMemberOrCoachForWorkouts = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
   const userRole = req.user.role || 'public';
-  
-  // For workout posts, allow members and leaders
+
+  // For workout posts, allow members and coaches
   if (req.body.type === 'workout') {
-    if (['member', 'leader', 'exec', 'administrator'].includes(userRole)) {
+    if (['member', 'coach', 'leader', 'exec', 'administrator'].includes(userRole)) {
       return next();
     }
   } else {
     // For other posts, only allow members and above
-    if (['member', 'leader', 'exec', 'administrator'].includes(userRole)) {
+    if (['member', 'coach', 'leader', 'exec', 'administrator'].includes(userRole)) {
       return next();
     }
   }
-  
-  return res.status(403).json({ 
+
+  return res.status(403).json({
     error: 'Insufficient permissions',
-    required: 'member or leader for workouts, member for other posts',
+    required: 'member or coach for workouts, member for other posts',
     current: userRole
   });
 };
@@ -115,7 +115,7 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
 });
 
 // Create new forum post
-router.post('/posts', authenticateToken, requireMemberOrLeaderForWorkouts, async (req, res) => {
+router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async (req, res) => {
   try {
     const { title, content, type, workoutType, workoutDate, workoutTime, capacity, eventDate } = req.body;
     const userId = req.user.id;
@@ -779,7 +779,7 @@ router.get('/workouts/:id/attendance', authenticateToken, requireMember, async (
 });
 
 // Get all members for swim workout attendance (leader/exec/admin only)
-router.get('/workouts/:id/attendance-members', authenticateToken, requireLeader, async (req, res) => {
+router.get('/workouts/:id/attendance-members', authenticateToken, requireCoach, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -822,7 +822,7 @@ router.get('/workouts/:id/attendance-members', authenticateToken, requireLeader,
 });
 
 // Submit workout attendance (leader/exec/admin only)
-router.post('/workouts/:id/attendance', authenticateToken, requireLeader, async (req, res) => {
+router.post('/workouts/:id/attendance', authenticateToken, requireCoach, async (req, res) => {
   try {
     const { id } = req.params;
     const { attendanceData, lateData = {}, isSwimWorkout = false } = req.body;
