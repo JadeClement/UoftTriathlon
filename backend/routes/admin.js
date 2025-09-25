@@ -656,7 +656,7 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
 </body>
 </html>`;
 
-    const result = await emailService.sendEmail(to, subject, htmlContent, message);
+    const result = await emailService.sendEmail(to, subject, htmlContent, message, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
     if (result.success) {
       return res.json({ message: 'Email sent successfully' });
     }
@@ -825,7 +825,7 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
           const personalizedHtml = htmlContent.replace(/\[name\]/g, recipient.name);
           const personalizedText = textContent.replace(/\[name\]/g, recipient.name);
           
-          const result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText);
+          const result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
           
           if (result.success) {
             console.log(`✅ Bulk email sent to ${recipient.email}`);

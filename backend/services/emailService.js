@@ -25,9 +25,9 @@ class EmailService {
   }
 
   // Send email using AWS SES
-  async sendEmail(to, subject, htmlContent, textContent = null) {
+  async sendEmail(to, subject, htmlContent, textContent = null, replyTo = null) {
     try {
-      console.log('📧 EmailService.sendEmail called with:', { to, subject, fromEmail: this.fromEmail });
+      console.log('📧 EmailService.sendEmail called with:', { to, subject, fromEmail: this.fromEmail, replyTo });
       
       const params = {
         Source: `${this.fromName} <${this.fromEmail}>`,
@@ -52,6 +52,9 @@ class EmailService {
             }),
           },
         },
+        ...(replyTo && {
+          ReplyToAddresses: Array.isArray(replyTo) ? replyTo : [replyTo],
+        }),
       };
 
       const command = new SendEmailCommand(params);
