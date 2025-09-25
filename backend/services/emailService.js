@@ -55,6 +55,8 @@ class EmailService {
         ...(replyTo && {
           ReplyToAddresses: Array.isArray(replyTo) ? replyTo : [replyTo],
         }),
+        // Add headers to help with email threading and Reply All
+        ConfigurationSetName: process.env.AWS_SES_CONFIGURATION_SET || undefined,
       };
 
       const command = new SendEmailCommand(params);
