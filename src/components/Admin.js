@@ -156,6 +156,7 @@ const Admin = () => {
     return text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
       .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: none;">$1</a>') // Links
       .replace(/\n• /g, '<br/><br/>• ') // Add extra space before bullet points
       .replace(/\n/g, '<br/>'); // Line breaks
   };
@@ -994,12 +995,20 @@ const Admin = () => {
                             >
                               •
                             </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('[', '](url)', 'message')}
+                              title="Link"
+                            >
+                              🔗
+                            </button>
                           </div>
                           <textarea 
                             rows="8" 
                             value={emailForm.message} 
                             onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
-                            placeholder="Type your message here... Use **bold** and *italic* formatting."
+                            placeholder="Type your message here... Use **bold**, *italic*, and [link text](url) formatting."
                             required 
                           />
                         </div>
@@ -1094,12 +1103,20 @@ const Admin = () => {
                             >
                               •
                             </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('[', '](url)', 'intro')}
+                              title="Link"
+                            >
+                              🔗
+                            </button>
                           </div>
                           <textarea 
                             rows="3" 
                             value={template.intro} 
                             onChange={(e)=>setTemplate({...template, intro:e.target.value})} 
-                            placeholder="Introduction text... Use **bold** and *italic* formatting."
+                            placeholder="Introduction text... Use **bold**, *italic*, and [link text](url) formatting."
                           />
                         </div>
                       </div>
@@ -1141,12 +1158,20 @@ const Admin = () => {
                             >
                               •
                             </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('[', '](url)', 'body')}
+                              title="Link"
+                            >
+                              🔗
+                            </button>
                           </div>
                           <textarea 
                             rows="6" 
                             value={template.body} 
                             onChange={(e)=>setTemplate({...template, body:e.target.value})} 
-                            placeholder="Main email content... Use **bold** and *italic* formatting."
+                            placeholder="Main email content... Use **bold**, *italic*, and [link text](url) formatting."
                           />
                         </div>
                       </div>
