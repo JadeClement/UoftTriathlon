@@ -2,6 +2,16 @@ const express = require('express');
 const { pool } = require('../database-pg');
 const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('../middleware/auth');
 
+// Function to convert markdown-like formatting to HTML
+const formatText = (text) => {
+  if (!text) return '';
+  
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+    .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+    .replace(/\n/g, '<br/>'); // Line breaks
+};
+
 const router = express.Router();
 
 // CORS is handled by main server middleware
@@ -647,7 +657,7 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
 <body>
   <div class="email-container">
     <div class="content">
-      <div class="message">${message.replace(/\n/g, '<br>')}</div>
+      <div class="message">${formatText(message)}</div>
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
@@ -781,9 +791,9 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
     <div class="content">
-      ${intro ? `<p>${preserveNewlines(escapeHtml(intro))}</p>` : ''}
+      ${intro ? `<p>${formatText(escapeHtml(intro))}</p>` : ''}
       ${bullets.length ? `<p>${bullets.map((b, i) => `${i + 1}. ${escapeHtml(b)}`).join('<br>')}</p>` : ''}
-      ${body ? `<p>${preserveNewlines(escapeHtml(body))}</p>` : ''}
+      ${body ? `<p>${formatText(escapeHtml(body))}</p>` : ''}
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>

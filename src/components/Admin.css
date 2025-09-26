@@ -1209,6 +1209,57 @@
   }
 }
 
+/* Text Editor Styles */
+.text-editor {
+  position: relative;
+}
+
+.text-editor-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px 6px 0 0;
+  border-bottom: none;
+}
+
+.format-btn {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.format-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.format-btn:active {
+  background: #e5e7eb;
+  transform: translateY(1px);
+}
+
+.format-btn strong {
+  font-weight: 700;
+}
+
+.format-btn em {
+  font-style: italic;
+}
+
 /* Recipient Selection Styles */
 .recipient-selection {
   position: relative;

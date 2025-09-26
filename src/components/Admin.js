@@ -125,6 +125,40 @@ const Admin = () => {
     };
   }, [showRecipientDropdown]);
 
+  // Function to insert formatting at cursor position
+  const insertFormatting = (before, after, field) => {
+    const textarea = document.querySelector(`textarea[placeholder*="${field === 'message' ? 'message' : field === 'intro' ? 'Introduction' : 'Main email'}"]`);
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+    const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+    
+    if (field === 'message') {
+      setEmailForm({ ...emailForm, message: newText });
+    } else {
+      setTemplate({ ...template, [field]: newText });
+    }
+
+    // Restore cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + before.length, end + before.length);
+    }, 0);
+  };
+
+  // Function to convert markdown-like formatting to HTML
+  const formatText = (text) => {
+    if (!text) return '';
+    
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+      .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+      .replace(/\n/g, '<br/>'); // Line breaks
+  };
+
   const loadBannerData = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/site/banner`);
@@ -933,13 +967,41 @@ const Admin = () => {
                       </div>
                       <div className="form-group">
                         <label>Message</label>
-                        <textarea 
-                          rows="8" 
-                          value={emailForm.message} 
-                          onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
-                          placeholder="Type your message here..."
-                          required 
-                        />
+                        <div className="text-editor">
+                          <div className="text-editor-toolbar">
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('**', '**', 'message')}
+                              title="Bold"
+                            >
+                              <strong>B</strong>
+                            </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('*', '*', 'message')}
+                              title="Italic"
+                            >
+                              <em>I</em>
+                            </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('\n• ', '', 'message')}
+                              title="Bullet Point"
+                            >
+                              •
+                            </button>
+                          </div>
+                          <textarea 
+                            rows="8" 
+                            value={emailForm.message} 
+                            onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
+                            placeholder="Type your message here... Use **bold** and *italic* formatting."
+                            required 
+                          />
+                        </div>
                       </div>
                     </>
                   )}
@@ -976,9 +1038,12 @@ const Admin = () => {
                               </h2>
                             )}
                             
-                            <p style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
-                              {emailForm.message || 'Your message will appear here...'}
-                            </p>
+                            <div 
+                              style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
+                              dangerouslySetInnerHTML={{ 
+                                __html: formatText(emailForm.message || 'Your message will appear here...') 
+                              }}
+                            />
                           </div>
                           
                           {/* Footer */}
@@ -1014,7 +1079,40 @@ const Admin = () => {
                       </div>
                       <div className="form-group">
                         <label>Intro</label>
-                        <textarea rows="3" value={template.intro} onChange={(e)=>setTemplate({...template, intro:e.target.value})} placeholder="Introduction text..." />
+                        <div className="text-editor">
+                          <div className="text-editor-toolbar">
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('**', '**', 'intro')}
+                              title="Bold"
+                            >
+                              <strong>B</strong>
+                            </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('*', '*', 'intro')}
+                              title="Italic"
+                            >
+                              <em>I</em>
+                            </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('\n• ', '', 'intro')}
+                              title="Bullet Point"
+                            >
+                              •
+                            </button>
+                          </div>
+                          <textarea 
+                            rows="3" 
+                            value={template.intro} 
+                            onChange={(e)=>setTemplate({...template, intro:e.target.value})} 
+                            placeholder="Introduction text... Use **bold** and *italic* formatting."
+                          />
+                        </div>
                       </div>
                       <div className="form-group">
                         <label>Bullets</label>
@@ -1028,7 +1126,40 @@ const Admin = () => {
                       </div>
                       <div className="form-group">
                         <label>Body</label>
-                        <textarea rows="6" value={template.body} onChange={(e)=>setTemplate({...template, body:e.target.value})} placeholder="Main email content..." />
+                        <div className="text-editor">
+                          <div className="text-editor-toolbar">
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('**', '**', 'body')}
+                              title="Bold"
+                            >
+                              <strong>B</strong>
+                            </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('*', '*', 'body')}
+                              title="Italic"
+                            >
+                              <em>I</em>
+                            </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
+                              onClick={() => insertFormatting('\n• ', '', 'body')}
+                              title="Bullet Point"
+                            >
+                              •
+                            </button>
+                          </div>
+                          <textarea 
+                            rows="6" 
+                            value={template.body} 
+                            onChange={(e)=>setTemplate({...template, body:e.target.value})} 
+                            placeholder="Main email content... Use **bold** and *italic* formatting."
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1086,11 +1217,12 @@ const Admin = () => {
                       <div style={{ padding: '24px 22px' }}>
                         {/* Intro with preserved line breaks */}
                         {template.intro && (
-                          <p
+                          <div
                             style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
-                          >
-                            {template.intro}
-                          </p>
+                            dangerouslySetInnerHTML={{ 
+                              __html: formatText(template.intro) 
+                            }}
+                          />
                         )}
                         {/* Bullets as numbered lines */}
                         {(template.bullets||[]).filter(Boolean).length > 0 && (
@@ -1104,11 +1236,12 @@ const Admin = () => {
                         )}
                         {/* Body with preserved line breaks */}
                         {template.body && (
-                          <p
+                          <div
                             style={{ margin: (template.intro || (template.bullets||[]).filter(Boolean).length>0) ? '14px 0 0 0' : 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
-                          >
-                            {template.body}
-                          </p>
+                            dangerouslySetInnerHTML={{ 
+                              __html: formatText(template.body) 
+                            }}
+                          />
                         )}
                       </div>
                       
