@@ -156,6 +156,7 @@ const Admin = () => {
     return text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
       .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+      .replace(/\n• /g, '<br/><br/>• ') // Add extra space before bullet points
       .replace(/\n/g, '<br/>'); // Line breaks
   };
 
@@ -1018,18 +1019,6 @@ const Admin = () => {
                           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                         }}>
-                          {/* Header */}
-                          <div style={{
-                            background: '#dc2626',
-                            color: 'white',
-                            padding: '20px',
-                            textAlign: 'center'
-                          }}>
-                            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>
-                              {template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}
-                            </h1>
-                          </div>
-                          
                           {/* Content */}
                           <div style={{ padding: '24px' }}>
                             {template.title && (

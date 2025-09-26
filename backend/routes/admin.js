@@ -9,6 +9,7 @@ const formatText = (text) => {
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
     .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+    .replace(/\n• /g, '<br/><br/>• ') // Add extra space before bullet points
     .replace(/\n/g, '<br/>'); // Line breaks
 };
 
@@ -644,7 +645,7 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
     body { margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     .content { padding: 32px 24px; }
-    .message { color: #475569; font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
+    .message { color: #475569; font-size: 16px; line-height: 1.6; }
     .footer { background: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0; }
     .footer p { margin: 0; color: #64748b; font-size: 14px; }
     .footer a { color: #3b82f6; text-decoration: none; font-weight: 500; }
@@ -661,6 +662,7 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
+      <p style="font-style: italic; margin-top: 12px;">The UofT Tri Club Exec</p>
     </div>
   </div>
 </body>
