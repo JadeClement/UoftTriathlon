@@ -20,6 +20,8 @@ const Admin = () => {
   const [selectedRecipients, setSelectedRecipients] = useState([]);
   const [recipientSearch, setRecipientSearch] = useState('');
   const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
+  const [customEmailInput, setCustomEmailInput] = useState('');
+  const [showCustomEmailInput, setShowCustomEmailInput] = useState(false);
   
   // Bulk email recipient selection
   const [bulkEmailRecipients, setBulkEmailRecipients] = useState({
@@ -208,6 +210,21 @@ const Admin = () => {
 
   const removeRecipient = (memberId) => {
     setSelectedRecipients(selectedRecipients.filter(r => r.id !== memberId));
+  };
+
+  const addCustomEmail = () => {
+    const email = customEmailInput.trim();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      const customRecipient = {
+        id: `custom-${Date.now()}`,
+        name: 'External Recipient',
+        email: email,
+        role: 'custom'
+      };
+      setSelectedRecipients(prev => [...prev, customRecipient]);
+      setCustomEmailInput('');
+      setShowCustomEmailInput(false);
+    }
   };
 
   const filteredMembers = members.filter(member => 
@@ -965,12 +982,51 @@ const Admin = () => {
                               </div>
                             )}
                           </div>
+                          
+                          {/* Custom Email Input */}
+                          <div className="custom-email-section" style={{ marginTop: '12px' }}>
+                            <button 
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => setShowCustomEmailInput(!showCustomEmailInput)}
+                              style={{ fontSize: '14px', padding: '6px 12px' }}
+                            >
+                              {showCustomEmailInput ? 'Cancel' : '+ Add Custom Email'}
+                            </button>
+                            
+                            {showCustomEmailInput && (
+                              <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                <input 
+                                  type="email" 
+                                  value={customEmailInput} 
+                                  onChange={(e) => setCustomEmailInput(e.target.value)}
+                                  placeholder="Enter email address..."
+                                  className="form-control"
+                                  style={{ flex: 1 }}
+                                  onKeyPress={(e) => e.key === 'Enter' && addCustomEmail()}
+                                />
+                                <button 
+                                  type="button"
+                                  className="btn btn-primary"
+                                  onClick={addCustomEmail}
+                                  disabled={!customEmailInput.trim()}
+                                  style={{ fontSize: '14px', padding: '6px 12px' }}
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          
                           {selectedRecipients.length > 0 && (
                             <div className="selected-recipients">
                               {selectedRecipients.map(recipient => (
                                 <div key={recipient.id} className="recipient-tag">
                                   <span className="recipient-tag-name">{recipient.name}</span>
                                   <span className="recipient-tag-email">({recipient.email})</span>
+                                  {recipient.role === 'custom' && (
+                                    <span className="recipient-tag-role" style={{ fontSize: '11px', color: '#6b7280' }}>Custom</span>
+                                  )}
                                   <button 
                                     type="button"
                                     className="recipient-tag-remove"

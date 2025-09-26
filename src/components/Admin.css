@@ -1228,6 +1228,19 @@
   cursor: pointer;
 }
 
+/* Custom Email Section */
+.custom-email-section {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+
+.recipient-tag-role {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
 .text-editor-toolbar {
   display: flex;
   gap: 8px;
