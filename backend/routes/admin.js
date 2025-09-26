@@ -11,6 +11,7 @@ const formatText = (text) => {
     .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: none;">$1</a>') // Links
     .replace(/\n• /g, '<br/><br/>• ') // Add extra space before bullet points
+    .replace(/\n\d+\. /g, '<br/>$&') // Add single space before numbered bullets
     .replace(/\n/g, '<br/>'); // Line breaks
 };
 
