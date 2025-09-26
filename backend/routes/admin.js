@@ -682,7 +682,7 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
 // Send bulk email route (execs and admins)
 router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
-    const { subject, message, recipients, template } = req.body;
+    const { subject, message, recipients, template, customEmails } = req.body;
 
     console.log('🔍 Bulk email request body:', { subject, message, recipients, template });
 
@@ -690,52 +690,86 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       return res.status(400).json({ error: 'Missing required field: subject' });
     }
 
-    // Check if at least one recipient group is selected
+    // Check if at least one recipient group is selected or custom emails provided
     const selectedGroups = Object.values(recipients).some(selected => selected);
-    if (!selectedGroups) {
-      return res.status(400).json({ error: 'Please select at least one recipient group' });
+    const hasCustomEmails = customEmails && customEmails.trim().length > 0;
+    
+    if (!selectedGroups && !hasCustomEmails) {
+      return res.status(400).json({ error: 'Please select at least one recipient group or provide custom email addresses' });
     }
 
-    // Build query to get recipients based on selected groups
-    let whereConditions = [];
-    let queryParams = [];
-    let paramCount = 0;
+    let recipientEmails = [];
 
-    if (recipients.members || recipients.allMembers) {
-      whereConditions.push(`role = $${++paramCount}`);
-      queryParams.push('member');
-    }
-    if (recipients.exec || recipients.execs) {
-      whereConditions.push(`role = $${++paramCount}`);
-      queryParams.push('exec');
-    }
-    if (recipients.admin || recipients.admins) {
-      whereConditions.push(`role = $${++paramCount}`);
-      queryParams.push('administrator');
+    // Get recipients from database if any groups are selected
+    if (selectedGroups) {
+      // Build query to get recipients based on selected groups
+      let whereConditions = [];
+      let queryParams = [];
+      let paramCount = 0;
+
+      if (recipients.members || recipients.allMembers) {
+        whereConditions.push(`role = $${++paramCount}`);
+        queryParams.push('member');
+      }
+      if (recipients.exec || recipients.execs) {
+        whereConditions.push(`role = $${++paramCount}`);
+        queryParams.push('exec');
+      }
+      if (recipients.admin || recipients.admins) {
+        whereConditions.push(`role = $${++paramCount}`);
+        queryParams.push('administrator');
+      }
+
+      if (whereConditions.length > 0) {
+        const whereClause = whereConditions.join(' OR ');
+        const query = `SELECT email, name, role, is_active FROM users WHERE is_active = true AND (${whereClause})`;
+        
+        console.log('🔍 Bulk email query:', query);
+        console.log('🔍 Query params:', queryParams);
+        
+        const result = await pool.query(query, queryParams);
+        recipientEmails = result.rows;
+        
+        console.log('🔍 Found database recipients:', recipientEmails.length);
+      }
     }
 
-    if (whereConditions.length === 0) {
-      return res.status(400).json({ error: 'No valid recipient groups selected' });
-    }
+    // Add custom email addresses
+    if (hasCustomEmails) {
+      // Parse custom emails (split by comma or newline)
+      const customEmailList = customEmails
+        .split(/[,\n]/)
+        .map(email => email.trim())
+        .filter(email => email.length > 0);
 
-    const whereClause = whereConditions.join(' OR ');
-    const query = `SELECT email, name, role, is_active FROM users WHERE is_active = true AND (${whereClause})`;
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const validCustomEmails = customEmailList.filter(email => emailRegex.test(email));
+      const invalidEmails = customEmailList.filter(email => !emailRegex.test(email));
+
+      if (invalidEmails.length > 0) {
+        return res.status(400).json({ 
+          error: `Invalid email addresses: ${invalidEmails.join(', ')}` 
+        });
+      }
+
+      // Add custom emails to recipient list
+      const customRecipients = validCustomEmails.map(email => ({
+        email: email,
+        name: 'External Recipient',
+        role: 'custom',
+        is_active: true
+      }));
+
+      recipientEmails = [...recipientEmails, ...customRecipients];
+      console.log('🔍 Added custom recipients:', customRecipients.length);
+    }
     
-    console.log('🔍 Bulk email query:', query);
-    console.log('🔍 Query params:', queryParams);
-    
-    // Debug: Check what roles actually exist in the database
-    const roleCheck = await pool.query('SELECT DISTINCT role FROM users WHERE is_active = true');
-    console.log('🔍 Available roles in database:', roleCheck.rows.map(r => r.role));
-    
-    const result = await pool.query(query, queryParams);
-    const recipientEmails = result.rows;
-    
-    console.log('🔍 Found recipients:', recipientEmails.length);
-    console.log('🔍 Recipients:', recipientEmails.map(r => ({ email: r.email, name: r.name, role: r.role, is_active: r.is_active })));
+    console.log('🔍 Total recipients:', recipientEmails.length);
+    console.log('🔍 All recipients:', recipientEmails.map(r => ({ email: r.email, name: r.name, role: r.role, is_active: r.is_active })));
 
     if (recipientEmails.length === 0) {
-      return res.status(400).json({ error: 'No recipients found for selected groups' });
+      return res.status(400).json({ error: 'No recipients found' });
     }
 
     // Import email service

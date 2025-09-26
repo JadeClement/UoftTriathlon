@@ -20,6 +20,15 @@ const Admin = () => {
   const [selectedRecipients, setSelectedRecipients] = useState([]);
   const [recipientSearch, setRecipientSearch] = useState('');
   const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
+  
+  // Bulk email recipient selection
+  const [bulkEmailRecipients, setBulkEmailRecipients] = useState({
+    members: true,
+    exec: true,
+    admin: true,
+    custom: false
+  });
+  const [customEmails, setCustomEmails] = useState('');
 
   // Attendance dashboard state
   const [attendanceWorkouts, setAttendanceWorkouts] = useState([]);
@@ -272,12 +281,8 @@ const Admin = () => {
             subject: template.title || 'UofT Tri Club Update',
             message: template.body || '',
             template: template,
-            recipients: {
-              members: true,
-              exec: true,
-              admin: true,
-              pending: false
-            }
+            recipients: bulkEmailRecipients,
+            customEmails: customEmails
           })
         });
         const data = await resp.json();
@@ -1077,6 +1082,61 @@ const Admin = () => {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Recipient Selection - only show for everyone */}
+                  {emailType === 'everyone' && (
+                    <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
+                      <h3 style={{marginTop:0}}>Recipients</h3>
+                      <div className="form-group">
+                        <label>
+                          <input 
+                            type="checkbox" 
+                            checked={bulkEmailRecipients.members} 
+                            onChange={(e) => setBulkEmailRecipients({...bulkEmailRecipients, members: e.target.checked})}
+                          />
+                          Members
+                        </label>
+                        <label>
+                          <input 
+                            type="checkbox" 
+                            checked={bulkEmailRecipients.exec} 
+                            onChange={(e) => setBulkEmailRecipients({...bulkEmailRecipients, exec: e.target.checked})}
+                          />
+                          Exec
+                        </label>
+                        <label>
+                          <input 
+                            type="checkbox" 
+                            checked={bulkEmailRecipients.admin} 
+                            onChange={(e) => setBulkEmailRecipients({...bulkEmailRecipients, admin: e.target.checked})}
+                          />
+                          Admin
+                        </label>
+                        <label>
+                          <input 
+                            type="checkbox" 
+                            checked={bulkEmailRecipients.custom} 
+                            onChange={(e) => setBulkEmailRecipients({...bulkEmailRecipients, custom: e.target.checked})}
+                          />
+                          Custom Email Addresses
+                        </label>
+                      </div>
+                      {bulkEmailRecipients.custom && (
+                        <div className="form-group">
+                          <label>Custom Email Addresses</label>
+                          <textarea 
+                            rows="3" 
+                            value={customEmails} 
+                            onChange={(e) => setCustomEmails(e.target.value)} 
+                            placeholder="Enter email addresses separated by commas or new lines:&#10;email1@example.com&#10;email2@example.com&#10;email3@example.com"
+                          />
+                          <small style={{color: '#6b7280', fontSize: '12px'}}>
+                            Separate multiple emails with commas or new lines
+                          </small>
+                        </div>
+                      )}
                     </div>
                   )}
 

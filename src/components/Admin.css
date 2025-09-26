@@ -1214,6 +1214,20 @@
   position: relative;
 }
 
+/* Checkbox Styles */
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.form-group label input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
 .text-editor-toolbar {
   display: flex;
   gap: 8px;
