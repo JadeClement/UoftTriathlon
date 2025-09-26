@@ -148,11 +148,13 @@ const Admin = () => {
     
     let newText;
     if (before === '\n1. ' && after === '') {
-      // Smart numbered list - find the next number
-      const lines = text.substring(0, start).split('\n');
-      const lastLine = lines[lines.length - 1];
-      const numberMatch = lastLine.match(/^(\d+)\.\s/);
-      const nextNumber = numberMatch ? parseInt(numberMatch[1]) + 1 : 1;
+      // Smart numbered list - find the highest number in the text and add 1
+      const allNumbers = text.match(/\n(\d+)\.\s/g);
+      let nextNumber = 1;
+      if (allNumbers && allNumbers.length > 0) {
+        const maxNumber = Math.max(...allNumbers.map(match => parseInt(match.match(/(\d+)/)[1])));
+        nextNumber = maxNumber + 1;
+      }
       newText = text.substring(0, start) + `\n${nextNumber}. ` + selectedText + after + text.substring(end);
     } else {
       newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
@@ -224,6 +226,44 @@ const Admin = () => {
       setSelectedRecipients(prev => [...prev, customRecipient]);
       setCustomEmailInput('');
       setShowCustomEmailInput(false);
+    }
+  };
+
+  // Handle Enter key for auto-numbering
+  const handleTextareaKeyPress = (e, field) => {
+    if (e.key === 'Enter') {
+      const textarea = e.target;
+      const text = textarea.value;
+      const cursorPos = textarea.selectionStart;
+      
+      // Check if we're at the end of a numbered line
+      const lines = text.substring(0, cursorPos).split('\n');
+      const currentLine = lines[lines.length - 1];
+      const numberMatch = currentLine.match(/^(\d+)\.\s/);
+      
+      if (numberMatch) {
+        e.preventDefault();
+        const currentNumber = parseInt(numberMatch[1]);
+        const nextNumber = currentNumber + 1;
+        
+        // Insert the next numbered line
+        const beforeCursor = text.substring(0, cursorPos);
+        const afterCursor = text.substring(cursorPos);
+        const newText = beforeCursor + '\n' + nextNumber + '. ' + afterCursor;
+        
+        if (field === 'message') {
+          setEmailForm({ ...emailForm, message: newText });
+        } else {
+          setTemplate({ ...template, [field]: newText });
+        }
+        
+        // Set cursor position after the new number
+        setTimeout(() => {
+          textarea.focus();
+          const newCursorPos = beforeCursor.length + '\n'.length + (nextNumber + '. ').length;
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      }
     }
   };
 
@@ -1089,6 +1129,7 @@ const Admin = () => {
                             rows="8" 
                             value={emailForm.message} 
                             onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
+                            onKeyPress={(e) => handleTextareaKeyPress(e, 'message')}
                             placeholder="Type your message here... Use **bold**, *italic*, • bullets, 1. numbered lists, and [link text](url) formatting."
                             required 
                           />
@@ -1253,7 +1294,8 @@ const Admin = () => {
                             rows="12" 
                             value={template.body} 
                             onChange={(e)=>setTemplate({...template, body:e.target.value})} 
-                            placeholder="Write your email content here... Use **bold**, *italic*, • bullets, 1. numbered lists (click 1. button for auto-numbering), and [link text](url) formatting."
+                            onKeyPress={(e) => handleTextareaKeyPress(e, 'body')}
+                            placeholder="Write your email content here... Use **bold**, *italic*, • bullets, 1. numbered lists (press Enter for auto-numbering), and [link text](url) formatting."
                           />
                         </div>
                       </div>
