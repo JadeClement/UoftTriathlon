@@ -1048,7 +1048,7 @@ const Admin = () => {
                             <div 
                               style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
                               dangerouslySetInnerHTML={{ 
-                                __html: formatText(emailForm.message || 'Your message will appear here...') 
+                                __html: formatText(emailForm.message || 'Your message will appear here...') + '<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em>'
                               }}
                             />
                           </div>
@@ -1062,9 +1062,6 @@ const Admin = () => {
                           }}>
                             <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
                               UofT Triathlon Club | <a href="https://uoft-tri.club" style={{ color: '#3b82f6' }}>uoft-tri.club</a>
-                            </p>
-                            <p style={{ fontStyle: 'italic', marginTop: '12px', margin: '12px 0 0 0', color: '#6b7280', fontSize: '14px' }}>
-                              The UofT Tri Club Exec
                             </p>
                           </div>
                         </div>
@@ -1192,7 +1189,7 @@ const Admin = () => {
                           <div
                             style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
                             dangerouslySetInnerHTML={{ 
-                              __html: formatText(template.body) 
+                              __html: formatText(template.body) + '<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em>'
                             }}
                           />
                         )}
@@ -1205,11 +1202,8 @@ const Admin = () => {
                         textAlign: 'center',
                         borderTop: '1px solid #e2e8f0'
                       }}>
-                        <p style={{margin: '0 0 12px 0', color: '#64748b', fontSize: '14px'}}>
+                        <p style={{margin: 0, color: '#64748b', fontSize: '14px'}}>
                           UofT Triathlon Club | <a href="https://uoft-tri.club" style={{color: '#3b82f6', textDecoration: 'none', fontWeight: 500}}>uoft-tri.club</a>
-                        </p>
-                        <p style={{margin: 0, color: '#64748b', fontSize: '14px', fontStyle: 'italic'}}>
-                          The UofT Tri Club Exec
                         </p>
                       </div>
                     </div>

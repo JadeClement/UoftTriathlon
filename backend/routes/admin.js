@@ -659,11 +659,10 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
 <body>
   <div class="email-container">
     <div class="content">
-      <div class="message">${formatText(message)}</div>
+      <div class="message">${formatText(message)}<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em></div>
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
-      <p style="font-style: italic; margin-top: 12px;">The UofT Tri Club Exec</p>
     </div>
   </div>
 </body>
@@ -791,11 +790,10 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
     <div class="content">
-      ${body ? `<p>${formatText(escapeHtml(body))}</p>` : ''}
+      ${body ? `<p>${formatText(escapeHtml(body))}<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em></p>` : ''}
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
-      <p style="font-style: italic; margin-top: 12px;">The UofT Tri Club Exec</p>
     </div>
   </div>
 </body>
