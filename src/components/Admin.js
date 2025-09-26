@@ -134,7 +134,18 @@ const Admin = () => {
     const end = textarea.selectionEnd;
     const text = textarea.value;
     const selectedText = text.substring(start, end);
-    const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+    
+    let newText;
+    if (before === '\n1. ' && after === '') {
+      // Smart numbered list - find the next number
+      const lines = text.substring(0, start).split('\n');
+      const lastLine = lines[lines.length - 1];
+      const numberMatch = lastLine.match(/^(\d+)\.\s/);
+      const nextNumber = numberMatch ? parseInt(numberMatch[1]) + 1 : 1;
+      newText = text.substring(0, start) + `\n${nextNumber}. ` + selectedText + after + text.substring(end);
+    } else {
+      newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+    }
     
     if (field === 'message') {
       setEmailForm({ ...emailForm, message: newText });
@@ -1017,7 +1028,7 @@ const Admin = () => {
                             rows="8" 
                             value={emailForm.message} 
                             onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
-                            placeholder="Type your message here... Use **bold**, *italic*, and [link text](url) formatting."
+                            placeholder="Type your message here... Use **bold**, *italic*, • bullets, 1. numbered lists, and [link text](url) formatting."
                             required 
                           />
                         </div>
@@ -1126,7 +1137,7 @@ const Admin = () => {
                             rows="12" 
                             value={template.body} 
                             onChange={(e)=>setTemplate({...template, body:e.target.value})} 
-                            placeholder="Write your email content here... Use **bold**, *italic*, • bullets, 1. numbered lists, and [link text](url) formatting."
+                            placeholder="Write your email content here... Use **bold**, *italic*, • bullets, 1. numbered lists (click 1. button for auto-numbering), and [link text](url) formatting."
                           />
                         </div>
                       </div>
