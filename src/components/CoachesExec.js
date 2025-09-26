@@ -13,7 +13,8 @@ const CoachesExec = () => {
   const [editForm, setEditForm] = useState({
     name: '',
     bio: '',
-    image: ''
+    image: '',
+    email: ''
   });
   const [saving, setSaving] = useState(false);
 
@@ -81,7 +82,8 @@ const CoachesExec = () => {
       setEditForm({
         name: member.name || '',
         bio: member.bio || '',
-        image: member.image || ''
+        image: member.image || '',
+        email: member.email || ''
       });
     }
   };
@@ -89,7 +91,7 @@ const CoachesExec = () => {
   // Handle closing edit modal
   const handleCloseEdit = () => {
     setEditingMember(null);
-    setEditForm({ name: '', bio: '', image: '' });
+    setEditForm({ name: '', bio: '', image: '', email: '' });
   };
 
   // Handle form input changes
@@ -293,6 +295,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Swim Coach</h3>
                   <p className="coach-name">{teamMembers['swim-coach']?.name || 'Coach Name'}</p>
+                  {teamMembers['swim-coach']?.email && (
+                    <p className="coach-email">{teamMembers['swim-coach']?.email}</p>
+                  )}
                   <p className="coach-bio">
                     {getBioPreview('swim-coach')}
                   </p>
@@ -326,6 +331,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Run Coach</h3>
                   <p className="coach-name">{teamMembers['run-coach']?.name || 'Coach Name'}</p>
+                  {teamMembers['run-coach']?.email && (
+                    <p className="coach-email">{teamMembers['run-coach']?.email}</p>
+                  )}
                   <p className="coach-bio">
                     {getBioPreview('run-coach')}
                   </p>
@@ -365,6 +373,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Co-President</h3>
                   <p className="exec-name">{teamMembers['co-president']?.name || 'Co-President'}</p>
+                  {teamMembers['co-president']?.email && (
+                    <p className="exec-email">{teamMembers['co-president']?.email}</p>
+                  )}
                   <p className="exec-bio">
                     {getBioPreview('co-president')}
                   </p>
@@ -395,6 +406,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Co-President</h3>
                   <p className="exec-name">{teamMembers['co-president-2']?.name || 'Co-President'}</p>
+                  {teamMembers['co-president-2']?.email && (
+                    <p className="exec-email">{teamMembers['co-president-2']?.email}</p>
+                  )}
                   <p className="exec-bio">
                     {getBioPreview('co-president-2')}
                   </p>
@@ -425,6 +439,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Treasurer</h3>
                   <p className="exec-name">{teamMembers['treasurer']?.name || 'Treasurer'}</p>
+                  {teamMembers['treasurer']?.email && (
+                    <p className="exec-email">{teamMembers['treasurer']?.email}</p>
+                  )}
                   <p className="exec-bio">
                     {getBioPreview('treasurer')}
                   </p>
@@ -455,6 +472,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Secretary</h3>
                   <p className="exec-name">{teamMembers['secretary']?.name || 'Secretary'}</p>
+                  {teamMembers['secretary']?.email && (
+                    <p className="exec-email">{teamMembers['secretary']?.email}</p>
+                  )}
                   <p className="exec-bio">
                     {getBioPreview('secretary')}
                   </p>
@@ -485,6 +505,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Social Coordinator/Recruitment</h3>
                   <p className="exec-name">{teamMembers['social-coordinator']?.name || 'Social Coordinator'}</p>
+                  {teamMembers['social-coordinator']?.email && (
+                    <p className="exec-email">{teamMembers['social-coordinator']?.email}</p>
+                  )}
                   <p className="exec-bio">
                     {getBioPreview('social-coordinator')}
                   </p>
@@ -515,6 +538,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Social Media Manager</h3>
                   <p className="exec-name">{teamMembers['social-media']?.name || 'Social Media Manager'}</p>
+                  {teamMembers['social-media']?.email && (
+                    <p className="exec-email">{teamMembers['social-media']?.email}</p>
+                  )}
                   <p className="exec-bio">
                     {getBioPreview('social-media')}
                   </p>
@@ -545,6 +571,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Webmaster</h3>
                   <p className="exec-name">{teamMembers['webmaster']?.name || 'Webmaster'}</p>
+                  {teamMembers['webmaster']?.email && (
+                    <p className="exec-email">{teamMembers['webmaster']?.email}</p>
+                  )}
                   <p className="exec-bio">
                     {getBioPreview('webmaster')}
                   </p>
@@ -575,6 +604,9 @@ const CoachesExec = () => {
                   </div>
                   <h3>Workout/Race Coordinator</h3>
                   <p className="exec-name">{teamMembers['workout-coordinator']?.name || 'TBD'}</p>
+                  {teamMembers['workout-coordinator']?.email && (
+                    <p className="exec-email">{teamMembers['workout-coordinator']?.email}</p>
+                  )}
                   <p className="exec-bio">
                     {getBioPreview('workout-coordinator')}
                   </p>
@@ -612,6 +644,17 @@ const CoachesExec = () => {
                   value={editForm.name}
                   onChange={handleEditChange}
                   placeholder="Enter name"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="email">Email:</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={editForm.email}
+                  onChange={handleEditChange}
+                  placeholder="Enter email address"
                 />
               </div>
               <div className="form-group">

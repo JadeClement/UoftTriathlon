@@ -124,6 +124,13 @@
   margin-bottom: 1rem;
 }
 
+.coach-email {
+  font-size: 0.9rem;
+  color: #6B7280;
+  margin: 0.25rem 0 0.5rem 0;
+  font-style: italic;
+}
+
 .profile-link {
   color: #1E40AF;
   text-decoration: none;
@@ -242,6 +249,13 @@
   color: #6b7280;
   font-style: italic;
   margin-bottom: 1rem;
+}
+
+.exec-email {
+  font-size: 0.9rem;
+  color: #6B7280;
+  margin: 0.25rem 0 0.5rem 0;
+  font-style: italic;
 }
 
 .exec-bio {

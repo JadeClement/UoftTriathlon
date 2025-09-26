@@ -944,6 +944,62 @@ const Admin = () => {
                     </>
                   )}
 
+                  {/* Individual Email Preview */}
+                  {emailType === 'individual' && (
+                    <div className="email-preview-panel">
+                      <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
+                        <h3 style={{marginTop:0}}>Preview</h3>
+                        <div style={{
+                          maxWidth: '600px',
+                          margin: '0 auto',
+                          backgroundColor: '#ffffff',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                        }}>
+                          {/* Header */}
+                          <div style={{
+                            background: '#dc2626',
+                            color: 'white',
+                            padding: '20px',
+                            textAlign: 'center'
+                          }}>
+                            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>
+                              {template.bannerTitle || `UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`}
+                            </h1>
+                          </div>
+                          
+                          {/* Content */}
+                          <div style={{ padding: '24px' }}>
+                            {template.title && (
+                              <h2 style={{ color: '#1f2937', margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>
+                                {template.title}
+                              </h2>
+                            )}
+                            
+                            <p style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                              {emailForm.message || 'Your message will appear here...'}
+                            </p>
+                          </div>
+                          
+                          {/* Footer */}
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '16px 24px',
+                            borderTop: '1px solid #e5e7eb',
+                            textAlign: 'center'
+                          }}>
+                            <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
+                              UofT Triathlon Club | <a href="https://uoft-tri.club" style={{ color: '#3b82f6' }}>uoft-tri.club</a>
+                            </p>
+                            <p style={{ fontStyle: 'italic', marginTop: '12px', margin: '12px 0 0 0', color: '#6b7280', fontSize: '14px' }}>
+                              The UofT Tri Club Exec
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Template Section - only show for everyone */}
                   {emailType === 'everyone' && (
                     <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
