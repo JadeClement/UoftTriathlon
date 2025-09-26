@@ -746,9 +746,6 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
     const now = new Date();
     const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     const bannerTitle = template?.bannerTitle || `University of Toronto Triathlon Club – ${dateStr}`;
-    const title = template?.title || '';
-    const intro = template?.intro || '';
-    const bullets = Array.isArray(template?.bullets) ? template.bullets.filter(Boolean) : [];
     const body = template?.body || message || '';
 
     const escapeHtml = (s = '') => String(s)
@@ -794,8 +791,6 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
     <div class="content">
-      ${intro ? `<p>${formatText(escapeHtml(intro))}</p>` : ''}
-      ${bullets.length ? `<p>${bullets.map((b, i) => `${i + 1}. ${escapeHtml(b)}`).join('<br>')}</p>` : ''}
       ${body ? `<p>${formatText(escapeHtml(body))}</p>` : ''}
     </div>
     <div class="footer">
@@ -806,7 +801,7 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
 </body>
 </html>`;
 
-    const textContent = [bannerTitle, intro, ...(bullets.length ? bullets.map((b, i) => `${i + 1}. ${b}`) : []), body]
+    const textContent = [bannerTitle, body]
       .filter(Boolean)
       .join('\n\n');
 

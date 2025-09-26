@@ -158,6 +158,7 @@ const Admin = () => {
       .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: none;">$1</a>') // Links
       .replace(/\n• /g, '<br/><br/>• ') // Add extra space before bullet points
+      .replace(/\n\d+\. /g, '<br/><br/>$&') // Add extra space before numbered bullets
       .replace(/\n/g, '<br/>'); // Line breaks
   };
 
@@ -998,6 +999,14 @@ const Admin = () => {
                             <button 
                               type="button" 
                               className="format-btn" 
+                              onClick={() => insertFormatting('\n1. ', '', 'message')}
+                              title="Numbered List"
+                            >
+                              1.
+                            </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
                               onClick={() => insertFormatting('[', '](url)', 'message')}
                               title="Link"
                             >
@@ -1072,66 +1081,7 @@ const Admin = () => {
                         <input type="text" value={template.bannerTitle} onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} />
                       </div>
                       <div className="form-group">
-                        <label>Title</label>
-                        <input type="text" value={template.title} onChange={(e)=>setTemplate({...template, title:e.target.value})} placeholder="Email subject/title" />
-                      </div>
-                      <div className="form-group">
-                        <label>Intro</label>
-                        <div className="text-editor">
-                          <div className="text-editor-toolbar">
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('**', '**', 'intro')}
-                              title="Bold"
-                            >
-                              <strong>B</strong>
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('*', '*', 'intro')}
-                              title="Italic"
-                            >
-                              <em>I</em>
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('\n• ', '', 'intro')}
-                              title="Bullet Point"
-                            >
-                              •
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('[', '](url)', 'intro')}
-                              title="Link"
-                            >
-                              🔗
-                            </button>
-                          </div>
-                          <textarea 
-                            rows="3" 
-                            value={template.intro} 
-                            onChange={(e)=>setTemplate({...template, intro:e.target.value})} 
-                            placeholder="Introduction text... Use **bold**, *italic*, and [link text](url) formatting."
-                          />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Bullets</label>
-                        {(template.bullets||[]).map((b, idx)=> (
-                          <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
-                            <input type="text" value={b} onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} placeholder="Bullet point..." />
-                            <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
-                          </div>
-                        ))}
-                        <button type="button" className="action-btn small" onClick={()=> setTemplate({...template, bullets:[...template.bullets, '']})}>Add bullet</button>
-                      </div>
-                      <div className="form-group">
-                        <label>Body</label>
+                        <label>Email Content</label>
                         <div className="text-editor">
                           <div className="text-editor-toolbar">
                             <button 
@@ -1161,6 +1111,14 @@ const Admin = () => {
                             <button 
                               type="button" 
                               className="format-btn" 
+                              onClick={() => insertFormatting('\n1. ', '', 'body')}
+                              title="Numbered List"
+                            >
+                              1.
+                            </button>
+                            <button 
+                              type="button" 
+                              className="format-btn" 
                               onClick={() => insertFormatting('[', '](url)', 'body')}
                               title="Link"
                             >
@@ -1168,10 +1126,10 @@ const Admin = () => {
                             </button>
                           </div>
                           <textarea 
-                            rows="6" 
+                            rows="12" 
                             value={template.body} 
                             onChange={(e)=>setTemplate({...template, body:e.target.value})} 
-                            placeholder="Main email content... Use **bold**, *italic*, and [link text](url) formatting."
+                            placeholder="Write your email content here... Use **bold**, *italic*, • bullets, 1. numbered lists, and [link text](url) formatting."
                           />
                         </div>
                       </div>
@@ -1229,29 +1187,10 @@ const Admin = () => {
                       
                       {/* Content */}
                       <div style={{ padding: '24px 22px' }}>
-                        {/* Intro with preserved line breaks */}
-                        {template.intro && (
-                          <div
-                            style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
-                            dangerouslySetInnerHTML={{ 
-                              __html: formatText(template.intro) 
-                            }}
-                          />
-                        )}
-                        {/* Bullets as numbered lines */}
-                        {(template.bullets||[]).filter(Boolean).length > 0 && (
-                          <p style={{ margin: '14px 0 0 0', color: '#475569', fontSize: '16px', lineHeight: 1.6 }}>
-                            {(template.bullets||[])
-                              .filter(Boolean)
-                              .map((b, i) => (
-                                <span key={i}>{i + 1}. {b}<br/></span>
-                              ))}
-                          </p>
-                        )}
                         {/* Body with preserved line breaks */}
                         {template.body && (
                           <div
-                            style={{ margin: (template.intro || (template.bullets||[]).filter(Boolean).length>0) ? '14px 0 0 0' : 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
+                            style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
                             dangerouslySetInnerHTML={{ 
                               __html: formatText(template.body) 
                             }}
