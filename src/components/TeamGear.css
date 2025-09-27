@@ -16,8 +16,155 @@
   color: #1E3A8A;
 }
 
-.teamgear-page p {
+.page-description {
   color: #374151;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+/* Gear Grid */
+.gear-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+/* Gear Item */
+.gear-item {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gear-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.15);
+}
+
+/* Gear Image */
+.gear-image-container {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.gear-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.gear-item:hover .gear-image {
+  transform: scale(1.05);
+}
+
+/* Gear Content */
+.gear-content {
+  padding: 1.5rem;
+}
+
+.gear-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.gear-description {
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+}
+
+.gear-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #dc2626;
+  margin-bottom: 1rem;
+}
+
+.gear-button {
+  width: 100%;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.gear-button:hover {
+  background: #2563eb;
+}
+
+.gear-button:active {
+  transform: translateY(1px);
+}
+
+/* Gear Info Section */
+.gear-info {
+  background: #f8fafc;
+  padding: 2rem;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.gear-info h2 {
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+}
+
+.gear-info p {
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.gear-info ul {
+  color: #374151;
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.gear-info li {
+  margin-bottom: 0.5rem;
+}
+
+.gear-info a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.gear-info a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .gear-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .gear-content {
+    padding: 1rem;
+  }
+  
+  .gear-info {
+    padding: 1.5rem;
+  }
 }
 
 
