@@ -57,10 +57,23 @@ function loadTeamMembers() {
 // Save team member data to file
 function saveTeamMembers(teamMembers) {
   try {
+    // Create backup before saving
+    const backupPath = dataFilePath + '.backup';
+    if (fs.existsSync(dataFilePath)) {
+      fs.copyFileSync(dataFilePath, backupPath);
+    }
+    
     fs.writeFileSync(dataFilePath, JSON.stringify(teamMembers, null, 2), 'utf8');
     console.log('💾 Team members saved to file:', dataFilePath);
+    console.log('📊 Saved data keys:', Object.keys(teamMembers));
+    
+    // Verify the file was written correctly
+    const verifyData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
+    console.log('✅ File verification successful, keys:', Object.keys(verifyData));
   } catch (error) {
-    console.error('Error saving team members to file:', error);
+    console.error('❌ Error saving team members to file:', error);
+    console.error('❌ File path:', dataFilePath);
+    console.error('❌ Directory exists:', fs.existsSync(path.dirname(dataFilePath)));
   }
 }
 
@@ -175,6 +188,8 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
 
     // Save the updated data
     teamMembers[id] = updatedMember;
+    console.log('🔄 About to save team members with updated member:', id);
+    console.log('📊 Updated member data:', updatedMember);
     saveTeamMembers(teamMembers);
 
     res.json({ 

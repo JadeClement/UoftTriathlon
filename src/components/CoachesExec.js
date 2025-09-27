@@ -121,8 +121,13 @@ const CoachesExec = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update profile');
+        const errorData = await response.json();
+        console.error('❌ Server error:', errorData);
+        throw new Error(`Failed to update profile: ${errorData.error || 'Unknown error'}`);
       }
+
+      const result = await response.json();
+      console.log('✅ Profile updated successfully:', result);
 
       // Update local state
       setTeamMembers(prev => ({
