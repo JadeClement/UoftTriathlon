@@ -68,8 +68,14 @@ function saveTeamMembers(teamMembers) {
     console.log('📊 Saved data keys:', Object.keys(teamMembers));
     
     // Verify the file was written correctly
-    const verifyData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
-    console.log('✅ File verification successful, keys:', Object.keys(verifyData));
+    try {
+      const verifyData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
+      console.log('✅ File verification successful, keys:', Object.keys(verifyData));
+    } catch (verifyError) {
+      console.error('❌ File verification failed:', verifyError);
+      console.error('❌ File exists after write:', fs.existsSync(dataFilePath));
+      console.error('❌ File size:', fs.existsSync(dataFilePath) ? fs.statSync(dataFilePath).size : 'N/A');
+    }
   } catch (error) {
     console.error('❌ Error saving team members to file:', error);
     console.error('❌ File path:', dataFilePath);
@@ -170,10 +176,17 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
     const updatedMember = {
       ...currentMember,
       name: name || currentMember.name,
-      email: email || currentMember.email,
+      email: email !== undefined ? email : currentMember.email,
       bio: bio || currentMember.bio,
       image: image || currentMember.image
     };
+    
+    // Clean up undefined values to prevent JSON issues
+    Object.keys(updatedMember).forEach(key => {
+      if (updatedMember[key] === undefined) {
+        updatedMember[key] = '';
+      }
+    });
 
     // Handle new image if uploaded
     if (imageFile) {
