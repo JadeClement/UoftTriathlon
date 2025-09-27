@@ -111,6 +111,8 @@ const CoachesExec = () => {
       setSaving(true);
       const token = localStorage.getItem('triathlonToken');
       
+      console.log('📤 Sending edit form data:', editForm);
+      
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles/${editingMember}`, {
         method: 'PUT',
         headers: {
@@ -196,51 +198,8 @@ const CoachesExec = () => {
     return 'Bio coming soon...';
   };
 
-  // Add periodic refresh to keep data in sync
-  useEffect(() => {
-    if (!loading) {
-      const interval = setInterval(async () => {
-        try {
-          const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            // Convert array to object with id as key
-            const membersObject = {};
-            if (Array.isArray(data.teamMembers)) {
-              data.teamMembers.forEach(member => {
-                let image = member.image;
-                if (!image || (typeof image === 'string' && image.trim() === '')) {
-                  image = '/images/icon.png';
-                }
-                const normalizedImage = image && image.startsWith('/uploads/')
-                  ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${image}`
-                  : image;
-                membersObject[member.id] = {
-                  ...member,
-                  image: normalizedImage
-                };
-              });
-            }
-            
-            // Only update if data has actually changed
-            setTeamMembers(prev => {
-              if (JSON.stringify(prev) !== JSON.stringify(membersObject)) {
-                console.log('🔄 Team members data updated, refreshing display');
-                return membersObject;
-              }
-              return prev;
-            });
-          }
-        } catch (error) {
-          console.error('Error during periodic refresh:', error);
-        }
-      }, 5000); // Refresh every 5 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [loading]);
+  // Note: Removed periodic refresh as it was causing profile edits to revert
+  // The data is now only refreshed on component mount and location changes
 
   if (loading) {
     return (
