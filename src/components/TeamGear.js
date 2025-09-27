@@ -51,8 +51,7 @@ const TeamGear = () => {
     <div className="page-container teamgear-page">
       <h1>Team Gear</h1>
       <p className="page-description">
-        Show your UofT Tri Club pride with our official team gear. 
-        High-quality apparel designed for training, racing, and everyday wear.
+        Show your UofT Tri Club pride with our official team gear! This page is under construction, please check back soon for more information.
       </p>
       
       <div className="gear-grid">
@@ -71,7 +70,7 @@ const TeamGear = () => {
             <div className="gear-content">
               <h3 className="gear-title">{item.title}</h3>
               <p className="gear-description">{item.description}</p>
-              <div className="gear-price">{item.price}</div>
+              <div className="gear-price">${item.price}</div>
               <button className="gear-button">
                 Order Now
               </button>
@@ -89,12 +88,7 @@ const TeamGear = () => {
         <ul>
           <li>Item name and size</li>
           <li>Quantity needed</li>
-          <li>Preferred pickup location</li>
         </ul>
-        <p>
-          <strong>Note:</strong> Orders are typically processed monthly. 
-          Contact us for current availability and sizing charts.
-        </p>
       </div>
     </div>
   );
