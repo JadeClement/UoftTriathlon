@@ -133,11 +133,32 @@ const Profile = () => {
       console.log('👤 Loading user profile for:', currentUser.name);
       console.log('📊 Current user data:', currentUser);
       // Ensure we always have a valid image, defaulting to the default profile image
-      const profileImage = currentUser.profile_picture_url 
-        ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${currentUser.profile_picture_url}` 
-        : '/images/default_profile.png';
+      let profileImage = '/images/default_profile.png';
+      // Check both possible field names (AuthContext normalizes profile_picture_url to profilePictureUrl)
+      const profilePictureUrl = currentUser.profile_picture_url || currentUser.profilePictureUrl;
       
-      console.log('🖼️ Profile image set to:', profileImage);
+      if (profilePictureUrl) {
+        // Handle different URL formats
+        if (profilePictureUrl.startsWith('/api/')) {
+          // URL already includes /api/, just prepend the base URL
+          profileImage = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001'}${profilePictureUrl}`;
+        } else if (profilePictureUrl.startsWith('/uploads/')) {
+          // URL starts with /uploads/, prepend API base URL
+          profileImage = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${profilePictureUrl}`;
+        } else if (profilePictureUrl.startsWith('http')) {
+          // Full URL, use as is
+          profileImage = profilePictureUrl;
+        } else {
+          // Fallback to default
+          profileImage = '/images/default_profile.png';
+        }
+      }
+      
+      console.log('🖼️ Profile image processing:');
+      console.log('  - profile_picture_url:', currentUser.profile_picture_url);
+      console.log('  - profilePictureUrl:', currentUser.profilePictureUrl);
+      console.log('  - Using URL:', profilePictureUrl);
+      console.log('  - Final URL:', profileImage);
       
       setUserProfile({
         id: currentUser.id,
