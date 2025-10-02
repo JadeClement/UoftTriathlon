@@ -139,6 +139,7 @@ const TeamGear = () => {
       const token = localStorage.getItem('triathlonToken');
 
       // Update fields
+      console.log('📤 [GEAR SAVE] PUT details', editForm);
       const putRes = await fetch(`${API_BASE}/gear/${editingItem.id}`, {
         method: 'PUT',
         headers: {
@@ -157,6 +158,7 @@ const TeamGear = () => {
       if (newImages.length > 0) {
         const formData = new FormData();
         newImages.forEach(f => formData.append('images', f));
+        console.log('📤 [GEAR SAVE] POST images', newImages.map(f=>({name:f.name,size:f.size,type:f.type})));
         const imgRes = await fetch(`${API_BASE}/gear/${editingItem.id}/images`, {
           method: 'POST',
           headers: {
@@ -165,9 +167,12 @@ const TeamGear = () => {
           body: formData
         });
         if (!imgRes.ok) throw new Error('Failed to upload images');
+        const imgJson = await imgRes.json().catch(()=>null);
+        console.log('✅ [GEAR SAVE] Images response:', imgJson);
       }
 
       // Refetch list
+      console.log('🔄 [GEAR SAVE] Refetch gear list');
       const res = await fetch(`${API_BASE}/gear`);
       const data = await res.json();
       setGearItems((data.items || []).map(item => ({

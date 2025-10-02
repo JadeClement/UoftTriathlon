@@ -65,6 +65,7 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { title, price, description, images } = req.body;
+    console.log('🛠️ [GEAR PUT] id:', id, 'title:', title, 'price:', price, 'descLen:', (description||'').length, 'images?', Array.isArray(images));
 
     const items = loadGear();
     const idx = items.findIndex(g => g.id === id);
@@ -80,9 +81,10 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
 
     items[idx] = updated;
     saveGear(items);
+    console.log('✅ [GEAR PUT] updated item images count:', (updated.images||[]).length);
     res.json({ message: 'Updated', item: updated });
   } catch (e) {
-    console.error('Update gear error:', e);
+    console.error('❌ Update gear error:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -92,6 +94,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
   try {
     const id = parseInt(req.params.id, 10);
     const files = req.files || [];
+    console.log('🖼️ [GEAR IMAGES POST] id:', id, 'files:', files.map(f=>({name:f.originalname,size:f.size,mime:f.mimetype})));
 
     if (files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
 
@@ -109,11 +112,12 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
       items[idx].description = cleaned;
     } catch (_) {}
 
+    console.log('✅ [GEAR IMAGES POST] total images now:', (items[idx].images||[]).length);
     saveGear(items);
 
     res.json({ message: 'Images uploaded', images: items[idx].images });
   } catch (e) {
-    console.error('Upload gear images error:', e);
+    console.error('❌ Upload gear images error:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
