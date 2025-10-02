@@ -123,6 +123,41 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
   }
 });
 
+// DELETE remove an image from a gear item
+router.delete('/:id/images', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { imageUrl } = req.body;
+
+    if (!imageUrl) return res.status(400).json({ error: 'Image URL required' });
+
+    const items = loadGear();
+    const idx = items.findIndex(g => g.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Gear item not found' });
+
+    // Remove the image from the array
+    items[idx].images = (items[idx].images || []).filter(img => img !== imageUrl);
+    
+    // Delete the actual file
+    try {
+      const filename = imageUrl.split('/').pop();
+      const filepath = path.join(uploadsDir, filename);
+      if (fs.existsSync(filepath)) {
+        fs.unlinkSync(filepath);
+        console.log('🗑️ [GEAR DELETE] Removed file:', filename);
+      }
+    } catch (fileError) {
+      console.warn('⚠️ [GEAR DELETE] Could not delete file:', fileError.message);
+    }
+
+    saveGear(items);
+    res.json({ message: 'Image removed', images: items[idx].images });
+  } catch (e) {
+    console.error('❌ Delete gear image error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
 
 

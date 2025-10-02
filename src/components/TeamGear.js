@@ -17,6 +17,7 @@ const TeamGear = () => {
   const [editForm, setEditForm] = useState({ title: '', price: '', description: '' });
   const [newImages, setNewImages] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [currentImages, setCurrentImages] = useState([]);
 
   // Lightbox (enlarge) state
   const [lightboxItem, setLightboxItem] = useState(null);
@@ -120,12 +121,14 @@ const TeamGear = () => {
       price: item.price || '',
       description: item.description || ''
     });
+    setCurrentImages([...(item.images || [])]);
     setNewImages([]);
   };
 
   const closeEditModal = () => {
     setEditingItem(null);
     setNewImages([]);
+    setCurrentImages([]);
     setSaving(false);
   };
 
@@ -133,6 +136,43 @@ const TeamGear = () => {
     const files = Array.from(e.target.files || []);
     console.log('📁 [GEAR FILES] Selected files:', files.map(f => ({name: f.name, size: f.size, type: f.type})));
     setNewImages(files);
+  };
+
+  // Image management functions
+  const removeImage = async (imageUrl) => {
+    if (!editingItem) return;
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE}/gear/${editingItem.id}/images`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ imageUrl })
+      });
+      if (!res.ok) throw new Error('Failed to remove image');
+      
+      // Update local state
+      setCurrentImages(prev => prev.filter(img => img !== imageUrl));
+    } catch (e) {
+      console.error('Error removing image:', e);
+      alert('Failed to remove image');
+    }
+  };
+
+  const moveImageUp = (index) => {
+    if (index === 0) return;
+    const newImages = [...currentImages];
+    [newImages[index - 1], newImages[index]] = [newImages[index], newImages[index - 1]];
+    setCurrentImages(newImages);
+  };
+
+  const moveImageDown = (index) => {
+    if (index === currentImages.length - 1) return;
+    const newImages = [...currentImages];
+    [newImages[index], newImages[index + 1]] = [newImages[index + 1], newImages[index]];
+    setCurrentImages(newImages);
   };
 
   const saveEdit = async () => {
@@ -143,8 +183,9 @@ const TeamGear = () => {
       const token = localStorage.getItem('triathlonToken');
       console.log('🔑 [GEAR SAVE] Token exists:', !!token);
 
-      // Update fields
+      // Update fields including reordered images
       console.log('📤 [GEAR SAVE] PUT details', editForm);
+      console.log('📤 [GEAR SAVE] Current images order:', currentImages);
       const putRes = await fetch(`${API_BASE}/gear/${editingItem.id}`, {
         method: 'PUT',
         headers: {
@@ -154,7 +195,8 @@ const TeamGear = () => {
         body: JSON.stringify({
           title: editForm.title,
           price: editForm.price,
-          description: editForm.description
+          description: editForm.description,
+          images: currentImages
         })
       });
       if (!putRes.ok) throw new Error('Failed to save gear details');
@@ -339,7 +381,54 @@ const TeamGear = () => {
               />
             </div>
             <div className="form-group">
-              <label>Add Photos</label>
+              <label>Current Images</label>
+              {currentImages.length > 0 ? (
+                <div className="gear-current-images">
+                  {currentImages.map((imageUrl, index) => (
+                    <div key={index} className="gear-image-item">
+                      <img 
+                        src={normalizeImageUrl(imageUrl)} 
+                        alt={`Image ${index + 1}`}
+                        className="gear-image-preview"
+                        onError={(e) => { e.target.src = '/images/placeholder-gear.svg'; }}
+                      />
+                      <div className="gear-image-controls">
+                        <button 
+                          type="button" 
+                          onClick={() => moveImageUp(index)}
+                          disabled={index === 0}
+                          className="gear-move-btn"
+                          title="Move up"
+                        >
+                          ↑
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => moveImageDown(index)}
+                          disabled={index === currentImages.length - 1}
+                          className="gear-move-btn"
+                          title="Move down"
+                        >
+                          ↓
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => removeImage(imageUrl)}
+                          className="gear-remove-btn"
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="gear-no-images">No images</p>
+              )}
+            </div>
+            <div className="form-group">
+              <label>Add New Photos</label>
               <input type="file" accept="image/*" multiple onChange={handleFilesChange} />
               {newImages.length > 0 && (
                 <div className="gear-new-images">
