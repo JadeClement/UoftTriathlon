@@ -18,6 +18,10 @@ const TeamGear = () => {
   const [newImages, setNewImages] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // Lightbox (enlarge) state
+  const [lightboxItem, setLightboxItem] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
   const normalizeImageUrl = (url) => {
     if (!url) return '/images/placeholder-gear.svg';
     if (url.startsWith('/uploads/')) return `${API_BASE}/..${url}`;
@@ -78,6 +82,33 @@ const TeamGear = () => {
     const currentIndex = currentImageIndex[item.id] || 0;
     const src = item.images[currentIndex] || item.images[0] || '/images/placeholder-gear.svg';
     return normalizeImageUrl(src);
+  };
+
+  // Lightbox helpers
+  const openLightbox = (item, index = 0) => {
+    setLightboxItem(item);
+    setLightboxIndex(index);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeLightbox = () => {
+    setLightboxItem(null);
+    setLightboxIndex(0);
+    document.body.style.overflow = '';
+  };
+
+  const lightboxPrev = () => {
+    if (!lightboxItem) return;
+    const len = (lightboxItem.images || []).length;
+    if (len === 0) return;
+    setLightboxIndex((prev) => (prev === 0 ? len - 1 : prev - 1));
+  };
+
+  const lightboxNext = () => {
+    if (!lightboxItem) return;
+    const len = (lightboxItem.images || []).length;
+    if (len === 0) return;
+    setLightboxIndex((prev) => (prev === len - 1 ? 0 : prev + 1));
   };
 
   // Edit handlers
@@ -176,6 +207,14 @@ const TeamGear = () => {
                   e.target.src = '/images/placeholder-gear.svg';
                 }}
               />
+              <button
+                className="gear-enlarge-button"
+                onClick={() => openLightbox(item, currentImageIndex[item.id] || 0)}
+                aria-label="Enlarge image"
+                title="Enlarge"
+              >
+                ⤢
+              </button>
               {item.images.length > 1 && (
                 <>
                   <button 
@@ -232,6 +271,34 @@ const TeamGear = () => {
           <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a>:
         </p>
       </div>
+
+      {lightboxItem && (
+        <div className="gear-lightbox-overlay" onClick={closeLightbox}>
+          <div className="gear-lightbox" onClick={(e) => e.stopPropagation()}>
+            <button className="gear-lightbox-close" onClick={closeLightbox} aria-label="Close">×</button>
+            <button className="gear-lightbox-nav gear-lightbox-left" onClick={lightboxPrev} aria-label="Previous">‹</button>
+            <img
+              className="gear-lightbox-image"
+              src={normalizeImageUrl(lightboxItem.images[lightboxIndex])}
+              alt={lightboxItem.title}
+              onError={(e) => { e.target.src = '/images/placeholder-gear.svg'; }}
+            />
+            <button className="gear-lightbox-nav gear-lightbox-right" onClick={lightboxNext} aria-label="Next">›</button>
+            {Array.isArray(lightboxItem.images) && lightboxItem.images.length > 1 && (
+              <div className="gear-lightbox-indicators">
+                {lightboxItem.images.map((_, idx) => (
+                  <button
+                    key={idx}
+                    className={`gear-indicator ${lightboxIndex === idx ? 'active' : ''}`}
+                    onClick={() => setLightboxIndex(idx)}
+                    aria-label={`Go to image ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {editingItem && (
         <div className="gear-modal-overlay" onClick={closeEditModal}>
