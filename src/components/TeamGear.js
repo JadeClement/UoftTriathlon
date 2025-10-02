@@ -83,12 +83,8 @@ const TeamGear = () => {
         <h2>Ordering Information</h2>
         <p>
           To place an order for team gear, please contact us at{' '}
-          <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> with:
+          <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a>:
         </p>
-        <ul>
-          <li>Item name and size</li>
-          <li>Quantity needed</li>
-        </ul>
       </div>
     </div>
   );
