@@ -65,6 +65,71 @@
   transform: scale(1.05);
 }
 
+/* Navigation Controls */
+.gear-nav-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.gear-nav-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.gear-nav-left {
+  left: 10px;
+}
+
+.gear-nav-right {
+  right: 10px;
+}
+
+/* Image Indicators */
+.gear-image-indicators {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+.gear-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.gear-indicator:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.2);
+}
+
+.gear-indicator.active {
+  background: white;
+  transform: scale(1.3);
+}
+
 /* Gear Content */
 .gear-content {
   padding: 1.5rem;
@@ -164,6 +229,25 @@
   
   .gear-info {
     padding: 1.5rem;
+  }
+  
+  .gear-nav-button {
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
+  }
+  
+  .gear-nav-left {
+    left: 8px;
+  }
+  
+  .gear-nav-right {
+    right: 8px;
+  }
+  
+  .gear-indicator {
+    width: 6px;
+    height: 6px;
   }
 }
 
