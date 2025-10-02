@@ -113,6 +113,7 @@ const TeamGear = () => {
 
   // Edit handlers
   const openEditModal = (item) => {
+    console.log('📝 [GEAR EDIT] Opening modal for item:', item);
     setEditingItem(item);
     setEditForm({
       title: item.title || '',
@@ -129,14 +130,18 @@ const TeamGear = () => {
   };
 
   const handleFilesChange = (e) => {
-    setNewImages(Array.from(e.target.files || []));
+    const files = Array.from(e.target.files || []);
+    console.log('📁 [GEAR FILES] Selected files:', files.map(f => ({name: f.name, size: f.size, type: f.type})));
+    setNewImages(files);
   };
 
   const saveEdit = async () => {
+    console.log('🚀 [GEAR SAVE] Function called, editingItem:', editingItem);
     if (!editingItem) return;
     try {
       setSaving(true);
       const token = localStorage.getItem('triathlonToken');
+      console.log('🔑 [GEAR SAVE] Token exists:', !!token);
 
       // Update fields
       console.log('📤 [GEAR SAVE] PUT details', editForm);
