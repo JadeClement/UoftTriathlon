@@ -259,7 +259,7 @@ const TeamGear = () => {
             </div>
             <div className="gear-content">
               <h3 className="gear-title">{item.title}</h3>
-              <p className="gear-description">{(item.images && item.images.length > 0) ? item.description : (item.description || '').replace(/image coming soon\.?/ig, '').trim()}</p>
+              <p className="gear-description">{(item.images && item.images.length > 1) ? (item.description || '').replace(/image coming soon\.?/ig, '').trim() : item.description}</p>
               <div className="gear-price">${item.price}</div>
               <button className="gear-button">
                 Order Now

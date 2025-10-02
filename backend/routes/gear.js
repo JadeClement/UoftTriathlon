@@ -110,6 +110,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
       const desc = items[idx].description || '';
       const cleaned = desc.replace(/image coming soon\.?/ig, '').trim();
       items[idx].description = cleaned;
+      console.log('🧹 [GEAR IMAGES POST] Cleaned description:', cleaned);
     } catch (_) {}
 
     console.log('✅ [GEAR IMAGES POST] total images now:', (items[idx].images||[]).length);
