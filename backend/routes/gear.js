@@ -101,6 +101,14 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
 
     const newUrls = files.map(f => `/uploads/gear/${f.filename}`);
     items[idx].images = [...(items[idx].images || []), ...newUrls];
+
+    // Clean placeholder text in description if present once images exist
+    try {
+      const desc = items[idx].description || '';
+      const cleaned = desc.replace(/image coming soon\.?/ig, '').trim();
+      items[idx].description = cleaned;
+    } catch (_) {}
+
     saveGear(items);
 
     res.json({ message: 'Images uploaded', images: items[idx].images });

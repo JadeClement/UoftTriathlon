@@ -161,7 +161,7 @@ const TeamGear = () => {
       </p>
       <p>
       The clothing pieces are from Champion Systems. The main reference for triathlon is here
-      https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items
+      https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items. Note that the items below do not show everything that is available.
       </p>
       
       <div className="gear-grid">
@@ -210,7 +210,7 @@ const TeamGear = () => {
             </div>
             <div className="gear-content">
               <h3 className="gear-title">{item.title}</h3>
-              <p className="gear-description">{item.description}</p>
+              <p className="gear-description">{(item.images && item.images.length > 0) ? item.description : (item.description || '').replace(/image coming soon\.?/ig, '').trim()}</p>
               <div className="gear-price">${item.price}</div>
               <button className="gear-button">
                 Order Now
