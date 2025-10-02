@@ -176,6 +176,23 @@
   transform: translateY(1px);
 }
 
+/* Admin edit button */
+.gear-edit-button {
+  margin-top: 0.75rem;
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.gear-edit-button:hover {
+  background: #e5e7eb;
+}
+
 /* Gear Info Section */
 .gear-info {
   background: #f8fafc;
@@ -214,6 +231,87 @@
 
 .gear-info a:hover {
   text-decoration: underline;
+}
+
+/* Edit modal */
+.gear-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.gear-modal {
+  width: 92%;
+  max-width: 640px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  padding: 1.25rem;
+}
+
+.gear-modal h2 {
+  margin: 0 0 1rem 0;
+}
+
+.gear-modal .form-group {
+  margin-bottom: 0.75rem;
+}
+
+.gear-modal input[type="text"],
+.gear-modal textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.gear-modal textarea {
+  resize: vertical;
+}
+
+.gear-new-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.gear-new-image {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.gear-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.gear-modal-actions .cancel-button {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.gear-modal-actions .save-button {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
 }
 
 /* Responsive Design */

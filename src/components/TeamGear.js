@@ -1,76 +1,52 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import './TeamGear.css';
 
 const TeamGear = () => {
-  const [gearItems, setGearItems] = useState([
-    {
-      id: 1,
-      title: "UofT Tri Club Swim Suit",
-      price: "X",
-      images: [
-        "/images/team-gear/swim-suit-1.jpg",
-        "/images/team-gear/swim-suit-2.jpg",
-        "/images/team-gear/swim-suit-3.jpg"
-      ],
-      description: "High-performance swimsuit with club colors and logo"
-    },
-    {
-      id: 2,
-      title: "Tri Suit",
-      price: "X",
-      images: [
-        "/images/team-gear/tri-suit-1.jpg",
-        "/images/team-gear/tri-suit-2.jpg"
-      ],
-      description: "One-piece triathlon suit for swim, bike, and run"
-    },
-    {
-      id: 3,
-      title: "Bike Jersey",
-      price: "X",
-      images: [
-        "/images/team-gear/bike-jersey-1.jpg",
-        "/images/team-gear/bike-jersey-2.jpg",
-        "/images/team-gear/bike-jersey-3.jpg",
-        "/images/team-gear/bike-jersey-4.jpg"
-      ],
-      description: "Aerodynamic cycling jersey with club branding"
-    },
-    {
-      id: 4,
-      title: "Bike Bib Shorts",
-      price: "X",
-      images: [
-        "/images/team-gear/bike-bib-shorts-1.jpg",
-        "/images/team-gear/bike-bib-shorts-2.jpg"
-      ],
-      description: "Professional cycling bib shorts with chamois padding"
-    },
-    {
-      id: 5,
-      title: "Team Backpack",
-      price: "X",
-      images: [
-        "/images/team-gear/backpack-1.jpg",
-        "/images/team-gear/backpack-2.jpg",
-        "/images/team-gear/backpack-3.jpg"
-      ],
-      description: "Durable backpack perfect for training and travel"
-    },
-    {
-      id: 6,
-      title: "Swim Cap",
-      price: "X",
-      images: [
-        "/images/team-gear/swim-cap-1.jpg",
-        "/images/team-gear/swim-cap-2.jpg"
-      ],
-      description: "Silicone swim cap with UofT Tri Club logo"
-    }
-  ]);
+  const { currentUser, isAdmin } = useAuth();
+  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const [gearItems, setGearItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // State to track current image index for each gear item
   const [currentImageIndex, setCurrentImageIndex] = useState({});
+
+  // Admin edit modal state
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', price: '', description: '' });
+  const [newImages, setNewImages] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  const normalizeImageUrl = (url) => {
+    if (!url) return '/images/placeholder-gear.svg';
+    if (url.startsWith('/uploads/')) return `${API_BASE}/..${url}`;
+    if (url.startsWith('/api/')) return `${API_BASE.replace('/api','')}${url}`;
+    return url;
+  };
+
+  // Fetch gear items from backend
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`${API_BASE}/gear`);
+        if (!res.ok) throw new Error('Failed to load gear');
+        const data = await res.json();
+        const items = (data.items || []).map(item => ({
+          ...item,
+          images: Array.isArray(item.images) && item.images.length > 0 ? item.images : ['/images/placeholder-gear.svg']
+        }));
+        setGearItems(items);
+      } catch (e) {
+        setError('Failed to load team gear');
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [API_BASE]);
 
   // Navigation functions
   const goToPreviousImage = (itemId) => {
@@ -100,7 +76,81 @@ const TeamGear = () => {
   // Get current image for an item
   const getCurrentImage = (item) => {
     const currentIndex = currentImageIndex[item.id] || 0;
-    return item.images[currentIndex] || item.images[0] || '/images/placeholder-gear.svg';
+    const src = item.images[currentIndex] || item.images[0] || '/images/placeholder-gear.svg';
+    return normalizeImageUrl(src);
+  };
+
+  // Edit handlers
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setEditForm({
+      title: item.title || '',
+      price: item.price || '',
+      description: item.description || ''
+    });
+    setNewImages([]);
+  };
+
+  const closeEditModal = () => {
+    setEditingItem(null);
+    setNewImages([]);
+    setSaving(false);
+  };
+
+  const handleFilesChange = (e) => {
+    setNewImages(Array.from(e.target.files || []));
+  };
+
+  const saveEdit = async () => {
+    if (!editingItem) return;
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('triathlonToken');
+
+      // Update fields
+      const putRes = await fetch(`${API_BASE}/gear/${editingItem.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: editForm.title,
+          price: editForm.price,
+          description: editForm.description
+        })
+      });
+      if (!putRes.ok) throw new Error('Failed to save gear details');
+
+      // Upload new images if any
+      if (newImages.length > 0) {
+        const formData = new FormData();
+        newImages.forEach(f => formData.append('images', f));
+        const imgRes = await fetch(`${API_BASE}/gear/${editingItem.id}/images`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        if (!imgRes.ok) throw new Error('Failed to upload images');
+      }
+
+      // Refetch list
+      const res = await fetch(`${API_BASE}/gear`);
+      const data = await res.json();
+      setGearItems((data.items || []).map(item => ({
+        ...item,
+        images: Array.isArray(item.images) && item.images.length > 0 ? item.images : ['/images/placeholder-gear.svg']
+      })));
+
+      closeEditModal();
+    } catch (e) {
+      console.error(e);
+      alert(e.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -165,6 +215,11 @@ const TeamGear = () => {
               <button className="gear-button">
                 Order Now
               </button>
+              {isAdmin && isAdmin(currentUser) && (
+                <button className="gear-edit-button" onClick={() => openEditModal(item)}>
+                  ✎ Edit
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -177,6 +232,53 @@ const TeamGear = () => {
           <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a>:
         </p>
       </div>
+
+      {editingItem && (
+        <div className="gear-modal-overlay" onClick={closeEditModal}>
+          <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Edit Gear: {editingItem.title}</h2>
+            <div className="form-group">
+              <label>Title</label>
+              <input
+                type="text"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Price</label>
+              <input
+                type="text"
+                value={editForm.price}
+                onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <textarea
+                rows="5"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Add Photos</label>
+              <input type="file" accept="image/*" multiple onChange={handleFilesChange} />
+              {newImages.length > 0 && (
+                <div className="gear-new-images">
+                  {newImages.map((f, idx) => (
+                    <div className="gear-new-image" key={idx}>{f.name}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="gear-modal-actions">
+              <button className="cancel-button" onClick={closeEditModal} disabled={saving}>Cancel</button>
+              <button className="save-button" onClick={saveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
