@@ -1,42 +1,6 @@
 [
   {
     "id": 1,
-    "title": "UofT Tri Club Swim Suit",
-    "price": "X",
-    "images": [
-      "/images/team-gear/swim-suit-1.jpg"
-    ],
-    "description": "High-performance swimsuit with club colors and logo"
-  },
-  {
-    "id": 2,
-    "title": "Tri Suit",
-    "price": "X",
-    "images": [
-      "/images/team-gear/tri-suit-1.jpg"
-    ],
-    "description": "One-piece triathlon suit for swim, bike, and run"
-  },
-  {
-    "id": 3,
-    "title": "Bike Jersey",
-    "price": "X",
-    "images": [
-      "/images/team-gear/bike-jersey-1.jpg"
-    ],
-    "description": "Aerodynamic cycling jersey with club branding"
-  },
-  {
-    "id": 4,
-    "title": "Bike Bib Shorts",
-    "price": "X",
-    "images": [
-      "/images/team-gear/bike-bib-shorts-1.jpg"
-    ],
-    "description": "Professional cycling bib shorts with chamois padding"
-  },
-  {
-    "id": 5,
     "title": "Team Backpack",
     "price": "X",
     "images": [
@@ -45,13 +9,22 @@
     "description": "Durable backpack perfect for training and travel"
   },
   {
-    "id": 6,
+    "id": 2,
     "title": "Swim Cap",
     "price": "X",
     "images": [
       "/images/team-gear/swim-cap-1.jpg"
     ],
     "description": "Silicone swim cap with UofT Tri Club logo"
+  },
+  {
+    "id": 3,
+    "title": "Team Sweatshirt",
+    "price": "X",
+    "images": [
+      "/images/team-gear/sweatshirt-1.jpg"
+    ],
+    "description": "Comfortable sweatshirt with UofT Tri Club branding"
   }
 ]
 
