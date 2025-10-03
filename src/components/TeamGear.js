@@ -24,10 +24,30 @@ const TeamGear = () => {
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const normalizeImageUrl = (url) => {
-    if (!url) return '/images/placeholder-gear.svg';
-    if (url.startsWith('/uploads/')) return `${API_BASE}/..${url}`;
-    if (url.startsWith('/api/')) return `${API_BASE.replace('/api','')}${url}`;
-    return url;
+    if (!url) {
+      console.log('🖼️ [NORMALIZE] No URL provided, using placeholder');
+      return '/images/placeholder-gear.svg';
+    }
+    
+    console.log('🖼️ [NORMALIZE] Processing URL:', url);
+    
+    if (url.startsWith('/uploads/')) {
+      const normalized = `${API_BASE}/..${url}`;
+      console.log('🖼️ [NORMALIZE] Uploads URL ->', normalized);
+      return normalized;
+    }
+    if (url.startsWith('/api/')) {
+      const normalized = `${API_BASE.replace('/api','')}${url}`;
+      console.log('🖼️ [NORMALIZE] API URL ->', normalized);
+      return normalized;
+    }
+    if (url.startsWith('http')) {
+      console.log('🖼️ [NORMALIZE] Full URL ->', url);
+      return url;
+    }
+    
+    console.log('🖼️ [NORMALIZE] Fallback to placeholder for:', url);
+    return '/images/placeholder-gear.svg';
   };
 
   // Fetch gear items from backend

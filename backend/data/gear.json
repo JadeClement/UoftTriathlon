@@ -3,28 +3,22 @@
     "id": 1,
     "title": "Team Backpack",
     "price": "X",
-    "images": [
-      "/images/team-gear/backpack-1.jpg"
-    ],
-    "description": "Durable backpack perfect for training and travel"
+    "images": [],
+    "description": "Durable backpack perfect for training and travel. Image coming soon."
   },
   {
     "id": 2,
     "title": "Swim Cap",
     "price": "X",
-    "images": [
-      "/images/team-gear/swim-cap-1.jpg"
-    ],
-    "description": "Silicone swim cap with UofT Tri Club logo"
+    "images": [],
+    "description": "Silicone swim cap with UofT Tri Club logo. Image coming soon."
   },
   {
     "id": 3,
     "title": "Team Sweatshirt",
     "price": "X",
-    "images": [
-      "/images/team-gear/sweatshirt-1.jpg"
-    ],
-    "description": "Comfortable sweatshirt with UofT Tri Club branding"
+    "images": [],
+    "description": "Comfortable sweatshirt with UofT Tri Club branding. Image coming soon."
   }
 ]
 
