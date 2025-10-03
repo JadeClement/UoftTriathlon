@@ -65,7 +65,7 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { title, price, description, images } = req.body;
-    console.log('🛠️ [GEAR PUT] id:', id, 'title:', title, 'price:', price, 'descLen:', (description||'').length, 'images?', Array.isArray(images));
+    console.log('🛠️ [GEAR PUT] id:', id, 'title:', title, 'price:', price, 'descLen:', (description||'').length, 'images?', Array.isArray(images), 'images:', images);
 
     const items = loadGear();
     const idx = items.findIndex(g => g.id === id);
@@ -76,7 +76,7 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
       title: title !== undefined ? title : items[idx].title,
       price: price !== undefined ? price : items[idx].price,
       description: description !== undefined ? description : items[idx].description,
-      images: Array.isArray(images) && images.length > 0 ? images : items[idx].images
+      images: Array.isArray(images) ? images : items[idx].images
     };
 
     items[idx] = updated;

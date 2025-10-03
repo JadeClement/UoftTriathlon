@@ -216,16 +216,24 @@ const TeamGear = () => {
         if (!imgRes.ok) throw new Error('Failed to upload images');
         const imgJson = await imgRes.json().catch(()=>null);
         console.log('✅ [GEAR SAVE] Images response:', imgJson);
+        
+        // Update currentImages with the new images from server
+        if (imgJson && imgJson.images) {
+          setCurrentImages(imgJson.images);
+          console.log('🔄 [GEAR SAVE] Updated currentImages with server response:', imgJson.images);
+        }
       }
 
       // Refetch list
       console.log('🔄 [GEAR SAVE] Refetch gear list');
       const res = await fetch(`${API_BASE}/gear`);
       const data = await res.json();
-      setGearItems((data.items || []).map(item => ({
+      const updatedItems = (data.items || []).map(item => ({
         ...item,
         images: Array.isArray(item.images) && item.images.length > 0 ? item.images : ['/images/placeholder-gear.svg']
-      })));
+      }));
+      setGearItems(updatedItems);
+      console.log('✅ [GEAR SAVE] Updated gear items:', updatedItems);
 
       closeEditModal();
     } catch (e) {
