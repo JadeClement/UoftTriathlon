@@ -271,9 +271,10 @@ const TeamGear = () => {
         Show your UofT Tri Club pride with our official team gear! This page is under construction, please check back soon for more information.
       </p>
       <p>
-      The clothing pieces are from Champion Systems. The main reference for triathlon is here
-      https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items. Note that the items below do not show everything that is available.
+      The tri suits and bike kits are from Champion Systems. The main reference for triathlon is here
+      https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items. 
       </p>
+      <h3>Under Armour Gear</h3>
       
       <div className="gear-grid">
         {gearItems.map(item => (
@@ -331,14 +332,16 @@ const TeamGear = () => {
               <h3 className="gear-title">{item.title}</h3>
               <p className="gear-description">{(item.images && item.images.length > 1) ? (item.description || '').replace(/image coming soon\.?/ig, '').trim() : item.description}</p>
               <div className="gear-price">${item.price}</div>
-              <button className="gear-button">
-                Order Now
-              </button>
-              {isAdmin && isAdmin(currentUser) && (
-                <button className="gear-edit-button" onClick={() => openEditModal(item)}>
-                  ✎ Edit
+              <div className="gear-buttons">
+                <button className="gear-button">
+                  Order Now
                 </button>
-              )}
+                {isAdmin && isAdmin(currentUser) && (
+                  <button className="gear-edit-button" onClick={() => openEditModal(item)}>
+                    ✎ Edit
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
