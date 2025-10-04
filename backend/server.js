@@ -11,6 +11,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 
 // Import database to ensure initialization
 const { pool, checkDatabaseHealth } = require('./database-pg');
@@ -32,6 +33,19 @@ const siteRoutes = require('./routes/site');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// Initialize uploads directories
+const uploadsDir = path.join(__dirname, 'uploads');
+const profilePicturesDir = path.join(uploadsDir, 'profile-pictures');
+const teamProfilesDir = path.join(uploadsDir, 'team-profiles');
+const gearDir = path.join(uploadsDir, 'gear');
+
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(profilePicturesDir)) fs.mkdirSync(profilePicturesDir, { recursive: true });
+if (!fs.existsSync(teamProfilesDir)) fs.mkdirSync(teamProfilesDir, { recursive: true });
+if (!fs.existsSync(gearDir)) fs.mkdirSync(gearDir, { recursive: true });
+
+console.log('📁 Uploads directories initialized');
 
 // Security and rate limiting temporarily disabled for CORS debugging
 

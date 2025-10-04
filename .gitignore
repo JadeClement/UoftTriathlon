@@ -3,3 +3,6 @@ sendgrid.env
 # Data files that should not be tracked
 backend/data/gear.json
 backend/data/team-profiles.json
+
+# Upload directories that should not be tracked
+backend/uploads/
