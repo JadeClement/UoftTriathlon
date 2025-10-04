@@ -195,16 +195,24 @@ router.delete('/:id/images', authenticateToken, requireAdmin, (req, res) => {
     // Remove the image from the array
     items[idx].images = (items[idx].images || []).filter(img => img !== imageUrl);
     
-    // Delete the actual file
-    try {
-      const filename = imageUrl.split('/').pop();
-      const filepath = path.join(uploadsDir, filename);
-      if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
-        console.log('🗑️ [GEAR DELETE] Removed file:', filename);
+    // Delete the actual file (skip placeholder images)
+    if (!imageUrl.includes('placeholder-gear.svg') && !imageUrl.includes('/images/')) {
+      try {
+        const filename = imageUrl.split('/').pop();
+        const filepath = path.join(uploadsDir, filename);
+        console.log('🗑️ [GEAR DELETE] Attempting to delete file:', filepath);
+        console.log('🗑️ [GEAR DELETE] File exists:', fs.existsSync(filepath));
+        if (fs.existsSync(filepath)) {
+          fs.unlinkSync(filepath);
+          console.log('🗑️ [GEAR DELETE] Successfully removed file:', filename);
+        } else {
+          console.warn('⚠️ [GEAR DELETE] File not found:', filepath);
+        }
+      } catch (fileError) {
+        console.error('❌ [GEAR DELETE] Error deleting file:', fileError.message);
       }
-    } catch (fileError) {
-      console.warn('⚠️ [GEAR DELETE] Could not delete file:', fileError.message);
+    } else {
+      console.log('🗑️ [GEAR DELETE] Skipping placeholder image deletion:', imageUrl);
     }
 
     saveGear(items);

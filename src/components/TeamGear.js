@@ -166,7 +166,16 @@ const TeamGear = () => {
   // Image management functions
   const removeImage = async (imageUrl) => {
     if (!editingItem) return;
+    
+    // Don't try to delete placeholder images
+    if (imageUrl.includes('placeholder-gear.svg') || imageUrl.includes('/images/')) {
+      console.log('🗑️ [FRONTEND] Skipping placeholder image deletion:', imageUrl);
+      setCurrentImages(prev => prev.filter(img => img !== imageUrl));
+      return;
+    }
+    
     try {
+      console.log('🗑️ [FRONTEND] Attempting to remove image:', imageUrl);
       const token = localStorage.getItem('triathlonToken');
       const res = await fetch(`${API_BASE}/gear/${editingItem.id}/images`, {
         method: 'DELETE',
@@ -176,13 +185,21 @@ const TeamGear = () => {
         },
         body: JSON.stringify({ imageUrl })
       });
-      if (!res.ok) throw new Error('Failed to remove image');
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('❌ [FRONTEND] Delete image failed:', res.status, errorData);
+        throw new Error(errorData.error || `Failed to remove image (${res.status})`);
+      }
+      
+      const result = await res.json();
+      console.log('✅ [FRONTEND] Image removed successfully:', result);
       
       // Update local state
       setCurrentImages(prev => prev.filter(img => img !== imageUrl));
     } catch (e) {
-      console.error('Error removing image:', e);
-      alert('Failed to remove image');
+      console.error('❌ [FRONTEND] Error removing image:', e);
+      alert(`Failed to remove image: ${e.message}`);
     }
   };
 
