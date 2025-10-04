@@ -19,6 +19,11 @@ const TeamGear = () => {
   const [saving, setSaving] = useState(false);
   const [currentImages, setCurrentImages] = useState([]);
 
+  // Admin add modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ title: '', price: '', description: '' });
+  const [adding, setAdding] = useState(false);
+
   // Lightbox (enlarge) state
   const [lightboxItem, setLightboxItem] = useState(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -195,6 +200,79 @@ const TeamGear = () => {
     setCurrentImages(newImages);
   };
 
+  // Add new gear item
+  const addGearItem = async () => {
+    if (!addForm.title.trim()) {
+      alert('Please enter a title');
+      return;
+    }
+    
+    try {
+      setAdding(true);
+      const token = localStorage.getItem('triathlonToken');
+      
+      const res = await fetch(`${API_BASE}/gear`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(addForm)
+      });
+      
+      if (!res.ok) throw new Error('Failed to create gear item');
+      
+      // Refetch gear list
+      const gearRes = await fetch(`${API_BASE}/gear`);
+      const data = await gearRes.json();
+      setGearItems((data.items || []).map(item => ({
+        ...item,
+        images: Array.isArray(item.images) && item.images.length > 0 ? item.images : ['/images/placeholder-gear.svg']
+      })));
+      
+      setShowAddModal(false);
+      setAddForm({ title: '', price: '', description: '' });
+    } catch (e) {
+      console.error('Error adding gear item:', e);
+      alert('Failed to add gear item');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  // Delete gear item
+  const deleteGearItem = async (itemId) => {
+    if (!window.confirm('Are you sure you want to delete this gear item? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      
+      const res = await fetch(`${API_BASE}/gear/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete gear item');
+      
+      // Refetch gear list
+      const gearRes = await fetch(`${API_BASE}/gear`);
+      const data = await gearRes.json();
+      setGearItems((data.items || []).map(item => ({
+        ...item,
+        images: Array.isArray(item.images) && item.images.length > 0 ? item.images : ['/images/placeholder-gear.svg']
+      })));
+      
+      closeEditModal();
+    } catch (e) {
+      console.error('Error deleting gear item:', e);
+      alert('Failed to delete gear item');
+    }
+  };
+
   const saveEdit = async () => {
     console.log('🚀 [GEAR SAVE] Function called, editingItem:', editingItem);
     if (!editingItem) return;
@@ -347,6 +425,17 @@ const TeamGear = () => {
         ))}
       </div>
       
+      {isAdmin && isAdmin(currentUser) && (
+        <div className="gear-add-section">
+          <button 
+            className="gear-add-button" 
+            onClick={() => setShowAddModal(true)}
+          >
+            + Add New Merchandise
+          </button>
+        </div>
+      )}
+      
       <div className="gear-info">
         <h2>Ordering Information</h2>
         <p>
@@ -471,7 +560,60 @@ const TeamGear = () => {
             </div>
             <div className="gear-modal-actions">
               <button className="cancel-button" onClick={closeEditModal} disabled={saving}>Cancel</button>
+              <button 
+                className="delete-button" 
+                onClick={() => deleteGearItem(editingItem.id)}
+                disabled={saving}
+                style={{ backgroundColor: '#ef4444', marginRight: 'auto' }}
+              >
+                Delete Item
+              </button>
               <button className="save-button" onClick={saveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add new gear modal */}
+      {showAddModal && (
+        <div className="gear-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="gear-modal-header">
+              <h2>Add New Merchandise</h2>
+              <button className="gear-modal-close" onClick={() => setShowAddModal(false)}>×</button>
+            </div>
+            <div className="gear-modal-body">
+              <div className="form-group">
+                <label>Title *</label>
+                <input
+                  type="text"
+                  value={addForm.title}
+                  onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
+                  placeholder="Enter merchandise title"
+                />
+              </div>
+              <div className="form-group">
+                <label>Price</label>
+                <input
+                  type="text"
+                  value={addForm.price}
+                  onChange={(e) => setAddForm({ ...addForm, price: e.target.value })}
+                  placeholder="Enter price (e.g., $25 or X)"
+                />
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  rows="3"
+                  value={addForm.description}
+                  onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
+                  placeholder="Enter description"
+                />
+              </div>
+            </div>
+            <div className="gear-modal-actions">
+              <button className="cancel-button" onClick={() => setShowAddModal(false)} disabled={adding}>Cancel</button>
+              <button className="save-button" onClick={addGearItem} disabled={adding}>{adding ? 'Adding...' : 'Add Item'}</button>
             </div>
           </div>
         </div>

@@ -497,6 +497,53 @@
   margin: 8px 0;
 }
 
+/* Add new merchandise section */
+.gear-add-section {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.gear-add-button {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.gear-add-button:hover {
+  background: #059669;
+}
+
+.gear-add-button:active {
+  transform: translateY(1px);
+}
+
+/* Delete button styling */
+.delete-button {
+  background: #ef4444 !important;
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.delete-button:hover {
+  background: #dc2626 !important;
+}
+
+.delete-button:disabled {
+  background: #9ca3af !important;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .gear-grid {

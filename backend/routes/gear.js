@@ -60,6 +60,35 @@ router.get('/', (_req, res) => {
   res.json({ items });
 });
 
+// POST create new gear item
+router.post('/', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const { title, price, description } = req.body;
+    
+    if (!title) return res.status(400).json({ error: 'Title is required' });
+    
+    const items = loadGear();
+    const newId = Math.max(...items.map(item => item.id), 0) + 1;
+    
+    const newItem = {
+      id: newId,
+      title: title.trim(),
+      price: price || 'X',
+      description: description || 'Description coming soon.',
+      images: []
+    };
+    
+    items.push(newItem);
+    saveGear(items);
+    
+    console.log('✅ [GEAR POST] Created new item:', newItem);
+    res.json({ message: 'Gear item created', item: newItem });
+  } catch (e) {
+    console.error('❌ Create gear error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // PUT update a gear item (price, description, title, images order)
 router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
   try {
@@ -154,6 +183,45 @@ router.delete('/:id/images', authenticateToken, requireAdmin, (req, res) => {
     res.json({ message: 'Image removed', images: items[idx].images });
   } catch (e) {
     console.error('❌ Delete gear image error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE remove a gear item
+router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    
+    const items = loadGear();
+    const idx = items.findIndex(g => g.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Gear item not found' });
+    
+    const item = items[idx];
+    
+    // Delete all associated image files
+    if (item.images && Array.isArray(item.images)) {
+      item.images.forEach(imageUrl => {
+        try {
+          const filename = imageUrl.split('/').pop();
+          const filepath = path.join(uploadsDir, filename);
+          if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+            console.log('🗑️ [GEAR DELETE] Removed file:', filename);
+          }
+        } catch (fileError) {
+          console.warn('⚠️ [GEAR DELETE] Could not delete file:', fileError.message);
+        }
+      });
+    }
+    
+    // Remove item from array
+    items.splice(idx, 1);
+    saveGear(items);
+    
+    console.log('✅ [GEAR DELETE] Removed item:', item.title);
+    res.json({ message: 'Gear item deleted' });
+  } catch (e) {
+    console.error('❌ Delete gear error:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
