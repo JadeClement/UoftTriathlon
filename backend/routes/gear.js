@@ -19,11 +19,39 @@ function loadGear() {
     if (fs.existsSync(dataFilePath)) {
       const raw = fs.readFileSync(dataFilePath, 'utf8');
       return JSON.parse(raw);
+    } else {
+      // Initialize with default gear items if file doesn't exist
+      const defaultGear = [
+        {
+          id: 1,
+          title: "Team Backpack",
+          price: "X",
+          images: [],
+          description: "Durable backpack perfect for training and travel. Image coming soon."
+        },
+        {
+          id: 2,
+          title: "Swim Cap",
+          price: "X",
+          images: [],
+          description: "Silicone swim cap with UofT Tri Club logo. Image coming soon."
+        },
+        {
+          id: 3,
+          title: "Team Sweatshirt",
+          price: "X",
+          images: [],
+          description: "Comfortable sweatshirt with UofT Tri Club branding. Image coming soon."
+        }
+      ];
+      saveGear(defaultGear);
+      console.log('📦 [GEAR] Initialized default gear items');
+      return defaultGear;
     }
   } catch (e) {
     console.error('Error reading gear.json:', e);
+    return [];
   }
-  return [];
 }
 
 function saveGear(items) {
