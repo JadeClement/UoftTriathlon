@@ -371,6 +371,8 @@ const TeamGear = () => {
       <p>
       The tri suits and bike kits are from Champion Systems. The main reference for triathlon is here
       https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items. 
+
+      
       </p>
       
       <h3>Under Armour Gear</h3>
@@ -440,26 +442,8 @@ const TeamGear = () => {
                                    item.title.toLowerCase().includes('cap');
                 
                 if (isUnisexItem) {
-                  // Only show size for unisex items (backpack, cap)
-                  return (
-                    <div className="gear-order-options" style={{ margin: '8px 0 12px' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
-                        <select
-                          value={(orderSelections[item.id]?.size) || 'm'}
-                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
-                          aria-label="Select size"
-                        >
-                          <option value="xs">XS</option>
-                          <option value="s">S</option>
-                          <option value="m">M</option>
-                          <option value="l">L</option>
-                          <option value="xl">XL</option>
-                          <option value="2xl">2XL</option>
-                        </select>
-                      </div>
-                    </div>
-                  );
+                  // No ordering options for unisex items (backpack, cap) - they're one-size
+                  return null;
                 } else if (isClothingItem) {
                   // Show both fit and size for clothing items
                   return (
