@@ -7,6 +7,11 @@ const Admin = () => {
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
+  // Merch orders state
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderForm, setOrderForm] = useState({ id: null, name: '', email: '', item: '', size: '', quantity: 1, price: 0, status: 'pending', notes: '' });
+  const [showOrderModal, setShowOrderModal] = useState(false);
   const [bannerForm, setBannerForm] = useState({ enabled: false, message: '' });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
@@ -198,6 +203,66 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
+    }
+  };
+
+  // Load merch orders
+  const loadOrders = async () => {
+    try {
+      if (!currentUser || !isAdmin(currentUser)) return;
+      setOrdersLoading(true);
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE_URL}/merch-orders`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load orders');
+      const data = await res.json();
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
+    } catch (e) {
+      console.error('Failed to load orders:', e);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      loadOrders();
+    }
+  }, [activeTab]);
+
+  const openNewOrder = () => {
+    setOrderForm({ id: null, name: '', email: '', item: '', size: '', quantity: 1, price: 0, status: 'pending', notes: '' });
+    setShowOrderModal(true);
+  };
+
+  const editOrder = (order) => {
+    setOrderForm({ ...order });
+    setShowOrderModal(true);
+  };
+
+  const saveOrder = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const isEdit = !!orderForm.id;
+      const url = isEdit ? `${API_BASE_URL}/merch-orders/${orderForm.id}` : `${API_BASE_URL}/merch-orders`;
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderForm) });
+      if (!res.ok) throw new Error('Failed to save order');
+      await loadOrders();
+      setShowOrderModal(false);
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const deleteOrder = async (id) => {
+    if (!window.confirm('Delete this order?')) return;
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE_URL}/merch-orders/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to delete order');
+      await loadOrders();
+    } catch (e) {
+      alert(e.message);
     }
   };
 
@@ -792,6 +857,14 @@ const Admin = () => {
         >
           Attendance
         </button>
+        {isAdmin(currentUser) && (
+          <button 
+            className={`tab-button ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+          >
+            Merch Orders
+          </button>
+        )}
       </div>
 
       <div className="admin-content">
@@ -1522,6 +1595,61 @@ const Admin = () => {
           </div>
         )}
 
+        {isAdmin(currentUser) && activeTab === 'orders' && (
+          <div className="orders-section">
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <h2>Merch Orders</h2>
+              <button className="btn btn-primary" onClick={openNewOrder}>+ New Order</button>
+            </div>
+            {ordersLoading ? (
+              <div className="loading">Loading orders...</div>
+            ) : (
+              <div className="orders-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Item</th>
+                      <th>Size</th>
+                      <th>Qty</th>
+                      <th>Price</th>
+                      <th>Total</th>
+                      <th>Status</th>
+                      <th>Notes</th>
+                      <th>Created</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map(o => (
+                      <tr key={o.id}>
+                        <td>{o.name}</td>
+                        <td>{o.email}</td>
+                        <td>{o.item}</td>
+                        <td>{o.size}</td>
+                        <td>{o.quantity}</td>
+                        <td>${Number(o.price || 0).toFixed(2)}</td>
+                        <td>${Number(o.total || (o.quantity * o.price)).toFixed(2)}</td>
+                        <td><span className={`status-badge ${o.status}`}>{o.status}</span></td>
+                        <td style={{maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o.notes}>{o.notes}</td>
+                        <td>{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
+                        <td>
+                          <button className="action-btn small" onClick={() => editOrder(o)}>Edit</button>
+                          <button className="action-btn small danger" onClick={() => deleteOrder(o.id)}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {orders.length === 0 && (
+                      <tr><td colSpan="11" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* Edit Member Modal */}
@@ -1664,6 +1792,37 @@ const Admin = () => {
                 <button type="button" className="btn btn-secondary" onClick={cancelApproval}>Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Order Modal */}
+      {showOrderModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>{orderForm.id ? 'Edit Order' : 'New Order'}</h2>
+            <div className="form-grid">
+              <div className="form-group"><label>Name</label><input type="text" value={orderForm.name} onChange={e=>setOrderForm({...orderForm,name:e.target.value})} /></div>
+              <div className="form-group"><label>Email</label><input type="email" value={orderForm.email} onChange={e=>setOrderForm({...orderForm,email:e.target.value})} /></div>
+              <div className="form-group"><label>Item</label><input type="text" value={orderForm.item} onChange={e=>setOrderForm({...orderForm,item:e.target.value})} /></div>
+              <div className="form-group"><label>Size</label><input type="text" value={orderForm.size} onChange={e=>setOrderForm({...orderForm,size:e.target.value})} /></div>
+              <div className="form-group"><label>Quantity</label><input type="number" min="1" value={orderForm.quantity} onChange={e=>setOrderForm({...orderForm,quantity:Number(e.target.value)||1})} /></div>
+              <div className="form-group"><label>Price</label><input type="number" step="0.01" value={orderForm.price} onChange={e=>setOrderForm({...orderForm,price:Number(e.target.value)||0})} /></div>
+              <div className="form-group"><label>Status</label>
+                <select value={orderForm.status} onChange={e=>setOrderForm({...orderForm,status:e.target.value})}>
+                  <option value="pending">pending</option>
+                  <option value="paid">paid</option>
+                  <option value="delivered">delivered</option>
+                </select>
+              </div>
+              <div className="form-group" style={{gridColumn:'1 / -1'}}><label>Notes</label>
+                <textarea rows="3" value={orderForm.notes} onChange={e=>setOrderForm({...orderForm,notes:e.target.value})} />
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={saveOrder}>Save</button>
+              <button className="btn btn-secondary" onClick={()=>setShowOrderModal(false)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
