@@ -1,6 +1,5 @@
 const express = require('express');
 const multer = require('multer');
-const { isS3Enabled, uploadBufferToS3, getS3KeyFromUrl, deleteFromS3, S3_PUBLIC_BASE_URL } = require('../utils/s3');
 const path = require('path');
 const fs = require('fs');
 const { pool } = require('../database-pg');
@@ -23,7 +22,7 @@ router.get('/test-auth', authenticateToken, allowOwnProfile, (req, res) => {
 });
 
 // Configure multer for file uploads
-const diskStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, '..', 'uploads', 'profile-pictures');
     if (!fs.existsSync(uploadDir)) {
@@ -38,7 +37,7 @@ const diskStorage = multer.diskStorage({
 });
 
 const upload = multer({ 
-  storage: isS3Enabled() ? multer.memoryStorage() : diskStorage,
+  storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
@@ -133,16 +132,8 @@ router.post('/profile-picture', authenticateToken, allowOwnProfile(), upload.sin
     }
 
     const userId = req.user.id;
-    let profilePictureUrl;
-    if (isS3Enabled()) {
-      const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const key = `uploads/profile-pictures/profile-${userId}-${unique}${path.extname(req.file.originalname)}`;
-      const url = await uploadBufferToS3(key, req.file.buffer, req.file.mimetype);
-      profilePictureUrl = url; // store full URL for simplicity
-    } else {
-      const filename = req.file.filename;
-      profilePictureUrl = `/api/users/uploads/profile-pictures/${filename}`;
-    }
+    const filename = req.file.filename;
+    const profilePictureUrl = `/api/users/uploads/profile-pictures/${filename}`;
 
     await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
 

@@ -2,7 +2,6 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl, S3_PUBLIC_BASE_URL } = require('../utils/s3');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -63,8 +62,8 @@ function saveGear(items) {
   }
 }
 
-// Multer setup: memory storage when S3 enabled, disk storage otherwise
-const diskStorage = multer.diskStorage({
+// Multer for image uploads (disk storage)
+const storage = multer.diskStorage({
   destination: function (_req, _file, cb) {
     cb(null, uploadsDir);
   },
@@ -75,7 +74,7 @@ const diskStorage = multer.diskStorage({
 });
 
 const upload = multer({
-  storage: isS3Enabled() ? multer.memoryStorage() : diskStorage,
+  storage,
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: function (_req, file, cb) {
     if (file.mimetype.startsWith('image/')) return cb(null, true);
@@ -148,7 +147,7 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // POST upload images for a gear item
-router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images', 10), async (req, res) => {
+router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images', 10), (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const files = req.files || [];
@@ -160,18 +159,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
     const idx = items.findIndex(g => g.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Gear item not found' });
 
-    let newUrls = [];
-    if (isS3Enabled()) {
-      // Upload buffers to S3
-      for (const f of files) {
-        const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const key = `uploads/gear/gear-${unique}${path.extname(f.originalname)}`;
-        const url = await uploadBufferToS3(key, f.buffer, f.mimetype);
-        newUrls.push(url);
-      }
-    } else {
-      newUrls = files.map(f => `/uploads/gear/${f.filename}`);
-    }
+    const newUrls = files.map(f => `/uploads/gear/${f.filename}`);
     items[idx].images = [...(items[idx].images || []), ...newUrls];
 
     // Clean placeholder text in description if present once images exist
@@ -185,7 +173,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
     console.log('✅ [GEAR IMAGES POST] total images now:', (items[idx].images||[]).length);
     saveGear(items);
 
-    res.json({ message: 'Images uploaded', images: items[idx].images, s3: isS3Enabled(), baseUrl: S3_PUBLIC_BASE_URL });
+    res.json({ message: 'Images uploaded', images: items[idx].images });
   } catch (e) {
     console.error('❌ Upload gear images error:', e);
     res.status(500).json({ error: 'Internal server error' });
@@ -193,7 +181,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
 });
 
 // DELETE remove an image from a gear item
-router.delete('/:id/images', authenticateToken, requireAdmin, async (req, res) => {
+router.delete('/:id/images', authenticateToken, requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { imageUrl } = req.body;
@@ -210,15 +198,10 @@ router.delete('/:id/images', authenticateToken, requireAdmin, async (req, res) =
     // Delete the actual file (skip placeholder images)
     if (!imageUrl.includes('placeholder-gear.svg') && !imageUrl.includes('/images/')) {
       try {
-        if (isS3Enabled() && imageUrl.startsWith('http')) {
-          const key = getS3KeyFromUrl(imageUrl);
-          if (key) await deleteFromS3(key);
-        } else {
-          const filename = imageUrl.split('/').pop();
-          const filepath = path.join(uploadsDir, filename);
-          console.log('🗑️ [GEAR DELETE] Attempting to delete file:', filepath);
-          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-        }
+        const filename = imageUrl.split('/').pop();
+        const filepath = path.join(uploadsDir, filename);
+        console.log('🗑️ [GEAR DELETE] Attempting to delete file:', filepath);
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
       } catch (fileError) {
         console.error('❌ [GEAR DELETE] Error deleting file:', fileError.message);
       }

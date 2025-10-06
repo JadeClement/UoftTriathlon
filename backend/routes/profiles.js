@@ -1,6 +1,5 @@
 const express = require('express');
 const multer = require('multer');
-const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
@@ -85,7 +84,7 @@ function saveTeamMembers(teamMembers) {
 }
 
 // Configure multer for image uploads
-const diskStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = path.join(__dirname, '../uploads/team-profiles');
     // Create directory if it doesn't exist
@@ -102,7 +101,7 @@ const diskStorage = multer.diskStorage({
 });
 
 const upload = multer({ 
-  storage: isS3Enabled() ? multer.memoryStorage() : diskStorage,
+  storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
@@ -191,15 +190,8 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
 
     // Handle new image if uploaded
     if (imageFile) {
-      if (isS3Enabled()) {
-        const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const key = `uploads/team-profiles/profile-${id}-${unique}${path.extname(imageFile.originalname)}`;
-        const url = await uploadBufferToS3(key, imageFile.buffer, imageFile.mimetype);
-        updatedMember.image = url;
-      } else {
-        const imageUrl = `/uploads/team-profiles/${imageFile.filename}`;
-        updatedMember.image = imageUrl;
-      }
+      const imageUrl = `/uploads/team-profiles/${imageFile.filename}`;
+      updatedMember.image = imageUrl;
     }
 
     // Save the updated data
