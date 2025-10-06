@@ -430,34 +430,100 @@ const TeamGear = () => {
               <p className="gear-description">{(item.images && item.images.length > 1) ? (item.description || '').replace(/image coming soon\.?/ig, '').trim() : item.description}</p>
               <div className="gear-price">${item.price}</div>
               {/* Ordering options */}
-              <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0 12px' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
-                  <select
-                    value={(orderSelections[item.id]?.fit) || 'mens'}
-                    onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), fit: e.target.value } }))}
-                    aria-label="Select fit"
-                  >
-                    <option value="mens">Men's</option>
-                    <option value="womens">Women's</option>
-                  </select>
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
-                  <select
-                    value={(orderSelections[item.id]?.size) || 'm'}
-                    onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
-                    aria-label="Select size"
-                  >
-                    <option value="xs">XS</option>
-                    <option value="s">S</option>
-                    <option value="m">M</option>
-                    <option value="l">L</option>
-                    <option value="xl">XL</option>
-                    <option value="2xl">2XL</option>
-                  </select>
-                </div>
-              </div>
+              {(() => {
+                const isClothingItem = item.title.toLowerCase().includes('suit') || 
+                                     item.title.toLowerCase().includes('jersey') || 
+                                     item.title.toLowerCase().includes('shorts');
+                const isUnisexItem = item.title.toLowerCase().includes('backpack') || 
+                                   item.title.toLowerCase().includes('cap');
+                
+                if (isUnisexItem) {
+                  // Only show size for unisex items (backpack, cap)
+                  return (
+                    <div className="gear-order-options" style={{ margin: '8px 0 12px' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
+                        <select
+                          value={(orderSelections[item.id]?.size) || 'm'}
+                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
+                          aria-label="Select size"
+                        >
+                          <option value="xs">XS</option>
+                          <option value="s">S</option>
+                          <option value="m">M</option>
+                          <option value="l">L</option>
+                          <option value="xl">XL</option>
+                          <option value="2xl">2XL</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                } else if (isClothingItem) {
+                  // Show both fit and size for clothing items
+                  return (
+                    <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0 12px' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
+                        <select
+                          value={(orderSelections[item.id]?.fit) || 'mens'}
+                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), fit: e.target.value } }))}
+                          aria-label="Select fit"
+                        >
+                          <option value="mens">Men's</option>
+                          <option value="womens">Women's</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
+                        <select
+                          value={(orderSelections[item.id]?.size) || 'm'}
+                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
+                          aria-label="Select size"
+                        >
+                          <option value="xs">XS</option>
+                          <option value="s">S</option>
+                          <option value="m">M</option>
+                          <option value="l">L</option>
+                          <option value="xl">XL</option>
+                          <option value="2xl">2XL</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // Default: show both options for other items
+                  return (
+                    <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0 12px' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
+                        <select
+                          value={(orderSelections[item.id]?.fit) || 'mens'}
+                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), fit: e.target.value } }))}
+                          aria-label="Select fit"
+                        >
+                          <option value="mens">Men's</option>
+                          <option value="womens">Women's</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
+                        <select
+                          value={(orderSelections[item.id]?.size) || 'm'}
+                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
+                          aria-label="Select size"
+                        >
+                          <option value="xs">XS</option>
+                          <option value="s">S</option>
+                          <option value="m">M</option>
+                          <option value="l">L</option>
+                          <option value="xl">XL</option>
+                          <option value="2xl">2XL</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
               <div className="gear-buttons">
                 <button className="gear-button">
                   Order Now
