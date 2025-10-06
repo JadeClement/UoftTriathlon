@@ -193,7 +193,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
 });
 
 // DELETE remove an image from a gear item
-router.delete('/:id/images', authenticateToken, requireAdmin, (req, res) => {
+router.delete('/:id/images', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { imageUrl } = req.body;
