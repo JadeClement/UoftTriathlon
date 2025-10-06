@@ -369,13 +369,13 @@ const TeamGear = () => {
       </p>
       <h3>Triathlon Specific Gear</h3>
       <p>
-      The tri suits and bike kits are from Champion Systems. The main reference for triathlon is here
+      The tri suits, bike kits and running singletsre from Champion Systems. The main reference for triathlon is here
       https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items. 
 
       
       </p>
       
-      <h3>Under Armour Gear</h3>
+      <h3 style={{ marginTop: '2rem' }}>Under Armour Gear</h3>
       
       <div className="gear-grid">
         {gearItems.map(item => (
