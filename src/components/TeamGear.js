@@ -367,10 +367,12 @@ const TeamGear = () => {
       <p className="page-description">
         Show your UofT Tri Club pride with our official team gear! This page is under construction, please check back soon for more information.
       </p>
+      <h3>Triathlon Specific Gear</h3>
       <p>
       The tri suits and bike kits are from Champion Systems. The main reference for triathlon is here
       https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items. 
       </p>
+      
       <h3>Under Armour Gear</h3>
       
       <div className="gear-grid">
