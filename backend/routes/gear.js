@@ -148,7 +148,7 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // POST upload images for a gear item
-router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images', 10), (req, res) => {
+router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images', 10), async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const files = req.files || [];
