@@ -39,25 +39,26 @@ router.get('/', authenticateToken, requireAdmin, (_req, res) => {
 // POST create order
 router.post('/', authenticateToken, requireAdmin, (req, res) => {
   try {
-    const { name, email, item, size, quantity, price, status, notes } = req.body || {};
-    if (!name || !email || !item) return res.status(400).json({ error: 'name, email, and item are required' });
+    const { name, firstName, lastName, email, item, size, quantity } = req.body || {};
+    
+    // Handle both old and new formats
+    const finalFirstName = firstName || (name ? name.split(' ')[0] : '');
+    const finalLastName = lastName || (name ? name.split(' ').slice(1).join(' ') : '');
+    
+    if (!finalFirstName || !email || !item) return res.status(400).json({ error: 'firstName, email, and item are required' });
 
     const orders = loadOrders();
     const newId = Math.max(0, ...orders.map(o => o.id || 0)) + 1;
     const qty = Number(quantity) || 1;
-    const unitPrice = isNaN(Number(price)) ? 0 : Number(price);
 
     const newOrder = {
       id: newId,
-      name: String(name).trim(),
+      firstName: String(finalFirstName).trim(),
+      lastName: String(finalLastName).trim(),
       email: String(email).trim(),
       item: String(item).trim(),
       size: size ? String(size).trim() : '',
       quantity: qty,
-      price: unitPrice,
-      total: +(qty * unitPrice).toFixed(2),
-      status: status || 'pending', // pending | paid | delivered
-      notes: notes || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -79,21 +80,21 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
     const idx = orders.findIndex(o => o.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Order not found' });
 
-    const { name, email, item, size, quantity, price, status, notes } = req.body || {};
+    const { name, firstName, lastName, email, item, size, quantity } = req.body || {};
     const qty = quantity !== undefined ? Number(quantity) : orders[idx].quantity;
-    const unitPrice = price !== undefined ? Number(price) : orders[idx].price;
+    
+    // Handle both old and new formats
+    const finalFirstName = firstName !== undefined ? firstName : (name ? name.split(' ')[0] : orders[idx].firstName);
+    const finalLastName = lastName !== undefined ? lastName : (name ? name.split(' ').slice(1).join(' ') : orders[idx].lastName);
 
     const updated = {
       ...orders[idx],
-      name: name !== undefined ? String(name).trim() : orders[idx].name,
+      firstName: String(finalFirstName).trim(),
+      lastName: String(finalLastName).trim(),
       email: email !== undefined ? String(email).trim() : orders[idx].email,
       item: item !== undefined ? String(item).trim() : orders[idx].item,
       size: size !== undefined ? String(size).trim() : orders[idx].size,
       quantity: isNaN(qty) ? orders[idx].quantity : qty,
-      price: isNaN(unitPrice) ? orders[idx].price : unitPrice,
-      status: status !== undefined ? status : orders[idx].status,
-      notes: notes !== undefined ? notes : orders[idx].notes,
-      total: +((isNaN(qty) ? orders[idx].quantity : qty) * (isNaN(unitPrice) ? orders[idx].price : unitPrice)).toFixed(2),
       updated_at: new Date().toISOString()
     };
 

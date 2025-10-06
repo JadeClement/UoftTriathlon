@@ -10,7 +10,7 @@ const Admin = () => {
   // Merch orders state
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [orderForm, setOrderForm] = useState({ id: null, name: '', email: '', item: '', size: '', quantity: 1, price: 0, status: 'pending', notes: '' });
+  const [orderForm, setOrderForm] = useState({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [bannerForm, setBannerForm] = useState({ enabled: false, message: '' });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
@@ -230,12 +230,20 @@ const Admin = () => {
   }, [activeTab]);
 
   const openNewOrder = () => {
-    setOrderForm({ id: null, name: '', email: '', item: '', size: '', quantity: 1, price: 0, status: 'pending', notes: '' });
+    setOrderForm({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
     setShowOrderModal(true);
   };
 
   const editOrder = (order) => {
-    setOrderForm({ ...order });
+    // Handle legacy orders that might have 'name' instead of 'firstName' and 'lastName'
+    const formData = { ...order };
+    if (order.name && !order.firstName && !order.lastName) {
+      const nameParts = order.name.split(' ');
+      formData.firstName = nameParts[0] || '';
+      formData.lastName = nameParts.slice(1).join(' ') || '';
+      delete formData.name;
+    }
+    setOrderForm(formData);
     setShowOrderModal(true);
   };
 
@@ -245,7 +253,14 @@ const Admin = () => {
       const isEdit = !!orderForm.id;
       const url = isEdit ? `${API_BASE_URL}/merch-orders/${orderForm.id}` : `${API_BASE_URL}/merch-orders`;
       const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderForm) });
+      
+      // Prepare data for backend - combine firstName and lastName into name for now
+      const orderData = {
+        ...orderForm,
+        name: `${orderForm.firstName} ${orderForm.lastName}`.trim()
+      };
+      
+      const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) });
       if (!res.ok) throw new Error('Failed to save order');
       await loadOrders();
       setShowOrderModal(false);
@@ -1608,15 +1623,12 @@ const Admin = () => {
                 <table>
                   <thead>
                     <tr>
-                      <th>Name</th>
+                      <th>First Name</th>
+                      <th>Last Name</th>
                       <th>Email</th>
                       <th>Item</th>
                       <th>Size</th>
                       <th>Qty</th>
-                      <th>Price</th>
-                      <th>Total</th>
-                      <th>Status</th>
-                      <th>Notes</th>
                       <th>Created</th>
                       <th>Actions</th>
                     </tr>
@@ -1624,15 +1636,12 @@ const Admin = () => {
                   <tbody>
                     {orders.map(o => (
                       <tr key={o.id}>
-                        <td>{o.name}</td>
+                        <td>{o.firstName || o.name?.split(' ')[0] || '-'}</td>
+                        <td>{o.lastName || o.name?.split(' ').slice(1).join(' ') || '-'}</td>
                         <td>{o.email}</td>
                         <td>{o.item}</td>
                         <td>{o.size}</td>
                         <td>{o.quantity}</td>
-                        <td>${Number(o.price || 0).toFixed(2)}</td>
-                        <td>${Number(o.total || (o.quantity * o.price)).toFixed(2)}</td>
-                        <td><span className={`status-badge ${o.status}`}>{o.status}</span></td>
-                        <td style={{maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o.notes}>{o.notes}</td>
                         <td>{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
                         <td>
                           <button className="action-btn small" onClick={() => editOrder(o)}>Edit</button>
@@ -1641,7 +1650,7 @@ const Admin = () => {
                       </tr>
                     ))}
                     {orders.length === 0 && (
-                      <tr><td colSpan="11" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
+                      <tr><td colSpan="8" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1802,22 +1811,12 @@ const Admin = () => {
           <div className="modal">
             <h2>{orderForm.id ? 'Edit Order' : 'New Order'}</h2>
             <div className="form-grid">
-              <div className="form-group"><label>Name</label><input type="text" value={orderForm.name} onChange={e=>setOrderForm({...orderForm,name:e.target.value})} /></div>
-              <div className="form-group"><label>Email</label><input type="email" value={orderForm.email} onChange={e=>setOrderForm({...orderForm,email:e.target.value})} /></div>
-              <div className="form-group"><label>Item</label><input type="text" value={orderForm.item} onChange={e=>setOrderForm({...orderForm,item:e.target.value})} /></div>
+              <div className="form-group"><label>First Name</label><input type="text" value={orderForm.firstName} onChange={e=>setOrderForm({...orderForm,firstName:e.target.value})} required /></div>
+              <div className="form-group"><label>Last Name</label><input type="text" value={orderForm.lastName} onChange={e=>setOrderForm({...orderForm,lastName:e.target.value})} required /></div>
+              <div className="form-group"><label>Email</label><input type="email" value={orderForm.email} onChange={e=>setOrderForm({...orderForm,email:e.target.value})} required /></div>
+              <div className="form-group"><label>Item</label><input type="text" value={orderForm.item} onChange={e=>setOrderForm({...orderForm,item:e.target.value})} required /></div>
               <div className="form-group"><label>Size</label><input type="text" value={orderForm.size} onChange={e=>setOrderForm({...orderForm,size:e.target.value})} /></div>
-              <div className="form-group"><label>Quantity</label><input type="number" min="1" value={orderForm.quantity} onChange={e=>setOrderForm({...orderForm,quantity:Number(e.target.value)||1})} /></div>
-              <div className="form-group"><label>Price</label><input type="number" step="0.01" value={orderForm.price} onChange={e=>setOrderForm({...orderForm,price:Number(e.target.value)||0})} /></div>
-              <div className="form-group"><label>Status</label>
-                <select value={orderForm.status} onChange={e=>setOrderForm({...orderForm,status:e.target.value})}>
-                  <option value="pending">pending</option>
-                  <option value="paid">paid</option>
-                  <option value="delivered">delivered</option>
-                </select>
-              </div>
-              <div className="form-group" style={{gridColumn:'1 / -1'}}><label>Notes</label>
-                <textarea rows="3" value={orderForm.notes} onChange={e=>setOrderForm({...orderForm,notes:e.target.value})} />
-              </div>
+              <div className="form-group"><label>Quantity</label><input type="number" min="1" value={orderForm.quantity} onChange={e=>setOrderForm({...orderForm,quantity:Number(e.target.value)||1})} required /></div>
             </div>
             <div className="modal-actions">
               <button className="btn btn-primary" onClick={saveOrder}>Save</button>

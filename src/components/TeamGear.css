@@ -579,4 +579,55 @@
   }
 }
 
+/* Order Confirmation Modal Styles */
+.order-confirmation {
+  padding: 1rem 0;
+}
+
+.order-confirmation h3 {
+  color: #1E3A8A;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.order-item {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.order-item:last-of-type {
+  border-bottom: none;
+  margin-bottom: 1rem;
+}
+
+.order-item strong {
+  color: #374151;
+  margin-right: 0.5rem;
+}
+
+.order-notice {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.order-notice p {
+  margin: 0 0 0.5rem 0;
+  color: #0c4a6e;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.order-notice p:last-child {
+  margin-bottom: 0;
+}
+
+.order-notice strong {
+  color: #0c4a6e;
+  font-weight: 600;
+}
+
 

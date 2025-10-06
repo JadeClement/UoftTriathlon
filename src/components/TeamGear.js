@@ -30,6 +30,11 @@ const TeamGear = () => {
   const [lightboxItem, setLightboxItem] = useState(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
+  // Order confirmation modal state
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+
   const normalizeImageUrl = (url) => {
     if (!url) {
       console.log('🖼️ [NORMALIZE] No URL provided, using placeholder');
@@ -361,6 +366,55 @@ const TeamGear = () => {
     }
   };
 
+  // Order confirmation handlers
+  const handleOrderClick = (item) => {
+    setSelectedItem(item);
+    setShowOrderModal(true);
+  };
+
+  const closeOrderModal = () => {
+    setShowOrderModal(false);
+    setSelectedItem(null);
+  };
+
+  const submitOrder = async () => {
+    if (!selectedItem || !currentUser) return;
+    
+    setOrderSubmitting(true);
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const orderData = {
+        firstName: currentUser.first_name || currentUser.name?.split(' ')[0] || '',
+        lastName: currentUser.last_name || currentUser.name?.split(' ').slice(1).join(' ') || '',
+        email: currentUser.email,
+        item: selectedItem.title,
+        size: orderSelections[selectedItem.id]?.size || '',
+        quantity: 1
+      };
+
+      const response = await fetch(`${API_BASE}/merch-orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit order');
+      }
+
+      alert('Order submitted successfully! You will receive an invoice email shortly.');
+      closeOrderModal();
+    } catch (error) {
+      console.error('Order submission error:', error);
+      alert('Failed to submit order. Please try again.');
+    } finally {
+      setOrderSubmitting(false);
+    }
+  };
+
   return (
     <div className="page-container teamgear-page">
       <h1>Team Gear</h1>
@@ -511,7 +565,7 @@ const TeamGear = () => {
                 }
               })()}
               <div className="gear-buttons">
-                <button className="gear-button">
+                <button className="gear-button" onClick={() => handleOrderClick(item)}>
                   Order Now
                 </button>
                 {isAdmin && isAdmin(currentUser) && (
@@ -714,6 +768,55 @@ const TeamGear = () => {
             <div className="gear-modal-actions">
               <button className="cancel-button" onClick={() => setShowAddModal(false)} disabled={adding}>Cancel</button>
               <button className="save-button" onClick={addGearItem} disabled={adding}>{adding ? 'Adding...' : 'Add Item'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order confirmation modal */}
+      {showOrderModal && selectedItem && (
+        <div className="gear-modal-overlay" onClick={closeOrderModal}>
+          <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="gear-modal-header">
+              <h2>Confirm Order</h2>
+              <button className="gear-modal-close" onClick={closeOrderModal}>×</button>
+            </div>
+            <div className="gear-modal-body">
+              <div className="order-confirmation">
+                <h3>Order Details</h3>
+                <div className="order-item">
+                  <strong>Item:</strong> {selectedItem.title}
+                </div>
+                {orderSelections[selectedItem.id]?.size && (
+                  <div className="order-item">
+                    <strong>Size:</strong> {orderSelections[selectedItem.id].size.toUpperCase()}
+                  </div>
+                )}
+                <div className="order-item">
+                  <strong>Quantity:</strong> 1
+                </div>
+                <div className="order-item">
+                  <strong>Price:</strong> {selectedItem.price || 'Contact for pricing'}
+                </div>
+                
+                <div className="order-notice">
+                  <p><strong>Important:</strong> You will receive an invoice email shortly after confirming your order.</p>
+                  <p>Please check your email ({currentUser?.email}) for payment instructions and order details.</p>
+                </div>
+              </div>
+            </div>
+            <div className="gear-modal-actions">
+              <button className="cancel-button" onClick={closeOrderModal} disabled={orderSubmitting}>
+                Cancel
+              </button>
+              <button 
+                className="save-button" 
+                onClick={submitOrder} 
+                disabled={orderSubmitting}
+                style={{ backgroundColor: '#10b981' }}
+              >
+                {orderSubmitting ? 'Submitting...' : 'Confirm Order'}
+              </button>
             </div>
           </div>
         </div>
