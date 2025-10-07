@@ -318,7 +318,7 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={() => handleEditClick('co-president')}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('co-president'); }}
                   title="Edit profile"
                 >
                   ✏️
@@ -351,7 +351,7 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={() => handleEditClick('co-president-2')}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('co-president-2'); }}
                   title="Edit profile"
                 >
                   ✏️
@@ -384,7 +384,7 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={() => handleEditClick('treasurer')}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('treasurer'); }}
                   title="Edit profile"
                 >
                   ✏️
@@ -417,7 +417,7 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={() => handleEditClick('secretary')}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('secretary'); }}
                   title="Edit profile"
                 >
                   ✏️
@@ -450,7 +450,7 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={() => handleEditClick('social-coordinator')}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('social-coordinator'); }}
                   title="Edit profile"
                 >
                   ✏️
@@ -483,7 +483,7 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={() => handleEditClick('social-media')}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('social-media'); }}
                   title="Edit profile"
                 >
                   ✏️
@@ -516,7 +516,7 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={() => handleEditClick('webmaster')}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('webmaster'); }}
                   title="Edit profile"
                 >
                   ✏️
@@ -549,7 +549,7 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={() => handleEditClick('workout-coordinator')}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('workout-coordinator'); }}
                   title="Edit profile"
                 >
                   ✏️
