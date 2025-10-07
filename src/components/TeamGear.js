@@ -37,6 +37,10 @@ const TeamGear = () => {
   const [orderEmail, setOrderEmail] = useState('');
   const [orderEmailConfirm, setOrderEmailConfirm] = useState('');
   const [orderError, setOrderError] = useState('');
+  
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderSuccessData, setOrderSuccessData] = useState(null);
 
   const normalizeImageUrl = (url) => {
     if (!url) {
@@ -383,6 +387,11 @@ const TeamGear = () => {
     setOrderError('');
   };
 
+  const closeSuccessModal = () => {
+    setShowSuccessModal(false);
+    setOrderSuccessData(null);
+  };
+
   const submitOrder = async () => {
     if (!selectedItem || !currentUser) return;
     // Validate email confirmation
@@ -425,7 +434,16 @@ const TeamGear = () => {
         throw new Error('Failed to submit order');
       }
 
-      alert('Order submitted successfully! You will receive an invoice email shortly.');
+      const result = await response.json();
+      
+      // Show success modal with order details
+      setOrderSuccessData({
+        item: selectedItem,
+        email: emailToUse,
+        size: orderSelections[selectedItem.id]?.size,
+        fit: orderSelections[selectedItem.id]?.fit
+      });
+      setShowSuccessModal(true);
       closeOrderModal();
     } catch (error) {
       console.error('Order submission error:', error);
@@ -873,11 +891,167 @@ const TeamGear = () => {
                 {orderSubmitting ? 'Submitting...' : 'Confirm Order'}
               </button>
             </div>
+        </div>
+      </div>
+    )}
+
+    {/* Success Modal */}
+    {showSuccessModal && orderSuccessData && (
+      <div className="gear-modal-overlay" onClick={closeSuccessModal}>
+        <div className="gear-modal success-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="gear-modal-header success-header">
+            <div className="success-icon">🎉</div>
+            <h2>Order Confirmed!</h2>
+            <button className="gear-modal-close" onClick={closeSuccessModal}>×</button>
+          </div>
+          <div className="gear-modal-body success-body">
+            <div className="success-message">
+              <p className="success-main-text">
+                Thank you for your order! We've received your request and will process it shortly.
+              </p>
+              
+              <div className="order-recap">
+                <h3>📋 Order Summary</h3>
+                <div className="recap-item">
+                  <strong>Item:</strong> {orderSuccessData.item.title}
+                </div>
+                {orderSuccessData.size && (
+                  <div className="recap-item">
+                    <strong>Size:</strong> {orderSuccessData.size.toUpperCase()}
+                  </div>
+                )}
+                {orderSuccessData.fit && (
+                  <div className="recap-item">
+                    <strong>Fit:</strong> {orderSuccessData.fit === 'mens' ? "Men's" : "Women's"}
+                  </div>
+                )}
+                <div className="recap-item">
+                  <strong>Email:</strong> {orderSuccessData.email}
+                </div>
+                <div className="recap-item">
+                  <strong>Price:</strong> {orderSuccessData.item.price || 'Contact for pricing'}
+                </div>
+              </div>
+
+              <div className="next-steps">
+                <h3>📧 What's Next?</h3>
+                <p>
+                  You'll receive an invoice email once all orders have been submitted. 
+                  Please check your email ({orderSuccessData.email}) for payment instructions and order details.
+                </p>
+              </div>
+
+              <div className="help-section">
+                <h3>❓ Need Help?</h3>
+                <p>
+                  Made a mistake? Have questions? Email us at{' '}
+                  <a href="mailto:info@uoft-tri.club" style={{ color: '#10b981', fontWeight: '600' }}>
+                    info@uoft-tri.club
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="gear-modal-actions">
+            <button 
+              className="save-button" 
+              onClick={closeSuccessModal}
+              style={{ backgroundColor: '#10b981', width: '100%' }}
+            >
+              Got it!
+            </button>
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+
+    <style jsx>{`
+      /* Success Modal Styles */
+      .success-modal {
+        max-width: 500px;
+      }
+
+      .success-header {
+        text-align: center;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border-radius: 8px 8px 0 0;
+        padding: 20px;
+        position: relative;
+      }
+
+      .success-icon {
+        font-size: 3rem;
+        margin-bottom: 10px;
+      }
+
+      .success-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+
+      .success-body {
+        padding: 24px;
+      }
+
+      .success-main-text {
+        font-size: 1.1rem;
+        color: #374151;
+        margin-bottom: 24px;
+        text-align: center;
+        line-height: 1.6;
+      }
+
+      .order-recap, .next-steps, .help-section {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
+      .order-recap h3, .next-steps h3, .help-section h3 {
+        margin: 0 0 12px 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #374151;
+      }
+
+      .recap-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .recap-item:last-child {
+        border-bottom: none;
+      }
+
+      .recap-item strong {
+        color: #374151;
+        font-weight: 600;
+      }
+
+      .next-steps p, .help-section p {
+        margin: 0;
+        color: #6b7280;
+        line-height: 1.5;
+      }
+
+      .help-section a {
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+
+      .help-section a:hover {
+        text-decoration: underline;
+      }
+    `}</style>
+  </div>
+);
 };
 
 export default TeamGear;
