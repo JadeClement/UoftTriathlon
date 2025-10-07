@@ -2,9 +2,15 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
+const { 
+  isS3Enabled, 
+  uploadBufferToS3, 
+  deleteFromS3, 
+  getS3KeyFromUrl, 
+  getJsonFromS3, 
+  putJsonToS3 
+} = require('../utils/s3');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
-const { isS3Enabled, getJsonFromS3, putJsonToS3 } = require('../utils/s3');
 
 const router = express.Router();
 
