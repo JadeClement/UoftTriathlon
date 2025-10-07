@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { pool } = require('../database-pg');
 const { authenticateToken, allowOwnProfile, requireMember } = require('../middleware/auth');
+const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
 
 const router = express.Router();
 
@@ -21,13 +22,12 @@ router.get('/test-auth', authenticateToken, allowOwnProfile, (req, res) => {
   });
 });
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
+// Configure multer for file uploads (memory when S3 enabled, disk otherwise)
+const memoryStorage = multer.memoryStorage();
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, '..', 'uploads', 'profile-pictures');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
@@ -37,7 +37,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ 
-  storage: storage,
+  storage: isS3Enabled() ? memoryStorage : diskStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
@@ -132,8 +132,16 @@ router.post('/profile-picture', authenticateToken, allowOwnProfile(), upload.sin
     }
 
     const userId = req.user.id;
-    const filename = req.file.filename;
-    const profilePictureUrl = `/api/users/uploads/profile-pictures/${filename}`;
+    let profilePictureUrl;
+
+    if (isS3Enabled()) {
+      const ext = path.extname(req.file.originalname || '.jpg').toLowerCase() || '.jpg';
+      const key = `profile-pictures/profile-${userId}-${Date.now()}${ext}`;
+      profilePictureUrl = await uploadBufferToS3(key, req.file.buffer, req.file.mimetype);
+    } else {
+      const filename = req.file.filename;
+      profilePictureUrl = `/api/users/uploads/profile-pictures/${filename}`;
+    }
 
     await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
 
@@ -157,13 +165,13 @@ router.delete('/profile-picture', authenticateToken, allowOwnProfile(), async (r
 
     const currentPictureUrl = userResult.rows[0].profile_picture_url;
     if (currentPictureUrl) {
-      // Extract filename from URL
-      const filename = currentPictureUrl.split('/').pop();
-      const filepath = path.join(__dirname, '..', 'uploads', 'profile-pictures', filename);
-      
-      // Delete file if it exists
-      if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
+      const s3Key = getS3KeyFromUrl(currentPictureUrl);
+      if (s3Key && isS3Enabled()) {
+        await deleteFromS3(s3Key);
+      } else {
+        const filename = currentPictureUrl.split('/').pop();
+        const filepath = path.join(__dirname, '..', 'uploads', 'profile-pictures', filename);
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
       }
     }
 
