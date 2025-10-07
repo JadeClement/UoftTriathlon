@@ -39,8 +39,7 @@ async function uploadBufferToS3(key, buffer, contentType) {
     Bucket: BUCKET,
     Key: key,
     Body: buffer,
-    ContentType: contentType || 'application/octet-stream',
-    ACL: 'public-read'
+    ContentType: contentType || 'application/octet-stream'
   }));
   if (!S3_PUBLIC_BASE_URL) throw new Error('No public base URL available for S3');
   return `${S3_PUBLIC_BASE_URL}/${key}`;
