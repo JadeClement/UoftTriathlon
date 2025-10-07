@@ -229,6 +229,21 @@ async function initializeDatabase() {
     `);
     console.log('✅ Site settings table created');
 
+    // Create merch_orders table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS merch_orders (
+        id SERIAL PRIMARY KEY,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) DEFAULT '' ,
+        email VARCHAR(255) NOT NULL,
+        item VARCHAR(255) NOT NULL,
+        size VARCHAR(50) DEFAULT '',
+        quantity INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Merch orders table created');
+
     // Create indexes
     await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_forum_posts_user_id ON forum_posts(user_id)');

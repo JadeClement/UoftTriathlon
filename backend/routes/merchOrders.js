@@ -2,70 +2,74 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const db = require('../database-pg');
 
 const router = express.Router();
 
-// Data file for persistent storage
+// Legacy JSON path (for optional one-time backfill)
 const dataDir = path.join(__dirname, '../data');
 const dataFilePath = path.join(dataDir, 'merch-orders.json');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-
-function loadOrders() {
-  try {
-    if (fs.existsSync(dataFilePath)) {
-      const raw = fs.readFileSync(dataFilePath, 'utf8');
-      return JSON.parse(raw);
-    }
-  } catch (e) {
-    console.error('Error reading merch-orders.json:', e);
-  }
-  return [];
-}
-
-function saveOrders(items) {
-  try {
-    fs.writeFileSync(dataFilePath, JSON.stringify(items, null, 2), 'utf8');
-  } catch (e) {
-    console.error('Error writing merch-orders.json:', e);
-  }
-}
 
 // GET all orders
-router.get('/', authenticateToken, requireAdmin, (_req, res) => {
-  const orders = loadOrders();
-  res.json({ orders });
+router.get('/', authenticateToken, requireAdmin, async (_req, res) => {
+  try {
+    // Load from DB
+    const { rows } = await db.query(
+      'SELECT id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at FROM merch_orders ORDER BY created_at DESC'
+    );
+
+    // If DB empty but legacy JSON exists, backfill once
+    if (rows.length === 0 && fs.existsSync(dataFilePath)) {
+      try {
+        const legacy = JSON.parse(fs.readFileSync(dataFilePath, 'utf8')) || [];
+        if (Array.isArray(legacy) && legacy.length > 0) {
+          for (const o of legacy) {
+            const firstName = (o.firstName || (o.name ? String(o.name).split(' ')[0] : '') || '').trim();
+            const lastName = (o.lastName || (o.name ? String(o.name).split(' ').slice(1).join(' ') : '') || '').trim();
+            const email = (o.email || '').trim();
+            const item = (o.item || '').trim();
+            const size = (o.size || '').trim();
+            const quantity = Number(o.quantity) || 1;
+            if (firstName && email && item) {
+              await db.query(
+                'INSERT INTO merch_orders (first_name, last_name, email, item, size, quantity, created_at) VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7, NOW()))',
+                [firstName, lastName, email, item, size, quantity, o.created_at ? new Date(o.created_at) : null]
+              );
+            }
+          }
+          const after = await db.query('SELECT id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at FROM merch_orders ORDER BY created_at DESC');
+          return res.json({ orders: after.rows });
+        }
+      } catch (bfErr) {
+        console.error('Merch orders backfill error:', bfErr);
+      }
+    }
+
+    res.json({ orders: rows });
+  } catch (e) {
+    console.error('Get merch orders error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // POST create order
-router.post('/', authenticateToken, requireAdmin, (req, res) => {
+router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, firstName, lastName, email, item, size, quantity } = req.body || {};
-    
-    // Handle both old and new formats
-    const finalFirstName = firstName || (name ? name.split(' ')[0] : '');
-    const finalLastName = lastName || (name ? name.split(' ').slice(1).join(' ') : '');
-    
-    if (!finalFirstName || !email || !item) return res.status(400).json({ error: 'firstName, email, and item are required' });
-
-    const orders = loadOrders();
-    const newId = Math.max(0, ...orders.map(o => o.id || 0)) + 1;
+    const finalFirstName = (firstName || (name ? name.split(' ')[0] : '') || '').trim();
+    const finalLastName = (lastName || (name ? name.split(' ').slice(1).join(' ') : '') || '').trim();
+    const finalEmail = (email || '').trim();
+    const finalItem = (item || '').trim();
+    const finalSize = (size || '').trim();
     const qty = Number(quantity) || 1;
 
-    const newOrder = {
-      id: newId,
-      firstName: String(finalFirstName).trim(),
-      lastName: String(finalLastName).trim(),
-      email: String(email).trim(),
-      item: String(item).trim(),
-      size: size ? String(size).trim() : '',
-      quantity: qty,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    if (!finalFirstName || !finalEmail || !finalItem) return res.status(400).json({ error: 'firstName, email, and item are required' });
 
-    orders.push(newOrder);
-    saveOrders(orders);
-    res.json({ message: 'Order created', order: newOrder });
+    const insert = await db.query(
+      'INSERT INTO merch_orders (first_name, last_name, email, item, size, quantity) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at',
+      [finalFirstName, finalLastName, finalEmail, finalItem, finalSize, qty]
+    );
+    res.json({ message: 'Order created', order: insert.rows[0] });
   } catch (e) {
     console.error('Create order error:', e);
     res.status(500).json({ error: 'Internal server error' });
@@ -73,34 +77,26 @@ router.post('/', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // PUT update order
-router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
+router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const orders = loadOrders();
-    const idx = orders.findIndex(o => o.id === id);
-    if (idx === -1) return res.status(404).json({ error: 'Order not found' });
+    const existing = await db.query('SELECT * FROM merch_orders WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
 
+    const current = existing.rows[0];
     const { name, firstName, lastName, email, item, size, quantity } = req.body || {};
-    const qty = quantity !== undefined ? Number(quantity) : orders[idx].quantity;
-    
-    // Handle both old and new formats
-    const finalFirstName = firstName !== undefined ? firstName : (name ? name.split(' ')[0] : orders[idx].firstName);
-    const finalLastName = lastName !== undefined ? lastName : (name ? name.split(' ').slice(1).join(' ') : orders[idx].lastName);
+    const finalFirstName = (firstName !== undefined ? firstName : (name ? name.split(' ')[0] : current.first_name) || '').trim();
+    const finalLastName = (lastName !== undefined ? lastName : (name ? name.split(' ').slice(1).join(' ') : current.last_name) || '').trim();
+    const finalEmail = email !== undefined ? String(email).trim() : current.email;
+    const finalItem = item !== undefined ? String(item).trim() : current.item;
+    const finalSize = size !== undefined ? String(size).trim() : current.size;
+    const qty = quantity !== undefined ? Number(quantity) : current.quantity;
 
-    const updated = {
-      ...orders[idx],
-      firstName: String(finalFirstName).trim(),
-      lastName: String(finalLastName).trim(),
-      email: email !== undefined ? String(email).trim() : orders[idx].email,
-      item: item !== undefined ? String(item).trim() : orders[idx].item,
-      size: size !== undefined ? String(size).trim() : orders[idx].size,
-      quantity: isNaN(qty) ? orders[idx].quantity : qty,
-      updated_at: new Date().toISOString()
-    };
-
-    orders[idx] = updated;
-    saveOrders(orders);
-    res.json({ message: 'Order updated', order: updated });
+    const upd = await db.query(
+      'UPDATE merch_orders SET first_name=$1, last_name=$2, email=$3, item=$4, size=$5, quantity=$6 WHERE id=$7 RETURNING id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at',
+      [finalFirstName, finalLastName, finalEmail, finalItem, finalSize, isNaN(qty) ? current.quantity : qty, id]
+    );
+    res.json({ message: 'Order updated', order: upd.rows[0] });
   } catch (e) {
     console.error('Update order error:', e);
     res.status(500).json({ error: 'Internal server error' });
@@ -108,14 +104,11 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // DELETE order
-router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const orders = loadOrders();
-    const idx = orders.findIndex(o => o.id === id);
-    if (idx === -1) return res.status(404).json({ error: 'Order not found' });
-    orders.splice(idx, 1);
-    saveOrders(orders);
+    const del = await db.query('DELETE FROM merch_orders WHERE id = $1', [id]);
+    if (del.rowCount === 0) return res.status(404).json({ error: 'Order not found' });
     res.json({ message: 'Order deleted' });
   } catch (e) {
     console.error('Delete order error:', e);
