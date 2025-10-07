@@ -34,6 +34,9 @@ const TeamGear = () => {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [orderEmail, setOrderEmail] = useState('');
+  const [orderEmailConfirm, setOrderEmailConfirm] = useState('');
+  const [orderError, setOrderError] = useState('');
 
   const normalizeImageUrl = (url) => {
     if (!url) {
@@ -375,18 +378,34 @@ const TeamGear = () => {
   const closeOrderModal = () => {
     setShowOrderModal(false);
     setSelectedItem(null);
+    setOrderEmail('');
+    setOrderEmailConfirm('');
+    setOrderError('');
   };
 
   const submitOrder = async () => {
     if (!selectedItem || !currentUser) return;
-    
+    // Validate email confirmation
+    const emailToUse = (orderEmail || '').trim();
+    const emailConfirmToUse = (orderEmailConfirm || '').trim();
+    const emailRegex = /[^\s@]+@[^\s@]+\.[^\s@]+/;
+    if (!emailRegex.test(emailToUse)) {
+      setOrderError('Please enter a valid email address.');
+      return;
+    }
+    if (emailToUse !== emailConfirmToUse) {
+      setOrderError('Emails do not match.');
+      return;
+    }
+    setOrderError('');
+
     setOrderSubmitting(true);
     try {
       const token = localStorage.getItem('triathlonToken');
       const orderData = {
         firstName: currentUser.first_name || currentUser.name?.split(' ')[0] || '',
         lastName: currentUser.last_name || currentUser.name?.split(' ').slice(1).join(' ') || '',
-        email: currentUser.email,
+        email: emailToUse,
         item: selectedItem.title,
         size: orderSelections[selectedItem.id]?.size || '',
         quantity: 1
@@ -802,10 +821,37 @@ const TeamGear = () => {
                 <div className="order-item">
                   <strong>Price:</strong> {selectedItem.price || 'Contact for pricing'}
                 </div>
-                
+                <div className="order-item" style={{ marginTop: '10px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Email</label>
+                  <input
+                    type="email"
+                    value={orderEmail}
+                    onChange={(e) => setOrderEmail(e.target.value)}
+                    placeholder={currentUser?.email || 'Enter your email'}
+                    required
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div className="order-item" style={{ marginTop: '8px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Confirm Email</label>
+                  <input
+                    type="email"
+                    value={orderEmailConfirm}
+                    onChange={(e) => setOrderEmailConfirm(e.target.value)}
+                    placeholder="Retype your email"
+                    required
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                {orderError && (
+                  <div style={{ color: '#b91c1c', marginTop: 6 }}>{orderError}</div>
+                )}
+                <p style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: 8 }}>
+                  Note: Use your University of Toronto email, or the same email you used to purchase your gym membership.
+                </p>
                 <div className="order-notice">
                   <p><strong>Important:</strong> You will receive an invoice email shortly after confirming your order.</p>
-                  <p>Please check your email ({currentUser?.email}) for payment instructions and order details.</p>
+                  <p>Please check your email for payment instructions and order details.</p>
                 </div>
               </div>
             </div>
