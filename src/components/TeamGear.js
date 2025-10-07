@@ -438,7 +438,7 @@ const TeamGear = () => {
     <div className="page-container teamgear-page">
       <h1>Team Gear</h1>
       <p className="page-description">
-        Show your UofT Tri Club pride with our official team gear! This page is under construction, please check back soon for more information.
+        Show your UofT Tri Club pride with our official team gear! 
       </p>
       <h3>Triathlon Specific Gear</h3>
       <p>
@@ -609,13 +609,7 @@ const TeamGear = () => {
         </div>
       )}
       
-      <div className="gear-info">
-        <h2>Ordering Information</h2>
-        <p>
-          To place an order for team gear, please contact us at{' '}
-          <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a>:
-        </p>
-      </div>
+    
 
       {lightboxItem && (
         <div className="gear-lightbox-overlay" onClick={closeLightbox}>
