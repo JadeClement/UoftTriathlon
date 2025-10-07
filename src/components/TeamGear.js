@@ -388,11 +388,12 @@ const TeamGear = () => {
     // Validate email confirmation
     const emailToUse = (orderEmail || '').trim();
     const emailConfirmToUse = (orderEmailConfirm || '').trim();
-    const emailRegex = /[^\s@]+@[^\s@]+\.[^\s@]+/;
-    if (!emailRegex.test(emailToUse)) {
-      setOrderError('Please enter a valid email address.');
+    
+    if (!emailToUse || !emailConfirmToUse) {
+      setOrderError('Please enter both email addresses.');
       return;
     }
+    
     if (emailToUse !== emailConfirmToUse) {
       setOrderError('Emails do not match.');
       return;
