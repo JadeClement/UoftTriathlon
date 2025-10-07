@@ -15,6 +15,10 @@ const Admin = () => {
   const [bannerForm, setBannerForm] = useState({ enabled: false, message: '' });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+  // Members pagination state
+  const [membersPage, setMembersPage] = useState(1);
+  const [membersLimit, setMembersLimit] = useState(20);
+  const [membersPagination, setMembersPagination] = useState({ currentPage: 1, totalPages: 1, totalMembers: 0, hasMore: false });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
@@ -454,7 +458,8 @@ const Admin = () => {
       await loadBannerData();
 
       // Load all members
-      const membersResponse = await fetch(`${API_BASE_URL}/admin/members`, {
+      const params = new URLSearchParams({ page: String(membersPage), limit: String(membersLimit) });
+      const membersResponse = await fetch(`${API_BASE_URL}/admin/members?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -480,6 +485,11 @@ const Admin = () => {
         console.log('🔍 Raw charter_accepted values:', membersData.members.map(m => ({ id: m.id, charter_accepted: m.charter_accepted })));
         console.log('🔍 Full transformed members:', JSON.stringify(transformedMembers, null, 2));
         setMembers(transformedMembers);
+        if (membersData.pagination) {
+          setMembersPagination(membersData.pagination);
+        } else {
+          setMembersPagination({ currentPage: membersPage, totalPages: 1, totalMembers: transformedMembers.length, hasMore: false });
+        }
         
         // Filter pending members
         const pending = transformedMembers.filter(m => m.role === 'pending');
@@ -489,6 +499,12 @@ const Admin = () => {
       console.error('Error loading admin data:', error);
     }
   };
+
+  // Reload members when page/limit change
+  useEffect(() => {
+    loadAdminData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [membersPage, membersLimit]);
 
   // Load attendance dashboard data
   const loadAttendanceData = async () => {
@@ -888,6 +904,20 @@ const Admin = () => {
         {activeTab === 'members' && (
                       <div className="members-section">
               <h2>All Members</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 16px' }}>
+                <div style={{ fontSize: 13, color: '#6b7280' }}>
+                  Total: {membersPagination.totalMembers} • Page {membersPagination.currentPage} of {membersPagination.totalPages}
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ fontSize: 13, color: '#6b7280' }}>Rows per page:</label>
+                  <select value={membersLimit} onChange={(e)=> setMembersLimit(parseInt(e.target.value)||20)}>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
               <div className="admin-warning">
                 <p><strong>⚠️ Important:</strong> The "Delete" button will permanently remove users and all their data. This action cannot be undone.</p>
               </div>
@@ -945,6 +975,11 @@ const Admin = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 12 }}>
+              <button className="btn" disabled={membersPage <= 1} onClick={() => setMembersPage(p => Math.max(1, p - 1))}>Previous</button>
+              <span style={{ fontSize: 13, color: '#6b7280' }}>Page {membersPagination.currentPage} of {membersPagination.totalPages}</span>
+              <button className="btn" disabled={membersPage >= membersPagination.totalPages} onClick={() => setMembersPage(p => Math.min(membersPagination.totalPages, p + 1))}>Next</button>
             </div>
           </div>
         )}
