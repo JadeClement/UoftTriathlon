@@ -1449,22 +1449,26 @@ const Forum = () => {
                     
                     <div className="event-author">
                       <div className="author-info">
-                        {post.authorProfilePictureUrl ? (
-                          <img 
-                            src={`http://localhost:5001${post.authorProfilePictureUrl}`} 
-                            alt="Profile" 
-                            className="author-avatar"
-                            onError={(e) => {
-                              e.target.src = '/images/default_profile.png';
-                            }}
-                          />
-                        ) : (
-                          <img 
-                            src="/images/default_profile.png" 
-                            alt="Profile" 
-                            className="author-avatar"
-                          />
-                        )}
+                        {(() => {
+                          const { normalizeProfileImageUrl } = require('../utils/imageUtils');
+                          const url = normalizeProfileImageUrl(post.authorProfilePictureUrl);
+                          return url ? (
+                            <img 
+                              src={url}
+                              alt="Profile" 
+                              className="author-avatar"
+                              onError={(e) => {
+                                e.target.src = '/images/default_profile.png';
+                              }}
+                            />
+                          ) : (
+                            <img 
+                              src="/images/default_profile.png" 
+                              alt="Profile" 
+                              className="author-avatar"
+                            />
+                          );
+                        })()}
                         <span className="author-name">Posted by {post.author_name}</span>
                       </div>
                     </div>

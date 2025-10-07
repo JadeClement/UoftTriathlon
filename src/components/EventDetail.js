@@ -283,22 +283,26 @@ const EventDetail = () => {
             )}</h1>
             <div className="event-author">
               <div className="author-info">
-                {event.authorProfilePictureUrl ? (
-                  <img 
-                    src={`${API_BASE_URL}/..${event.authorProfilePictureUrl}`} 
-                    alt="Profile" 
-                    className="author-avatar"
-                    onError={(e) => {
-                      e.target.src = '/images/default_profile.png';
-                    }}
-                  />
-                ) : (
-                  <img 
-                    src="/images/default_profile.png" 
-                    alt="Profile" 
-                    className="author-avatar"
-                  />
-                )}
+                {(() => {
+                  const { normalizeProfileImageUrl } = require('../utils/imageUtils');
+                  const url = normalizeProfileImageUrl(event.authorProfilePictureUrl);
+                  return url ? (
+                    <img 
+                      src={url}
+                      alt="Profile" 
+                      className="author-avatar"
+                      onError={(e) => {
+                        e.target.src = '/images/default_profile.png';
+                      }}
+                    />
+                  ) : (
+                    <img 
+                      src="/images/default_profile.png" 
+                      alt="Profile" 
+                      className="author-avatar"
+                    />
+                  );
+                })()}
                 <span className="author-name">Posted by {event.author_name}</span>
               </div>
               {canManage() && (
