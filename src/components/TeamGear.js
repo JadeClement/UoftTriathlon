@@ -525,7 +525,12 @@ const TeamGear = () => {
                         <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
                         <select
                           value={(orderSelections[item.id]?.fit) || 'mens'}
-                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), fit: e.target.value } }))}
+                          onChange={(e) => setOrderSelections(prev => {
+                            const fit = e.target.value;
+                            const prevItem = prev[item.id] || {};
+                            const adjustedSize = (fit === 'mens' && prevItem.size === 'xs') ? 's' : (prevItem.size || 'm');
+                            return { ...prev, [item.id]: { ...prevItem, fit, size: adjustedSize } };
+                          })}
                           aria-label="Select fit"
                         >
                           <option value="mens">Men's</option>
@@ -539,7 +544,7 @@ const TeamGear = () => {
                           onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
                           aria-label="Select size"
                         >
-                          <option value="xs">XS</option>
+                          {((orderSelections[item.id]?.fit) || 'mens') !== 'mens' && (<option value="xs">XS</option>)}
                           <option value="s">S</option>
                           <option value="m">M</option>
                           <option value="l">L</option>
@@ -557,7 +562,12 @@ const TeamGear = () => {
                         <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
                         <select
                           value={(orderSelections[item.id]?.fit) || 'mens'}
-                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), fit: e.target.value } }))}
+                          onChange={(e) => setOrderSelections(prev => {
+                            const fit = e.target.value;
+                            const prevItem = prev[item.id] || {};
+                            const adjustedSize = (fit === 'mens' && prevItem.size === 'xs') ? 's' : (prevItem.size || 'm');
+                            return { ...prev, [item.id]: { ...prevItem, fit, size: adjustedSize } };
+                          })}
                           aria-label="Select fit"
                         >
                           <option value="mens">Men's</option>
@@ -571,7 +581,7 @@ const TeamGear = () => {
                           onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
                           aria-label="Select size"
                         >
-                          <option value="xs">XS</option>
+                          {((orderSelections[item.id]?.fit) || 'mens') !== 'mens' && (<option value="xs">XS</option>)}
                           <option value="s">S</option>
                           <option value="m">M</option>
                           <option value="l">L</option>
