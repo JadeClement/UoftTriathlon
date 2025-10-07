@@ -606,6 +606,18 @@
   margin-right: 0.5rem;
 }
 
+.order-item.size-highlighted {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.order-item.size-highlighted strong {
+  color: #0c4a6e;
+}
+
 .order-notice {
   background: #f0f9ff;
   border: 1px solid #0ea5e9;

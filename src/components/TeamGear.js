@@ -787,11 +787,15 @@ const TeamGear = () => {
                 <div className="order-item">
                   <strong>Item:</strong> {selectedItem.title}
                 </div>
-                {orderSelections[selectedItem.id]?.size && (
-                  <div className="order-item">
-                    <strong>Size:</strong> {orderSelections[selectedItem.id].size.toUpperCase()}
-                  </div>
-                )}
+                <div className={`order-item ${orderSelections[selectedItem.id]?.size ? 'size-highlighted' : ''}`}>
+                  <strong>Size:</strong> {orderSelections[selectedItem.id]?.size ? (
+                    <span style={{ color: '#059669', fontWeight: '600' }}>
+                      {orderSelections[selectedItem.id].size.toUpperCase()}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>
+                  )}
+                </div>
                 <div className="order-item">
                   <strong>Quantity:</strong> 1
                 </div>
