@@ -4,6 +4,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { isS3Enabled, getJsonFromS3, putJsonToS3 } = require('../utils/s3');
 
 const router = express.Router();
 
@@ -15,8 +16,15 @@ const dataFilePath = path.join(dataDir, 'gear.json');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-function loadGear() {
+async function loadGear() {
   try {
+    // Prefer S3 if configured
+    if (isS3Enabled()) {
+      const s3Key = 'gear/gear.json';
+      const fromS3 = await getJsonFromS3(s3Key);
+      if (fromS3) return fromS3;
+    }
+
     if (fs.existsSync(dataFilePath)) {
       const raw = fs.readFileSync(dataFilePath, 'utf8');
       return JSON.parse(raw);
@@ -45,7 +53,7 @@ function loadGear() {
           description: "Comfortable sweatshirt with UofT Tri Club branding. Image coming soon."
         }
       ];
-      saveGear(defaultGear);
+      await saveGear(defaultGear);
       console.log('📦 [GEAR] Initialized default gear items');
       return defaultGear;
     }
@@ -55,8 +63,14 @@ function loadGear() {
   }
 }
 
-function saveGear(items) {
+async function saveGear(items) {
   try {
+    // Save to S3 if enabled
+    if (isS3Enabled()) {
+      const s3Key = 'gear/gear.json';
+      await putJsonToS3(s3Key, items);
+    }
+    // Always keep a local backup
     fs.writeFileSync(dataFilePath, JSON.stringify(items, null, 2), 'utf8');
   } catch (e) {
     console.error('Error writing gear.json:', e);
@@ -85,19 +99,19 @@ const upload = multer({
 });
 
 // GET all gear
-router.get('/', (_req, res) => {
-  const items = loadGear();
+router.get('/', async (_req, res) => {
+  const items = await loadGear();
   res.json({ items });
 });
 
 // POST create new gear item
-router.post('/', authenticateToken, requireAdmin, (req, res) => {
+router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { title, price, description } = req.body;
     
     if (!title) return res.status(400).json({ error: 'Title is required' });
     
-    const items = loadGear();
+    const items = await loadGear();
     const newId = Math.max(...items.map(item => item.id), 0) + 1;
     
     const newItem = {
@@ -109,7 +123,7 @@ router.post('/', authenticateToken, requireAdmin, (req, res) => {
     };
     
     items.push(newItem);
-    saveGear(items);
+    await saveGear(items);
     
     console.log('✅ [GEAR POST] Created new item:', newItem);
     res.json({ message: 'Gear item created', item: newItem });
@@ -120,13 +134,13 @@ router.post('/', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // PUT update a gear item (price, description, title, images order)
-router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
+router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { title, price, description, images } = req.body;
     console.log('🛠️ [GEAR PUT] id:', id, 'title:', title, 'price:', price, 'descLen:', (description||'').length, 'images?', Array.isArray(images), 'images:', images);
 
-    const items = loadGear();
+    const items = await loadGear();
     const idx = items.findIndex(g => g.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Gear item not found' });
 
@@ -139,7 +153,7 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
     };
 
     items[idx] = updated;
-    saveGear(items);
+    await saveGear(items);
     console.log('✅ [GEAR PUT] updated item images count:', (updated.images||[]).length);
     res.json({ message: 'Updated', item: updated });
   } catch (e) {
@@ -157,7 +171,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
 
     if (files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
 
-    const items = loadGear();
+  const items = await loadGear();
     const idx = items.findIndex(g => g.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Gear item not found' });
 
@@ -184,7 +198,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
     } catch (_) {}
 
     console.log('✅ [GEAR IMAGES POST] total images now:', (items[idx].images||[]).length);
-    saveGear(items);
+    await saveGear(items);
 
     res.json({ message: 'Images uploaded', images: items[idx].images });
   } catch (e) {
@@ -201,7 +215,7 @@ router.delete('/:id/images', authenticateToken, requireAdmin, async (req, res) =
 
     if (!imageUrl) return res.status(400).json({ error: 'Image URL required' });
 
-    const items = loadGear();
+    const items = await loadGear();
     const idx = items.findIndex(g => g.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Gear item not found' });
 
@@ -227,7 +241,7 @@ router.delete('/:id/images', authenticateToken, requireAdmin, async (req, res) =
       console.log('🗑️ [GEAR DELETE] Skipping placeholder image deletion:', imageUrl);
     }
 
-    saveGear(items);
+    await saveGear(items);
     res.json({ message: 'Image removed', images: items[idx].images });
   } catch (e) {
     console.error('❌ Delete gear image error:', e);
@@ -240,7 +254,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     
-    const items = loadGear();
+    const items = await loadGear();
     const idx = items.findIndex(g => g.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Gear item not found' });
     
@@ -269,7 +283,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     
     // Remove item from array
     items.splice(idx, 1);
-    saveGear(items);
+    await saveGear(items);
     
     console.log('✅ [GEAR DELETE] Removed item:', item.title);
     res.json({ message: 'Gear item deleted' });
