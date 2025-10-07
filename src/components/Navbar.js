@@ -26,16 +26,27 @@ const Navbar = () => {
     
     window.addEventListener('profileUpdated', handleProfileUpdate);
     
-    // Initialize profile image URL
-    if (currentUser?.profile_picture_url) {
-      const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
-      setProfileImageUrl(`${baseUrl.replace('/api', '')}${currentUser.profile_picture_url}`);
+    // Initialize profile image URL (handle multiple possible fields and URL shapes)
+    const profilePictureUrl = currentUser?.profile_picture_url || currentUser?.profilePictureUrl;
+    if (profilePictureUrl) {
+      const apiBase = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+      const originBase = apiBase.replace(/\/api\/?$/, '');
+      if (profilePictureUrl.startsWith('/api/')) {
+        setProfileImageUrl(`${originBase}${profilePictureUrl}`);
+      } else if (profilePictureUrl.startsWith('/uploads/')) {
+        setProfileImageUrl(`${apiBase}/..${profilePictureUrl}`);
+      } else if (/^https?:\/\//i.test(profilePictureUrl)) {
+        setProfileImageUrl(profilePictureUrl);
+      } else {
+        // Unknown shape, fall back to default
+        setProfileImageUrl(null);
+      }
     }
     
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, [currentUser?.id, currentUser?.profile_picture_url]);
+  }, [currentUser?.id, currentUser?.profile_picture_url, currentUser?.profilePictureUrl]);
 
   // Fetch site banner
   useEffect(() => {
