@@ -696,6 +696,95 @@
   vertical-align: top;
 }
 
+/* Orders Table Styling */
+.orders-table {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.orders-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.orders-table th {
+  background: #f8fafc;
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.orders-table td {
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  color: #6b7280;
+  vertical-align: middle;
+}
+
+.orders-table tr:hover {
+  background: #f9fafb;
+}
+
+.orders-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Column-specific styling for better spacing */
+.orders-table th:nth-child(1),
+.orders-table td:nth-child(1) {
+  min-width: 120px;
+  font-weight: 500;
+}
+
+.orders-table th:nth-child(2),
+.orders-table td:nth-child(2) {
+  min-width: 120px;
+  font-weight: 500;
+}
+
+.orders-table th:nth-child(3),
+.orders-table td:nth-child(3) {
+  min-width: 200px;
+}
+
+.orders-table th:nth-child(4),
+.orders-table td:nth-child(4) {
+  min-width: 150px;
+}
+
+.orders-table th:nth-child(5),
+.orders-table td:nth-child(5) {
+  min-width: 80px;
+  text-align: center;
+}
+
+.orders-table th:nth-child(6),
+.orders-table td:nth-child(6) {
+  min-width: 80px;
+  text-align: center;
+}
+
+.orders-table th:nth-child(7),
+.orders-table td:nth-child(7) {
+  min-width: 120px;
+  text-align: center;
+}
+
+.orders-table th:nth-child(8),
+.orders-table td:nth-child(8) {
+  min-width: 120px;
+  text-align: center;
+}
+
 .attendance-row:hover {
   background: #f9fafb;
   cursor: pointer;
@@ -1164,6 +1253,16 @@
   .attendance-table th,
   .attendance-table td {
     padding: 0.75rem 0.5rem;
+  }
+  
+  .orders-table th,
+  .orders-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .orders-table th {
+    font-size: 0.75rem;
   }
   
   .summary-stats {
