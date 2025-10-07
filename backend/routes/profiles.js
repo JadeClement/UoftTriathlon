@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
+const { isS3Enabled, uploadBufferToS3 } = require('../utils/s3');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { pool } = require('../database-pg');
 
@@ -83,25 +84,22 @@ function saveTeamMembers(teamMembers) {
   }
 }
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
+// Configure multer for image uploads (memory if S3 enabled, disk otherwise)
+const memoryStorage = multer.memoryStorage();
+const diskStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = path.join(__dirname, '../uploads/team-profiles');
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Generate unique filename with timestamp
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
 const upload = multer({ 
-  storage: storage,
+  storage: isS3Enabled() ? memoryStorage : diskStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
@@ -190,8 +188,15 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
 
     // Handle new image if uploaded
     if (imageFile) {
-      const imageUrl = `/uploads/team-profiles/${imageFile.filename}`;
-      updatedMember.image = imageUrl;
+      if (isS3Enabled()) {
+        const ext = path.extname(imageFile.originalname || '.jpg').toLowerCase() || '.jpg';
+        const key = `team-profiles/${id}-${Date.now()}${ext}`;
+        const url = await uploadBufferToS3(key, imageFile.buffer, imageFile.mimetype);
+        updatedMember.image = url;
+      } else {
+        const imageUrl = `/uploads/team-profiles/${imageFile.filename}`;
+        updatedMember.image = imageUrl;
+      }
     }
 
     // Save the updated data

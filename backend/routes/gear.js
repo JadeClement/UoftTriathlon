@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -62,8 +63,9 @@ function saveGear(items) {
   }
 }
 
-// Multer for image uploads (disk storage)
-const storage = multer.diskStorage({
+// Multer for image uploads (use memory when S3 enabled, disk otherwise)
+const memoryStorage = multer.memoryStorage();
+const diskStorage = multer.diskStorage({
   destination: function (_req, _file, cb) {
     cb(null, uploadsDir);
   },
@@ -74,7 +76,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({
-  storage,
+  storage: isS3Enabled() ? memoryStorage : diskStorage,
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: function (_req, file, cb) {
     if (file.mimetype.startsWith('image/')) return cb(null, true);
@@ -147,7 +149,7 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // POST upload images for a gear item
-router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images', 10), (req, res) => {
+router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images', 10), async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const files = req.files || [];
@@ -159,7 +161,18 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
     const idx = items.findIndex(g => g.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Gear item not found' });
 
-    const newUrls = files.map(f => `/uploads/gear/${f.filename}`);
+    let newUrls = [];
+    if (isS3Enabled()) {
+      // Upload each buffer to S3
+      for (const f of files) {
+        const ext = path.extname(f.originalname || '.jpg').toLowerCase() || '.jpg';
+        const key = `gear/${id}/gear-${Date.now()}-${Math.round(Math.random()*1e6)}${ext}`;
+        const url = await uploadBufferToS3(key, f.buffer, f.mimetype);
+        newUrls.push(url);
+      }
+    } else {
+      newUrls = files.map(f => `/uploads/gear/${f.filename}`);
+    }
     items[idx].images = [...(items[idx].images || []), ...newUrls];
 
     // Clean placeholder text in description if present once images exist
@@ -181,7 +194,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
 });
 
 // DELETE remove an image from a gear item
-router.delete('/:id/images', authenticateToken, requireAdmin, (req, res) => {
+router.delete('/:id/images', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { imageUrl } = req.body;
@@ -198,10 +211,15 @@ router.delete('/:id/images', authenticateToken, requireAdmin, (req, res) => {
     // Delete the actual file (skip placeholder images)
     if (!imageUrl.includes('placeholder-gear.svg') && !imageUrl.includes('/images/')) {
       try {
-        const filename = imageUrl.split('/').pop();
-        const filepath = path.join(uploadsDir, filename);
-        console.log('🗑️ [GEAR DELETE] Attempting to delete file:', filepath);
-        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+        const s3Key = getS3KeyFromUrl(imageUrl);
+        if (s3Key && isS3Enabled()) {
+          await deleteFromS3(s3Key);
+        } else {
+          const filename = imageUrl.split('/').pop();
+          const filepath = path.join(uploadsDir, filename);
+          console.log('🗑️ [GEAR DELETE] Attempting to delete file:', filepath);
+          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+        }
       } catch (fileError) {
         console.error('❌ [GEAR DELETE] Error deleting file:', fileError.message);
       }
@@ -218,7 +236,7 @@ router.delete('/:id/images', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // DELETE remove a gear item
-router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     
@@ -230,18 +248,23 @@ router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
     
     // Delete all associated image files
     if (item.images && Array.isArray(item.images)) {
-      item.images.forEach(imageUrl => {
+      for (const imageUrl of item.images) {
         try {
-          const filename = imageUrl.split('/').pop();
-          const filepath = path.join(uploadsDir, filename);
-          if (fs.existsSync(filepath)) {
-            fs.unlinkSync(filepath);
-            console.log('🗑️ [GEAR DELETE] Removed file:', filename);
+          const s3Key = getS3KeyFromUrl(imageUrl);
+          if (s3Key && isS3Enabled()) {
+            await deleteFromS3(s3Key);
+          } else {
+            const filename = imageUrl.split('/').pop();
+            const filepath = path.join(uploadsDir, filename);
+            if (fs.existsSync(filepath)) {
+              fs.unlinkSync(filepath);
+              console.log('🗑️ [GEAR DELETE] Removed file:', filename);
+            }
           }
         } catch (fileError) {
           console.warn('⚠️ [GEAR DELETE] Could not delete file:', fileError.message);
         }
-      });
+      }
     }
     
     // Remove item from array
