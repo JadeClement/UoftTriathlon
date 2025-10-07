@@ -999,16 +999,7 @@ const WorkoutDetail = () => {
                             </div>
                           );
                         })()}
-                        {/* fallback */}
-                        {!signup.userProfilePictureUrl && (
-                          <div className="user-avatar-placeholder">
-                            <img 
-                              src="/images/default_profile.png" 
-                              alt="Profile" 
-                              style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
-                            />
-                          </div>
-                        )}
+                        {/* single avatar element handled above */}
                         <span className="signup-user">{signup.user_name}</span>
                       </div>
                       <span className="signup-date">

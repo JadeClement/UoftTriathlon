@@ -1137,14 +1137,7 @@ const Forum = () => {
                             />
                           );
                         })()}
-                        {/* fallback */}
-                        {!post.authorProfilePictureUrl && (
-                          <img 
-                            src="/images/default_profile.png" 
-                            alt="Profile" 
-                            className="author-avatar"
-                          />
-                        )}
+                        {/* single image handled above; no extra fallback */}
                         <span className="author-name">Posted by {post.author_name}</span>
                       </div>
                     </div>
