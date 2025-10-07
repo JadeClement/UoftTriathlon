@@ -328,14 +328,16 @@ const Profile = () => {
       console.log('🔍 profilePictureUrl:', profilePictureUrl);
       
       if (profilePictureUrl) {
-        // New image was uploaded and saved to backend
-        // Backend returns /api/users/uploads/profile-pictures/filename
-        // We need to construct the full URL correctly
-        const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
-        finalImage = `${baseUrl.replace('/api', '')}${profilePictureUrl}`;
+        // If backend returned absolute URL (e.g., S3), use it as-is
+        if (/^https?:\/\//i.test(profilePictureUrl)) {
+          finalImage = profilePictureUrl;
+        } else {
+          // Relative path -> prefix with API host once
+          const apiBase = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+          const host = apiBase.replace(/\/?api$/i, '');
+          finalImage = `${host}${profilePictureUrl}`;
+        }
         console.log('✅ USING NEW IMAGE!');
-        console.log('✅ Base URL:', baseUrl);
-        console.log('✅ Profile picture URL from backend:', profilePictureUrl);
         console.log('✅ Final constructed URL:', finalImage);
       } else {
         // No new image, keep the current one
