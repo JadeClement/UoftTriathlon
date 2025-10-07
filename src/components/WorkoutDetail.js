@@ -977,16 +977,30 @@ const WorkoutDetail = () => {
                       )}
                       
                       <div className="signup-user-info">
-                        {signup.userProfilePictureUrl ? (
-                          <img 
-                            src={`${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`} 
-                            alt="Profile" 
-                            className="user-avatar"
-                            onError={(e) => {
-                              e.target.src = '/images/icon.png';
-                            }}
-                          />
-                        ) : (
+                        {(() => {
+                          const { normalizeProfileImageUrl } = require('../utils/imageUtils');
+                          const url = normalizeProfileImageUrl(signup.userProfilePictureUrl);
+                          return url ? (
+                            <img 
+                              src={url}
+                              alt="Profile" 
+                              className="user-avatar"
+                              onError={(e) => {
+                                e.target.src = '/images/icon.png';
+                              }}
+                            />
+                          ) : (
+                            <div className="user-avatar-placeholder">
+                              <img 
+                                src="/images/default_profile.png" 
+                                alt="Profile" 
+                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                              />
+                            </div>
+                          );
+                        })()}
+                        {/* fallback */}
+                        {!signup.userProfilePictureUrl && (
                           <div className="user-avatar-placeholder">
                             <img 
                               src="/images/default_profile.png" 

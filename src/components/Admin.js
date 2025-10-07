@@ -1903,13 +1903,26 @@ const Admin = () => {
                     {attendanceDetails.signups.map(signup => (
                       <div key={signup.id} className="signup-item">
                         <div className="signup-user-info">
-                          {signup.profile_picture_url ? (
-                            <img 
-                              src={`${API_BASE_URL.replace('/api', '')}${signup.profile_picture_url}`} 
-                              alt="Profile" 
-                              className="user-avatar"
-                            />
-                          ) : (
+                          {(() => {
+                            const { normalizeProfileImageUrl } = require('../utils/imageUtils');
+                            const url = normalizeProfileImageUrl(signup.profile_picture_url);
+                            return url ? (
+                              <img 
+                                src={url}
+                                alt="Profile" 
+                                className="user-avatar"
+                              />
+                            ) : (
+                              <div className="user-avatar-placeholder">
+                                <img 
+                                  src="/images/default_profile.png" 
+                                  alt="Profile" 
+                                  style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
+                                />
+                              </div>
+                            );
+                          })()}
+                          {!signup.profile_picture_url && (
                             <div className="user-avatar-placeholder">
                               <img 
                                 src="/images/default_profile.png" 

@@ -207,21 +207,25 @@ const RaceDetail = () => {
                 {signups.map((signup, index) => (
                   <div key={signup.id || index} className="signup-item">
                     <div className="signup-avatar">
-                      {signup.userProfilePictureUrl && signup.userProfilePictureUrl !== 'null' && signup.userProfilePictureUrl.trim() !== '' ? (
-                        <img 
-                          src={`${API_BASE_URL.replace('/api', '')}${signup.userProfilePictureUrl}`}
-                          alt={signup.user_name}
-                          className="avatar-img"
-                          onLoad={() => {
-                            console.log(`✅ Profile picture loaded for ${signup.user_name}`);
-                          }}
-                          onError={(e) => {
-                            console.log(`❌ Profile picture failed to load for ${signup.user_name}:`, e.target.src);
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
+                      {(() => {
+                        const { normalizeProfileImageUrl } = require('../utils/imageUtils');
+                        const url = normalizeProfileImageUrl(signup.userProfilePictureUrl);
+                        return url ? (
+                          <img 
+                            src={url}
+                            alt={signup.user_name}
+                            className="avatar-img"
+                            onLoad={() => {
+                              console.log(`✅ Profile picture loaded for ${signup.user_name}`);
+                            }}
+                            onError={(e) => {
+                              console.log(`❌ Profile picture failed to load for ${signup.user_name}:`, e.target.src);
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null;
+                      })()}
                       <div 
                         className="avatar-placeholder" 
                         style={{ display: (signup.userProfilePictureUrl && signup.userProfilePictureUrl !== 'null' && signup.userProfilePictureUrl.trim() !== '') ? 'none' : 'flex' }}
