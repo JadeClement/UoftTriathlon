@@ -430,7 +430,7 @@ const TeamGear = () => {
       </p>
       
       <h3 style={{ marginTop: '2rem' }}>Under Armour Gear</h3>
-      
+      <p>Please order through website by October 19th. After this you will receive an invoice from the university.</p>
       <div className="gear-grid">
         {gearItems.map(item => (
           <div key={item.id} className="gear-item">

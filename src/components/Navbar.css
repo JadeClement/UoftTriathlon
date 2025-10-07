@@ -29,6 +29,17 @@
   display: flex;
 }
 
+/* Make links in the banner look clickable with hover underline */
+.site-banner a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.site-banner a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .site-banner {
     font-size: 12px;
