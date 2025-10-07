@@ -6,6 +6,15 @@ const { pool } = require('../database-pg');
 const { authenticateToken, allowOwnProfile, requireMember } = require('../middleware/auth');
 const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
 
+// Debug (non-sensitive) printout of S3 detection to help diagnose env on deploys
+try {
+  const haveAccessKey = Boolean(process.env.AWS_S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID);
+  const haveSecretKey = Boolean(process.env.AWS_S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY);
+  const region = process.env.AWS_S3_REGION || process.env.AWS_REGION || '(none)';
+  const bucket = process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || '(none)';
+  console.log('🧰 S3 detection:', { enabled: isS3Enabled(), haveAccessKey, haveSecretKey, region, bucket });
+} catch (_) {}
+
 const router = express.Router();
 
 // Test route to verify the router is working
