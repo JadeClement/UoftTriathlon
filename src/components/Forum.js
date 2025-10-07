@@ -1476,7 +1476,16 @@ const Forum = () => {
                     {post.event_date && (
                       <div className="event-meta">
                         <span className="event-date">
-                          📅 {new Date(post.event_date).toLocaleDateString()}
+                          {(() => {
+                            try {
+                              const base = String(post.event_date).split('T')[0];
+                              const [y, m, d] = base.split('-').map(Number);
+                              const dt = new Date(Date.UTC(y, m - 1, d));
+                              return `📅 ${dt.toLocaleDateString(undefined, { timeZone: 'UTC' })}`;
+                            } catch {
+                              return `📅 ${post.event_date}`;
+                            }
+                          })()}
                         </span>
                       </div>
                     )}

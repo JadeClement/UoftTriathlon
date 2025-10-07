@@ -1569,7 +1569,16 @@ const Admin = () => {
                         <td>
                           {workout.workout_date && (
                             <div className="workout-date">
-                              {new Date(workout.workout_date).toLocaleDateString()}
+                              {(() => {
+                                try {
+                                  const base = String(workout.workout_date).split('T')[0];
+                                  const [y, m, d] = base.split('-').map(Number);
+                                  const date = new Date(Date.UTC(y, m - 1, d));
+                                  return date.toLocaleDateString(undefined, { timeZone: 'UTC' });
+                                } catch {
+                                  return workout.workout_date;
+                                }
+                              })()}
                             </div>
                           )}
                         </td>
@@ -1881,7 +1890,16 @@ const Admin = () => {
                 <h3>Workout Information</h3>
                 <div className="workout-info-grid">
                   <div><strong>Type:</strong> {attendanceDetails.workout.workout_type}</div>
-                  <div><strong>Date:</strong> {attendanceDetails.workout.workout_date && new Date(attendanceDetails.workout.workout_date).toLocaleDateString()}</div>
+                  <div><strong>Date:</strong> {attendanceDetails.workout.workout_date && (() => {
+                    try {
+                      const base = String(attendanceDetails.workout.workout_date).split('T')[0];
+                      const [y, m, d] = base.split('-').map(Number);
+                      const date = new Date(Date.UTC(y, m - 1, d));
+                      return date.toLocaleDateString(undefined, { timeZone: 'UTC' });
+                    } catch {
+                      return attendanceDetails.workout.workout_date;
+                    }
+                  })()}</div>
                   <div><strong>Time:</strong> {attendanceDetails.workout.workout_time || 'Not specified'}</div>
                   <div><strong>Capacity:</strong> {attendanceDetails.workout.capacity || 'Unlimited'}</div>
                 </div>

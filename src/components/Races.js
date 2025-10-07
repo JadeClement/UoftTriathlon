@@ -187,38 +187,57 @@ const Races = () => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    try {
+      const base = String(dateString).split('T')[0];
+      const [y, m, d] = base.split('-').map(Number);
+      const date = new Date(Date.UTC(y, m - 1, d));
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC'
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   const getDaysUntilRace = (dateString) => {
-    const raceDate = new Date(dateString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day
-    raceDate.setHours(0, 0, 0, 0); // Reset time to start of day
-    
-    const diffTime = raceDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) {
-      return `Past (${Math.abs(diffDays)} days ago)`;
-    } else if (diffDays === 0) {
-      return 'Today!';
-    } else if (diffDays === 1) {
-      return 'Tomorrow';
-    } else {
-      return `${diffDays} days`;
+    try {
+      const base = String(dateString).split('T')[0];
+      const [y, m, d] = base.split('-').map(Number);
+      const raceDate = new Date(Date.UTC(y, m - 1, d));
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0); // Reset time to start of day in UTC
+      raceDate.setUTCHours(0, 0, 0, 0); // Reset time to start of day in UTC
+      
+      const diffTime = raceDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 0) {
+        return `Past (${Math.abs(diffDays)} days ago)`;
+      } else if (diffDays === 0) {
+        return 'Today!';
+      } else if (diffDays === 1) {
+        return 'Tomorrow';
+      } else {
+        return `${diffDays} days`;
+      }
+    } catch {
+      return 'Unknown';
     }
   };
 
   const getMonthName = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    try {
+      const base = String(dateString).split('T')[0];
+      const [y, m, d] = base.split('-').map(Number);
+      const date = new Date(Date.UTC(y, m - 1, d));
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    } catch {
+      return dateString;
+    }
   };
 
   const getFilteredRaces = () => {
@@ -397,7 +416,16 @@ const Races = () => {
                 {monthRaces.map(race => (
                   <div key={race.id} className="calendar-race">
                     <div className="calendar-race-date">
-                      {new Date(race.date).getDate()}
+                      {(() => {
+                        try {
+                          const base = String(race.date).split('T')[0];
+                          const [y, m, d] = base.split('-').map(Number);
+                          const date = new Date(Date.UTC(y, m - 1, d));
+                          return date.getUTCDate();
+                        } catch {
+                          return race.date;
+                        }
+                      })()}
                     </div>
                     <div className="calendar-race-info">
                       <h4>{race.name}</h4>

@@ -357,7 +357,7 @@ const EventDetail = () => {
                   className="form-input"
                 />
               ) : (
-                <span className="event-date">📅 {new Date(event.event_date).toLocaleDateString()}</span>
+                <span className="event-date">{(() => { try { const base = String(event.event_date).split('T')[0]; const [y,m,d] = base.split('-').map(Number); const dt = new Date(Date.UTC(y,m-1,d)); return `📅 ${dt.toLocaleDateString(undefined,{ timeZone: 'UTC' })}`; } catch { return `📅 ${event.event_date}`; } })()}</span>
               )}
             </div>
           )}

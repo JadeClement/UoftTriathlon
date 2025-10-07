@@ -146,13 +146,20 @@ const RaceDetail = () => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      const base = String(dateString).split('T')[0];
+      const [y, m, d] = base.split('-').map(Number);
+      const date = new Date(Date.UTC(y, m - 1, d));
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'UTC'
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   if (loading) {
