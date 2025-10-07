@@ -41,26 +41,24 @@ async function loadTeamMembers() {
     console.error('Error loading team members:', error);
   }
   
-  // Minimal fallback data if no file exists (should rarely happen)
-  console.log('⚠️ Using minimal fallback data - team-profiles.json should exist!');
-  return {
-    'swim-coach': {
-      id: 'swim-coach',
-      name: 'Coach Name',
-      role: 'Swim Coach',
-      image: '/images/icon.png',
-      email: '',
-      bio: 'Bio coming soon!'
-    },
-    'run-coach': {
-      id: 'run-coach',
-      name: 'Coach Name',
-      role: 'Run Coach',
-      image: '/images/icon.png',
-      email: '',
-      bio: 'Bio coming soon!'
-    }
+  // Initialize sensible defaults for all roles if nothing found
+  console.log('⚠️ No team-profiles.json found in S3 or local. Initializing defaults.');
+  const defaults = {
+    'swim-coach': { id: 'swim-coach', name: 'Coach Name', role: 'Swim Coach', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'run-coach': { id: 'run-coach', name: 'Coach Name', role: 'Run Coach', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'co-president': { id: 'co-president', name: 'Co-President', role: 'Co-President', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'co-president-2': { id: 'co-president-2', name: 'Co-President', role: 'Co-President', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'treasurer': { id: 'treasurer', name: 'Treasurer', role: 'Treasurer', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'secretary': { id: 'secretary', name: 'Secretary', role: 'Secretary', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'social-coordinator': { id: 'social-coordinator', name: 'Social Coordinator', role: 'Social Coordinator/Recruitment', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'social-media': { id: 'social-media', name: 'Social Media Manager', role: 'Social Media Manager', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'webmaster': { id: 'webmaster', name: 'Webmaster', role: 'Webmaster', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
+    'workout-coordinator': { id: 'workout-coordinator', name: 'Workout/Race Coordinator', role: 'Workout/Race Coordinator', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' }
   };
+  try {
+    await saveTeamMembers(defaults);
+  } catch (_) {}
+  return defaults;
 }
 
 // Save team member data to file
