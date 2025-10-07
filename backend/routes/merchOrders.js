@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requireMember } = require('../middleware/auth');
 const db = require('../database-pg');
 
 const router = express.Router();
@@ -53,7 +53,7 @@ router.get('/', authenticateToken, requireAdmin, async (_req, res) => {
 });
 
 // POST create order
-router.post('/', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
     const { name, firstName, lastName, email, item, size, quantity } = req.body || {};
     const finalFirstName = (firstName || (name ? name.split(' ')[0] : '') || '').trim();
