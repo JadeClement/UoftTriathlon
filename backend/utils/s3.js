@@ -1,17 +1,22 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 
-function isS3Enabled() {
-  return Boolean(
-    process.env.AWS_S3_ACCESS_KEY_ID &&
-    process.env.AWS_S3_SECRET_ACCESS_KEY &&
-    process.env.AWS_S3_BUCKET &&
-    process.env.AWS_S3_REGION
-  );
+// Support multiple env var names (Railway/Vercel/AWS conventions)
+function getEnv(name, fallbackName) {
+  return process.env[name] || (fallbackName ? process.env[fallbackName] : undefined);
 }
 
-const S3_PUBLIC_BASE_URL = process.env.AWS_S3_PUBLIC_BASE_URL || (process.env.AWS_S3_BUCKET && process.env.AWS_S3_REGION
-  ? `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_S3_REGION}.amazonaws.com`
+const ACCESS_KEY = getEnv('AWS_S3_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID');
+const SECRET_KEY = getEnv('AWS_S3_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY');
+const REGION = getEnv('AWS_S3_REGION', 'AWS_REGION');
+const BUCKET = getEnv('AWS_S3_BUCKET', 'S3_BUCKET');
+
+function isS3Enabled() {
+  return Boolean(ACCESS_KEY && SECRET_KEY && BUCKET && REGION);
+}
+
+const S3_PUBLIC_BASE_URL = process.env.AWS_S3_PUBLIC_BASE_URL || (BUCKET && REGION
+  ? `https://${BUCKET}.s3.${REGION}.amazonaws.com`
   : undefined);
 
 let s3Client = null;
@@ -19,10 +24,10 @@ function getClient() {
   if (!isS3Enabled()) throw new Error('S3 not configured');
   if (s3Client) return s3Client;
   s3Client = new S3Client({
-    region: process.env.AWS_S3_REGION,
+    region: REGION,
     credentials: {
-      accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY
+      accessKeyId: ACCESS_KEY,
+      secretAccessKey: SECRET_KEY
     }
   });
   return s3Client;
@@ -31,7 +36,7 @@ function getClient() {
 async function uploadBufferToS3(key, buffer, contentType) {
   const client = getClient();
   await client.send(new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET,
+    Bucket: BUCKET,
     Key: key,
     Body: buffer,
     ContentType: contentType || 'application/octet-stream',
@@ -44,7 +49,7 @@ async function uploadBufferToS3(key, buffer, contentType) {
 async function deleteFromS3(key) {
   const client = getClient();
   await client.send(new DeleteObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET,
+    Bucket: BUCKET,
     Key: key
   }));
 }
