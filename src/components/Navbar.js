@@ -2,6 +2,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Navbar.css';
+// Simple linkifier for the banner message: escapes HTML, then converts URLs to <a>
+function escapeHtml(input) {
+  if (!input) return '';
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function linkify(text) {
+  const escaped = escapeHtml(text || '');
+  const urlRegex = /(https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+)|(www\.[\w\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
+  return escaped.replace(urlRegex, (match) => {
+    const url = match.startsWith('http') ? match : `https://${match}`;
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+  });
+}
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -107,7 +126,7 @@ const Navbar = () => {
     <>
     {banner.enabled && banner.message && (
       <div className="site-banner active">
-        <strong>{banner.message}</strong>
+        <strong dangerouslySetInnerHTML={{ __html: linkify(banner.message) }} />
       </div>
     )}
     <nav className="navbar" style={{ marginTop: banner.enabled && banner.message ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>

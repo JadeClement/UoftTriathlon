@@ -3,10 +3,9 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
-const { isS3Enabled, uploadBufferToS3 } = require('../utils/s3');
+const { isS3Enabled, uploadBufferToS3, getJsonFromS3, putJsonToS3 } = require('../utils/s3');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { pool } = require('../database-pg');
-const { isS3Enabled, getJsonFromS3, putJsonToS3 } = require('../utils/s3');
 
 // Path to the persistent data file
 // NOTE: team-profiles.json is the SINGLE SOURCE OF TRUTH for team member data
@@ -19,7 +18,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // Load team member data from file or use defaults
-function loadTeamMembers() {
+async function loadTeamMembers() {
   try {
     // Prefer S3 if available
     if (isS3Enabled()) {
@@ -118,7 +117,7 @@ const upload = multer({
 // Get all team member profiles
 router.get('/', async (req, res) => {
   try {
-    const teamMembers = loadTeamMembers();
+    const teamMembers = await loadTeamMembers();
     
     // Convert object to array for frontend compatibility
     const teamMembersArray = Object.values(teamMembers);
@@ -136,7 +135,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const teamMembers = loadTeamMembers();
+    const teamMembers = await loadTeamMembers();
     
     const member = teamMembers[id];
     if (!member) {
@@ -165,7 +164,7 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
     console.log('🖼️ Image file:', imageFile ? imageFile.filename : 'No new image');
 
     // Load current data
-    const teamMembers = loadTeamMembers();
+    const teamMembers = await loadTeamMembers();
     const currentMember = teamMembers[id];
     
     if (!currentMember) {
@@ -205,7 +204,7 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
     teamMembers[id] = updatedMember;
     console.log('🔄 About to save team members with updated member:', id);
     console.log('📊 Updated member data:', updatedMember);
-    saveTeamMembers(teamMembers);
+    await saveTeamMembers(teamMembers);
 
     res.json({ 
       message: 'Profile updated successfully',
