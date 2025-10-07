@@ -6,6 +6,7 @@ const router = express.Router();
 const { isS3Enabled, uploadBufferToS3 } = require('../utils/s3');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { pool } = require('../database-pg');
+const { isS3Enabled, getJsonFromS3, putJsonToS3 } = require('../utils/s3');
 
 // Path to the persistent data file
 // NOTE: team-profiles.json is the SINGLE SOURCE OF TRUTH for team member data
@@ -20,17 +21,25 @@ if (!fs.existsSync(dataDir)) {
 // Load team member data from file or use defaults
 function loadTeamMembers() {
   try {
+    // Prefer S3 if available
+    if (isS3Enabled()) {
+      const s3Key = 'team-profiles/team-profiles.json';
+      const fromS3 = await getJsonFromS3(s3Key);
+      if (fromS3) {
+        console.log('📁 Loaded team members from S3 JSON:', Object.keys(fromS3));
+        return fromS3;
+      }
+    }
     if (fs.existsSync(dataFilePath)) {
       const data = fs.readFileSync(dataFilePath, 'utf8');
       const parsedData = JSON.parse(data);
       console.log('📁 Loaded team members from JSON file:', Object.keys(parsedData));
-      console.log('🏃 Run coach data:', parsedData['run-coach']);
       return parsedData;
     } else {
       console.log('⚠️ JSON file not found, using default data');
     }
   } catch (error) {
-    console.error('Error loading team members from file:', error);
+    console.error('Error loading team members:', error);
   }
   
   // Minimal fallback data if no file exists (should rarely happen)
@@ -56,31 +65,24 @@ function loadTeamMembers() {
 }
 
 // Save team member data to file
-function saveTeamMembers(teamMembers) {
+async function saveTeamMembers(teamMembers) {
   try {
-    // Create backup before saving
+    // Write to S3 if configured
+    if (isS3Enabled()) {
+      const s3Key = 'team-profiles/team-profiles.json';
+      await putJsonToS3(s3Key, teamMembers);
+      console.log('💾 Team members saved to S3:', s3Key);
+    }
+
+    // Always keep local backup copy
     const backupPath = dataFilePath + '.backup';
     if (fs.existsSync(dataFilePath)) {
       fs.copyFileSync(dataFilePath, backupPath);
     }
-    
     fs.writeFileSync(dataFilePath, JSON.stringify(teamMembers, null, 2), 'utf8');
-    console.log('💾 Team members saved to file:', dataFilePath);
-    console.log('📊 Saved data keys:', Object.keys(teamMembers));
-    
-    // Verify the file was written correctly
-    try {
-      const verifyData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
-      console.log('✅ File verification successful, keys:', Object.keys(verifyData));
-    } catch (verifyError) {
-      console.error('❌ File verification failed:', verifyError);
-      console.error('❌ File exists after write:', fs.existsSync(dataFilePath));
-      console.error('❌ File size:', fs.existsSync(dataFilePath) ? fs.statSync(dataFilePath).size : 'N/A');
-    }
+    console.log('💾 Team members saved locally:', dataFilePath);
   } catch (error) {
-    console.error('❌ Error saving team members to file:', error);
-    console.error('❌ File path:', dataFilePath);
-    console.error('❌ Directory exists:', fs.existsSync(path.dirname(dataFilePath)));
+    console.error('❌ Error saving team members:', error);
   }
 }
 

@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 
 // Support multiple env var names (Railway/Vercel/AWS conventions)
@@ -68,5 +68,41 @@ function getS3KeyFromUrl(url) {
 }
 
 module.exports = { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl, S3_PUBLIC_BASE_URL };
+
+// Additional helpers for JSON read/write
+async function getJsonFromS3(key) {
+  const client = getClient();
+  try {
+    const { Body } = await client.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+    const chunks = [];
+    for await (const chunk of Body) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+    const text = buffer.toString('utf8');
+    return JSON.parse(text);
+  } catch (err) {
+    if (err && err.$metadata && err.$metadata.httpStatusCode === 404) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+async function putJsonToS3(key, json) {
+  const client = getClient();
+  const body = Buffer.from(JSON.stringify(json, null, 2), 'utf8');
+  await client.send(new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: key,
+    Body: body,
+    ContentType: 'application/json; charset=utf-8'
+  }));
+  if (!S3_PUBLIC_BASE_URL) return null;
+  return `${S3_PUBLIC_BASE_URL}/${key}`;
+}
+
+module.exports.getJsonFromS3 = getJsonFromS3;
+module.exports.putJsonToS3 = putJsonToS3;
 
 
