@@ -1048,21 +1048,23 @@ const Forum = () => {
 
             {/* Time Filters (row 1) */}
             <div className="workout-filters" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <button 
-                className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
-                onClick={() => { setTimeFilter('upcoming'); setPastPage(1); }}
-              >
-                ⏳ Upcoming
-              </button>
-              <button 
-                className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
-                onClick={() => { setTimeFilter('past'); setPastPage(1); }}
-              >
-                🗂 Past
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button 
+                  className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
+                  onClick={() => { setTimeFilter('upcoming'); setPastPage(1); }}
+                >
+                  ⏳ Upcoming
+                </button>
+                <button 
+                  className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
+                  onClick={() => { setTimeFilter('past'); setPastPage(1); }}
+                >
+                  🗂 Past
+                </button>
+              </div>
 
               {timeFilter === 'past' && (
-                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pastPagination.currentPage} of {pastPagination.totalPages}</span>
                   <button 
                     className="filter-btn"
