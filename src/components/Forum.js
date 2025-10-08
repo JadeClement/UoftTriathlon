@@ -18,6 +18,7 @@ const Forum = () => {
   const [workoutFilter, setWorkoutFilter] = useState('all');
   const [timeFilter, setTimeFilter] = useState('upcoming'); // 'upcoming' | 'past'
   const [pastPage, setPastPage] = useState(1);
+  const [pastPagination, setPastPagination] = useState({ currentPage: 1, totalPages: 1, totalPosts: 0, hasMore: false });
   const [workoutForm, setWorkoutForm] = useState({
     title: '',
     type: 'spin',
@@ -228,6 +229,9 @@ const Forum = () => {
         
         
         setWorkoutPosts(validPosts);
+        if (timeFilter === 'past' && workoutData.pagination) {
+          setPastPagination(workoutData.pagination);
+        }
         
         // Load signup data for all workouts
         await loadWorkoutSignups(validPosts);
@@ -1043,19 +1047,39 @@ const Forum = () => {
             </div>
 
             {/* Time Filters (row 1) */}
-            <div className="workout-filters">
+            <div className="workout-filters" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <button 
                 className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
-                onClick={() => setTimeFilter('upcoming')}
+                onClick={() => { setTimeFilter('upcoming'); setPastPage(1); }}
               >
                 ⏳ Upcoming
               </button>
               <button 
                 className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
-                onClick={() => setTimeFilter('past')}
+                onClick={() => { setTimeFilter('past'); setPastPage(1); }}
               >
                 🗂 Past
               </button>
+
+              {timeFilter === 'past' && (
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pastPagination.currentPage} of {pastPagination.totalPages}</span>
+                  <button 
+                    className="filter-btn"
+                    onClick={() => setPastPage(p => Math.max(1, p - 1))}
+                    disabled={pastPagination.currentPage <= 1}
+                  >
+                    Previous
+                  </button>
+                  <button 
+                    className="filter-btn"
+                    onClick={() => setPastPage(p => Math.min(pastPagination.totalPages, p + 1))}
+                    disabled={pastPagination.currentPage >= pastPagination.totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Type Filters (row 2) */}
