@@ -49,6 +49,7 @@ const Forum = () => {
   const [promotedWorkout, setPromotedWorkout] = useState(null);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [workoutsLoading, setWorkoutsLoading] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(false);
   
   // Reload when time filter or past page changes
   useEffect(() => {
@@ -240,6 +241,7 @@ const Forum = () => {
 
       // Load event posts only when Events tab is active to speed up initial load
       if (activeTab === 'events') {
+        setEventsLoading(true);
         const eventResponse = await fetch(`${API_BASE_URL}/forum/posts?type=event`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -269,6 +271,7 @@ const Forum = () => {
     } finally {
       setLoading(false);
       setWorkoutsLoading(false);
+      setEventsLoading(false);
     }
   };
 
@@ -1371,7 +1374,7 @@ const Forum = () => {
             </div>
 
             {eventPosts.length === 0 ? (
-              <p className="no-posts">No event posts yet.</p>
+              <p className="no-posts">{eventsLoading ? 'Events loading...' : 'No event posts yet.'}</p>
             ) : (
               <div className="posts-list">
                 {eventPosts.map(post => (
