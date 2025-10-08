@@ -1177,6 +1177,9 @@ const Forum = () => {
                               src={url}
                               alt="Profile" 
                               className="author-avatar"
+                              loading="lazy"
+                              decoding="async"
+                              fetchpriority="low"
                               onError={(e) => {
                                 e.target.src = '/images/default_profile.png';
                               }}
@@ -1466,6 +1469,9 @@ const Forum = () => {
                               src={url}
                               alt="Profile" 
                               className="author-avatar"
+                              loading="lazy"
+                              decoding="async"
+                              fetchpriority="low"
                               onError={(e) => {
                                 e.target.src = '/images/default_profile.png';
                               }}
