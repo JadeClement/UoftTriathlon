@@ -39,7 +39,7 @@ const requireMemberOrCoachForWorkouts = (req, res, next) => {
 // Get all forum posts with optional filtering
 router.get('/posts', authenticateToken, requireMember, async (req, res) => {
   try {
-    const { type = '', search = '', page = 1, limit = 20 } = req.query;
+    const { type = '', search = '', page = 1, limit = 20, time = '' } = req.query;
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE is_deleted = false';
@@ -59,6 +59,16 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
       paramCount++;
     }
 
+    // Optional time filter for workouts only: upcoming | past
+    // Uses CURRENT_DATE to avoid timezone issues
+    if (type === 'workout' && (time === 'upcoming' || time === 'past')) {
+      if (time === 'upcoming') {
+        whereClause += ' AND (workout_date IS NULL OR workout_date >= CURRENT_DATE)';
+      } else if (time === 'past') {
+        whereClause += ' AND workout_date < CURRENT_DATE';
+      }
+    }
+
     // Get total count
     const countResult = await pool.query(`SELECT COUNT(*) as total FROM forum_posts ${whereClause}`, params);
     
@@ -71,7 +81,8 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
       FROM forum_posts fp
       JOIN users u ON fp.user_id = u.id
       ${whereClause}
-      ORDER BY fp.created_at DESC
+      ORDER BY 
+        CASE WHEN fp.type = 'workout' AND fp.workout_date IS NOT NULL THEN fp.workout_date ELSE fp.created_at END DESC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `, [...params, limit, offset]);
     

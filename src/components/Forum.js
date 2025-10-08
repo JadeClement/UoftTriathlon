@@ -17,6 +17,7 @@ const Forum = () => {
   const [showEventForm, setShowEventForm] = useState(false);
   const [workoutFilter, setWorkoutFilter] = useState('all');
   const [timeFilter, setTimeFilter] = useState('upcoming'); // 'upcoming' | 'past'
+  const [pastPage, setPastPage] = useState(1);
   const [workoutForm, setWorkoutForm] = useState({
     title: '',
     type: 'spin',
@@ -46,6 +47,14 @@ const Forum = () => {
   const [showPromotionMessage, setShowPromotionMessage] = useState(false);
   const [promotedWorkout, setPromotedWorkout] = useState(null);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  
+  // Reload when time filter or past page changes
+  useEffect(() => {
+    if (isMember(currentUser)) {
+      loadForumPosts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeFilter, pastPage]);
   
   // Function to check if a workout type is allowed for the user's sport
   const isWorkoutTypeAllowed = (workoutType) => {
@@ -189,7 +198,17 @@ const Forum = () => {
       }
 
       // Load workout posts
-      const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?type=workout`, {
+      const qp = new URLSearchParams();
+      qp.set('type', 'workout');
+      // Upcoming loads without pagination; past loads paginated 4/page
+      if (timeFilter === 'past') {
+        qp.set('time', 'past');
+        qp.set('page', String(pastPage));
+        qp.set('limit', '4');
+      } else {
+        qp.set('time', 'upcoming');
+      }
+      const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
