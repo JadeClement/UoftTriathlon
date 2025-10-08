@@ -88,23 +88,32 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
     
     const posts = postsResult.rows;
 
-    // Get signup counts for workouts
+    // Get signup and waitlist counts for workouts
     if (type === 'workout' || type === '') {
       const postIds = posts.filter(p => p.type === 'workout').map(p => p.id);
       if (postIds.length > 0) {
         const placeholders = postIds.map((_, index) => `$${index + 1}`).join(',');
         const signupCountsResult = await pool.query(`
-          SELECT post_id, COUNT(*) as signup_count
+          SELECT post_id, COUNT(*)::int as signup_count
           FROM workout_signups
           WHERE post_id IN (${placeholders})
           GROUP BY post_id
         `, postIds);
+
+        const waitlistCountsResult = await pool.query(`
+          SELECT post_id, COUNT(*)::int as waitlist_count
+          FROM workout_waitlist
+          WHERE post_id IN (${placeholders})
+          GROUP BY post_id
+        `, postIds);
         
-        // Add signup counts to posts
+        // Add counts to posts
         posts.forEach(post => {
           if (post.type === 'workout') {
             const signupCount = signupCountsResult.rows.find(sc => sc.post_id === post.id);
+            const waitlistCount = waitlistCountsResult.rows.find(wc => wc.post_id === post.id);
             post.signup_count = signupCount ? signupCount.signup_count : 0;
+            post.waitlist_count = waitlistCount ? waitlistCount.waitlist_count : 0;
           }
         });
       }

@@ -1343,6 +1343,11 @@ const Forum = () => {
                             <span className={`capacity-status ${(post.signup_count ?? 0) >= post.capacity ? 'full' : 'available'}`}>
                               {(post.signup_count ?? 0) >= post.capacity ? 'Full' : 'Available'}
                             </span>
+                            {(post.waitlist_count ?? 0) > 0 && (
+                              <span className="waitlist-count">
+                                {post.waitlist_count} on waitlist
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
