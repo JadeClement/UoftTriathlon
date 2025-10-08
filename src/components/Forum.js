@@ -1307,9 +1307,7 @@ const Forum = () => {
                           </div>
                         )}
 
-                        <div className="workout-content">
-                          {post.content}
-                        </div>
+                        {/* Content omitted in list view for performance; open detail to view full description */}
                       </>
                     )}
 

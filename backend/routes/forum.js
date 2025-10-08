@@ -75,7 +75,7 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
     // Get posts with user info
     const postsResult = await pool.query(`
       SELECT 
-        fp.id, fp.title, fp.content, fp.type, fp.workout_type, fp.workout_date, 
+        fp.id, fp.title, fp.type, fp.workout_type, fp.workout_date, 
         fp.workout_time, fp.capacity, fp.event_date, fp.created_at,
         u.name as author_name, u.role as author_role, u.profile_picture_url as "authorProfilePictureUrl"
       FROM forum_posts fp
