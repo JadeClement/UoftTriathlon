@@ -261,9 +261,6 @@ const Forum = () => {
           console.log('🔍 Valid event posts:', validPosts);
           
           setEventPosts(validPosts);
-          
-          // Load RSVP data for all events
-          await loadEventRsvps(validPosts);
         }
       }
     } catch (error) {
@@ -1516,31 +1513,13 @@ const Forum = () => {
                     <div className="post-footer">
                       <div className="rsvp-buttons">
                         <button 
-                          className={`rsvp-btn going ${getUserRsvpStatus(post.id) === 'going' ? 'active' : ''}`}
+                          className="rsvp-btn going"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEventRsvp(post.id, 'going');
+                            window.location.href = `/event/${post.id}`;
                           }}
                         >
-                          {getUserRsvpStatus(post.id) === 'going' ? '✓ Going' : 'Going'}
-                        </button>
-                        <button 
-                          className={`rsvp-btn maybe ${getUserRsvpStatus(post.id) === 'maybe' ? 'active' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEventRsvp(post.id, 'maybe');
-                          }}
-                        >
-                          {getUserRsvpStatus(post.id) === 'maybe' ? '✓ Maybe' : 'Maybe'}
-                        </button>
-                        <button 
-                          className={`rsvp-btn not-going ${getUserRsvpStatus(post.id) === 'not_going' ? 'active' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEventRsvp(post.id, 'not_going');
-                          }}
-                        >
-                          {getUserRsvpStatus(post.id) === 'not_going' ? '✓ Not Going' : 'Not Going'}
+                          View Details
                         </button>
                       </div>
                     </div>
