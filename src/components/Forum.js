@@ -239,29 +239,31 @@ const Forum = () => {
         await loadWorkoutWaitlists(validPosts);
       }
 
-      // Load event posts
-      const eventResponse = await fetch(`${API_BASE_URL}/forum/posts?type=event`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Load event posts only when Events tab is active to speed up initial load
+      if (activeTab === 'events') {
+        const eventResponse = await fetch(`${API_BASE_URL}/forum/posts?type=event`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-      if (eventResponse.ok) {
-        const eventData = await eventResponse.json();
-        console.log('🔍 Event data received:', eventData);
-        
-        // Ensure we have valid posts data
-        const posts = eventData.posts || eventData || [];
-        console.log('🔍 Event posts to set:', posts);
-        
-        // Filter out any invalid posts
-        const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
-        console.log('🔍 Valid event posts:', validPosts);
-        
-        setEventPosts(validPosts);
-        
-        // Load RSVP data for all events
-        await loadEventRsvps(validPosts);
+        if (eventResponse.ok) {
+          const eventData = await eventResponse.json();
+          console.log('🔍 Event data received:', eventData);
+          
+          // Ensure we have valid posts data
+          const posts = eventData.posts || eventData || [];
+          console.log('🔍 Event posts to set:', posts);
+          
+          // Filter out any invalid posts
+          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
+          console.log('🔍 Valid event posts:', validPosts);
+          
+          setEventPosts(validPosts);
+          
+          // Load RSVP data for all events
+          await loadEventRsvps(validPosts);
+        }
       }
     } catch (error) {
       console.error('Error loading forum posts:', error);
@@ -269,6 +271,14 @@ const Forum = () => {
       setLoading(false);
     }
   };
+
+  // When switching to Events tab, fetch events on demand
+  useEffect(() => {
+    if (activeTab === 'events' && isMember(currentUser)) {
+      loadForumPosts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const loadWorkoutSignups = async (workouts) => {
     try {
