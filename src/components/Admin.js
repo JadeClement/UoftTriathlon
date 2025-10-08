@@ -70,6 +70,13 @@ const Admin = () => {
     expiryDate: ''
   });
 
+  // Add: Members search state (with debounce)
+  const [membersSearch, setMembersSearch] = useState('');
+  const [membersSearchDebounced, setMembersSearchDebounced] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setMembersSearchDebounced(membersSearch.trim()), 300);
+    return () => clearTimeout(id);
+  }, [membersSearch]);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -459,6 +466,7 @@ const Admin = () => {
 
       // Load all members
       const params = new URLSearchParams({ page: String(membersPage), limit: String(membersLimit) });
+      if (membersSearchDebounced) params.set('search', membersSearchDebounced);
       const membersResponse = await fetch(`${API_BASE_URL}/admin/members?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -500,11 +508,11 @@ const Admin = () => {
     }
   };
 
-  // Reload members when page/limit change
+  // Reload members when page/limit change or search changes
   useEffect(() => {
     loadAdminData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [membersPage, membersLimit]);
+  }, [membersPage, membersLimit, membersSearchDebounced]);
 
   // Load attendance dashboard data
   const loadAttendanceData = async () => {
@@ -904,13 +912,22 @@ const Admin = () => {
         {activeTab === 'members' && (
                       <div className="members-section">
               <h2>All Members</h2>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 16px', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 13, color: '#6b7280' }}>
                   Total: {membersPagination.totalMembers} • Page {membersPagination.currentPage} of {membersPagination.totalPages}
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* Search input */}
+                  <input
+                    type="text"
+                    value={membersSearch}
+                    onChange={(e) => { setMembersPage(1); setMembersSearch(e.target.value); }}
+                    placeholder="Search name or email..."
+                    style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 6, minWidth: 220 }}
+                    aria-label="Search members"
+                  />
                   <label style={{ fontSize: 13, color: '#6b7280' }}>Rows per page:</label>
-                  <select value={membersLimit} onChange={(e)=> setMembersLimit(parseInt(e.target.value)||20)}>
+                  <select value={membersLimit} onChange={(e)=> { setMembersPage(1); setMembersLimit(parseInt(e.target.value)||20); }}>
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
