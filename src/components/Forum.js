@@ -233,10 +233,7 @@ const Forum = () => {
           setPastPagination(workoutData.pagination);
         }
         
-        // Load signup data for all workouts
-        await loadWorkoutSignups(validPosts);
-        // Load waitlist data for all workouts
-        await loadWorkoutWaitlists(validPosts);
+        // Do not load per-workout signups/waitlists here; fetch on demand in detail view
       }
 
       // Load event posts only when Events tab is active to speed up initial load
@@ -1316,74 +1313,31 @@ const Forum = () => {
                     {/* Sign-up button positioned at bottom right */}
                     <div className="workout-signup-section">
                       <div className="button-group">
-                        {!isWorkoutArchived(post) && post.workout_type !== 'swim' && (
-                          <button 
-                            className={`signup-btn ${isUserSignedUp(post.id) ? 'signed-up' : ''} ${isWorkoutFull(post.id) ? 'full' : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleWorkoutSignUp(post.id);
-                            }}
-                            disabled={(isWorkoutFull(post.id) && !isUserSignedUp(post.id))}
-                          >
-                            {isUserSignedUp(post.id) ? '✓ Signed Up' : isWorkoutFull(post.id) ? 'Full' : 'Sign Up'}
-                          </button>
-                        )}
-                        
-                        {/* Cancel button for signed-up users */}
-                        {isUserSignedUp(post.id) && !isWorkoutArchived(post) && post.workout_type !== 'swim' && (
-                          <button 
-                            className="cancel-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCancelClick(post.id);
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        )}
-                        
-                        {/* Waitlist button for full workouts */}
-                        {post.capacity && isWorkoutFull(post.id) && !isUserSignedUp(post.id) && !isWorkoutArchived(post) && post.workout_type !== 'swim' && (
-                          <button 
-                            className={`waitlist-btn ${isUserOnWaitlist(post.id) ? 'on-waitlist' : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              isUserOnWaitlist(post.id) ? handleWaitlistLeave(post.id) : handleWaitlistJoin(post.id);
-                            }}
-                          >
-                            {isUserOnWaitlist(post.id) ? 'Leave Waitlist' : 'Join Waitlist'}
-                          </button>
-                        )}
-                        
+                        <button 
+                          className="signup-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `/workout/${post.id}`;
+                          }}
+                        >
+                          View Details
+                        </button>
                       </div>
-                      
                       <div className="signup-count">
                         <div className="signup-main">
                           {post.capacity 
-                            ? `${workoutSignups[post.id]?.length || 0}/${post.capacity} signed up`
-                            : `${workoutSignups[post.id]?.length || 0} signed up`
+                            ? `${(post.signup_count ?? 0)}/${post.capacity} signed up`
+                            : `${(post.signup_count ?? 0)} signed up`
                           }
                         </div>
                         {post.capacity && (
                           <div className="signup-details">
-                            <span className={`capacity-status ${isWorkoutFull(post.id) ? 'full' : 'available'}`}>
-                              {isWorkoutFull(post.id) ? 'Full' : 'Available'}
+                            <span className={`capacity-status ${(post.signup_count ?? 0) >= post.capacity ? 'full' : 'available'}`}>
+                              {(post.signup_count ?? 0) >= post.capacity ? 'Full' : 'Available'}
                             </span>
-                            {post.capacity && workoutWaitlists[post.id]?.length > 0 && (
-                              <span className="waitlist-count">
-                                {workoutWaitlists[post.id].length} on waitlist
-                              </span>
-                            )}
                           </div>
                         )}
                       </div>
-                      
-                      {/* Position label when on waitlist - moved to bottom */}
-                      {post.capacity && isWorkoutFull(post.id) && isUserOnWaitlist(post.id) && (
-                        <span className="waitlist-position">
-                          {`You're ${formatOrdinal(getWaitlistPosition(post.id))} on the waitlist`}
-                        </span>
-                      )}
                     </div>
 
                   </div>
