@@ -48,6 +48,7 @@ const Forum = () => {
   const [showPromotionMessage, setShowPromotionMessage] = useState(false);
   const [promotedWorkout, setPromotedWorkout] = useState(null);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const [workoutsLoading, setWorkoutsLoading] = useState(false);
   
   // Reload when time filter or past page changes
   useEffect(() => {
@@ -209,6 +210,7 @@ const Forum = () => {
       } else {
         qp.set('time', 'upcoming');
       }
+      setWorkoutsLoading(true);
       const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -266,6 +268,7 @@ const Forum = () => {
       console.error('Error loading forum posts:', error);
     } finally {
       setLoading(false);
+      setWorkoutsLoading(false);
     }
   };
 
@@ -1121,7 +1124,11 @@ const Forum = () => {
 
             {getFilteredWorkouts().length === 0 ? (
               <p className="no-posts">
-                {workoutPosts.length === 0 ? 'No workout posts yet.' : `No ${workoutFilter === 'all' ? '' : workoutFilter} workouts found.`}
+                {workoutsLoading 
+                  ? 'Loading workouts...'
+                  : (workoutPosts.length === 0 
+                      ? 'No workout posts yet.' 
+                      : `No ${workoutFilter === 'all' ? '' : workoutFilter} workouts found.`)}
               </p>
             ) : (
               <div className="posts-list">
