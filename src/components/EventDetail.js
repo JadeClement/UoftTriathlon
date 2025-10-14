@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { linkifyText } from '../utils/linkUtils';
 import './EventDetail.css';
 
 const EventDetail = () => {
@@ -372,7 +373,7 @@ const EventDetail = () => {
                 placeholder="Event details..."
               />
             ) : (
-              event.content
+              linkifyText(event.content)
             )}
           </div>
 
@@ -566,7 +567,7 @@ const EventDetail = () => {
                     </div>
                     <span className="comment-date">{comment.created_at}</span>
                   </div>
-                  <div className="comment-content">{comment.content}</div>
+                  <div className="comment-content">{linkifyText(comment.content)}</div>
                 </div>
               ))}
             </div>

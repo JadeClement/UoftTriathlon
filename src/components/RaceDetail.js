@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { linkifyText } from '../utils/linkUtils';
 import './RaceDetail.css';
 
 const RaceDetail = () => {
@@ -201,7 +202,7 @@ const RaceDetail = () => {
           {race.description && (
             <div className="info-section">
               <h3>📝 Description</h3>
-              <p>{race.description}</p>
+              <p>{linkifyText(race.description)}</p>
             </div>
           )}
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
+import { linkifyText } from '../utils/linkUtils';
 import './WorkoutDetail.css';
 
 const WorkoutDetail = () => {
@@ -773,7 +774,7 @@ const WorkoutDetail = () => {
             </div>
           ) : (
             <div className="workout-content">
-              {workout.content}
+              {linkifyText(workout.content)}
             </div>
           )}
 
@@ -1162,7 +1163,7 @@ const WorkoutDetail = () => {
                       })()}
                     </span>
                   </div>
-                  <div className="comment-content">{comment.content}</div>
+                  <div className="comment-content">{linkifyText(comment.content)}</div>
                 </div>
               ))}
             </div>
