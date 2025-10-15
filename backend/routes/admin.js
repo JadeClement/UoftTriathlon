@@ -825,7 +825,14 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       <h1>${escapeHtml(bannerTitle)}</h1>
     </div>
     <div class="content">
-      ${body ? `<p>${formatText(escapeHtml(body))}<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em></p>` : ''}
+      ${body 
+        ? `<p>${(body.includes('<a ') || body.includes('<A ') || body.includes('</a>')) 
+            // If the editor already produced HTML links, trust the provided anchor tags
+            ? body 
+            // Otherwise, treat as plain text/markdown and convert to safe HTML with links
+            : formatText(escapeHtml(body))
+          }<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em></p>` 
+        : ''}
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
