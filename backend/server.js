@@ -1,10 +1,7 @@
 // Load environment variables FIRST, before any other imports
 require('dotenv').config();
 
-// Debug: Confirm environment variables are loaded
-console.log('🔧 Server: JWT_SECRET loaded:', !!process.env.JWT_SECRET);
-console.log('🔧 Server: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
-console.log('🔧 Server: JWT_SECRET starts with:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
+// Environment variables are loaded; avoid logging sensitive values
 
 const express = require('express');
 const cors = require('cors');
