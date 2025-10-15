@@ -6,3 +6,25 @@ backend/data/team-profiles.json
 
 # Upload directories that should not be tracked
 backend/uploads/
+
+# Env files (never commit real secrets)
+.env
+*.env
+*.env.*
+.env.local
+backend/.env
+backend/.env.*
+
+# Keys / certificates
+*.key
+*.pem
+*.p12
+
+# Accidental secrets / exports
+s3-upload-user_accessKeys.csv
+*.csv
+
+# Logs and OS cruft
+npm-debug.log*
+*.log
+.DS_Store
