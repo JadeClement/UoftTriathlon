@@ -480,7 +480,7 @@ const Admin = () => {
       
       if (membersResponse.ok) {
         const membersData = await membersResponse.json();
-        console.log('📊 Members data received:', membersData.members);
+        // Remove verbose member logging in production
         
         // Transform backend data to frontend format (snake_case to camelCase)
         const transformedMembers = membersData.members.map(member => ({
@@ -491,12 +491,7 @@ const Admin = () => {
           charterAccepted: member.charter_accepted || 0
         }));
         
-        console.log('🔄 Transformed members data:', transformedMembers);
-        console.log('📊 Raw backend data:', membersData.members);
-        console.log('🔍 Sample member with absences:', transformedMembers.find(m => m.id)?.absences);
-        console.log('🔍 Sample member with charter:', transformedMembers.find(m => m.id)?.charterAccepted);
-        console.log('🔍 Raw charter_accepted values:', membersData.members.map(m => ({ id: m.id, charter_accepted: m.charter_accepted })));
-        console.log('🔍 Full transformed members:', JSON.stringify(transformedMembers, null, 2));
+        
         setMembers(transformedMembers);
         if (membersData.pagination) {
           setMembersPagination(membersData.pagination);
