@@ -690,7 +690,9 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
   try {
     const { subject, message, recipients, template, customEmails } = req.body;
 
-    console.log('🔍 Bulk email request body:', { subject, message, recipients, template });
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔍 Bulk email request body (sanitized):', { subject, template: !!template });
+    }
 
     if (!subject) {
       return res.status(400).json({ error: 'Missing required field: subject' });
@@ -730,13 +732,16 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
         const whereClause = whereConditions.join(' OR ');
         const query = `SELECT email, name, role, is_active FROM users WHERE is_active = true AND (${whereClause})`;
         
-        console.log('🔍 Bulk email query:', query);
-        console.log('🔍 Query params:', queryParams);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('🔍 Bulk email query (debug)');
+      }
         
         const result = await pool.query(query, queryParams);
         recipientEmails = result.rows;
         
+      if (process.env.NODE_ENV !== 'production') {
         console.log('🔍 Found database recipients:', recipientEmails.length);
+      }
       }
     }
 
@@ -768,11 +773,14 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       }));
 
       recipientEmails = [...recipientEmails, ...customRecipients];
-      console.log('🔍 Added custom recipients:', customRecipients.length);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('🔍 Added custom recipients:', customRecipients.length);
+      }
     }
     
-    console.log('🔍 Total recipients:', recipientEmails.length);
-    console.log('🔍 All recipients:', recipientEmails.map(r => ({ email: r.email, name: r.name, role: r.role, is_active: r.is_active })));
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔍 Total recipients:', recipientEmails.length);
+    }
 
     if (recipientEmails.length === 0) {
       return res.status(400).json({ error: 'No recipients found' });
@@ -864,12 +872,16 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
       batches.push(recipientEmails.slice(i, i + BATCH_SIZE));
     }
 
-    console.log(`📧 Sending ${recipientEmails.length} emails in ${batches.length} batches of ${BATCH_SIZE}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`📧 Sending ${recipientEmails.length} emails in ${batches.length} batches of ${BATCH_SIZE}`);
+    }
 
     // Process each batch
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
-      console.log(`📧 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} emails)`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`📧 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} emails)`);
+      }
       
       // Send all emails in this batch in parallel
       const batchPromises = batch.map(async (recipient) => {
@@ -881,14 +893,14 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
           const result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
           
           if (result.success) {
-            console.log(`✅ Bulk email sent to ${recipient.email}`);
+            
             return { success: true, email: recipient.email };
           } else {
-            console.error(`❌ Failed to send bulk email to ${recipient.email}:`, result.error);
+            console.error(`❌ Failed to send bulk email to recipient:`, result.error);
             return { success: false, email: recipient.email, error: result.error };
           }
         } catch (error) {
-          console.error(`❌ Error sending bulk email to ${recipient.email}:`, error);
+          console.error(`❌ Error sending bulk email:`, error.message);
           return { success: false, email: recipient.email, error: error.message };
         }
       });
@@ -908,7 +920,9 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
 
       // Add delay between batches to respect rate limits (except for the last batch)
       if (batchIndex < batches.length - 1) {
-        console.log(`⏳ Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`⏳ Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+        }
         await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
       }
     }
