@@ -164,7 +164,7 @@ const Profile = () => {
         id: currentUser.id,
         name: currentUser.name,
         email: currentUser.email,
-        phone: currentUser.phone_number || currentUser.phone || '',
+        phone: currentUser.phone_number || currentUser.phone || currentUser.phoneNumber || '',
         image: profileImage,
         role: currentUser.role,
         bio: currentUser.bio || '' // Include bio from currentUser

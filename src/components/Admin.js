@@ -779,6 +779,21 @@ const Admin = () => {
         const result = await response.json();
         console.log('✅ Update successful:', result);
         
+        // Optimistically update the members table immediately
+        setMembers(prev => prev.map(m => {
+          if (m.id !== editingMember.id) return m;
+          return {
+            ...m,
+            name: editForm.name,
+            email: editForm.email,
+            role: editForm.role,
+            expiryDate: editForm.expiryDate || null,
+            phone_number: formatPhoneNumber(editForm.phoneNumber),
+            charterAccepted: editForm.charterAccepted ? 1 : 0,
+            sport: editForm.sport || m.sport
+          };
+        }));
+
         // Check if role was changed and notify the user
         if (editForm.role !== editingMember.role) {
           console.log('🔄 Role changed from', editingMember.role, 'to', editForm.role);
