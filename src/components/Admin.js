@@ -24,6 +24,11 @@ const Admin = () => {
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
   const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
+  // SMS (Phase 1 - Test Mode) state
+  const [smsMessage, setSmsMessage] = useState('');
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsStatus, setSmsStatus] = useState(null);
+  const [smsTestMode, setSmsTestMode] = useState(true);
   const lastFocusedTextareaRef = useRef(null);
   
   // Individual email recipient selection
@@ -744,10 +749,13 @@ const Admin = () => {
     // Clean up the form data - convert empty strings to null for optional fields
     const cleanFormData = {
       ...editForm,
-      phoneNumber: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending
+      // Backend expects snake_case `phone_number`
+      phone_number: formatPhoneNumber(editForm.phoneNumber),
       expiryDate: editForm.expiryDate || null,
       charterAccepted: editForm.charterAccepted ? 1 : 0
     };
+    // Remove camelCase phoneNumber to avoid ambiguity on the server
+    delete cleanFormData.phoneNumber;
     
     console.log('🧹 Cleaned form data:', cleanFormData);
     console.log('🔍 Charter accepted value being sent:', editForm.charterAccepted, '→', cleanFormData.charterAccepted);
@@ -887,6 +895,12 @@ const Admin = () => {
           onClick={() => setActiveTab('email')}
         >
           Send Email
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'text' ? 'active' : ''}`}
+          onClick={() => setActiveTab('text')}
+        >
+          Send Text (Test)
         </button>
         <button 
           className={`tab-button ${activeTab === 'banner' ? 'active' : ''}`}
@@ -1526,6 +1540,69 @@ const Admin = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'text' && (
+          <div className="email-section">
+            <h2>Send Text (Test Mode)</h2>
+            <p style={{marginTop: 0, color: '#6b7280'}}>Phase 1 sends only to the configured admin test phone on the server.</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                setSmsStatus(null);
+                setSmsSending(true);
+                const token = localStorage.getItem('triathlonToken');
+                const resp = await fetch(`${API_BASE_URL}/admin/send-sms`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({ message: smsMessage, testMode: smsTestMode })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                  setSmsStatus({ type: 'success', text: `Text sent to test number${data.to ? ` (${data.to})` : ''}.` });
+                  setSmsMessage('');
+                } else {
+                  setSmsStatus({ type: 'error', text: data.error || 'Failed to send text' });
+                }
+              } catch (err) {
+                setSmsStatus({ type: 'error', text: err.message });
+              } finally {
+                setSmsSending(false);
+              }
+            }}>
+              <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                <label className="toggle-switch">
+                  <input type="checkbox" checked={smsTestMode} onChange={(e)=> setSmsTestMode(e.target.checked)} />
+                  <span className="toggle-slider"></span>
+                </label>
+                <span className="toggle-label">Test mode (required)</span>
+              </div>
+              <div className="form-group">
+                <label>Message</label>
+                <textarea
+                  rows="4"
+                  value={smsMessage}
+                  onChange={(e)=> setSmsMessage(e.target.value)}
+                  placeholder="Short SMS message..."
+                  required
+                  maxLength={918}
+                />
+                <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
+                  {smsMessage.length}/918 characters
+                </div>
+              </div>
+              {smsStatus && (
+                <div className={`notice ${smsStatus.type}`} style={{ marginBottom: '1rem' }}>
+                  {smsStatus.text}
+                </div>
+              )}
+              <div className="modal-actions">
+                <button type="submit" className="btn btn-primary" disabled={smsSending || !smsTestMode} style={{width: '100%'}}> 
+                  {smsSending ? 'Sending...' : 'Send Test Text'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
