@@ -5,11 +5,16 @@ const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('
 // Function to convert markdown-like formatting to HTML
 const formatText = (text) => {
   if (!text) return '';
-  
-  return text
+
+  const linkifyMarkdown = (s) => s.replace(/\[([^\]]*)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi, (_m, label, url) => {
+    const href = url.startsWith('http') ? url : `https://${url}`;
+    const display = (label && label.trim().length > 0) ? label : url;
+    return `<a href="${href}" style="color: #3b82f6; text-decoration: none;">${display}</a>`;
+  });
+
+  return linkifyMarkdown(text)
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
     .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: none;">$1</a>') // Links
     .replace(/\n• /g, '<br/><br/>• ') // Add extra space before bullet points
     .replace(/\n\d+\. /g, '<br/>$&') // Add single space before numbered bullets
     .replace(/\n/g, '<br/>'); // Line breaks
