@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './Admin.css';
 
@@ -24,6 +24,7 @@ const Admin = () => {
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
   const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
+  const lastFocusedTextareaRef = useRef(null);
   
   // Individual email recipient selection
   const [selectedRecipients, setSelectedRecipients] = useState([]);
@@ -159,6 +160,9 @@ const Admin = () => {
     if (!textarea || textarea.tagName !== 'TEXTAREA') {
       // Fallback to legacy selector by placeholder text
       textarea = document.querySelector(`textarea[placeholder*="${field === 'message' ? 'message' : field === 'intro' ? 'Introduction' : 'Main email'}"]`);
+    }
+    if ((!textarea || textarea.tagName !== 'TEXTAREA') && lastFocusedTextareaRef.current) {
+      textarea = lastFocusedTextareaRef.current;
     }
     if (!textarea || textarea.tagName !== 'TEXTAREA') return;
 
@@ -1270,6 +1274,7 @@ const Admin = () => {
                             value={emailForm.message} 
                             onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
                             onKeyPress={(e) => handleTextareaKeyPress(e, 'message')}
+                            onFocus={(e) => { lastFocusedTextareaRef.current = e.target; }}
                             placeholder="Type your message here... Use **bold**, *italic*, • bullets, 1. numbered lists, and [link text](url) formatting."
                             required 
                           />
@@ -1434,6 +1439,7 @@ const Admin = () => {
                             rows="12" 
                             value={template.body} 
                             onChange={(e)=>setTemplate({...template, body:e.target.value})} 
+                            onFocus={(e) => { lastFocusedTextareaRef.current = e.target; }}
                             onKeyPress={(e) => handleTextareaKeyPress(e, 'body')}
                             placeholder="Write your email content here... Use **bold**, *italic*, • bullets, 1. numbered lists (press Enter for auto-numbering), and [link text](url) formatting."
                           />
