@@ -32,6 +32,9 @@ const siteRoutes = require('./routes/site');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Behind Railway/Proxies: trust proxy so rate-limiter reads X-Forwarded-For safely
+app.set('trust proxy', 1);
+
 // Initialize uploads directories
 const uploadsDir = path.join(__dirname, 'uploads');
 const profilePicturesDir = path.join(uploadsDir, 'profile-pictures');
@@ -44,20 +47,6 @@ if (!fs.existsSync(teamProfilesDir)) fs.mkdirSync(teamProfilesDir, { recursive: 
 if (!fs.existsSync(gearDir)) fs.mkdirSync(gearDir, { recursive: true });
 
 console.log('📁 Uploads directories initialized');
-
-// Security middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
-}));
-
-// Rate limiting (global)
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300,                 // 300 requests per 15 min per IP
-  standardHeaders: true,
-  legacyHeaders: false
-});
-app.use(globalLimiter);
 
 // CORS configuration - restrict to known frontends
 const allowedOrigins = (() => {
@@ -75,16 +64,36 @@ const allowedOrigins = (() => {
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // same-origin or curl/postman
-    if (allowedOrigins.length === 0) return callback(null, true); // fallback if not configured
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Always allow localhost for dev
+    if (/^https?:\/\/localhost(?::\d+)?$/i.test(origin)) return callback(null, true);
+    // Allow vercel preview/main deployments
+    if (/\.vercel\.app$/i.test(origin)) return callback(null, true);
+    // Allow explicitly configured origins
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
 };
+// Apply CORS BEFORE other middlewares so preflight isn't blocked
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
+// Rate limiting (global) - skip preflight and health
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS' || req.path === '/api/health'
+});
+app.use(globalLimiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
