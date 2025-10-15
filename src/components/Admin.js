@@ -154,8 +154,13 @@ const Admin = () => {
 
   // Function to insert formatting at cursor position
   const insertFormatting = (before, after, field) => {
-    const textarea = document.querySelector(`textarea[placeholder*="${field === 'message' ? 'message' : field === 'intro' ? 'Introduction' : 'Main email'}"]`);
-    if (!textarea) return;
+    // Prefer the currently focused textarea so buttons work across all compose areas
+    let textarea = document.activeElement;
+    if (!textarea || textarea.tagName !== 'TEXTAREA') {
+      // Fallback to legacy selector by placeholder text
+      textarea = document.querySelector(`textarea[placeholder*="${field === 'message' ? 'message' : field === 'intro' ? 'Introduction' : 'Main email'}"]`);
+    }
+    if (!textarea || textarea.tagName !== 'TEXTAREA') return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
