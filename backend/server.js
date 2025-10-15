@@ -45,41 +45,46 @@ if (!fs.existsSync(gearDir)) fs.mkdirSync(gearDir, { recursive: true });
 
 console.log('📁 Uploads directories initialized');
 
-// Security and rate limiting temporarily disabled for CORS debugging
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
-// CORS configuration - temporarily allow all origins for debugging
-app.use(cors({
-  origin: '*',
+// Rate limiting (global)
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300,                 // 300 requests per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use(globalLimiter);
+
+// CORS configuration - restrict to known frontends
+const allowedOrigins = (() => {
+  const list = [];
+  const envUrls = [process.env.FRONTEND_URL, process.env.ALT_FRONTEND_URL, process.env.VERCEL_URL];
+  for (const u of envUrls) {
+    if (!u) continue;
+    // Ensure full URL with protocol
+    if (/^https?:\/\//i.test(u)) list.push(u);
+    else list.push(`https://${u}`);
+  }
+  return list.filter(Boolean);
+})();
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // same-origin or curl/postman
+    if (allowedOrigins.length === 0) return callback(null, true); // fallback if not configured
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
-}));
-
-// Handle preflight requests globally
-app.options('*', cors());
-
-// Test endpoint for CORS debugging
-app.get('/api/test-cors', (req, res) => {
-  res.json({ message: 'CORS test successful', timestamp: new Date().toISOString() });
-});
-
-// Test endpoint specifically for races CORS debugging
-app.get('/api/test-races-cors', (req, res) => {
-  res.json({ 
-    message: 'Races CORS test successful', 
-    timestamp: new Date().toISOString(),
-    endpoint: '/api/test-races-cors'
-  });
-});
-
-// Simple test route for races endpoint debugging
-app.get('/api/test-races-simple', (req, res) => {
-  res.json({ 
-    message: 'Simple races test successful', 
-    timestamp: new Date().toISOString(),
-    endpoint: '/api/test-races-simple'
-  });
-});
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
