@@ -12,7 +12,7 @@ const Admin = () => {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderForm, setOrderForm] = useState({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
   const [showOrderModal, setShowOrderModal] = useState(false);
-  const [bannerForm, setBannerForm] = useState({ enabled: false, message: '' });
+  const [bannerForm, setBannerForm] = useState({ enabled: false, itemsText: '', rotationIntervalMs: 6000 });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   // Members pagination state
@@ -221,9 +221,14 @@ const Admin = () => {
       const response = await fetch(`${API_BASE_URL}/site/banner`);
       if (response.ok) {
         const data = await response.json();
+        const normalized = data.banner || {};
+        const items = Array.isArray(normalized.items)
+          ? normalized.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
+          : (normalized.message ? [String(normalized.message)] : []);
         setBannerForm({
-          enabled: data.banner?.enabled || false,
-          message: data.banner?.message || ''
+          enabled: !!normalized.enabled,
+          itemsText: items.join('\n'),
+          rotationIntervalMs: Number(normalized.rotationIntervalMs) > 0 ? Number(normalized.rotationIntervalMs) : 6000,
         });
       }
     } catch (error) {
@@ -1076,7 +1081,7 @@ const Admin = () => {
         {activeTab === 'banner' && (
           <div className="email-section">
             <h2>Site Banner</h2>
-            <p>Toggle a banner at the top of the site with a message.</p>
+            <p>Toggle a banner at the top of the site with one or more rotating messages.</p>
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
@@ -1084,7 +1089,11 @@ const Admin = () => {
                 const resp = await fetch(`${API_BASE_URL}/site/banner`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify(bannerForm)
+                  body: JSON.stringify({
+                    enabled: !!bannerForm.enabled,
+                    items: (bannerForm.itemsText || '').split(/\n+/).map(s => s.trim()).filter(Boolean),
+                    rotationIntervalMs: Number(bannerForm.rotationIntervalMs) > 0 ? Number(bannerForm.rotationIntervalMs) : 6000,
+                  })
                 });
                 if (!resp.ok) {
                   const err = await resp.json().catch(() => ({}));
@@ -1103,17 +1112,28 @@ const Admin = () => {
                 <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
               </div>
               <div className="form-group">
-                <label>Message (max 50 characters)</label>
-                <input 
-                  type="text" 
-                  value={bannerForm.message} 
-                  onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} 
-                  placeholder="Work in progress…" 
-                  maxLength={50}
+                <label>Messages (one per line, max 10; 50 chars each)</label>
+                <textarea 
+                  value={bannerForm.itemsText}
+                  onChange={(e)=> setBannerForm({ ...bannerForm, itemsText: e.target.value })}
+                  placeholder={"e.g. Registrations open now!\nVisit our FAQ for details"}
+                  rows={4}
+                  maxLength={600}
+                  style={{ width: '100%' }}
                 />
                 <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
-                  {bannerForm.message.length}/50 characters
+                  {bannerForm.itemsText.length}/600 characters total
                 </div>
+              </div>
+              <div className="form-group">
+                <label>Rotation interval (ms)</label>
+                <input 
+                  type="number" 
+                  value={bannerForm.rotationIntervalMs}
+                  onChange={(e)=> setBannerForm({ ...bannerForm, rotationIntervalMs: e.target.value })}
+                  min={1000}
+                  step={500}
+                />
               </div>
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Save Banner</button>

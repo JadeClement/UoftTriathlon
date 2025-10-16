@@ -34,7 +34,9 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
-  const [banner, setBanner] = useState({ enabled: false, message: '' });
+  const [banner, setBanner] = useState({ enabled: false, items: [], rotationIntervalMs: 6000 });
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [isBannerHovered, setIsBannerHovered] = useState(false);
   const navigate = useNavigate();
   const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
   const profileRef = useRef(null);
@@ -82,7 +84,16 @@ const Navbar = () => {
         const resp = await fetch(`${base}/site/banner`);
         if (!resp.ok) return;
         const data = await resp.json();
-        setBanner(data.banner || { enabled: false, message: '' });
+        const normalized = data.banner || {};
+        const items = Array.isArray(normalized.items)
+          ? normalized.items.map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
+          : (normalized.message ? [{ message: String(normalized.message) }] : []);
+        setBanner({
+          enabled: !!normalized.enabled && items.length > 0,
+          items,
+          rotationIntervalMs: Number(normalized.rotationIntervalMs) > 0 ? Number(normalized.rotationIntervalMs) : 6000,
+        });
+        setActiveBannerIndex(0);
       } catch (_) {}
     };
     loadBanner();
@@ -91,9 +102,20 @@ const Navbar = () => {
   // Reflect banner height to CSS variable for page spacing
   useEffect(() => {
     const isMobile = window.innerWidth <= 768;
-    const offset = banner.enabled && banner.message ? (isMobile ? '24px' : '28px') : '0px';
+    const hasBanner = banner.enabled && (banner.items?.length > 0);
+    const offset = hasBanner ? (isMobile ? '24px' : '28px') : '0px';
     document.documentElement.style.setProperty('--banner-offset', offset);
-  }, [banner.enabled, banner.message]);
+  }, [banner.enabled, banner.items]);
+
+  // Auto-rotate banners
+  useEffect(() => {
+    if (!banner.enabled || !banner.items || banner.items.length <= 1) return;
+    if (isBannerHovered) return; // pause on hover
+    const interval = setInterval(() => {
+      setActiveBannerIndex((prev) => (prev + 1) % banner.items.length);
+    }, banner.rotationIntervalMs || 6000);
+    return () => clearInterval(interval);
+  }, [banner.enabled, banner.items, banner.rotationIntervalMs, isBannerHovered]);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -131,12 +153,27 @@ const Navbar = () => {
 
   return (
     <>
-    {banner.enabled && banner.message && (
-      <div className="site-banner active">
-        <strong dangerouslySetInnerHTML={{ __html: linkify(banner.message) }} />
+    {banner.enabled && (banner.items?.length > 0) && (
+      <div 
+        className="site-banner active"
+        role="status"
+        aria-live="polite"
+        onMouseEnter={() => setIsBannerHovered(true)}
+        onMouseLeave={() => setIsBannerHovered(false)}
+      >
+        <div className="site-banner-rotator">
+          {banner.items.map((it, idx) => (
+            <div
+              key={idx}
+              className={`site-banner-item ${idx === activeBannerIndex ? 'visible' : ''}`}
+            >
+              <strong dangerouslySetInnerHTML={{ __html: linkify(it.message) }} />
+            </div>
+          ))}
+        </div>
       </div>
     )}
-    <nav className="navbar" style={{ marginTop: banner.enabled && banner.message ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
+    <nav className="navbar" style={{ marginTop: banner.enabled && (banner.items?.length > 0) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
       <div className="navbar-container">
         <Link to="/" className="navbar-logo" onClick={closeMenu}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
