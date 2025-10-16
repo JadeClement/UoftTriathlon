@@ -1,0 +1,304 @@
+diff --git a/backend/routes/site.js b/backend/routes/site.js
+index b8dbb2aa..19b000e9 100644
+--- a/backend/routes/site.js
++++ b/backend/routes/site.js
+@@ -4,29 +4,77 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
+ 
+ const router = express.Router();
+ 
+-// Public: get banner
++// Public: get banner (supports single or multiple banners)
+ router.get('/banner', async (req, res) => {
+   try {
+     const result = await pool.query('SELECT value FROM site_settings WHERE key = $1', ['banner_json']);
+     const raw = result.rows[0]?.value || '';
+-    const parsed = raw ? JSON.parse(raw) : { enabled: false, message: '' };
+-    res.json({ banner: parsed });
++
++    let parsed;
++    try {
++      parsed = raw ? JSON.parse(raw) : null;
++    } catch (_e) {
++      parsed = null;
++    }
++
++    // Normalize to unified shape: { enabled: boolean, items: [{ message }], rotationIntervalMs }
++    let banner = { enabled: false, items: [], rotationIntervalMs: 6000 };
++    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
++      const enabled = !!parsed.enabled;
++      const rotationIntervalMs = Number(parsed.rotationIntervalMs) > 0 ? Number(parsed.rotationIntervalMs) : 6000;
++
++      if (Array.isArray(parsed.items)) {
++        const items = parsed.items
++          .map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
++          .filter((it) => it.message);
++        banner = { enabled: enabled && items.length > 0, items, rotationIntervalMs };
++      } else if (typeof parsed.message === 'string') {
++        const items = parsed.message ? [{ message: parsed.message }] : [];
++        banner = { enabled: enabled && items.length > 0, items, rotationIntervalMs };
++      }
++    }
++
++    res.json({ banner });
+   } catch (error) {
+     console.error('Get banner error:', error);
+     res.status(500).json({ error: 'Internal server error' });
+   }
+ });
+ 
+-// Admin: update banner
++// Admin: update banner (supports multiple items)
+ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
+   try {
+-    const { enabled = false, message = '' } = req.body || {};
+-    const value = JSON.stringify({ enabled: !!enabled, message: String(message || '') });
+-    await pool.query(`
++    const body = req.body || {};
++    const enabled = !!body.enabled;
++    const rotationIntervalMs = Number(body.rotationIntervalMs) > 0 ? Number(body.rotationIntervalMs) : 6000;
++
++    let itemsInput = body.items;
++    if (!Array.isArray(itemsInput) && typeof body.message === 'string') {
++      itemsInput = [{ message: body.message }];
++    }
++
++    let items = Array.isArray(itemsInput)
++      ? itemsInput.map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
++      : [];
++
++    // Enforce constraints: trim, max length 50, drop empties, cap at 10 items
++    items = items
++      .map((it) => ({ message: (it.message || '').toString().trim().slice(0, 50) }))
++      .filter((it) => it.message)
++      .slice(0, 10);
++
++    const banner = { enabled: enabled && items.length > 0, items, rotationIntervalMs };
++    const value = JSON.stringify(banner);
++
++    await pool.query(
++      `
+       INSERT INTO site_settings(key, value) VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+-    `, ['banner_json', value]);
+-    res.json({ message: 'Banner updated', banner: { enabled: !!enabled, message: String(message || '') } });
++    `,
++      ['banner_json', value]
++    );
++
++    res.json({ message: 'Banner updated', banner });
+   } catch (error) {
+     console.error('Update banner error:', error);
+     res.status(500).json({ error: 'Internal server error' });
+diff --git a/src/components/Admin.js b/src/components/Admin.js
+index 513f843d..09ea86ac 100644
+--- a/src/components/Admin.js
++++ b/src/components/Admin.js
+@@ -12,7 +12,7 @@ const Admin = () => {
+   const [ordersLoading, setOrdersLoading] = useState(false);
+   const [orderForm, setOrderForm] = useState({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
+   const [showOrderModal, setShowOrderModal] = useState(false);
+-  const [bannerForm, setBannerForm] = useState({ enabled: false, message: '' });
++  const [bannerForm, setBannerForm] = useState({ enabled: false, itemsText: '', rotationIntervalMs: 6000 });
+   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
+   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+   // Members pagination state
+@@ -221,9 +221,14 @@ const Admin = () => {
+       const response = await fetch(`${API_BASE_URL}/site/banner`);
+       if (response.ok) {
+         const data = await response.json();
++        const normalized = data.banner || {};
++        const items = Array.isArray(normalized.items)
++          ? normalized.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
++          : (normalized.message ? [String(normalized.message)] : []);
+         setBannerForm({
+-          enabled: data.banner?.enabled || false,
+-          message: data.banner?.message || ''
++          enabled: !!normalized.enabled,
++          itemsText: items.join('\n'),
++          rotationIntervalMs: Number(normalized.rotationIntervalMs) > 0 ? Number(normalized.rotationIntervalMs) : 6000,
+         });
+       }
+     } catch (error) {
+@@ -1076,7 +1081,7 @@ const Admin = () => {
+         {activeTab === 'banner' && (
+           <div className="email-section">
+             <h2>Site Banner</h2>
+-            <p>Toggle a banner at the top of the site with a message.</p>
++            <p>Toggle a banner at the top of the site with one or more rotating messages.</p>
+             <form onSubmit={async (e) => {
+               e.preventDefault();
+               try {
+@@ -1084,7 +1089,11 @@ const Admin = () => {
+                 const resp = await fetch(`${API_BASE_URL}/site/banner`, {
+                   method: 'PUT',
+                   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+-                  body: JSON.stringify(bannerForm)
++                  body: JSON.stringify({
++                    enabled: !!bannerForm.enabled,
++                    items: (bannerForm.itemsText || '').split(/\n+/).map(s => s.trim()).filter(Boolean),
++                    rotationIntervalMs: Number(bannerForm.rotationIntervalMs) > 0 ? Number(bannerForm.rotationIntervalMs) : 6000,
++                  })
+                 });
+                 if (!resp.ok) {
+                   const err = await resp.json().catch(() => ({}));
+@@ -1103,18 +1112,29 @@ const Admin = () => {
+                 <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
+               </div>
+               <div className="form-group">
+-                <label>Message (max 50 characters)</label>
+-                <input 
+-                  type="text" 
+-                  value={bannerForm.message} 
+-                  onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} 
+-                  placeholder="Work in progress…" 
+-                  maxLength={50}
++                <label>Messages (one per line, max 10; 50 chars each)</label>
++                <textarea 
++                  value={bannerForm.itemsText}
++                  onChange={(e)=> setBannerForm({ ...bannerForm, itemsText: e.target.value })}
++                  placeholder={"e.g. Registrations open now!\nVisit our FAQ for details"}
++                  rows={4}
++                  maxLength={600}
++                  style={{ width: '100%' }}
+                 />
+                 <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
+-                  {bannerForm.message.length}/50 characters
++                  {bannerForm.itemsText.length}/600 characters total
+                 </div>
+               </div>
++              <div className="form-group">
++                <label>Rotation interval (ms)</label>
++                <input 
++                  type="number" 
++                  value={bannerForm.rotationIntervalMs}
++                  onChange={(e)=> setBannerForm({ ...bannerForm, rotationIntervalMs: e.target.value })}
++                  min={1000}
++                  step={500}
++                />
++              </div>
+               <div className="modal-actions">
+                 <button type="submit" className="btn btn-primary">Save Banner</button>
+               </div>
+diff --git a/src/components/Navbar.css b/src/components/Navbar.css
+index b22579fa..60b1908f 100644
+--- a/src/components/Navbar.css
++++ b/src/components/Navbar.css
+@@ -29,6 +29,30 @@
+   display: flex;
+ }
+ 
++/* Rotating banner container and items */
++.site-banner-rotator {
++  position: relative;
++  width: 100%;
++  height: 100%;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  overflow: hidden;
++}
++
++.site-banner-item {
++  position: absolute;
++  opacity: 0;
++  transition: opacity 300ms ease-in-out;
++  width: 100%;
++  text-align: center;
++  padding: 0 12px;
++}
++
++.site-banner-item.visible {
++  opacity: 1;
++}
++
+ /* Make links in the banner look clickable with hover underline */
+ .site-banner a {
+   color: #fff;
+diff --git a/src/components/Navbar.js b/src/components/Navbar.js
+index 4cb4c6e0..b7924504 100644
+--- a/src/components/Navbar.js
++++ b/src/components/Navbar.js
+@@ -34,7 +34,9 @@ const Navbar = () => {
+   const [isProfileOpen, setIsProfileOpen] = useState(false);
+   const [isMoreOpen, setIsMoreOpen] = useState(false);
+   const [profileImageUrl, setProfileImageUrl] = useState(null);
+-  const [banner, setBanner] = useState({ enabled: false, message: '' });
++  const [banner, setBanner] = useState({ enabled: false, items: [], rotationIntervalMs: 6000 });
++  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
++  const [isBannerHovered, setIsBannerHovered] = useState(false);
+   const navigate = useNavigate();
+   const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
+   const profileRef = useRef(null);
+@@ -82,7 +84,16 @@ const Navbar = () => {
+         const resp = await fetch(`${base}/site/banner`);
+         if (!resp.ok) return;
+         const data = await resp.json();
+-        setBanner(data.banner || { enabled: false, message: '' });
++        const normalized = data.banner || {};
++        const items = Array.isArray(normalized.items)
++          ? normalized.items.map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
++          : (normalized.message ? [{ message: String(normalized.message) }] : []);
++        setBanner({
++          enabled: !!normalized.enabled && items.length > 0,
++          items,
++          rotationIntervalMs: Number(normalized.rotationIntervalMs) > 0 ? Number(normalized.rotationIntervalMs) : 6000,
++        });
++        setActiveBannerIndex(0);
+       } catch (_) {}
+     };
+     loadBanner();
+@@ -91,9 +102,20 @@ const Navbar = () => {
+   // Reflect banner height to CSS variable for page spacing
+   useEffect(() => {
+     const isMobile = window.innerWidth <= 768;
+-    const offset = banner.enabled && banner.message ? (isMobile ? '24px' : '28px') : '0px';
++    const hasBanner = banner.enabled && (banner.items?.length > 0);
++    const offset = hasBanner ? (isMobile ? '24px' : '28px') : '0px';
+     document.documentElement.style.setProperty('--banner-offset', offset);
+-  }, [banner.enabled, banner.message]);
++  }, [banner.enabled, banner.items]);
++
++  // Auto-rotate banners
++  useEffect(() => {
++    if (!banner.enabled || !banner.items || banner.items.length <= 1) return;
++    if (isBannerHovered) return; // pause on hover
++    const interval = setInterval(() => {
++      setActiveBannerIndex((prev) => (prev + 1) % banner.items.length);
++    }, banner.rotationIntervalMs || 6000);
++    return () => clearInterval(interval);
++  }, [banner.enabled, banner.items, banner.rotationIntervalMs, isBannerHovered]);
+ 
+   const toggleMenu = () => {
+     setIsOpen(!isOpen);
+@@ -131,12 +153,27 @@ const Navbar = () => {
+ 
+   return (
+     <>
+-    {banner.enabled && banner.message && (
+-      <div className="site-banner active">
+-        <strong dangerouslySetInnerHTML={{ __html: linkify(banner.message) }} />
++    {banner.enabled && (banner.items?.length > 0) && (
++      <div 
++        className="site-banner active"
++        role="status"
++        aria-live="polite"
++        onMouseEnter={() => setIsBannerHovered(true)}
++        onMouseLeave={() => setIsBannerHovered(false)}
++      >
++        <div className="site-banner-rotator">
++          {banner.items.map((it, idx) => (
++            <div
++              key={idx}
++              className={`site-banner-item ${idx === activeBannerIndex ? 'visible' : ''}`}
++            >
++              <strong dangerouslySetInnerHTML={{ __html: linkify(it.message) }} />
++            </div>
++          ))}
++        </div>
+       </div>
+     )}
+-    <nav className="navbar" style={{ marginTop: banner.enabled && banner.message ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
++    <nav className="navbar" style={{ marginTop: banner.enabled && (banner.items?.length > 0) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
+       <div className="navbar-container">
+         <Link to="/" className="navbar-logo" onClick={closeMenu}>
+           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
