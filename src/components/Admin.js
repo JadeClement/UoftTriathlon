@@ -334,6 +334,34 @@ const Admin = () => {
     }));
   };
 
+  // Export merch orders to Excel
+  const exportMerchToExcel = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/merch/export`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Failed to export merch orders');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `merch_orders_${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || 'Failed to export merch orders');
+    }
+  };
+
   const approveMember = (member) => {
     setApprovingMember(member);
     setApprovalForm({
@@ -625,6 +653,12 @@ const Admin = () => {
           onClick={() => setActiveTab('attendance')}
         >
           Attendance
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'merch' ? 'active' : ''}`}
+          onClick={() => setActiveTab('merch')}
+        >
+          Merch
         </button>
       </div>
 
@@ -1129,6 +1163,19 @@ const Admin = () => {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Merch Tab */}
+        {activeTab === 'merch' && (
+          <div className="email-section">
+            <h2>Merch Orders</h2>
+            <p>Export all merch orders as an Excel file.</p>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={exportMerchToExcel}>
+                Export to Excel
+              </button>
+            </div>
           </div>
         )}
 
