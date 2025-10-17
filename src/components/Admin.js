@@ -655,10 +655,10 @@ const Admin = () => {
           Attendance
         </button>
         <button 
-          className={`tab-button ${activeTab === 'merch' ? 'active' : ''}`}
-          onClick={() => setActiveTab('merch')}
+          className={`tab-button ${activeTab === 'orders' ? 'active' : ''}`}
+          onClick={() => setActiveTab('orders')}
         >
-          Merch
+          Merch Orders
         </button>
       </div>
 
@@ -1166,16 +1166,18 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Merch Tab */}
-        {activeTab === 'merch' && (
+        {/* Merch Orders Tab - export only (full orders UI lives on staging) */}
+        {activeTab === 'orders' && (
           <div className="email-section">
-            <h2>Merch Orders</h2>
-            <p>Export all merch orders as an Excel file.</p>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={exportMerchToExcel}>
-                Export to Excel
-              </button>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <h2>Merch Orders</h2>
+              <div style={{display:'flex', gap:8}}>
+                <button className="btn btn-primary" onClick={exportMerchToExcel}>
+                  Export to Excel
+                </button>
+              </div>
             </div>
+            <p style={{color:'#6b7280'}}>This branch shows the export action. Full order management UI is on staging.</p>
           </div>
         )}
 
