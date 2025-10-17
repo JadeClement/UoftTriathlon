@@ -24,6 +24,14 @@ backend/.env.*
 s3-upload-user_accessKeys.csv
 *.csv
 
+# Dependencies (never commit these)
+node_modules/
+backend/node_modules/
+
+# Build outputs
+build/
+dist/
+
 # Logs and OS cruft
 npm-debug.log*
 *.log
