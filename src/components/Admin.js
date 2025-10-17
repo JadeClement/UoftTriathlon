@@ -12,7 +12,9 @@ const Admin = () => {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderForm, setOrderForm] = useState({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
   const [showOrderModal, setShowOrderModal] = useState(false);
-  const [bannerForm, setBannerForm] = useState({ enabled: false, itemsText: '', rotationIntervalMs: 6000 });
+  const [bannerForm, setBannerForm] = useState({ enabled: false, rotationIntervalMs: 6000 });
+  const [bannerItems, setBannerItems] = useState([]);
+  const [newBannerText, setNewBannerText] = useState('');
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   // Members pagination state
@@ -227,13 +229,29 @@ const Admin = () => {
           : (normalized.message ? [String(normalized.message)] : []);
         setBannerForm({
           enabled: !!normalized.enabled,
-          itemsText: items.join('\n'),
           rotationIntervalMs: Number(normalized.rotationIntervalMs) > 0 ? Number(normalized.rotationIntervalMs) : 6000,
         });
+        setBannerItems(items);
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
     }
+  };
+
+  // Banner editor helpers
+  const handleAddBannerItem = () => {
+    const trimmed = (newBannerText || '').trim();
+    if (!trimmed) return;
+    const limited = trimmed.slice(0, 50);
+    setBannerItems(prevItems => {
+      if (prevItems.length >= 10) return prevItems;
+      return [...prevItems, limited];
+    });
+    setNewBannerText('');
+  };
+
+  const handleRemoveBannerItem = (indexToRemove) => {
+    setBannerItems(prevItems => prevItems.filter((_, idx) => idx !== indexToRemove));
   };
 
   // Load merch orders
@@ -1091,7 +1109,7 @@ const Admin = () => {
                   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                   body: JSON.stringify({
                     enabled: !!bannerForm.enabled,
-                    items: (bannerForm.itemsText || '').split(/\n+/).map(s => s.trim()).filter(Boolean),
+                    items: bannerItems,
                     rotationIntervalMs: Number(bannerForm.rotationIntervalMs) > 0 ? Number(bannerForm.rotationIntervalMs) : 6000,
                   })
                 });
@@ -1100,6 +1118,7 @@ const Admin = () => {
                   throw new Error(err.error || 'Failed to update banner');
                 }
                 alert('Banner updated');
+                await loadBannerData();
               } catch (err) {
                 alert(err.message);
               }
@@ -1111,20 +1130,52 @@ const Admin = () => {
                 </label>
                 <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
               </div>
-              <div className="form-group">
-                <label>Messages (one per line, max 10; 50 chars each)</label>
-                <textarea 
-                  value={bannerForm.itemsText}
-                  onChange={(e)=> setBannerForm({ ...bannerForm, itemsText: e.target.value })}
-                  placeholder={"e.g. Registrations open now!\nVisit our FAQ for details"}
-                  rows={4}
-                  maxLength={600}
-                  style={{ width: '100%' }}
-                />
-                <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
-                  {bannerForm.itemsText.length}/600 characters total
+
+              <div className="form-group banner-editor">
+                <label>Messages</label>
+                <div className="banner-add-row">
+                  <input
+                    type="text"
+                    className="banner-input"
+                    placeholder="Type a message (max 50 characters)"
+                    value={newBannerText}
+                    onChange={(e) => setNewBannerText(e.target.value.slice(0, 50))}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddBannerItem(); } }}
+                  />
+                  <button
+                    type="button"
+                    className="action-btn primary banner-add-btn"
+                    onClick={handleAddBannerItem}
+                    disabled={!newBannerText.trim() || bannerItems.length >= 10}
+                  >
+                    Add
+                  </button>
                 </div>
+                <div className="banner-meta">
+                  <span>{newBannerText.length}/50</span>
+                  <span style={{ marginLeft: 'auto' }}>{bannerItems.length}/10 items</span>
+                </div>
+
+                <ul className="banner-items-list">
+                  {bannerItems.length === 0 && (
+                    <li className="banner-item empty">No messages added yet.</li>
+                  )}
+                  {bannerItems.map((msg, idx) => (
+                    <li key={idx} className="banner-item">
+                      <span className="banner-item-text">{msg}</span>
+                      <button
+                        type="button"
+                        className="banner-remove-btn"
+                        aria-label={`Remove message ${idx + 1}`}
+                        onClick={() => handleRemoveBannerItem(idx)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
+
               <div className="form-group">
                 <label>Rotation interval (ms)</label>
                 <input 
