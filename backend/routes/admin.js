@@ -204,6 +204,14 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
     
     console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, expiryDate });
 
+    // Get the current role before updating to check if it actually changed
+    let currentRole = null;
+    if (role !== undefined) {
+      const currentUserResult = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
+      currentRole = currentUserResult.rows[0]?.role;
+      console.log(`🔍 DEBUG: Role update requested - Current: ${currentRole}, New: ${role}`);
+    }
+
     // Check if this is the last administrator
     if (role && role !== 'administrator') {
       const adminCount = await pool.query('SELECT COUNT(*) as count FROM users WHERE role = $1 AND is_active = true', ['administrator']);
@@ -295,32 +303,37 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Send email notification if role was changed
-    if (role !== undefined) {
-      console.log(`🔍 DEBUG: Role was changed in update, sending email notification for role: ${role}`);
-      try {
-        const emailService = require('../services/emailService');
-        const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
-        
-        if (userDetails.rows.length > 0) {
-          const { name, email } = userDetails.rows[0];
-          console.log(`🔍 DEBUG: Found user for role change email - Name: ${name}, Email: ${email}, New Role: ${role}`);
+    // Send email notification if role was actually changed
+    if (role !== undefined && currentRole !== null) {
+      // Only send notification if the role actually changed
+      if (currentRole !== role) {
+        console.log(`🔍 DEBUG: Role actually changed from ${currentRole} to ${role}, sending email notification`);
+        try {
+          const emailService = require('../services/emailService');
+          const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
           
-          if (role === 'member') {
-            await emailService.sendMemberAcceptance(email, name);
-            console.log(`📧 Member acceptance email sent to ${email}`);
+          if (userDetails.rows.length > 0) {
+            const { name, email } = userDetails.rows[0];
+            console.log(`🔍 DEBUG: Found user for role change email - Name: ${name}, Email: ${email}, New Role: ${role}`);
+            
+            if (role === 'member') {
+              await emailService.sendMemberAcceptance(email, name);
+              console.log(`📧 Member acceptance email sent to ${email}`);
+            } else {
+              // Send role change notification for other roles
+              await emailService.sendRoleChangeNotification(email, name, currentRole, role);
+              console.log(`📧 Role change notification email sent to ${email} for role change from ${currentRole} to ${role}`);
+            }
           } else {
-            // Send role change notification for other roles
-            await emailService.sendRoleChangeNotification(email, name, 'unknown', role);
-            console.log(`📧 Role change notification email sent to ${email} for role ${role}`);
+            console.log(`❌ DEBUG: No user found with id ${id} for role change email`);
           }
-        } else {
-          console.log(`❌ DEBUG: No user found with id ${id} for role change email`);
+        } catch (emailError) {
+          console.error('❌ Failed to send role change email:', emailError);
+          console.error('❌ DEBUG: Full error details for role change email:', emailError.stack);
+          // Don't fail the update if email fails
         }
-      } catch (emailError) {
-        console.error('❌ Failed to send role change email:', emailError);
-        console.error('❌ DEBUG: Full error details for role change email:', emailError.stack);
-        // Don't fail the update if email fails
+      } else {
+        console.log(`ℹ️ DEBUG: Role unchanged (${currentRole}), skipping email notification`);
       }
     }
 
