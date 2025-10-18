@@ -92,6 +92,13 @@ const TeamGear = () => {
     load();
   }, [API_BASE]);
 
+  // Cleanup effect to restore body scroll when component unmounts
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   // Navigation functions
   const goToPreviousImage = (itemId) => {
     const currentIndex = currentImageIndex[itemId] || 0;
@@ -377,6 +384,7 @@ const TeamGear = () => {
   const handleOrderClick = (item) => {
     setSelectedItem(item);
     setShowOrderModal(true);
+    document.body.style.overflow = 'hidden';
   };
 
   const closeOrderModal = () => {
@@ -385,11 +393,13 @@ const TeamGear = () => {
     setOrderEmail('');
     setOrderEmailConfirm('');
     setOrderError('');
+    document.body.style.overflow = '';
   };
 
   const closeSuccessModal = () => {
     setShowSuccessModal(false);
     setOrderSuccessData(null);
+    document.body.style.overflow = '';
   };
 
   const submitOrder = async () => {
@@ -445,6 +455,7 @@ const TeamGear = () => {
       });
       setShowSuccessModal(true);
       closeOrderModal();
+      document.body.style.overflow = 'hidden';
     } catch (error) {
       console.error('Order submission error:', error);
       alert('Failed to submit order. Please try again.');
