@@ -132,45 +132,14 @@ const Admin = () => {
     
     const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
     
-    // For links, only count the display text toward the 50-char limit
-    let limitedText;
-    if (before === '[' && after.includes('](')) {
-      // Extract just the display text for character counting
-      const linkMatch = newText.match(/\[([^\]]*)\]\([^)]*\)/g);
-      if (linkMatch) {
-        let displayTextLength = 0;
-        let processedText = newText;
-        
-        // Count only the text inside brackets for all links
-        linkMatch.forEach(link => {
-          const displayText = link.match(/\[([^\]]*)\]/)[1];
-          displayTextLength += displayText.length;
-        });
-        
-        // Remove links temporarily to count other text
-        const textWithoutLinks = newText.replace(/\[([^\]]*)\]\([^)]*\)/g, '');
-        const totalDisplayLength = textWithoutLinks.length + displayTextLength;
-        
-        if (totalDisplayLength <= 50) {
-          limitedText = newText; // Keep full text with links
-        } else {
-          // If too long, truncate the non-link text
-          const availableLength = 50 - displayTextLength;
-          limitedText = textWithoutLinks.slice(0, Math.max(0, availableLength));
-          // Re-add the links
-          linkMatch.forEach(link => {
-            limitedText += link;
-          });
-        }
-      } else {
-        limitedText = newText.slice(0, 50);
-      }
+    // Check if the display length would exceed 50 characters
+    if (getDisplayLength(newText) <= 50) {
+      setNewBannerText(newText);
     } else {
-      limitedText = newText.slice(0, 50);
+      // If it would be too long, don't update
+      console.log('🚫 Banner text too long, display length:', getDisplayLength(newText));
+      return;
     }
-    
-    // Update the state and input value
-    setNewBannerText(limitedText);
     
     // Restore cursor position
     setTimeout(() => {
@@ -350,6 +319,7 @@ const Admin = () => {
     if (!text) return 0;
     // Replace [text](url) with just the display text for counting
     const withoutUrls = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+    console.log('🔍 Display length calculation:', { original: text, processed: withoutUrls, length: withoutUrls.length });
     return withoutUrls.length;
   };
 
