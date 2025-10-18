@@ -29,7 +29,6 @@ const profileRoutes = require('./routes/profiles');
 const raceRoutes = require('./routes/races');
 const siteRoutes = require('./routes/site');
 const merchRoutes = require('./routes/merch');
-const merchRoutes = require('./routes/merch');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
