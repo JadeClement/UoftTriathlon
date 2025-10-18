@@ -355,6 +355,41 @@
   padding: 1.25rem;
 }
 
+.gear-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.gear-modal-header h2 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gear-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.gear-modal-close:hover {
+  color: #374151;
+}
+
+.gear-modal-body {
+  margin-bottom: 1rem;
+}
+
 .gear-modal h2 {
   margin: 0 0 1rem 0;
 }
@@ -640,6 +675,97 @@
 .order-notice strong {
   color: #0c4a6e;
   font-weight: 600;
+}
+
+/* Mobile-specific modal styles for order confirmation */
+@media (max-width: 768px) {
+  .gear-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+  
+  .gear-modal {
+    width: 95%;
+    max-width: none;
+    max-height: 90vh;
+    margin: 1rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .gear-modal-header {
+    flex-shrink: 0;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 8px 8px 0 0;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .gear-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
+  }
+  
+  .gear-modal-actions {
+    flex-shrink: 0;
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 0 0 8px 8px;
+    margin-top: 0;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .gear-modal-actions .cancel-button,
+  .gear-modal-actions .save-button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+  
+  .gear-modal-actions .cancel-button {
+    margin-bottom: 0.5rem;
+  }
+  
+  .gear-modal-actions .save-button {
+    margin-bottom: 0;
+  }
+  
+  /* Ensure proper spacing for order confirmation content */
+  .order-confirmation {
+    padding: 0;
+  }
+  
+  .order-item {
+    padding: 0.75rem 0;
+  }
+  
+  .order-item input[type="email"] {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+  }
+  
+  .order-notice {
+    margin-top: 1.5rem;
+    padding: 1rem;
+  }
 }
 
 
