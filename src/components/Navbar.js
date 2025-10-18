@@ -17,18 +17,13 @@ function linkify(text) {
   const input = text || '';
   console.log('🔗 Linkify input:', input);
   
-  // Simple approach: convert [label](url) to HTML links, don't escape anything
-  // Since banner content is admin-controlled, we can trust it
-  let result = input.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label, url) => {
-    console.log('🔗 Found markdown link:', { label, url });
-    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
-  });
-  
-  // Auto-link bare URLs that aren't already in links
-  const urlRegex = /(^|[^"])((https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+)|(www\.[\w\-._~:/?#[\]@!$&'()*+,;=%]+))(?![^<]*<\/a>)/gi;
-  result = result.replace(urlRegex, (match, prefix, fullUrl, httpUrl, wwwUrl) => {
-    const url = httpUrl || (wwwUrl.startsWith('http') ? wwwUrl : `https://${wwwUrl}`);
-    return `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer">${fullUrl}</a>`;
+  // Simple and generalizable: [text](anything) becomes a clickable link
+  // Everything between () becomes the href, regardless of format
+  let result = input.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+    console.log('🔗 Found link:', { label, url });
+    // Clean up the URL - add https:// if it doesn't start with http
+    const cleanUrl = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
   });
   
   console.log('🔗 Final result:', result);
