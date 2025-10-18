@@ -1072,7 +1072,12 @@ router.get('/attendance-dashboard', authenticateToken, requireCoach, async (req,
           LIMIT 1
         ) as last_attendance_submitted,
         (
-          SELECT 'System'
+          SELECT u.name
+          FROM workout_attendance wa
+          LEFT JOIN users u ON wa.submitted_by = u.id
+          WHERE wa.post_id = p.id
+          ORDER BY wa.recorded_at DESC
+          LIMIT 1
         ) as submitted_by
       FROM forum_posts p
       ${whereClause}
@@ -1163,13 +1168,14 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
           u.email,
           u.role,
         NULL as profile_picture_url,
-        'System' as submitted_by_name,
+        sub.name as submitted_by_name,
           CASE 
             WHEN wc.marked_absent = true THEN 'cancelled'
             ELSE 'attended'
           END as attendance_type
         FROM workout_attendance wa
         JOIN users u ON wa.user_id = u.id
+        LEFT JOIN users sub ON wa.submitted_by = sub.id
         LEFT JOIN workout_cancellations wc ON wa.post_id = wc.post_id AND wa.user_id = wc.user_id
         WHERE wa.post_id = $1
         
