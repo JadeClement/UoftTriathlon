@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
+import { showSuccess, showError, showWarning } from './SimpleNotification';
 import './Forum.css';
 
 const Forum = () => {
@@ -439,7 +440,7 @@ const Forum = () => {
         if (workout && workout.capacity) {
           const currentSignups = workoutSignups[workoutId]?.length || 0;
           if (currentSignups >= workout.capacity) {
-            alert(`Sorry, this workout is full! Maximum capacity: ${workout.capacity} people.`);
+            showWarning(`Sorry, this workout is full! Maximum capacity: ${workout.capacity} people.`);
             return;
           }
         }

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import { linkifyText } from '../utils/linkUtils';
+import { showSuccess, showError, showWarning } from './SimpleNotification';
 import './WorkoutDetail.css';
 
 const WorkoutDetail = () => {
@@ -424,9 +425,9 @@ const WorkoutDetail = () => {
         
         // Show appropriate message based on 12-hour rule
         if (data.within12hrs && data.markedAbsent) {
-          alert('⚠️ ' + data.message + '\n\nThis cancellation has been recorded as an absence.');
+          showWarning(data.message + ' This cancellation has been recorded as an absence.');
         } else {
-          alert('✅ ' + data.message);
+          showSuccess(data.message);
         }
         
         // Reload signups
@@ -751,9 +752,9 @@ const WorkoutDetail = () => {
                       const result = await saveWorkout(workout.id, loadWorkoutDetails);
                       if (result.success) {
                         setEditMode(false);
-                        alert('Workout updated successfully!');
+                        showSuccess('Workout updated successfully!');
                       } else {
-                        alert(`Error updating workout: ${result.error}`);
+                        showError(`Error updating workout: ${result.error}`);
                       }
                     }}
                   disabled={saving}

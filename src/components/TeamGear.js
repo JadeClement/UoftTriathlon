@@ -94,6 +94,13 @@ const TeamGear = () => {
     load();
   }, [API_BASE]);
 
+  // Cleanup effect to restore body scroll when component unmounts
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   // Navigation functions
   const goToPreviousImage = (itemId) => {
     const currentIndex = currentImageIndex[itemId] || 0;
