@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from './NotificationSystem';
+import { showSuccess, showError } from './SimpleNotification';
 import './TeamGear.css';
 
 const TeamGear = () => {
   const { currentUser, isAdmin } = useAuth();
-  const { showSuccess, showError } = useNotification();
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [gearItems, setGearItems] = useState([]);
   const [loading, setLoading] = useState(true);
