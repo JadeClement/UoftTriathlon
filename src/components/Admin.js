@@ -10,7 +10,9 @@ const Admin = () => {
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState(() => {
     // Restore last active tab from localStorage, default to 'members'
-    return localStorage.getItem('adminActiveTab') || 'members';
+    const savedTab = localStorage.getItem('adminActiveTab');
+    console.log('🔍 Admin: Restoring tab from localStorage:', savedTab);
+    return savedTab || 'members';
   });
   // Merch orders state
   const [orders, setOrders] = useState([]);
@@ -100,8 +102,10 @@ const Admin = () => {
 
   // Save active tab to localStorage whenever it changes
   const handleTabChange = (newTab) => {
+    console.log('🔍 Admin: Changing tab to:', newTab);
     setActiveTab(newTab);
     localStorage.setItem('adminActiveTab', newTab);
+    console.log('🔍 Admin: Saved tab to localStorage:', newTab);
   };
 
   // Function to insert formatting into banner input field
@@ -113,6 +117,18 @@ const Admin = () => {
     const end = input.selectionEnd;
     const text = input.value;
     const selectedText = text.substring(start, end);
+    
+    // Special handling for links to save space
+    if (before === '[' && after === '()') {
+      const url = prompt('Enter the URL (e.g., https://example.com):');
+      if (!url) return; // User cancelled
+      
+      // Clean up the URL
+      const cleanUrl = url.trim();
+      if (!cleanUrl) return;
+      
+      after = `](${cleanUrl})`;
+    }
     
     const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
     
@@ -1303,8 +1319,8 @@ const Admin = () => {
                   <button 
                     type="button" 
                     className="format-btn" 
-                    onClick={() => insertBannerFormatting('[', '](url)')}
-                    title="Link"
+                    onClick={() => insertBannerFormatting('[', ']()')}
+                    title="Link - Add URL inside parentheses"
                   >
                     🔗
                   </button>
