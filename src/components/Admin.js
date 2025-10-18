@@ -8,7 +8,10 @@ const Admin = () => {
   
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
-  const [activeTab, setActiveTab] = useState('members');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Restore last active tab from localStorage, default to 'members'
+    return localStorage.getItem('adminActiveTab') || 'members';
+  });
   // Merch orders state
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -94,6 +97,12 @@ const Admin = () => {
   }, [membersSearch]);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+
+  // Save active tab to localStorage whenever it changes
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    localStorage.setItem('adminActiveTab', newTab);
+  };
 
 
   // Phone number formatting functions (same as Login.js and Profile.js)
@@ -1024,46 +1033,46 @@ const Admin = () => {
       <div className="admin-tabs">
         <button 
           className={`tab-button ${activeTab === 'members' ? 'active' : ''}`}
-          onClick={() => setActiveTab('members')}
+          onClick={() => handleTabChange('members')}
         >
           All Members
         </button>
         {isAdmin(currentUser) && (
           <button 
             className={`tab-button ${activeTab === 'pending' ? 'active' : ''}`}
-            onClick={() => setActiveTab('pending')}
+            onClick={() => handleTabChange('pending')}
           >
             Pending Approval
           </button>
         )}
         <button 
           className={`tab-button ${activeTab === 'email' ? 'active' : ''}`}
-          onClick={() => setActiveTab('email')}
+          onClick={() => handleTabChange('email')}
         >
           Send Email
         </button>
         <button 
           className={`tab-button ${activeTab === 'text' ? 'active' : ''}`}
-          onClick={() => setActiveTab('text')}
+          onClick={() => handleTabChange('text')}
         >
           Send Text (Test)
         </button>
         <button 
           className={`tab-button ${activeTab === 'banner' ? 'active' : ''}`}
-          onClick={() => setActiveTab('banner')}
+          onClick={() => handleTabChange('banner')}
         >
           Site Banner
         </button>
         <button 
           className={`tab-button ${activeTab === 'attendance' ? 'active' : ''}`}
-          onClick={() => setActiveTab('attendance')}
+          onClick={() => handleTabChange('attendance')}
         >
           Attendance
         </button>
         {isAdmin(currentUser) && (
           <button 
             className={`tab-button ${activeTab === 'orders' ? 'active' : ''}`}
-            onClick={() => setActiveTab('orders')}
+            onClick={() => handleTabChange('orders')}
           >
             Merch Orders
           </button>
