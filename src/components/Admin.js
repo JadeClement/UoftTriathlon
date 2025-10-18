@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from './NotificationSystem';
 import './Admin.css';
 
 const Admin = () => {
   const { currentUser, isAdmin, isExec, isCoach } = useAuth();
-  const { showSuccess, showError } = useNotification();
+  
+  // Simple notification functions to replace missing NotificationSystem
+  const showSuccess = (message, options = {}) => {
+    alert(`${options.title ? options.title + ': ' : ''}${message}`);
+  };
+  
+  const showError = (message, options = {}) => {
+    alert(`${options.title ? options.title + ': ' : ''}${message}`);
+  };
+  
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
