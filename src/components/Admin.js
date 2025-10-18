@@ -302,10 +302,16 @@ const Admin = () => {
   const handleAddBannerItem = () => {
     const trimmed = (newBannerText || '').trim();
     if (!trimmed) return;
-    const limited = trimmed.slice(0, 50);
+    
+    // Only check display length, not full text length (preserve full links)
+    if (getDisplayLength(trimmed) > 50) {
+      console.log('🚫 Cannot add: display length exceeds 50 characters');
+      return;
+    }
+    
     setBannerItems(prevItems => {
       if (prevItems.length >= 10) return prevItems;
-      return [...prevItems, limited];
+      return [...prevItems, trimmed]; // Add full text including URLs
     });
     setNewBannerText('');
   };
