@@ -379,6 +379,7 @@ const TeamGear = () => {
   const handleOrderClick = (item) => {
     setSelectedItem(item);
     setShowOrderModal(true);
+    document.body.style.overflow = 'hidden';
   };
 
   const closeOrderModal = () => {
@@ -387,11 +388,13 @@ const TeamGear = () => {
     setOrderEmail('');
     setOrderEmailConfirm('');
     setOrderError('');
+    document.body.style.overflow = '';
   };
 
   const closeSuccessModal = () => {
     setShowSuccessModal(false);
     setOrderSuccessData(null);
+    document.body.style.overflow = '';
   };
 
   const submitOrder = async () => {
@@ -447,6 +450,7 @@ const TeamGear = () => {
       });
       setShowSuccessModal(true);
       closeOrderModal();
+      document.body.style.overflow = 'hidden';
     } catch (error) {
       console.error('Order submission error:', error);
       showError('Failed to submit order. Please try again.', { title: 'Order Failed' });

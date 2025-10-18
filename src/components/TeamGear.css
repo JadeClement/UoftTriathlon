@@ -679,6 +679,15 @@
 
 /* Mobile-specific modal styles for order confirmation */
 @media (max-width: 768px) {
+  .gear-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+  
   .gear-modal {
     width: 95%;
     max-width: none;
@@ -686,6 +695,8 @@
     margin: 1rem;
     display: flex;
     flex-direction: column;
+    position: relative;
+    overflow: hidden;
   }
   
   .gear-modal-header {
@@ -694,13 +705,17 @@
     border-bottom: 1px solid #e5e7eb;
     background: #fff;
     border-radius: 8px 8px 0 0;
+    position: relative;
+    z-index: 1;
   }
   
   .gear-modal-body {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1rem;
     -webkit-overflow-scrolling: touch;
+    min-height: 0;
   }
   
   .gear-modal-actions {
@@ -710,6 +725,8 @@
     background: #fff;
     border-radius: 0 0 8px 8px;
     margin-top: 0;
+    position: relative;
+    z-index: 1;
   }
   
   .gear-modal-actions .cancel-button,
