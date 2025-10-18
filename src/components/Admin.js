@@ -704,6 +704,34 @@ const Admin = () => {
     }));
   };
 
+  // Export merch orders to Excel
+  const exportMerchToExcel = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/merch/export`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Failed to export merch orders');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `merch_orders_${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || 'Failed to export merch orders');
+    }
+  };
+
   const approveMember = (member) => {
     setApprovingMember(member);
     setApprovalForm({
@@ -2011,7 +2039,12 @@ const Admin = () => {
           <div className="orders-section">
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <h2>Merch Orders</h2>
-              <button className="btn btn-primary" onClick={openNewOrder}>+ New Order</button>
+              <div style={{display:'flex', gap:8}}>
+                <button className="btn btn-primary" onClick={openNewOrder}>+ New Order</button>
+                <button className="btn btn-primary" onClick={exportMerchToExcel}>
+                  Export to Excel
+                </button>
+              </div>
             </div>
             {ordersLoading ? (
               <div className="loading">Loading orders...</div>

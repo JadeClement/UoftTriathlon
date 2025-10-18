@@ -28,6 +28,8 @@ const raceRoutes = require('./routes/races');
 const gearRoutes = require('./routes/gear');
 const merchOrdersRoutes = require('./routes/merchOrders');
 const siteRoutes = require('./routes/site');
+const merchRoutes = require('./routes/merch');
+const merchRoutes = require('./routes/merch');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -116,7 +118,7 @@ app.use('/api/profiles', profileRoutes);
 app.use('/api/races', raceRoutes);
 app.use('/api/site', siteRoutes);
 app.use('/api/gear', gearRoutes);
-app.use('/api/merch-orders', merchOrdersRoutes);
+app.use('/api/merch-orders', merchRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {

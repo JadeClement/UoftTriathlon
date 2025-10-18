@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../database-pg');
 const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('../middleware/auth');
+const ExcelJS = require('exceljs');
 
 // Function to convert markdown-like formatting to HTML
 const formatText = (text) => {
@@ -1283,3 +1284,40 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
 });
 
 module.exports = router;
+
+// Merch export endpoint - must be defined before module export (moved above if needed)
+router.get('/merch/export', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT first_name, last_name, email, item, size, quantity, created_at
+      FROM merch_orders
+      ORDER BY created_at DESC
+    `);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Merch Orders');
+
+    worksheet.columns = [
+      { header: 'First Name', key: 'first_name', width: 20 },
+      { header: 'Last Name', key: 'last_name', width: 20 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Item', key: 'item', width: 30 },
+      { header: 'Size', key: 'size', width: 12 },
+      { header: 'Quantity', key: 'quantity', width: 10 }
+    ];
+
+    for (const row of result.rows) {
+      worksheet.addRow(row);
+    }
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="merch_orders_${dateStr}.xlsx"`);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error('Export merch orders error:', error);
+    return res.status(500).json({ error: 'Failed to generate Excel export' });
+  }
+});
