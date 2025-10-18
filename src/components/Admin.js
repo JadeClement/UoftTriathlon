@@ -888,9 +888,16 @@ const Admin = () => {
           };
         }));
 
-        // Check if role was changed and notify the user
-        if (editForm.role !== editingMember.role) {
-          console.log('🔄 Role changed from', editingMember.role, 'to', editForm.role);
+        // Check if role was actually changed and notify the user
+        // Use strict comparison and ensure we're comparing the original role value
+        const originalRole = editingMember.role;
+        const newRole = editForm.role;
+        const roleChanged = originalRole !== newRole;
+        
+        console.log('🔍 Role comparison - Original:', originalRole, 'New:', newRole, 'Changed:', roleChanged);
+        
+        if (roleChanged) {
+          console.log('🔄 Role changed from', originalRole, 'to', newRole);
           
           // Send notification to the user about role change
           try {
@@ -902,8 +909,8 @@ const Admin = () => {
               },
               body: JSON.stringify({
                 userId: editingMember.id,
-                oldRole: editingMember.role,
-                newRole: editForm.role
+                oldRole: originalRole,
+                newRole: newRole
               })
             });
             
@@ -915,6 +922,8 @@ const Admin = () => {
           } catch (error) {
             console.log('⚠️ Error sending role change notification:', error);
           }
+        } else {
+          console.log('ℹ️ No role change detected - skipping notification');
         }
         
         console.log('🔄 Reloading admin data...');
