@@ -57,10 +57,22 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
       ? itemsInput.map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
       : [];
 
-    // Enforce constraints: trim, max length 50, drop empties, cap at 10 items
+    // Helper function to calculate display length (excluding URLs in links)
+    const getDisplayLength = (text) => {
+      if (!text) return 0;
+      // Replace [text](url) with just the display text for counting
+      const withoutUrls = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+      return withoutUrls.length;
+    };
+
+    // Enforce constraints: trim, max display length 50, drop empties, cap at 10 items
     items = items
-      .map((it) => ({ message: (it.message || '').toString().trim().slice(0, 50) }))
-      .filter((it) => it.message)
+      .map((it) => {
+        const message = (it.message || '').toString().trim();
+        // Only enforce 50-char limit on display text, preserve full links
+        return getDisplayLength(message) <= 50 ? { message } : null;
+      })
+      .filter((it) => it && it.message)
       .slice(0, 10);
 
     const banner = { enabled: enabled && items.length > 0, items, rotationIntervalMs };
