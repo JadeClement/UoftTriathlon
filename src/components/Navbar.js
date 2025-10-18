@@ -15,13 +15,16 @@ function escapeHtml(input) {
 
 function linkify(text) {
   const input = text || '';
-  // First: support [label](url)
-  const withMarkdownLinks = input.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label, url) => {
-    return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+  
+  // First: escape HTML in the raw text
+  let escaped = escapeHtml(input);
+  
+  // Then: convert [label](url) markdown to HTML links
+  escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label, url) => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
   });
-  // Escape any remaining text
-  const escaped = escapeHtml(withMarkdownLinks);
-  // Then: auto-link bare URLs
+  
+  // Finally: auto-link any remaining bare URLs
   const urlRegex = /(https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+)|(www\.[\w\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
   return escaped.replace(urlRegex, (match) => {
     const url = match.startsWith('http') ? match : `https://${match}`;
