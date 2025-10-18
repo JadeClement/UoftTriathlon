@@ -25,7 +25,6 @@ const Admin = () => {
   const [bannerForm, setBannerForm] = useState({ enabled: false, rotationIntervalMs: 6000 });
   const [bannerItems, setBannerItems] = useState([]);
   const [newBannerText, setNewBannerText] = useState('');
-  const [showBannerSavedModal, setShowBannerSavedModal] = useState(false);
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   // Members pagination state
@@ -1197,7 +1196,7 @@ const Admin = () => {
                   const err = await resp.json().catch(() => ({}));
                   throw new Error(err.error || 'Failed to update banner');
                 }
-                setShowBannerSavedModal(true);
+                showSuccess('Banner updated successfully!');
                 await loadBannerData();
               } catch (err) {
                 showError(err.message, { title: 'Failed to Update Banner' });
@@ -2519,27 +2518,6 @@ const Admin = () => {
         </div>
       )}
 
-      {/* Banner Saved Success Modal */}
-      {showBannerSavedModal && (
-        <div className="modal-overlay">
-          <div className="banner-success-modal">
-            <div className="success-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" fill="#10b981"/>
-                <path d="m9 12 2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <h3>Banner Saved Successfully!</h3>
-            <p>Your site banner has been updated and is now live.</p>
-            <button 
-              className="success-modal-btn"
-              onClick={() => setShowBannerSavedModal(false)}
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
