@@ -17,27 +17,22 @@ function linkify(text) {
   const input = text || '';
   console.log('🔗 Linkify input:', input);
   
-  // Handle [label](url) markdown links first, before any escaping
-  let processed = input.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label, url) => {
+  // Simple approach: convert [label](url) to HTML links, don't escape anything
+  // Since banner content is admin-controlled, we can trust it
+  let result = input.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label, url) => {
     console.log('🔗 Found markdown link:', { label, url });
     return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
   });
   
-  console.log('🔗 After markdown processing:', processed);
-  
-  // Now escape any remaining HTML (but preserve our link tags)
-  processed = processed.replace(/<a href="[^"]*" target="_blank" rel="noopener noreferrer">[^<]*<\/a>/g, (match) => {
-    return `__LINK_PLACEHOLDER_${Math.random()}__${match}__END_PLACEHOLDER__`;
+  // Auto-link bare URLs that aren't already in links
+  const urlRegex = /(^|[^"])((https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+)|(www\.[\w\-._~:/?#[\]@!$&'()*+,;=%]+))(?![^<]*<\/a>)/gi;
+  result = result.replace(urlRegex, (match, prefix, fullUrl, httpUrl, wwwUrl) => {
+    const url = httpUrl || (wwwUrl.startsWith('http') ? wwwUrl : `https://${wwwUrl}`);
+    return `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer">${fullUrl}</a>`;
   });
   
-  // Escape the rest
-  processed = escapeHtml(processed);
-  
-  // Restore link placeholders
-  processed = processed.replace(/__LINK_PLACEHOLDER_[^_]*__(.*?)__END_PLACEHOLDER__/g, '$1');
-  
-  console.log('🔗 Final result:', processed);
-  return processed;
+  console.log('🔗 Final result:', result);
+  return result;
 }
 
 const Navbar = () => {
