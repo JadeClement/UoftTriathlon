@@ -220,6 +220,21 @@ async function initializeDatabase() {
     `);
     console.log('✅ Event RSVPs table created');
 
+    // Create merch_orders table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS merch_orders (
+        id SERIAL PRIMARY KEY,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        item VARCHAR(255) NOT NULL,
+        size VARCHAR(50),
+        quantity INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Merch orders table created');
+
     // Create site_settings table (key-value store)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS site_settings (
@@ -258,6 +273,8 @@ async function initializeDatabase() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_post_likes_user_id ON post_likes(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_post_id ON event_rsvps(post_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_user_id ON event_rsvps(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_created_at ON merch_orders(created_at)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_email ON merch_orders(email)');
     
     console.log('✅ Database indexes created');
 

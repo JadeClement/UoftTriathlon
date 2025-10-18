@@ -1,14 +1,16 @@
 // Load environment variables FIRST, before any other imports
 require('dotenv').config();
 
-// Environment variables are loaded; avoid logging sensitive values
+// Debug: Confirm environment variables are loaded
+console.log('🔧 Server: JWT_SECRET loaded:', !!process.env.JWT_SECRET);
+console.log('🔧 Server: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
+console.log('🔧 Server: JWT_SECRET starts with:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const fs = require('fs');
 
 // Import database to ensure initialization
 const { pool, checkDatabaseHealth } = require('./database-pg');
@@ -25,75 +27,48 @@ const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/users');
 const profileRoutes = require('./routes/profiles');
 const raceRoutes = require('./routes/races');
-const gearRoutes = require('./routes/gear');
-const merchOrdersRoutes = require('./routes/merchOrders');
 const siteRoutes = require('./routes/site');
+const merchRoutes = require('./routes/merch');
+const merchRoutes = require('./routes/merch');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Behind Railway/Proxies: trust proxy so rate-limiter reads X-Forwarded-For safely
-app.set('trust proxy', 1);
+// Security and rate limiting temporarily disabled for CORS debugging
 
-// Initialize uploads directories
-const uploadsDir = path.join(__dirname, 'uploads');
-const profilePicturesDir = path.join(uploadsDir, 'profile-pictures');
-const teamProfilesDir = path.join(uploadsDir, 'team-profiles');
-const gearDir = path.join(uploadsDir, 'gear');
-
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-if (!fs.existsSync(profilePicturesDir)) fs.mkdirSync(profilePicturesDir, { recursive: true });
-if (!fs.existsSync(teamProfilesDir)) fs.mkdirSync(teamProfilesDir, { recursive: true });
-if (!fs.existsSync(gearDir)) fs.mkdirSync(gearDir, { recursive: true });
-
-console.log('📁 Uploads directories initialized');
-
-// CORS configuration - restrict to known frontends
-const allowedOrigins = (() => {
-  const list = [];
-  const envUrls = [process.env.FRONTEND_URL, process.env.ALT_FRONTEND_URL, process.env.VERCEL_URL];
-  for (const u of envUrls) {
-    if (!u) continue;
-    // Ensure full URL with protocol
-    if (/^https?:\/\//i.test(u)) list.push(u);
-    else list.push(`https://${u}`);
-  }
-  return list.filter(Boolean);
-})();
-
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // same-origin or curl/postman
-    // Always allow localhost for dev
-    if (/^https?:\/\/localhost(?::\d+)?$/i.test(origin)) return callback(null, true);
-    // Allow vercel preview/main deployments
-    if (/\.vercel\.app$/i.test(origin)) return callback(null, true);
-    // Allow explicitly configured origins
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
-  },
+// CORS configuration - temporarily allow all origins for debugging
+app.use(cors({
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
-};
-// Apply CORS BEFORE other middlewares so preflight isn't blocked
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
-
-// Security middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
-// Rate limiting (global) - skip preflight and health
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => req.method === 'OPTIONS' || req.path === '/api/health'
+// Handle preflight requests globally
+app.options('*', cors());
+
+// Test endpoint for CORS debugging
+app.get('/api/test-cors', (req, res) => {
+  res.json({ message: 'CORS test successful', timestamp: new Date().toISOString() });
 });
-app.use(globalLimiter);
+
+// Test endpoint specifically for races CORS debugging
+app.get('/api/test-races-cors', (req, res) => {
+  res.json({ 
+    message: 'Races CORS test successful', 
+    timestamp: new Date().toISOString(),
+    endpoint: '/api/test-races-cors'
+  });
+});
+
+// Simple test route for races endpoint debugging
+app.get('/api/test-races-simple', (req, res) => {
+  res.json({ 
+    message: 'Simple races test successful', 
+    timestamp: new Date().toISOString(),
+    endpoint: '/api/test-races-simple'
+  });
+});
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -115,8 +90,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/races', raceRoutes);
 app.use('/api/site', siteRoutes);
-app.use('/api/gear', gearRoutes);
-app.use('/api/merch-orders', merchOrdersRoutes);
+app.use('/api/merch-orders', merchRoutes);
+app.use('/api/merch-orders', merchRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {

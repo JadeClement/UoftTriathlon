@@ -1,68 +1,20 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './Admin.css';
 
 const Admin = () => {
-  const { currentUser, isAdmin, isExec, isCoach } = useAuth();
-  
-  // Simple notification functions to replace missing NotificationSystem
-  const showSuccess = (message, options = {}) => {
-    alert(`${options.title ? options.title + ': ' : ''}${message}`);
-  };
-  
-  const showError = (message, options = {}) => {
-    alert(`${options.title ? options.title + ': ' : ''}${message}`);
-  };
-  
+  const { currentUser, isAdmin } = useAuth();
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
-  // Merch orders state
-  const [orders, setOrders] = useState([]);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [orderForm, setOrderForm] = useState({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
-  const [showOrderModal, setShowOrderModal] = useState(false);
-  const [bannerForm, setBannerForm] = useState({ enabled: false, rotationIntervalMs: 6000 });
-  const [bannerItems, setBannerItems] = useState([]);
-  const [newBannerText, setNewBannerText] = useState('');
+  const [bannerForm, setBannerForm] = useState({ enabled: false, message: '' });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
-  // Members pagination state
-  const [membersPage, setMembersPage] = useState(1);
-  const [membersLimit, setMembersLimit] = useState(20);
-  const [membersPagination, setMembersPagination] = useState({ currentPage: 1, totalPages: 1, totalMembers: 0, hasMore: false });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
   const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
-  // SMS (Phase 1 - Test Mode) state
-  const [smsMessage, setSmsMessage] = useState('');
-  const [smsSending, setSmsSending] = useState(false);
-  const [smsStatus, setSmsStatus] = useState(null);
-  const [smsTestMode, setSmsTestMode] = useState(true);
-  const [smsRecipientType, setSmsRecipientType] = useState('custom'); // 'custom' or 'member'
-  const [smsCustomPhone, setSmsCustomPhone] = useState('');
-  const [smsSelectedMember, setSmsSelectedMember] = useState(null);
-  const [smsMemberSearch, setSmsMemberSearch] = useState('');
-  const [showSmsMemberDropdown, setShowSmsMemberDropdown] = useState(false);
-  const lastFocusedTextareaRef = useRef(null);
-  
-  // Individual email recipient selection
-  const [selectedRecipients, setSelectedRecipients] = useState([]);
-  const [recipientSearch, setRecipientSearch] = useState('');
-  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
-  const [customEmailInput, setCustomEmailInput] = useState('');
-  const [showCustomEmailInput, setShowCustomEmailInput] = useState(false);
-  
-  // Bulk email recipient selection
-  const [bulkEmailRecipients, setBulkEmailRecipients] = useState({
-    members: true,
-    exec: true,
-    admin: true,
-    custom: false
-  });
-  const [customEmails, setCustomEmails] = useState('');
 
   // Attendance dashboard state
   const [attendanceWorkouts, setAttendanceWorkouts] = useState([]);
@@ -84,8 +36,7 @@ const Admin = () => {
     role: '',
     expiryDate: '',
     phoneNumber: '',
-    charterAccepted: false,
-    sport: 'triathlon'
+    charterAccepted: false
   });
   const [approvingMember, setApprovingMember] = useState(null);
   const [approvalForm, setApprovalForm] = useState({
@@ -93,13 +44,6 @@ const Admin = () => {
     expiryDate: ''
   });
 
-  // Add: Members search state (with debounce)
-  const [membersSearch, setMembersSearch] = useState('');
-  const [membersSearchDebounced, setMembersSearchDebounced] = useState('');
-  useEffect(() => {
-    const id = setTimeout(() => setMembersSearchDebounced(membersSearch.trim()), 300);
-    return () => clearTimeout(id);
-  }, [membersSearch]);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -144,339 +88,77 @@ const Admin = () => {
 
   // Load data from backend API
   useEffect(() => {
-    // Allow admins and execs (exec implies admin via role hierarchy)
-    if (!currentUser || !isExec(currentUser)) {
+    if (!currentUser || !isAdmin(currentUser)) {
       return;
     }
 
     loadAdminData();
-  }, [currentUser, isExec]);
+  }, [currentUser, isAdmin]);
 
   // Load attendance data when filters change
   useEffect(() => {
-    if (!currentUser || (!isAdmin(currentUser) && !isExec(currentUser) && !isCoach(currentUser))) {
+    if (!currentUser || !isAdmin(currentUser)) {
       return;
     }
 
     loadAttendanceData();
-  }, [attendanceFilters, currentUser, isAdmin, isExec, isCoach]);
-
-  // Close recipient dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showRecipientDropdown && !event.target.closest('.recipient-selection')) {
-        setShowRecipientDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showRecipientDropdown]);
-
-  // Function to insert formatting at cursor position
-  const insertFormatting = (before, after, field) => {
-    // Prefer the currently focused textarea so buttons work across all compose areas
-    let textarea = document.activeElement;
-    if (!textarea || textarea.tagName !== 'TEXTAREA') {
-      // Fallback to legacy selector by placeholder text
-      textarea = document.querySelector(`textarea[placeholder*="${field === 'message' ? 'message' : field === 'intro' ? 'Introduction' : 'Main email'}"]`);
-    }
-    if ((!textarea || textarea.tagName !== 'TEXTAREA') && lastFocusedTextareaRef.current) {
-      textarea = lastFocusedTextareaRef.current;
-    }
-    if (!textarea || textarea.tagName !== 'TEXTAREA') return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const selectedText = text.substring(start, end);
-    
-    let newText;
-    if (before === '\n1. ' && after === '') {
-      // Smart numbered list - find the highest number in the text and add 1
-      const allNumbers = text.match(/\n(\d+)\.\s/g);
-      let nextNumber = 1;
-      if (allNumbers && allNumbers.length > 0) {
-        const maxNumber = Math.max(...allNumbers.map(match => parseInt(match.match(/(\d+)/)[1])));
-        nextNumber = maxNumber + 1;
-      }
-      newText = text.substring(0, start) + `\n${nextNumber}. ` + selectedText + after + text.substring(end);
-    } else {
-      newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
-    }
-    
-    if (field === 'message') {
-      setEmailForm({ ...emailForm, message: newText });
-    } else {
-      setTemplate({ ...template, [field]: newText });
-    }
-
-    // Restore cursor position
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + before.length, end + before.length);
-    }, 0);
-  };
-
-  // Function to convert markdown-like formatting to HTML
-  const formatText = (text) => {
-    if (!text) return '';
-    
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-      .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: none;">$1</a>') // Links
-      .replace(/\n• /g, '<br/><br/>• ') // Add extra space before bullet points
-      .replace(/\n\d+\. /g, '<br/>$&') // Add single space before numbered bullets
-      .replace(/\n/g, '<br/>'); // Line breaks
-  };
+  }, [attendanceFilters, currentUser, isAdmin]);
 
   const loadBannerData = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/site/banner`);
       if (response.ok) {
         const data = await response.json();
-        const normalized = data.banner || {};
-        const items = Array.isArray(normalized.items)
-          ? normalized.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
-          : (normalized.message ? [String(normalized.message)] : []);
         setBannerForm({
-          enabled: !!normalized.enabled,
-          rotationIntervalMs: Number(normalized.rotationIntervalMs) > 0 ? Number(normalized.rotationIntervalMs) : 6000,
+          enabled: data.banner?.enabled || false,
+          message: data.banner?.message || ''
         });
-        setBannerItems(items);
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
     }
   };
 
-  // Banner editor helpers
-  const handleAddBannerItem = () => {
-    const trimmed = (newBannerText || '').trim();
-    if (!trimmed) return;
-    const limited = trimmed.slice(0, 50);
-    setBannerItems(prevItems => {
-      if (prevItems.length >= 10) return prevItems;
-      return [...prevItems, limited];
-    });
-    setNewBannerText('');
-  };
-
-  const handleRemoveBannerItem = (indexToRemove) => {
-    setBannerItems(prevItems => prevItems.filter((_, idx) => idx !== indexToRemove));
-  };
-
-  // Load merch orders
-  const loadOrders = async () => {
-    try {
-      if (!currentUser || !isAdmin(currentUser)) return;
-      setOrdersLoading(true);
-      const token = localStorage.getItem('triathlonToken');
-      const res = await fetch(`${API_BASE_URL}/merch-orders`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (!res.ok) throw new Error('Failed to load orders');
-      const data = await res.json();
-      setOrders(Array.isArray(data.orders) ? data.orders : []);
-    } catch (e) {
-      console.error('Failed to load orders:', e);
-    } finally {
-      setOrdersLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'orders') {
-      loadOrders();
-    }
-  }, [activeTab]);
-
-  const openNewOrder = () => {
-    setOrderForm({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
-    setShowOrderModal(true);
-  };
-
-  const editOrder = (order) => {
-    // Handle legacy orders that might have 'name' instead of 'firstName' and 'lastName'
-    const formData = { ...order };
-    if (order.name && !order.firstName && !order.lastName) {
-      const nameParts = order.name.split(' ');
-      formData.firstName = nameParts[0] || '';
-      formData.lastName = nameParts.slice(1).join(' ') || '';
-      delete formData.name;
-    }
-    setOrderForm(formData);
-    setShowOrderModal(true);
-  };
-
-  const saveOrder = async () => {
-    try {
-      const token = localStorage.getItem('triathlonToken');
-      const isEdit = !!orderForm.id;
-      const url = isEdit ? `${API_BASE_URL}/merch-orders/${orderForm.id}` : `${API_BASE_URL}/merch-orders`;
-      const method = isEdit ? 'PUT' : 'POST';
-      
-      // Prepare data for backend - combine firstName and lastName into name for now
-      const orderData = {
-        ...orderForm,
-        name: `${orderForm.firstName} ${orderForm.lastName}`.trim()
-      };
-      
-      const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) });
-      if (!res.ok) throw new Error('Failed to save order');
-      await loadOrders();
-      setShowOrderModal(false);
-    } catch (e) {
-      showError(e.message, { title: 'Failed to Save Order' });
-    }
-  };
-
-  const deleteOrder = async (id) => {
-    if (!window.confirm('Delete this order?')) return;
-    try {
-      const token = localStorage.getItem('triathlonToken');
-      const res = await fetch(`${API_BASE_URL}/merch-orders/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      if (!res.ok) throw new Error('Failed to delete order');
-      await loadOrders();
-    } catch (e) {
-      showError(e.message, { title: 'Failed to Delete Order' });
-    }
-  };
-
-  // Handle recipient selection
-  const addRecipient = (member) => {
-    if (!selectedRecipients.find(r => r.id === member.id)) {
-      setSelectedRecipients([...selectedRecipients, member]);
-    }
-    setRecipientSearch('');
-    setShowRecipientDropdown(false);
-  };
-
-  const removeRecipient = (memberId) => {
-    setSelectedRecipients(selectedRecipients.filter(r => r.id !== memberId));
-  };
-
-  const addCustomEmail = () => {
-    const email = customEmailInput.trim();
-    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      const customRecipient = {
-        id: `custom-${Date.now()}`,
-        name: 'External Recipient',
-        email: email,
-        role: 'custom'
-      };
-      setSelectedRecipients(prev => [...prev, customRecipient]);
-      setCustomEmailInput('');
-      setShowCustomEmailInput(false);
-    }
-  };
-
-  // Handle Enter key for auto-numbering
-  const handleTextareaKeyPress = (e, field) => {
-    if (e.key === 'Enter') {
-      const textarea = e.target;
-      const text = textarea.value;
-      const cursorPos = textarea.selectionStart;
-      
-      // Check if we're at the end of a numbered line
-      const lines = text.substring(0, cursorPos).split('\n');
-      const currentLine = lines[lines.length - 1];
-      const numberMatch = currentLine.match(/^(\d+)\.\s/);
-      
-      if (numberMatch) {
-        e.preventDefault();
-        const currentNumber = parseInt(numberMatch[1]);
-        const nextNumber = currentNumber + 1;
-        
-        // Insert the next numbered line
-        const beforeCursor = text.substring(0, cursorPos);
-        const afterCursor = text.substring(cursorPos);
-        const newText = beforeCursor + '\n' + nextNumber + '. ' + afterCursor;
-        
-        if (field === 'message') {
-          setEmailForm({ ...emailForm, message: newText });
-        } else {
-          setTemplate({ ...template, [field]: newText });
-        }
-        
-        // Set cursor position after the new number
-        setTimeout(() => {
-          textarea.focus();
-          const newCursorPos = beforeCursor.length + '\n'.length + (nextNumber + '. ').length;
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
-      }
-    }
-  };
-
-  const filteredMembers = members.filter(member => 
-    member.name.toLowerCase().includes(recipientSearch.toLowerCase()) ||
-    member.email.toLowerCase().includes(recipientSearch.toLowerCase())
-  );
-
-  // Filter members with phone numbers for SMS
-  const membersWithPhones = members.filter(member => 
-    member.phone_number && 
-    member.phone_number.trim().length > 0 &&
-    (member.name.toLowerCase().includes(smsMemberSearch.toLowerCase()) ||
-     member.email.toLowerCase().includes(smsMemberSearch.toLowerCase()))
-  );
-
   const handleSendEmail = async () => {
     setEmailStatus(null);
     setBulkEmailStatus(null);
     
-    if (emailType === 'individual' && selectedRecipients.length === 0) {
-      setEmailStatus({ type: 'error', text: 'Please select at least one recipient.' });
+    if (!template.title && !template.intro && !template.bullets.some(b => b.trim()) && !template.body) {
+      const errorMsg = 'Please provide template content.';
+      if (emailType === 'individual') {
+        setEmailStatus({ type: 'error', text: errorMsg });
+      } else {
+        setBulkEmailStatus({ type: 'error', text: errorMsg });
+      }
       return;
     }
     
-    // Only require template content for bulk emails
-    if (emailType === 'everyone') {
-      const hasTemplateContent = (template.title || template.intro || (template.bullets && template.bullets.some(b => (b || '').trim())) || template.body);
-      if (!hasTemplateContent) {
-        setBulkEmailStatus({ type: 'error', text: 'Please provide template content.' });
-        return;
-      }
+    if (emailType === 'individual' && !emailForm.to) {
+      setEmailStatus({ type: 'error', text: 'Please provide recipient email.' });
+      return;
     }
     
     try {
       if (emailType === 'individual') {
         setSendingEmail(true);
         const token = localStorage.getItem('triathlonToken');
-        
-        // Send to each selected recipient
-        const emailPromises = selectedRecipients.map(recipient => 
-          fetch(`${API_BASE_URL}/admin/send-email`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ 
-              to: recipient.email, 
-              subject: template.title || 'UofT Tri Club Update',
-              message: emailForm.message || '',
-              template: template 
-            })
+        const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ 
+            to: emailForm.to, 
+            subject: template.title || 'UofT Tri Club Update',
+            message: emailForm.message || '',
+            template: template 
           })
-        );
-        
-        try {
-          const responses = await Promise.all(emailPromises);
-          const results = await Promise.all(responses.map(resp => resp.json()));
-          
-          const successCount = responses.filter(resp => resp.ok).length;
-          const errorCount = responses.length - successCount;
-          
-          if (errorCount === 0) {
-            setEmailStatus({ type: 'success', text: `Email sent successfully to ${successCount} recipient(s)!` });
-            setSelectedRecipients([]);
-            setEmailForm({ to: '', subject: '', message: '' });
-            setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
-          } else {
-            setEmailStatus({ type: 'error', text: `Sent to ${successCount} recipients, failed to send to ${errorCount} recipients.` });
-          }
-        } catch (error) {
-          setEmailStatus({ type: 'error', text: 'Failed to send emails' });
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          setEmailStatus({ type: 'success', text: 'Email sent successfully!' });
+          setEmailForm({ to: '', subject: '', message: '' });
+          setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+        } else {
+          setEmailStatus({ type: 'error', text: data.error || 'Failed to send email' });
         }
         setSendingEmail(false);
       } else {
@@ -489,8 +171,12 @@ const Admin = () => {
             subject: template.title || 'UofT Tri Club Update',
             message: template.body || '',
             template: template,
-            recipients: bulkEmailRecipients,
-            customEmails: customEmails
+            recipients: {
+              members: true,
+              exec: true,
+              admin: true,
+              pending: false
+            }
           })
         });
         const data = await resp.json();
@@ -513,62 +199,6 @@ const Admin = () => {
     }
   };
 
-  const handleSendSMS = async () => {
-    setSmsStatus(null);
-    setSmsSending(true);
-    
-    try {
-      let targetPhone = '';
-      
-      if (smsRecipientType === 'custom') {
-        if (!smsCustomPhone.trim()) {
-          setSmsStatus({ type: 'error', text: 'Please enter a phone number.' });
-          setSmsSending(false);
-          return;
-        }
-        targetPhone = smsCustomPhone.trim();
-      } else {
-        if (!smsSelectedMember) {
-          setSmsStatus({ type: 'error', text: 'Please select a member.' });
-          setSmsSending(false);
-          return;
-        }
-        targetPhone = smsSelectedMember.phone_number;
-      }
-      
-      if (!smsMessage.trim()) {
-        setSmsStatus({ type: 'error', text: 'Please enter a message.' });
-        setSmsSending(false);
-        return;
-      }
-
-      const token = localStorage.getItem('triathlonToken');
-      const resp = await fetch(`${API_BASE_URL}/admin/send-sms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ 
-          to: targetPhone, 
-          message: smsMessage.trim(), 
-          testMode: smsTestMode 
-        })
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (resp.ok) {
-        setSmsStatus({ type: 'success', text: `Text sent to ${targetPhone}.` });
-        setSmsMessage('');
-        setSmsCustomPhone('');
-        setSmsSelectedMember(null);
-        setSmsMemberSearch('');
-      } else {
-        setSmsStatus({ type: 'error', text: data.error || 'Failed to send text' });
-      }
-    } catch (err) {
-      setSmsStatus({ type: 'error', text: err.message });
-    } finally {
-      setSmsSending(false);
-    }
-  };
-
   const loadAdminData = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -581,9 +211,7 @@ const Admin = () => {
       await loadBannerData();
 
       // Load all members
-      const params = new URLSearchParams({ page: String(membersPage), limit: String(membersLimit) });
-      if (membersSearchDebounced) params.set('search', membersSearchDebounced);
-      const membersResponse = await fetch(`${API_BASE_URL}/admin/members?${params.toString()}`, {
+      const membersResponse = await fetch(`${API_BASE_URL}/admin/members`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -591,7 +219,7 @@ const Admin = () => {
       
       if (membersResponse.ok) {
         const membersData = await membersResponse.json();
-        // Remove verbose member logging in production
+        console.log('📊 Members data received:', membersData.members);
         
         // Transform backend data to frontend format (snake_case to camelCase)
         const transformedMembers = membersData.members.map(member => ({
@@ -602,13 +230,13 @@ const Admin = () => {
           charterAccepted: member.charter_accepted || 0
         }));
         
-        
+        console.log('🔄 Transformed members data:', transformedMembers);
+        console.log('📊 Raw backend data:', membersData.members);
+        console.log('🔍 Sample member with absences:', transformedMembers.find(m => m.id)?.absences);
+        console.log('🔍 Sample member with charter:', transformedMembers.find(m => m.id)?.charterAccepted);
+        console.log('🔍 Raw charter_accepted values:', membersData.members.map(m => ({ id: m.id, charter_accepted: m.charter_accepted })));
+        console.log('🔍 Full transformed members:', JSON.stringify(transformedMembers, null, 2));
         setMembers(transformedMembers);
-        if (membersData.pagination) {
-          setMembersPagination(membersData.pagination);
-        } else {
-          setMembersPagination({ currentPage: membersPage, totalPages: 1, totalMembers: transformedMembers.length, hasMore: false });
-        }
         
         // Filter pending members
         const pending = transformedMembers.filter(m => m.role === 'pending');
@@ -618,12 +246,6 @@ const Admin = () => {
       console.error('Error loading admin data:', error);
     }
   };
-
-  // Reload members when page/limit change or search changes
-  useEffect(() => {
-    loadAdminData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [membersPage, membersLimit, membersSearchDebounced]);
 
   // Load attendance dashboard data
   const loadAttendanceData = async () => {
@@ -712,6 +334,34 @@ const Admin = () => {
     }));
   };
 
+  // Export merch orders to Excel
+  const exportMerchToExcel = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/merch/export`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Failed to export merch orders');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `merch_orders_${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || 'Failed to export merch orders');
+    }
+  };
+
   const approveMember = (member) => {
     setApprovingMember(member);
     setApprovalForm({
@@ -722,7 +372,7 @@ const Admin = () => {
 
   const handleApprovalSubmit = async () => {
     if (!approvingMember || !approvalForm.expiryDate) {
-      showError('Please set an expiry date before approving the member.', { title: 'Missing Information' });
+      alert('Please set an expiry date before approving the member.');
       return;
     }
 
@@ -780,11 +430,11 @@ const Admin = () => {
       } else {
         console.error('Failed to delete user');
         const err = await response.json().catch(() => ({}));
-        showError(`Failed to delete user${err.error ? `: ${err.error}` : ''}`, { title: 'Delete Failed' });
+        alert(`Failed to delete user${err.error ? `: ${err.error}` : ''}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      showError(`Error deleting user: ${error.message}`, { title: 'Delete Error' });
+      alert(`Error deleting user: ${error.message}`);
     }
   };
 
@@ -825,8 +475,7 @@ const Admin = () => {
       role: member.role,
       expiryDate: member.expiryDate || '',
       phoneNumber: member.phone_number || '',
-      charterAccepted: initialCharterAccepted,
-      sport: member.sport || 'triathlon'
+      charterAccepted: initialCharterAccepted
     });
     console.log('📝 Edit form set to:', {
       name: member.name,
@@ -851,13 +500,10 @@ const Admin = () => {
     // Clean up the form data - convert empty strings to null for optional fields
     const cleanFormData = {
       ...editForm,
-      // Backend expects snake_case `phone_number`
-      phone_number: formatPhoneNumber(editForm.phoneNumber),
+      phoneNumber: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending
       expiryDate: editForm.expiryDate || null,
       charterAccepted: editForm.charterAccepted ? 1 : 0
     };
-    // Remove camelCase phoneNumber to avoid ambiguity on the server
-    delete cleanFormData.phoneNumber;
     
     console.log('🧹 Cleaned form data:', cleanFormData);
     console.log('🔍 Charter accepted value being sent:', editForm.charterAccepted, '→', cleanFormData.charterAccepted);
@@ -881,21 +527,6 @@ const Admin = () => {
         const result = await response.json();
         console.log('✅ Update successful:', result);
         
-        // Optimistically update the members table immediately
-        setMembers(prev => prev.map(m => {
-          if (m.id !== editingMember.id) return m;
-          return {
-            ...m,
-            name: editForm.name,
-            email: editForm.email,
-            role: editForm.role,
-            expiryDate: editForm.expiryDate || null,
-            phone_number: formatPhoneNumber(editForm.phoneNumber),
-            charterAccepted: editForm.charterAccepted ? 1 : 0,
-            sport: editForm.sport || m.sport
-          };
-        }));
-
         // Check if role was changed and notify the user
         if (editForm.role !== editingMember.role) {
           console.log('🔄 Role changed from', editingMember.role, 'to', editForm.role);
@@ -943,11 +574,11 @@ const Admin = () => {
       } else {
         const errorData = await response.json();
         console.error('❌ Failed to update member:', errorData);
-        showError(`Failed to update member: ${errorData.error || 'Unknown error'}`, { title: 'Update Failed' });
+        alert(`Failed to update member: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('❌ Error updating member:', error);
-      showError(`Error updating member: ${error.message}`, { title: 'Update Error' });
+      alert(`Error updating member: ${error.message}`);
     }
   };
 
@@ -968,9 +599,9 @@ const Admin = () => {
   // Debug: Log current user info
   console.log('Current user:', currentUser);
   console.log('Is admin check:', isAdmin(currentUser));
-  
-  // Allow admins, execs, and coaches to access dashboard
-  if (!currentUser || (!isAdmin(currentUser) && !isExec(currentUser) && !isCoach(currentUser))) {
+
+  // Check if current user is admin
+  if (!currentUser || !isAdmin(currentUser)) {
     return (
       <div className="admin-container">
         <div className="admin-access-denied">
@@ -999,25 +630,17 @@ const Admin = () => {
         >
           All Members
         </button>
-        {isAdmin(currentUser) && (
-          <button 
-            className={`tab-button ${activeTab === 'pending' ? 'active' : ''}`}
-            onClick={() => setActiveTab('pending')}
-          >
-            Pending Approval
-          </button>
-        )}
+        <button 
+          className={`tab-button ${activeTab === 'pending' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pending')}
+        >
+          Pending Approval
+        </button>
         <button 
           className={`tab-button ${activeTab === 'email' ? 'active' : ''}`}
           onClick={() => setActiveTab('email')}
         >
           Send Email
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'text' ? 'active' : ''}`}
-          onClick={() => setActiveTab('text')}
-        >
-          Send Text (Test)
         </button>
         <button 
           className={`tab-button ${activeTab === 'banner' ? 'active' : ''}`}
@@ -1047,29 +670,6 @@ const Admin = () => {
         {activeTab === 'members' && (
                       <div className="members-section">
               <h2>All Members</h2>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 16px', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ fontSize: 13, color: '#6b7280' }}>
-                  Total: {membersPagination.totalMembers} • Page {membersPagination.currentPage} of {membersPagination.totalPages}
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  {/* Search input */}
-                  <input
-                    type="text"
-                    value={membersSearch}
-                    onChange={(e) => { setMembersPage(1); setMembersSearch(e.target.value); }}
-                    placeholder="Search name or email..."
-                    style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 6, minWidth: 220 }}
-                    aria-label="Search members"
-                  />
-                  <label style={{ fontSize: 13, color: '#6b7280' }}>Rows per page:</label>
-                  <select value={membersLimit} onChange={(e)=> { setMembersPage(1); setMembersLimit(parseInt(e.target.value)||20); }}>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
-              </div>
               <div className="admin-warning">
                 <p><strong>⚠️ Important:</strong> The "Delete" button will permanently remove users and all their data. This action cannot be undone.</p>
               </div>
@@ -1085,8 +685,7 @@ const Admin = () => {
                     <th>Expiry Date</th>
                     <th>Absences</th>
                     <th>Charter Accepted</th>
-                    <th>Sport</th>
-                    {(isAdmin(currentUser) || isExec(currentUser)) && <th>Actions</th>}
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1108,35 +707,20 @@ const Admin = () => {
                           {member.charterAccepted ? '✅ Yes' : '❌ No'}
                         </span>
                       </td>
-                      <td>
-                        <span className="sport-badge">
-                          {member.sport === 'triathlon' ? '🏊‍♂️🚴‍♂️🏃‍♂️ Triathlon' : 
-                           member.sport === 'duathlon' ? '🚴‍♂️🏃‍♂️ Duathlon' : 
-                           member.sport === 'run_only' ? '🏃‍♂️ Run Only' : 
-                           'Unknown'}
-                        </span>
-                      </td>
 
-                      {(isAdmin(currentUser) || isExec(currentUser)) && (
-                        <td>
-                          <button className="action-btn small" onClick={() => editMember(member)}>Edit</button>
-                          <button className="action-btn small danger" onClick={() => removeMember(member.id)}>Delete</button>
-                        </td>
-                      )}
+                      <td>
+                        <button className="action-btn small" onClick={() => editMember(member)}>Edit</button>
+                        <button className="action-btn small danger" onClick={() => removeMember(member.id)}>Delete</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 12 }}>
-              <button className="btn" disabled={membersPage <= 1} onClick={() => setMembersPage(p => Math.max(1, p - 1))}>Previous</button>
-              <span style={{ fontSize: 13, color: '#6b7280' }}>Page {membersPagination.currentPage} of {membersPagination.totalPages}</span>
-              <button className="btn" disabled={membersPage >= membersPagination.totalPages} onClick={() => setMembersPage(p => Math.min(membersPagination.totalPages, p + 1))}>Next</button>
-            </div>
           </div>
         )}
 
-        {isAdmin(currentUser) && activeTab === 'pending' && (
+        {activeTab === 'pending' && (
           <div className="pending-section">
             <h2>Pending Approval</h2>
             {pendingMembers.length === 0 ? (
@@ -1155,9 +739,9 @@ const Admin = () => {
       
                     </div>
                     <div className="approval-actions">
-                        <button 
+                                              <button 
                           className="approve-btn"
-                          onClick={() => editMember(member)}
+                          onClick={() => approveMember(member)}
                         >
                           ✅ Approve
                         </button>
@@ -1178,7 +762,7 @@ const Admin = () => {
         {activeTab === 'banner' && (
           <div className="email-section">
             <h2>Site Banner</h2>
-            <p>Toggle a banner at the top of the site with one or more rotating messages.</p>
+            <p>Toggle a banner at the top of the site with a message.</p>
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
@@ -1186,20 +770,15 @@ const Admin = () => {
                 const resp = await fetch(`${API_BASE_URL}/site/banner`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify({
-                    enabled: !!bannerForm.enabled,
-                    items: bannerItems,
-                    rotationIntervalMs: Number(bannerForm.rotationIntervalMs) > 0 ? Number(bannerForm.rotationIntervalMs) : 6000,
-                  })
+                  body: JSON.stringify(bannerForm)
                 });
                 if (!resp.ok) {
                   const err = await resp.json().catch(() => ({}));
                   throw new Error(err.error || 'Failed to update banner');
                 }
-                showSuccess('Banner updated successfully!');
-                await loadBannerData();
+                alert('Banner updated');
               } catch (err) {
-                showError(err.message, { title: 'Failed to Update Banner' });
+                alert(err.message);
               }
             }}>
               <div className="form-group" style={{display:'flex', alignItems:'center', gap:'12px'}}>
@@ -1209,61 +788,18 @@ const Admin = () => {
                 </label>
                 <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
               </div>
-
-              <div className="form-group banner-editor">
-                <label>Messages</label>
-                <div className="banner-add-row">
-                  <input
-                    type="text"
-                    className="banner-input"
-                    placeholder="Type a message (max 50 characters)"
-                    value={newBannerText}
-                    onChange={(e) => setNewBannerText(e.target.value.slice(0, 50))}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddBannerItem(); } }}
-                  />
-                  <button
-                    type="button"
-                    className="action-btn primary banner-add-btn"
-                    onClick={handleAddBannerItem}
-                    disabled={!newBannerText.trim() || bannerItems.length >= 10}
-                  >
-                    Add
-                  </button>
-                </div>
-                <div className="banner-meta">
-                  <span>{newBannerText.length}/50</span>
-                  <span style={{ marginLeft: 'auto' }}>{bannerItems.length}/10 items</span>
-                </div>
-
-                <ul className="banner-items-list">
-                  {bannerItems.length === 0 && (
-                    <li className="banner-item empty">No messages added yet.</li>
-                  )}
-                  {bannerItems.map((msg, idx) => (
-                    <li key={idx} className="banner-item">
-                      <span className="banner-item-text">{msg}</span>
-                      <button
-                        type="button"
-                        className="banner-remove-btn"
-                        aria-label={`Remove message ${idx + 1}`}
-                        onClick={() => handleRemoveBannerItem(idx)}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
               <div className="form-group">
-                <label>Rotation interval (ms)</label>
+                <label>Message (max 50 characters)</label>
                 <input 
-                  type="number" 
-                  value={bannerForm.rotationIntervalMs}
-                  onChange={(e)=> setBannerForm({ ...bannerForm, rotationIntervalMs: e.target.value })}
-                  min={1000}
-                  step={500}
+                  type="text" 
+                  value={bannerForm.message} 
+                  onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} 
+                  placeholder="Work in progress…" 
+                  maxLength={50}
                 />
+                <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
+                  {bannerForm.message.length}/50 characters
+                </div>
               </div>
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Save Banner</button>
@@ -1275,16 +811,16 @@ const Admin = () => {
         {activeTab === 'email' && (
           <div className="email-section">
             <h2>Send Email</h2>
-            <div className="email-layout">
+            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
               {/* Left side - Form */}
-              <div className="email-form-panel">
+              <div style={{ flex: 1, minWidth: '400px' }}>
                 <form onSubmit={async (e) => {
                   e.preventDefault();
                   await handleSendEmail();
                 }}>
                   {/* Email Type Selection */}
-                  <div className="form-group email-type-group">
-                    <label>
+                  <div className="form-group" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                       <input 
                         type="radio" 
                         name="emailType" 
@@ -1294,7 +830,7 @@ const Admin = () => {
                       />
                       Individual
                     </label>
-                    <label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                       <input 
                         type="radio" 
                         name="emailType" 
@@ -1310,255 +846,26 @@ const Admin = () => {
                   {emailType === 'individual' && (
                     <>
                       <div className="form-group">
-                        <label>Recipients</label>
-                        <div className="recipient-selection">
-                          <div className="recipient-input-container">
-                            <input 
-                              type="text" 
-                              value={recipientSearch} 
-                              onChange={(e) => {
-                                setRecipientSearch(e.target.value);
-                                setShowRecipientDropdown(true);
-                              }}
-                              onFocus={() => setShowRecipientDropdown(true)}
-                              placeholder="Search members by name or email..."
-                              className="recipient-search-input"
-                            />
-                            {showRecipientDropdown && recipientSearch && (
-                              <div className="recipient-dropdown">
-                                {filteredMembers.slice(0, 10).map(member => (
-                                  <div 
-                                    key={member.id}
-                                    className="recipient-option"
-                                    onClick={() => addRecipient(member)}
-                                  >
-                                    <div className="recipient-option-info">
-                                      <span className="recipient-name">{member.name}</span>
-                                      <span className="recipient-email">{member.email}</span>
-                                      <span className="recipient-role">{member.role}</span>
-                                    </div>
-                                  </div>
-                                ))}
-                                {filteredMembers.length === 0 && (
-                                  <div className="recipient-option no-results">No members found</div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Custom Email Input */}
-                          <div className="custom-email-section" style={{ marginTop: '12px' }}>
-                            <button 
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => setShowCustomEmailInput(!showCustomEmailInput)}
-                              style={{ fontSize: '14px', padding: '6px 12px' }}
-                            >
-                              {showCustomEmailInput ? 'Cancel' : '+ Add Custom Email'}
-                            </button>
-                            
-                            {showCustomEmailInput && (
-                              <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                                <input 
-                                  type="email" 
-                                  value={customEmailInput} 
-                                  onChange={(e) => setCustomEmailInput(e.target.value)}
-                                  placeholder="Enter email address..."
-                                  className="form-control"
-                                  style={{ flex: 1 }}
-                                  onKeyPress={(e) => e.key === 'Enter' && addCustomEmail()}
-                                />
-                                <button 
-                                  type="button"
-                                  className="btn btn-primary"
-                                  onClick={addCustomEmail}
-                                  disabled={!customEmailInput.trim()}
-                                  style={{ fontSize: '14px', padding: '6px 12px' }}
-                                >
-                                  Add
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {selectedRecipients.length > 0 && (
-                            <div className="selected-recipients">
-                              {selectedRecipients.map(recipient => (
-                                <div key={recipient.id} className="recipient-tag">
-                                  <span className="recipient-tag-name">{recipient.name}</span>
-                                  <span className="recipient-tag-email">({recipient.email})</span>
-                                  {recipient.role === 'custom' && (
-                                    <span className="recipient-tag-role" style={{ fontSize: '11px', color: '#6b7280' }}>Custom</span>
-                                  )}
-                                  <button 
-                                    type="button"
-                                    className="recipient-tag-remove"
-                                    onClick={() => removeRecipient(recipient.id)}
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <label>To</label>
+                        <input 
+                          type="email" 
+                          value={emailForm.to} 
+                          onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} 
+                          placeholder="recipient@example.com"
+                          required 
+                        />
                       </div>
                       <div className="form-group">
                         <label>Message</label>
-                        <div className="text-editor">
-                          <div className="text-editor-toolbar">
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('**', '**', 'message')}
-                              title="Bold"
-                            >
-                              <strong>B</strong>
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('*', '*', 'message')}
-                              title="Italic"
-                            >
-                              <em>I</em>
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('\n• ', '', 'message')}
-                              title="Bullet Point"
-                            >
-                              •
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('\n1. ', '', 'message')}
-                              title="Numbered List"
-                            >
-                              1.
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('[', '](url)', 'message')}
-                              title="Link"
-                            >
-                              🔗
-                            </button>
-                          </div>
-                          <textarea 
-                            rows="8" 
-                            value={emailForm.message} 
-                            onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
-                            onKeyPress={(e) => handleTextareaKeyPress(e, 'message')}
-                            onFocus={(e) => { lastFocusedTextareaRef.current = e.target; }}
-                            placeholder="Type your message here... Use **bold**, *italic*, • bullets, 1. numbered lists, and [link text](url) formatting."
-                            required 
-                          />
-                        </div>
+                        <textarea 
+                          rows="8" 
+                          value={emailForm.message} 
+                          onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} 
+                          placeholder="Type your message here..."
+                          required 
+                        />
                       </div>
                     </>
-                  )}
-
-                  {/* Individual Email Preview */}
-                  {emailType === 'individual' && (
-                    <div className="email-preview-panel">
-                      <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
-                        <h3 style={{marginTop:0}}>Preview</h3>
-                        <div style={{
-                          maxWidth: '600px',
-                          margin: '0 auto',
-                          backgroundColor: '#ffffff',
-                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                        }}>
-                          {/* Content */}
-                          <div style={{ padding: '24px' }}>
-                            {template.title && (
-                              <h2 style={{ color: '#1f2937', margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>
-                                {template.title}
-                              </h2>
-                            )}
-                            
-                            <div 
-                              style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
-                              dangerouslySetInnerHTML={{ 
-                                __html: formatText(emailForm.message || 'Your message will appear here...') + '<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em>'
-                              }}
-                            />
-                          </div>
-                          
-                          {/* Footer */}
-                          <div style={{
-                            background: '#f8fafc',
-                            padding: '16px 24px',
-                            borderTop: '1px solid #e5e7eb',
-                            textAlign: 'center'
-                          }}>
-                            <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-                              UofT Triathlon Club | <a href="https://uoft-tri.club" style={{ color: '#3b82f6' }}>uoft-tri.club</a>
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recipient Selection - only show for everyone */}
-                  {emailType === 'everyone' && (
-                    <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, marginBottom:16}}>
-                      <h3 style={{marginTop:0}}>Recipients</h3>
-                      <div className="form-group">
-                        <label>
-                          <input 
-                            type="checkbox" 
-                            checked={bulkEmailRecipients.members} 
-                            onChange={(e) => setBulkEmailRecipients({...bulkEmailRecipients, members: e.target.checked})}
-                          />
-                          Members
-                        </label>
-                        <label>
-                          <input 
-                            type="checkbox" 
-                            checked={bulkEmailRecipients.exec} 
-                            onChange={(e) => setBulkEmailRecipients({...bulkEmailRecipients, exec: e.target.checked})}
-                          />
-                          Exec
-                        </label>
-                        <label>
-                          <input 
-                            type="checkbox" 
-                            checked={bulkEmailRecipients.admin} 
-                            onChange={(e) => setBulkEmailRecipients({...bulkEmailRecipients, admin: e.target.checked})}
-                          />
-                          Admin
-                        </label>
-                        <label>
-                          <input 
-                            type="checkbox" 
-                            checked={bulkEmailRecipients.custom} 
-                            onChange={(e) => setBulkEmailRecipients({...bulkEmailRecipients, custom: e.target.checked})}
-                          />
-                          Custom Email Addresses
-                        </label>
-                      </div>
-                      {bulkEmailRecipients.custom && (
-                        <div className="form-group">
-                          <label>Custom Email Addresses</label>
-                          <textarea 
-                            rows="3" 
-                            value={customEmails} 
-                            onChange={(e) => setCustomEmails(e.target.value)} 
-                            placeholder="Enter email addresses separated by commas or new lines:&#10;email1@example.com&#10;email2@example.com&#10;email3@example.com"
-                          />
-                          <small style={{color: '#6b7280', fontSize: '12px'}}>
-                            Separate multiple emails with commas or new lines
-                          </small>
-                        </div>
-                      )}
-                    </div>
                   )}
 
                   {/* Template Section - only show for everyone */}
@@ -1570,59 +877,26 @@ const Admin = () => {
                         <input type="text" value={template.bannerTitle} onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} />
                       </div>
                       <div className="form-group">
-                        <label>Email Content</label>
-                        <div className="text-editor">
-                          <div className="text-editor-toolbar">
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('**', '**', 'body')}
-                              title="Bold"
-                            >
-                              <strong>B</strong>
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('*', '*', 'body')}
-                              title="Italic"
-                            >
-                              <em>I</em>
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('\n• ', '', 'body')}
-                              title="Bullet Point"
-                            >
-                              •
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('\n1. ', '', 'body')}
-                              title="Numbered List"
-                            >
-                              1.
-                            </button>
-                            <button 
-                              type="button" 
-                              className="format-btn" 
-                              onClick={() => insertFormatting('[', '](url)', 'body')}
-                              title="Link"
-                            >
-                              🔗
-                            </button>
+                        <label>Title</label>
+                        <input type="text" value={template.title} onChange={(e)=>setTemplate({...template, title:e.target.value})} placeholder="Email subject/title" />
+                      </div>
+                      <div className="form-group">
+                        <label>Intro</label>
+                        <textarea rows="3" value={template.intro} onChange={(e)=>setTemplate({...template, intro:e.target.value})} placeholder="Introduction text..." />
+                      </div>
+                      <div className="form-group">
+                        <label>Bullets</label>
+                        {(template.bullets||[]).map((b, idx)=> (
+                          <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
+                            <input type="text" value={b} onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} placeholder="Bullet point..." />
+                            <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
                           </div>
-                          <textarea 
-                            rows="12" 
-                            value={template.body} 
-                            onChange={(e)=>setTemplate({...template, body:e.target.value})} 
-                            onFocus={(e) => { lastFocusedTextareaRef.current = e.target; }}
-                            onKeyPress={(e) => handleTextareaKeyPress(e, 'body')}
-                            placeholder="Write your email content here... Use **bold**, *italic*, • bullets, 1. numbered lists (press Enter for auto-numbering), and [link text](url) formatting."
-                          />
-                        </div>
+                        ))}
+                        <button type="button" className="action-btn small" onClick={()=> setTemplate({...template, bullets:[...template.bullets, '']})}>Add bullet</button>
+                      </div>
+                      <div className="form-group">
+                        <label>Body</label>
+                        <textarea rows="6" value={template.body} onChange={(e)=>setTemplate({...template, body:e.target.value})} placeholder="Main email content..." />
                       </div>
                     </div>
                   )}
@@ -1654,7 +928,7 @@ const Admin = () => {
 
               {/* Right side - Preview (only for everyone emails) */}
               {emailType === 'everyone' && (
-                <div className="email-preview-panel">
+                <div style={{ flex: 1, minWidth: '400px' }}>
                   <div className="card" style={{padding:'16px', border:'1px solid #eee', borderRadius:6, position: 'sticky', top: '20px'}}>
                     <h3 style={{marginTop:0}}>Preview</h3>
                     <div style={{
@@ -1677,15 +951,59 @@ const Admin = () => {
                       </div>
                       
                       {/* Content */}
-                      <div style={{ padding: '24px 22px' }}>
-                        {/* Body with preserved line breaks */}
+                      <div style={{ padding: '32px 24px' }}>
+                        {template.intro && (
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            borderLeft: '4px solid #dc2626',
+                            marginBottom: '24px'
+                          }}>
+                            <p style={{margin: 0, color: '#64748b', fontSize: '16px', lineHeight: 1.6}}>
+                              {template.intro}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {(template.bullets||[]).filter(Boolean).length>0 && (
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            marginBottom: '24px'
+                          }}>
+                            <ol style={{margin: 0, paddingLeft: '20px'}}>
+                              {template.bullets.filter(Boolean).map((b, i)=> (
+                                <li key={i} style={{
+                                  marginBottom: '12px',
+                                  color: '#475569',
+                                  fontSize: '16px',
+                                  lineHeight: 1.6
+                                }}>
+                                  {b}
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+                        
                         {template.body && (
-                          <div
-                            style={{ margin: 0, color: '#475569', fontSize: '16px', lineHeight: 1.6, whiteSpace: 'pre-line' }}
-                            dangerouslySetInnerHTML={{ 
-                              __html: formatText(template.body) + '<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em>'
-                            }}
-                          />
+                          <div style={{
+                            background: '#f8fafc',
+                            padding: '24px',
+                            borderRadius: '12px'
+                          }}>
+                            <p style={{
+                              margin: 0,
+                              color: '#475569',
+                              fontSize: '16px',
+                              lineHeight: 1.6,
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              {template.body}
+                            </p>
+                          </div>
                         )}
                       </div>
                       
@@ -1696,8 +1014,11 @@ const Admin = () => {
                         textAlign: 'center',
                         borderTop: '1px solid #e2e8f0'
                       }}>
-                        <p style={{margin: 0, color: '#64748b', fontSize: '14px'}}>
+                        <p style={{margin: '0 0 12px 0', color: '#64748b', fontSize: '14px'}}>
                           UofT Triathlon Club | <a href="https://uoft-tri.club" style={{color: '#3b82f6', textDecoration: 'none', fontWeight: 500}}>uoft-tri.club</a>
+                        </p>
+                        <p style={{margin: 0, color: '#64748b', fontSize: '14px', fontStyle: 'italic'}}>
+                          The UofT Tri Club Exec
                         </p>
                       </div>
                     </div>
@@ -1705,145 +1026,6 @@ const Admin = () => {
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {activeTab === 'text' && (
-          <div className="email-section">
-            <h2>Send Text (Test Mode)</h2>
-            <p style={{marginTop: 0, color: '#6b7280'}}>Phase 1 sends only to the configured admin test phone on the server.</p>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              await handleSendSMS();
-            }}>
-              <div className="form-group">
-                <label>Recipient</label>
-                <div className="form-group" style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
-                  <label>
-                    <input 
-                      type="radio" 
-                      name="smsRecipientType" 
-                      value="custom" 
-                      checked={smsRecipientType === 'custom'} 
-                      onChange={(e) => setSmsRecipientType(e.target.value)}
-                    />
-                    Custom Phone
-                  </label>
-                  <label>
-                    <input 
-                      type="radio" 
-                      name="smsRecipientType" 
-                      value="member" 
-                      checked={smsRecipientType === 'member'} 
-                      onChange={(e) => setSmsRecipientType(e.target.value)}
-                    />
-                    Member
-                  </label>
-                </div>
-                
-                {smsRecipientType === 'custom' && (
-                  <input 
-                    type="tel" 
-                    value={smsCustomPhone} 
-                    onChange={(e) => setSmsCustomPhone(e.target.value)}
-                    placeholder="Enter phone number (e.g., +1234567890)"
-                    style={{ width: '100%' }}
-                  />
-                )}
-                
-                {smsRecipientType === 'member' && (
-                  <div className="recipient-selection">
-                    <div className="recipient-input-container">
-                      <input 
-                        type="text" 
-                        value={smsMemberSearch} 
-                        onChange={(e) => {
-                          setSmsMemberSearch(e.target.value);
-                          setShowSmsMemberDropdown(true);
-                        }}
-                        onFocus={() => setShowSmsMemberDropdown(true)}
-                        placeholder="Search members with phone numbers..."
-                        className="recipient-search-input"
-                      />
-                      {showSmsMemberDropdown && smsMemberSearch && (
-                        <div className="recipient-dropdown">
-                          {membersWithPhones.slice(0, 10).map(member => (
-                            <div 
-                              key={member.id}
-                              className="recipient-option"
-                              onClick={() => {
-                                setSmsSelectedMember(member);
-                                setSmsMemberSearch('');
-                                setShowSmsMemberDropdown(false);
-                              }}
-                            >
-                              <div className="recipient-option-info">
-                                <span className="recipient-name">{member.name}</span>
-                                <span className="recipient-email">{member.email}</span>
-                                <span className="recipient-role">{member.phone_number}</span>
-                              </div>
-                            </div>
-                          ))}
-                          {membersWithPhones.length === 0 && (
-                            <div className="recipient-option no-results">No members with phone numbers found</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {smsSelectedMember && (
-                      <div className="selected-recipients" style={{marginTop: '8px'}}>
-                        <div className="recipient-tag">
-                          <span className="recipient-tag-name">{smsSelectedMember.name}</span>
-                          <span className="recipient-tag-email">({smsSelectedMember.phone_number})</span>
-                          <button 
-                            type="button"
-                            className="recipient-tag-remove"
-                            onClick={() => {
-                              setSmsSelectedMember(null);
-                              setSmsMemberSearch('');
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                <label className="toggle-switch">
-                  <input type="checkbox" checked={smsTestMode} onChange={(e)=> setSmsTestMode(e.target.checked)} />
-                  <span className="toggle-slider"></span>
-                </label>
-                <span className="toggle-label">Test mode (required)</span>
-              </div>
-              <div className="form-group">
-                <label>Message</label>
-                <textarea
-                  rows="4"
-                  value={smsMessage}
-                  onChange={(e)=> setSmsMessage(e.target.value)}
-                  placeholder="Short SMS message..."
-                  required
-                  maxLength={918}
-                />
-                <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
-                  {smsMessage.length}/918 characters
-                </div>
-              </div>
-              {smsStatus && (
-                <div className={`notice ${smsStatus.type}`} style={{ marginBottom: '1rem' }}>
-                  {smsStatus.text}
-                </div>
-              )}
-              <div className="modal-actions">
-                <button type="submit" className="btn btn-primary" disabled={smsSending || !smsTestMode} style={{width: '100%'}}> 
-                  {smsSending ? 'Sending...' : 'Send Test Text'}
-                </button>
-              </div>
-            </form>
           </div>
         )}
 
@@ -1910,16 +1092,7 @@ const Admin = () => {
                         <td>
                           {workout.workout_date && (
                             <div className="workout-date">
-                              {(() => {
-                                try {
-                                  const base = String(workout.workout_date).split('T')[0];
-                                  const [y, m, d] = base.split('-').map(Number);
-                                  const date = new Date(Date.UTC(y, m - 1, d));
-                                  return date.toLocaleDateString(undefined, { timeZone: 'UTC' });
-                                } catch {
-                                  return workout.workout_date;
-                                }
-                              })()}
+                              {new Date(workout.workout_date).toLocaleDateString()}
                             </div>
                           )}
                         </td>
@@ -1995,52 +1168,18 @@ const Admin = () => {
           </div>
         )}
 
+        {/* Merch Orders Tab - export only (full orders UI lives on staging) */}
         {isAdmin(currentUser) && activeTab === 'orders' && (
-          <div className="orders-section">
+          <div className="email-section">
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <h2>Merch Orders</h2>
-              <button className="btn btn-primary" onClick={openNewOrder}>+ New Order</button>
-            </div>
-            {ordersLoading ? (
-              <div className="loading">Loading orders...</div>
-            ) : (
-              <div className="orders-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>First Name</th>
-                      <th>Last Name</th>
-                      <th>Email</th>
-                      <th>Item</th>
-                      <th>Size</th>
-                      <th>Qty</th>
-                      <th>Created</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map(o => (
-                      <tr key={o.id}>
-                        <td>{o.firstName || o.name?.split(' ')[0] || '-'}</td>
-                        <td>{o.lastName || o.name?.split(' ').slice(1).join(' ') || '-'}</td>
-                        <td>{o.email}</td>
-                        <td>{o.item}</td>
-                        <td>{o.size}</td>
-                        <td>{o.quantity}</td>
-                        <td>{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
-                        <td>
-                          <button className="action-btn small" onClick={() => editOrder(o)}>Edit</button>
-                          <button className="action-btn small danger" onClick={() => deleteOrder(o.id)}>Delete</button>
-                        </td>
-                      </tr>
-                    ))}
-                    {orders.length === 0 && (
-                      <tr><td colSpan="8" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
-                    )}
-                  </tbody>
-                </table>
+              <div style={{display:'flex', gap:8}}>
+                <button className="btn btn-primary" onClick={exportMerchToExcel}>
+                  Export to Excel
+                </button>
               </div>
-            )}
+            </div>
+            <p style={{color:'#6b7280'}}>This branch shows the export action. Full order management UI is on staging.</p>
           </div>
         )}
 
@@ -2080,7 +1219,6 @@ const Admin = () => {
                 >
                   <option value="pending">Pending</option>
                   <option value="member">Member</option>
-                  <option value="coach">Coach</option>
                   <option value="exec">Executive</option>
                   <option value="administrator">Administrator</option>
                 </select>
@@ -2093,19 +1231,6 @@ const Admin = () => {
                   value={editForm.expiryDate}
                   onChange={(e) => setEditForm({...editForm, expiryDate: e.target.value})}
                 />
-              </div>
-
-              <div className="form-group">
-                <label>Sport:</label>
-                <select
-                  value={editForm.sport || 'triathlon'}
-                  onChange={(e) => setEditForm({...editForm, sport: e.target.value})}
-                  required
-                >
-                  <option value="triathlon">Triathlon</option>
-                  <option value="duathlon">Duathlon</option>
-                  <option value="run_only">Run Only</option>
-                </select>
               </div>
               
               <div className="form-group">
@@ -2190,27 +1315,6 @@ const Admin = () => {
         </div>
       )}
 
-      {/* Order Modal */}
-      {showOrderModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>{orderForm.id ? 'Edit Order' : 'New Order'}</h2>
-            <div className="form-grid">
-              <div className="form-group"><label>First Name</label><input type="text" value={orderForm.firstName} onChange={e=>setOrderForm({...orderForm,firstName:e.target.value})} required /></div>
-              <div className="form-group"><label>Last Name</label><input type="text" value={orderForm.lastName} onChange={e=>setOrderForm({...orderForm,lastName:e.target.value})} required /></div>
-              <div className="form-group"><label>Email</label><input type="email" value={orderForm.email} onChange={e=>setOrderForm({...orderForm,email:e.target.value})} required /></div>
-              <div className="form-group"><label>Item</label><input type="text" value={orderForm.item} onChange={e=>setOrderForm({...orderForm,item:e.target.value})} required /></div>
-              <div className="form-group"><label>Size</label><input type="text" value={orderForm.size} onChange={e=>setOrderForm({...orderForm,size:e.target.value})} /></div>
-              <div className="form-group"><label>Quantity</label><input type="number" min="1" value={orderForm.quantity} onChange={e=>setOrderForm({...orderForm,quantity:Number(e.target.value)||1})} required /></div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={saveOrder}>Save</button>
-              <button className="btn btn-secondary" onClick={()=>setShowOrderModal(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Attendance Details Modal */}
       {showAttendanceModal && attendanceDetails && (
         <div className="modal-overlay">
@@ -2231,16 +1335,7 @@ const Admin = () => {
                 <h3>Workout Information</h3>
                 <div className="workout-info-grid">
                   <div><strong>Type:</strong> {attendanceDetails.workout.workout_type}</div>
-                  <div><strong>Date:</strong> {attendanceDetails.workout.workout_date && (() => {
-                    try {
-                      const base = String(attendanceDetails.workout.workout_date).split('T')[0];
-                      const [y, m, d] = base.split('-').map(Number);
-                      const date = new Date(Date.UTC(y, m - 1, d));
-                      return date.toLocaleDateString(undefined, { timeZone: 'UTC' });
-                    } catch {
-                      return attendanceDetails.workout.workout_date;
-                    }
-                  })()}</div>
+                  <div><strong>Date:</strong> {attendanceDetails.workout.workout_date && new Date(attendanceDetails.workout.workout_date).toLocaleDateString()}</div>
                   <div><strong>Time:</strong> {attendanceDetails.workout.workout_time || 'Not specified'}</div>
                   <div><strong>Capacity:</strong> {attendanceDetails.workout.capacity || 'Unlimited'}</div>
                 </div>
@@ -2297,26 +1392,13 @@ const Admin = () => {
                     {attendanceDetails.signups.map(signup => (
                       <div key={signup.id} className="signup-item">
                         <div className="signup-user-info">
-                          {(() => {
-                            const { normalizeProfileImageUrl } = require('../utils/imageUtils');
-                            const url = normalizeProfileImageUrl(signup.profile_picture_url);
-                            return url ? (
-                              <img 
-                                src={url}
-                                alt="Profile" 
-                                className="user-avatar"
-                              />
-                            ) : (
-                              <div className="user-avatar-placeholder">
-                                <img 
-                                  src="/images/default_profile.png" 
-                                  alt="Profile" 
-                                  style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
-                                />
-                              </div>
-                            );
-                          })()}
-                          {!signup.profile_picture_url && (
+                          {signup.profile_picture_url ? (
+                            <img 
+                              src={`${API_BASE_URL.replace('/api', '')}${signup.profile_picture_url}`} 
+                              alt="Profile" 
+                              className="user-avatar"
+                            />
+                          ) : (
                             <div className="user-avatar-placeholder">
                               <img 
                                 src="/images/default_profile.png" 
@@ -2430,10 +1512,10 @@ const Admin = () => {
                 </div>
               )}
 
-              {/* Who Cancelled Within 12 Hours */}
+              {/* Who Cancelled Within 24 Hours */}
               {attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length > 0 && (
                 <div className="cancelled-section">
-                  <h3>🚫 Who Cancelled Within 12 Hours ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length})</h3>
+                  <h3>🚫 Who Cancelled Within 24 Hours ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length})</h3>
                   <div className="attendance-list">
                     {attendanceDetails.attendance
                       .filter(record => !record.attended && record.attendance_type === 'cancelled')
@@ -2517,7 +1599,6 @@ const Admin = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
