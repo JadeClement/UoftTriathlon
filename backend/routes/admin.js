@@ -951,6 +951,38 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
   }
 });
 
+// Send ad-hoc SMS (Test Mode only for Phase 1)
+router.post('/send-sms', authenticateToken, requireRole('exec'), async (req, res) => {
+  try {
+    const { to, message, testMode = true } = req.body || {};
+
+    if (!message || String(message).trim().length === 0) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    if (!to || String(to).trim().length === 0) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+
+    // For Phase 1 we allow only test mode to avoid accidental blasts
+    if (!testMode) {
+      return res.status(400).json({ error: 'Only testMode is allowed in Phase 1' });
+    }
+
+    const smsService = require('../services/smsService');
+    const result = await smsService.sendSMS(to.trim(), message.trim());
+
+    if (result.success) {
+      return res.json({ message: 'SMS sent', to: to.trim(), sid: result.sid });
+    }
+
+    return res.status(500).json({ error: result.error || 'Failed to send SMS' });
+  } catch (error) {
+    console.error('Admin send SMS error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get attendance dashboard data
 router.get('/attendance-dashboard', authenticateToken, requireCoach, async (req, res) => {
   try {

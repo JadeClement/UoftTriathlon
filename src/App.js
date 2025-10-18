@@ -23,6 +23,7 @@ import Logout from './components/Logout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
+import { NotificationProvider } from './components/NotificationSystem';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -170,14 +171,16 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="App">
-          <ScrollToTop />
-          <Navbar />
-          <CharterPrompt />
-          <AppContent />
-        </div>
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <div className="App">
+            <ScrollToTop />
+            <Navbar />
+            <CharterPrompt />
+            <AppContent />
+          </div>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

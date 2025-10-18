@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from './NotificationSystem';
 import './TeamGear.css';
 
 const TeamGear = () => {
   const { currentUser, isAdmin } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [gearItems, setGearItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -234,7 +236,7 @@ const TeamGear = () => {
   // Add new gear item
   const addGearItem = async () => {
     if (!addForm.title.trim()) {
-      alert('Please enter a title');
+      showError('Please enter a title', { title: 'Missing Information' });
       return;
     }
     
@@ -447,7 +449,7 @@ const TeamGear = () => {
       closeOrderModal();
     } catch (error) {
       console.error('Order submission error:', error);
-      alert('Failed to submit order. Please try again.');
+      showError('Failed to submit order. Please try again.', { title: 'Order Failed' });
     } finally {
       setOrderSubmitting(false);
     }
@@ -469,7 +471,6 @@ const TeamGear = () => {
       
       <h3 style={{ marginTop: '2rem' }}>Under Armour Gear</h3>
       <p>Please order through website by October 19th. After this you will receive an invoice from the university.</p>
-      <p>Under construction, please check back later today.</p>
       <div className="gear-grid">
         {gearItems.map(item => (
           <div key={item.id} className="gear-item">
@@ -821,12 +822,11 @@ const TeamGear = () => {
         <div className="gear-modal-overlay" onClick={closeOrderModal}>
           <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
             <div className="gear-modal-header">
-              <h2>Confirm Order</h2>
+              <h2>Order Details</h2>
               <button className="gear-modal-close" onClick={closeOrderModal}>×</button>
             </div>
             <div className="gear-modal-body">
               <div className="order-confirmation">
-                <h3>Order Details</h3>
                 <div className="order-item">
                   <strong>Item:</strong> {selectedItem.title}
                 </div>
