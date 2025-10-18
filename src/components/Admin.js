@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from './NotificationSystem';
 import './Admin.css';
 
 const Admin = () => {
   const { currentUser, isAdmin, isExec, isCoach } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
@@ -15,6 +17,7 @@ const Admin = () => {
   const [bannerForm, setBannerForm] = useState({ enabled: false, rotationIntervalMs: 6000 });
   const [bannerItems, setBannerItems] = useState([]);
   const [newBannerText, setNewBannerText] = useState('');
+  const [showBannerSavedModal, setShowBannerSavedModal] = useState(false);
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   // Members pagination state
@@ -31,6 +34,11 @@ const Admin = () => {
   const [smsSending, setSmsSending] = useState(false);
   const [smsStatus, setSmsStatus] = useState(null);
   const [smsTestMode, setSmsTestMode] = useState(true);
+  const [smsRecipientType, setSmsRecipientType] = useState('custom'); // 'custom' or 'member'
+  const [smsCustomPhone, setSmsCustomPhone] = useState('');
+  const [smsSelectedMember, setSmsSelectedMember] = useState(null);
+  const [smsMemberSearch, setSmsMemberSearch] = useState('');
+  const [showSmsMemberDropdown, setShowSmsMemberDropdown] = useState(false);
   const lastFocusedTextareaRef = useRef(null);
   
   // Individual email recipient selection
@@ -313,7 +321,7 @@ const Admin = () => {
       await loadOrders();
       setShowOrderModal(false);
     } catch (e) {
-      alert(e.message);
+      showError(e.message, { title: 'Failed to Save Order' });
     }
   };
 
@@ -325,7 +333,7 @@ const Admin = () => {
       if (!res.ok) throw new Error('Failed to delete order');
       await loadOrders();
     } catch (e) {
-      alert(e.message);
+      showError(e.message, { title: 'Failed to Delete Order' });
     }
   };
 
@@ -398,6 +406,14 @@ const Admin = () => {
   const filteredMembers = members.filter(member => 
     member.name.toLowerCase().includes(recipientSearch.toLowerCase()) ||
     member.email.toLowerCase().includes(recipientSearch.toLowerCase())
+  );
+
+  // Filter members with phone numbers for SMS
+  const membersWithPhones = members.filter(member => 
+    member.phone_number && 
+    member.phone_number.trim().length > 0 &&
+    (member.name.toLowerCase().includes(smsMemberSearch.toLowerCase()) ||
+     member.email.toLowerCase().includes(smsMemberSearch.toLowerCase()))
   );
 
   const handleSendEmail = async () => {
@@ -487,6 +503,62 @@ const Admin = () => {
         setBulkEmailStatus({ type: 'error', text: err.message });
         setSendingBulkEmail(false);
       }
+    }
+  };
+
+  const handleSendSMS = async () => {
+    setSmsStatus(null);
+    setSmsSending(true);
+    
+    try {
+      let targetPhone = '';
+      
+      if (smsRecipientType === 'custom') {
+        if (!smsCustomPhone.trim()) {
+          setSmsStatus({ type: 'error', text: 'Please enter a phone number.' });
+          setSmsSending(false);
+          return;
+        }
+        targetPhone = smsCustomPhone.trim();
+      } else {
+        if (!smsSelectedMember) {
+          setSmsStatus({ type: 'error', text: 'Please select a member.' });
+          setSmsSending(false);
+          return;
+        }
+        targetPhone = smsSelectedMember.phone_number;
+      }
+      
+      if (!smsMessage.trim()) {
+        setSmsStatus({ type: 'error', text: 'Please enter a message.' });
+        setSmsSending(false);
+        return;
+      }
+
+      const token = localStorage.getItem('triathlonToken');
+      const resp = await fetch(`${API_BASE_URL}/admin/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ 
+          to: targetPhone, 
+          message: smsMessage.trim(), 
+          testMode: smsTestMode 
+        })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok) {
+        setSmsStatus({ type: 'success', text: `Text sent to ${targetPhone}.` });
+        setSmsMessage('');
+        setSmsCustomPhone('');
+        setSmsSelectedMember(null);
+        setSmsMemberSearch('');
+      } else {
+        setSmsStatus({ type: 'error', text: data.error || 'Failed to send text' });
+      }
+    } catch (err) {
+      setSmsStatus({ type: 'error', text: err.message });
+    } finally {
+      setSmsSending(false);
     }
   };
 
@@ -643,7 +715,7 @@ const Admin = () => {
 
   const handleApprovalSubmit = async () => {
     if (!approvingMember || !approvalForm.expiryDate) {
-      alert('Please set an expiry date before approving the member.');
+      showError('Please set an expiry date before approving the member.', { title: 'Missing Information' });
       return;
     }
 
@@ -701,11 +773,11 @@ const Admin = () => {
       } else {
         console.error('Failed to delete user');
         const err = await response.json().catch(() => ({}));
-        alert(`Failed to delete user${err.error ? `: ${err.error}` : ''}`);
+        showError(`Failed to delete user${err.error ? `: ${err.error}` : ''}`, { title: 'Delete Failed' });
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(`Error deleting user: ${error.message}`);
+      showError(`Error deleting user: ${error.message}`, { title: 'Delete Error' });
     }
   };
 
@@ -864,11 +936,11 @@ const Admin = () => {
       } else {
         const errorData = await response.json();
         console.error('❌ Failed to update member:', errorData);
-        alert(`Failed to update member: ${errorData.error || 'Unknown error'}`);
+        showError(`Failed to update member: ${errorData.error || 'Unknown error'}`, { title: 'Update Failed' });
       }
     } catch (error) {
       console.error('❌ Error updating member:', error);
-      alert(`Error updating member: ${error.message}`);
+      showError(`Error updating member: ${error.message}`, { title: 'Update Error' });
     }
   };
 
@@ -1117,10 +1189,10 @@ const Admin = () => {
                   const err = await resp.json().catch(() => ({}));
                   throw new Error(err.error || 'Failed to update banner');
                 }
-                alert('Banner updated');
+                setShowBannerSavedModal(true);
                 await loadBannerData();
               } catch (err) {
-                alert(err.message);
+                showError(err.message, { title: 'Failed to Update Banner' });
               }
             }}>
               <div className="form-group" style={{display:'flex', alignItems:'center', gap:'12px'}}>
@@ -1635,28 +1707,104 @@ const Admin = () => {
             <p style={{marginTop: 0, color: '#6b7280'}}>Phase 1 sends only to the configured admin test phone on the server.</p>
             <form onSubmit={async (e) => {
               e.preventDefault();
-              try {
-                setSmsStatus(null);
-                setSmsSending(true);
-                const token = localStorage.getItem('triathlonToken');
-                const resp = await fetch(`${API_BASE_URL}/admin/send-sms`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify({ message: smsMessage, testMode: smsTestMode })
-                });
-                const data = await resp.json().catch(() => ({}));
-                if (resp.ok) {
-                  setSmsStatus({ type: 'success', text: `Text sent to test number${data.to ? ` (${data.to})` : ''}.` });
-                  setSmsMessage('');
-                } else {
-                  setSmsStatus({ type: 'error', text: data.error || 'Failed to send text' });
-                }
-              } catch (err) {
-                setSmsStatus({ type: 'error', text: err.message });
-              } finally {
-                setSmsSending(false);
-              }
+              await handleSendSMS();
             }}>
+              <div className="form-group">
+                <label>Recipient</label>
+                <div className="form-group" style={{display: 'flex', gap: '12px', marginBottom: '12px'}}>
+                  <label>
+                    <input 
+                      type="radio" 
+                      name="smsRecipientType" 
+                      value="custom" 
+                      checked={smsRecipientType === 'custom'} 
+                      onChange={(e) => setSmsRecipientType(e.target.value)}
+                    />
+                    Custom Phone
+                  </label>
+                  <label>
+                    <input 
+                      type="radio" 
+                      name="smsRecipientType" 
+                      value="member" 
+                      checked={smsRecipientType === 'member'} 
+                      onChange={(e) => setSmsRecipientType(e.target.value)}
+                    />
+                    Member
+                  </label>
+                </div>
+                
+                {smsRecipientType === 'custom' && (
+                  <input 
+                    type="tel" 
+                    value={smsCustomPhone} 
+                    onChange={(e) => setSmsCustomPhone(e.target.value)}
+                    placeholder="Enter phone number (e.g., +1234567890)"
+                    style={{ width: '100%' }}
+                  />
+                )}
+                
+                {smsRecipientType === 'member' && (
+                  <div className="recipient-selection">
+                    <div className="recipient-input-container">
+                      <input 
+                        type="text" 
+                        value={smsMemberSearch} 
+                        onChange={(e) => {
+                          setSmsMemberSearch(e.target.value);
+                          setShowSmsMemberDropdown(true);
+                        }}
+                        onFocus={() => setShowSmsMemberDropdown(true)}
+                        placeholder="Search members with phone numbers..."
+                        className="recipient-search-input"
+                      />
+                      {showSmsMemberDropdown && smsMemberSearch && (
+                        <div className="recipient-dropdown">
+                          {membersWithPhones.slice(0, 10).map(member => (
+                            <div 
+                              key={member.id}
+                              className="recipient-option"
+                              onClick={() => {
+                                setSmsSelectedMember(member);
+                                setSmsMemberSearch('');
+                                setShowSmsMemberDropdown(false);
+                              }}
+                            >
+                              <div className="recipient-option-info">
+                                <span className="recipient-name">{member.name}</span>
+                                <span className="recipient-email">{member.email}</span>
+                                <span className="recipient-role">{member.phone_number}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {membersWithPhones.length === 0 && (
+                            <div className="recipient-option no-results">No members with phone numbers found</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {smsSelectedMember && (
+                      <div className="selected-recipients" style={{marginTop: '8px'}}>
+                        <div className="recipient-tag">
+                          <span className="recipient-tag-name">{smsSelectedMember.name}</span>
+                          <span className="recipient-tag-email">({smsSelectedMember.phone_number})</span>
+                          <button 
+                            type="button"
+                            className="recipient-tag-remove"
+                            onClick={() => {
+                              setSmsSelectedMember(null);
+                              setSmsMemberSearch('');
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                 <label className="toggle-switch">
                   <input type="checkbox" checked={smsTestMode} onChange={(e)=> setSmsTestMode(e.target.checked)} />
@@ -2359,6 +2507,28 @@ const Admin = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Banner Saved Success Modal */}
+      {showBannerSavedModal && (
+        <div className="modal-overlay">
+          <div className="banner-success-modal">
+            <div className="success-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" fill="#10b981"/>
+                <path d="m9 12 2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h3>Banner Saved Successfully!</h3>
+            <p>Your site banner has been updated and is now live.</p>
+            <button 
+              className="success-modal-btn"
+              onClick={() => setShowBannerSavedModal(false)}
+            >
+              Got it
+            </button>
           </div>
         </div>
       )}
