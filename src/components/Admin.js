@@ -1198,9 +1198,18 @@ const Admin = () => {
                   throw new Error(err.error || 'Failed to update banner');
                 }
                 showSuccess('Banner updated successfully!');
-                await loadBannerData();
+                console.log('🔄 Banner updated, reloading page...');
+                try {
+                  await loadBannerData();
+                  console.log('🔄 Banner data reloaded successfully');
+                } catch (error) {
+                  console.error('⚠️ Error reloading banner data:', error);
+                }
+                console.log('🔄 Reloading page now...');
                 // Reload the page to show banner changes immediately
-                window.location.reload();
+                setTimeout(() => {
+                  window.location.reload();
+                }, 100); // Small delay to ensure success message is shown
               } catch (err) {
                 showError(err.message, { title: 'Failed to Update Banner' });
               }
