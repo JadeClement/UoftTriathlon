@@ -1199,6 +1199,8 @@ const Admin = () => {
                 }
                 showSuccess('Banner updated successfully!');
                 await loadBannerData();
+                // Reload the page to show banner changes immediately
+                window.location.reload();
               } catch (err) {
                 showError(err.message, { title: 'Failed to Update Banner' });
               }
