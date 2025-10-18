@@ -44,6 +44,19 @@ const Admin = () => {
     expiryDate: ''
   });
 
+  // Orders state
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderForm, setOrderForm] = useState({
+    id: null,
+    firstName: '',
+    lastName: '',
+    email: '',
+    item: '',
+    size: '',
+    quantity: 1
+  });
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -244,6 +257,84 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error loading admin data:', error);
+    }
+  };
+
+  // Load merch orders
+  const loadOrders = async () => {
+    try {
+      if (!currentUser || !isAdmin(currentUser)) return;
+      setOrdersLoading(true);
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE_URL}/merch-orders`, { headers: { 'Authorization': `Bearer ${token}` } });
+
+      if (!res.ok) throw new Error('Failed to load orders');
+      const data = await res.json();
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
+    } catch (e) {
+      console.error('Failed to load orders:', e);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      loadOrders();
+    }
+  }, [activeTab]);
+
+  const openNewOrder = () => {
+    setOrderForm({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
+    setShowOrderModal(true);
+  };
+
+  const editOrder = (order) => {
+    // Handle legacy orders that might have 'name' instead of 'firstName' and 'lastName'
+    const formData = { ...order };
+    if (order.name && !order.firstName && !order.lastName) {
+      const nameParts = order.name.split(' ');
+      formData.firstName = nameParts[0] || '';
+      formData.lastName = nameParts.slice(1).join(' ') || '';
+      delete formData.name;
+    }
+    setOrderForm(formData);
+    setShowOrderModal(true);
+  };
+
+  const saveOrder = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const isEdit = !!orderForm.id;
+      const url = isEdit ? `${API_BASE_URL}/merch-orders/${orderForm.id}` : `${API_BASE_URL}/merch-orders`;
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      // Prepare data for backend - combine firstName and lastName into name for now
+      const orderData = {
+        ...orderForm,
+        name: `${orderForm.firstName} ${orderForm.lastName}`.trim()
+      };
+      
+      const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) });
+
+      if (!res.ok) throw new Error('Failed to save order');
+      await loadOrders();
+      setShowOrderModal(false);
+    } catch (e) {
+      showError(e.message, { title: 'Failed to Save Order' });
+    }
+  };
+
+  const deleteOrder = async (id) => {
+    if (!window.confirm('Delete this order?')) return;
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE_URL}/merch-orders/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+
+      if (!res.ok) throw new Error('Failed to delete order');
+      await loadOrders();
+    } catch (e) {
+      showError(e.message, { title: 'Failed to Delete Order' });
     }
   };
 
@@ -1168,18 +1259,58 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Merch Orders Tab - export only (full orders UI lives on staging) */}
+        {/* Merch Orders Tab */}
         {isAdmin(currentUser) && activeTab === 'orders' && (
-          <div className="email-section">
+          <div className="orders-section">
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <h2>Merch Orders</h2>
               <div style={{display:'flex', gap:8}}>
+                <button className="btn btn-primary" onClick={openNewOrder}>+ New Order</button>
                 <button className="btn btn-primary" onClick={exportMerchToExcel}>
                   Export to Excel
                 </button>
               </div>
             </div>
-            <p style={{color:'#6b7280'}}>This branch shows the export action. Full order management UI is on staging.</p>
+            {ordersLoading ? (
+              <div className="loading">Loading orders...</div>
+            ) : (
+              <div className="orders-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>First Name</th>
+                      <th>Last Name</th>
+                      <th>Email</th>
+                      <th>Item</th>
+                      <th>Size</th>
+                      <th>Qty</th>
+                      <th>Created</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map(o => (
+                      <tr key={o.id}>
+                        <td>{o.firstName || o.name?.split(' ')[0] || '-'}</td>
+                        <td>{o.lastName || o.name?.split(' ').slice(1).join(' ') || '-'}</td>
+                        <td>{o.email}</td>
+                        <td>{o.item}</td>
+                        <td>{o.size}</td>
+                        <td>{o.quantity}</td>
+                        <td>{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
+                        <td>
+                          <button className="action-btn small" onClick={() => editOrder(o)}>Edit</button>
+                          <button className="action-btn small danger" onClick={() => deleteOrder(o.id)}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {orders.length === 0 && (
+                      <tr><td colSpan="8" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -1596,6 +1727,80 @@ const Admin = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Modal */}
+      {showOrderModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>{orderForm.id ? 'Edit Order' : 'New Order'}</h2>
+            <form onSubmit={(e) => { e.preventDefault(); saveOrder(); }}>
+              <div className="form-group">
+                <label>First Name:</label>
+                <input
+                  type="text"
+                  value={orderForm.firstName}
+                  onChange={(e) => setOrderForm({...orderForm, firstName: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Last Name:</label>
+                <input
+                  type="text"
+                  value={orderForm.lastName}
+                  onChange={(e) => setOrderForm({...orderForm, lastName: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Email:</label>
+                <input
+                  type="email"
+                  value={orderForm.email}
+                  onChange={(e) => setOrderForm({...orderForm, email: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Item:</label>
+                <input
+                  type="text"
+                  value={orderForm.item}
+                  onChange={(e) => setOrderForm({...orderForm, item: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Size:</label>
+                <input
+                  type="text"
+                  value={orderForm.size}
+                  onChange={(e) => setOrderForm({...orderForm, size: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Quantity:</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={orderForm.quantity}
+                  onChange={(e) => setOrderForm({...orderForm, quantity: parseInt(e.target.value) || 1})}
+                  required
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowOrderModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {orderForm.id ? 'Update Order' : 'Create Order'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
