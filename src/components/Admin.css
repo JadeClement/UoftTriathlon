@@ -1517,6 +1517,17 @@
   margin-bottom: 12px;
 }
 
+.banner-editor .text-editor-toolbar {
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.banner-editor .text-editor-toolbar + .banner-add-row .banner-input {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
 .banner-input {
   flex: 1;
   padding: 12px 16px;

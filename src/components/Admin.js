@@ -104,6 +104,28 @@ const Admin = () => {
     localStorage.setItem('adminActiveTab', newTab);
   };
 
+  // Function to insert formatting into banner input field
+  const insertBannerFormatting = (before, after) => {
+    const input = document.querySelector('.banner-input');
+    if (!input) return;
+
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const text = input.value;
+    const selectedText = text.substring(start, end);
+    
+    const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+    
+    // Update the state and input value
+    setNewBannerText(newText.slice(0, 50)); // Respect 50 char limit
+    
+    // Restore cursor position
+    setTimeout(() => {
+      input.focus();
+      input.setSelectionRange(start + before.length, end + before.length);
+    }, 0);
+  };
+
 
   // Phone number formatting functions (same as Login.js and Profile.js)
   const validatePhoneNumber = (phone) => {
@@ -1261,6 +1283,32 @@ const Admin = () => {
 
               <div className="form-group banner-editor">
                 <label>Messages</label>
+                <div className="text-editor-toolbar">
+                  <button 
+                    type="button" 
+                    className="format-btn" 
+                    onClick={() => insertBannerFormatting('**', '**')}
+                    title="Bold"
+                  >
+                    <strong>B</strong>
+                  </button>
+                  <button 
+                    type="button" 
+                    className="format-btn" 
+                    onClick={() => insertBannerFormatting('*', '*')}
+                    title="Italic"
+                  >
+                    <em>I</em>
+                  </button>
+                  <button 
+                    type="button" 
+                    className="format-btn" 
+                    onClick={() => insertBannerFormatting('[', '](url)')}
+                    title="Link"
+                  >
+                    🔗
+                  </button>
+                </div>
                 <div className="banner-add-row">
                   <input
                     type="text"
