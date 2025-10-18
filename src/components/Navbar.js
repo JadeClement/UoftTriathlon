@@ -15,21 +15,29 @@ function escapeHtml(input) {
 
 function linkify(text) {
   const input = text || '';
+  console.log('🔗 Linkify input:', input);
   
-  // First: escape HTML in the raw text
-  let escaped = escapeHtml(input);
-  
-  // Then: convert [label](url) markdown to HTML links
-  escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label, url) => {
+  // Handle [label](url) markdown links first, before any escaping
+  let processed = input.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label, url) => {
+    console.log('🔗 Found markdown link:', { label, url });
     return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
   });
   
-  // Finally: auto-link any remaining bare URLs
-  const urlRegex = /(https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+)|(www\.[\w\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
-  return escaped.replace(urlRegex, (match) => {
-    const url = match.startsWith('http') ? match : `https://${match}`;
-    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+  console.log('🔗 After markdown processing:', processed);
+  
+  // Now escape any remaining HTML (but preserve our link tags)
+  processed = processed.replace(/<a href="[^"]*" target="_blank" rel="noopener noreferrer">[^<]*<\/a>/g, (match) => {
+    return `__LINK_PLACEHOLDER_${Math.random()}__${match}__END_PLACEHOLDER__`;
   });
+  
+  // Escape the rest
+  processed = escapeHtml(processed);
+  
+  // Restore link placeholders
+  processed = processed.replace(/__LINK_PLACEHOLDER_[^_]*__(.*?)__END_PLACEHOLDER__/g, '$1');
+  
+  console.log('🔗 Final result:', processed);
+  return processed;
 }
 
 const Navbar = () => {
