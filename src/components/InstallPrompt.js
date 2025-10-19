@@ -5,14 +5,27 @@ export default function InstallPrompt() {
   const [installed, setInstalled] = React.useState(false);
 
   React.useEffect(() => {
+    console.log('🔍 InstallPrompt: Setting up event listeners');
+    
     const onBeforeInstall = (e) => {
+      console.log('🔍 InstallPrompt: beforeinstallprompt event received', e);
       e.preventDefault();
       setDeferredPrompt(e);
     };
-    const onInstalled = () => setInstalled(true);
+    const onInstalled = () => {
+      console.log('🔍 InstallPrompt: appinstalled event received');
+      setInstalled(true);
+    };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
+    
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('🔍 InstallPrompt: App is already installed (standalone mode)');
+      setInstalled(true);
+    }
+    
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onInstalled);

@@ -5,6 +5,8 @@ import './TeamGear.css';
 const TeamGear = () => {
   const { currentUser, isAdmin, getUserRole } = useAuth();
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  console.log('🔍 API_BASE URL:', API_BASE);
+  console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
   const [gearItems, setGearItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -440,12 +442,17 @@ const TeamGear = () => {
       };
 
       console.log('🔍 About to make API call to:', `${API_BASE}/merch-orders`);
+      console.log('🔍 API_BASE URL:', API_BASE);
       console.log('🔍 Token exists:', !!token);
       console.log('🔍 Token value:', token ? token.substring(0, 20) + '...' : 'null');
       console.log('🔍 Order data:', orderData);
       console.log('🔍 Current user:', currentUser);
       console.log('🔍 User role from context:', currentUser?.role);
       console.log('🔍 User role from getUserRole:', getUserRole(currentUser));
+      console.log('🔍 Request headers:', {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      });
       
       // Decode JWT token to see what's actually in it
       if (token) {
@@ -477,8 +484,18 @@ const TeamGear = () => {
         body: JSON.stringify(orderData)
       });
       
-      console.log('🔍 API response status:', response.status);
-      console.log('🔍 API response ok:', response.ok);
+        console.log('🔍 API response status:', response.status);
+        console.log('🔍 API response ok:', response.ok);
+        console.log('🔍 API response headers:', Object.fromEntries(response.headers.entries()));
+        
+        // Try to get response body for debugging
+        const responseClone = response.clone();
+        try {
+          const responseText = await responseClone.text();
+          console.log('🔍 API response body:', responseText);
+        } catch (e) {
+          console.log('🔍 Could not read response body:', e.message);
+        }
       
       // Store response data too
       const responseData = {
