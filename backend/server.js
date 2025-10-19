@@ -36,9 +36,15 @@ const PORT = process.env.PORT || 5001;
 
 // Security and rate limiting temporarily disabled for CORS debugging
 
-// CORS configuration - temporarily allow all origins for debugging
+// CORS configuration - allow specific origins
 app.use(cors({
-  origin: '*',
+  origin: [
+    'https://www.uoft-tri.club',
+    'https://uoft-tri.club', 
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:55731'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
