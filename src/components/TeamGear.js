@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import './TeamGear.css';
 
 const TeamGear = () => {
-  const { currentUser, isAdmin, validateTokenBeforeAction } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [gearItems, setGearItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -432,21 +432,6 @@ const TeamGear = () => {
 
   const submitOrder = async () => {
     if (!selectedItem || !currentUser) return;
-    
-    // Validate token before proceeding
-    console.log('🔍 About to validate token for order submission');
-    console.log('🔍 Current user:', currentUser);
-    console.log('🔍 Token exists:', !!localStorage.getItem('triathlonToken'));
-    
-    const isTokenValid = await validateTokenBeforeAction('order submission');
-    console.log('🔍 Token validation result:', isTokenValid);
-    
-    if (!isTokenValid) {
-      console.log('❌ Token validation failed, redirecting to login');
-      return; // User will be redirected to login
-    }
-    
-    console.log('✅ Token validation passed, proceeding with order');
     
     // Validate email confirmation
     const emailToUse = (orderEmail || '').trim();
