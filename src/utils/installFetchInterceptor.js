@@ -23,6 +23,7 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
         url.includes('/users/mark-role-notification-read') ||
         url.includes('/merch-orders')
       )) {
+        console.log('🔍 Fetch interceptor: Bypassing interceptor for URL:', url);
         return originalFetch(input, init);
       }
       

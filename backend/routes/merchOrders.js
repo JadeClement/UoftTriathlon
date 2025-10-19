@@ -55,6 +55,9 @@ router.get('/', authenticateToken, requireAdmin, async (_req, res) => {
 // POST create order
 router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
+    console.log('🔍 Merch order POST - User:', req.user);
+    console.log('🔍 Merch order POST - Body:', req.body);
+    
     const { name, firstName, lastName, email, item, size, quantity } = req.body || {};
     const finalFirstName = (firstName || (name ? name.split(' ')[0] : '') || '').trim();
     const finalLastName = (lastName || (name ? name.split(' ').slice(1).join(' ') : '') || '').trim();
@@ -63,7 +66,12 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
     const finalSize = (size || '').trim();
     const qty = Number(quantity) || 1;
 
-    if (!finalFirstName || !finalEmail || !finalItem) return res.status(400).json({ error: 'firstName, email, and item are required' });
+    console.log('🔍 Processed data:', { finalFirstName, finalLastName, finalEmail, finalItem, finalSize, qty });
+
+    if (!finalFirstName || !finalEmail || !finalItem) {
+      console.log('❌ Missing required fields:', { finalFirstName, finalEmail, finalItem });
+      return res.status(400).json({ error: 'firstName, email, and item are required' });
+    }
 
     const insert = await db.query(
       'INSERT INTO merch_orders (first_name, last_name, email, item, size, quantity) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at',
