@@ -471,6 +471,16 @@ const TeamGear = () => {
       console.log('🔍 Order data:', orderData);
       console.log('🔍 Current user:', currentUser);
       
+      // Store logs in localStorage so they persist through redirects
+      const logData = {
+        timestamp: new Date().toISOString(),
+        url: `${API_BASE}/merch-orders`,
+        tokenExists: !!token,
+        orderData,
+        currentUser
+      };
+      localStorage.setItem('orderDebugLog', JSON.stringify(logData));
+      
       const response = await fetch(`${API_BASE}/merch-orders`, {
         method: 'POST',
         headers: {
@@ -482,6 +492,14 @@ const TeamGear = () => {
       
       console.log('🔍 API response status:', response.status);
       console.log('🔍 API response ok:', response.ok);
+      
+      // Store response data too
+      const responseData = {
+        status: response.status,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      };
+      localStorage.setItem('orderResponseLog', JSON.stringify(responseData));
 
       if (!response.ok) {
         // Handle specific HTTP status codes

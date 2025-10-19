@@ -16,6 +16,7 @@ const Login = () => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
+  const [debugLogs, setDebugLogs] = useState(null);
 
   // Function to scroll to top of the page
   const scrollToTop = () => {
@@ -57,6 +58,16 @@ const Login = () => {
         default:
           setError('Please log in to continue.');
       }
+    }
+    
+    // Check for debug logs from order submission
+    const orderLog = localStorage.getItem('orderDebugLog');
+    const responseLog = localStorage.getItem('orderResponseLog');
+    if (orderLog || responseLog) {
+      setDebugLogs({
+        order: orderLog ? JSON.parse(orderLog) : null,
+        response: responseLog ? JSON.parse(responseLog) : null
+      });
     }
   }, [location.search]);
 

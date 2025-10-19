@@ -59,7 +59,6 @@ const requireRole = (requiredRole) => {
     }
 
     const roleHierarchy = {
-      'public': 0,
       'pending': 1,
       'member': 2,
       'coach': 3,
@@ -67,7 +66,7 @@ const requireRole = (requiredRole) => {
       'administrator': 5
     };
 
-    const userRole = req.user.role || 'public';
+    const userRole = req.user.role || 'pending';
     
     if (roleHierarchy[userRole] < roleHierarchy[requiredRole]) {
       return res.status(403).json({ 
@@ -94,7 +93,6 @@ const requireMember = (req, res, next) => {
   }
 
   const roleHierarchy = {
-    'public': 0,
     'pending': 1,
     'member': 2,
     'coach': 3,
@@ -102,8 +100,9 @@ const requireMember = (req, res, next) => {
     'administrator': 5
   };
 
-  const userRole = req.user.role || 'public';
+  const userRole = req.user.role || 'pending';
   console.log('🔍 requireMember: User role:', userRole);
+  console.log('🔍 requireMember: User object:', req.user);
 
   // Allow member, exec, and admin roles
   if (roleHierarchy[userRole] >= roleHierarchy['member']) {
