@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import './TeamGear.css';
 
 const TeamGear = () => {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, getUserRole } = useAuth();
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [gearItems, setGearItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -441,8 +441,22 @@ const TeamGear = () => {
 
       console.log('🔍 About to make API call to:', `${API_BASE}/merch-orders`);
       console.log('🔍 Token exists:', !!token);
+      console.log('🔍 Token value:', token ? token.substring(0, 20) + '...' : 'null');
       console.log('🔍 Order data:', orderData);
       console.log('🔍 Current user:', currentUser);
+      console.log('🔍 User role from context:', currentUser?.role);
+      console.log('🔍 User role from getUserRole:', getUserRole(currentUser));
+      
+      // Decode JWT token to see what's actually in it
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log('🔍 JWT payload:', payload);
+          console.log('🔍 JWT role:', payload.role);
+        } catch (e) {
+          console.log('🔍 Failed to decode JWT:', e.message);
+        }
+      }
       
       // Store logs in localStorage so they persist through redirects
       const logData = {
