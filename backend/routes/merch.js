@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requireMember } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -30,7 +30,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // POST /api/merch-orders - create merch order
-router.post('/', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
     const { firstName, lastName, email, item, size, quantity } = req.body;
     if (!firstName || !lastName || !email || !item) {
