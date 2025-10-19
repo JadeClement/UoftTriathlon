@@ -15,7 +15,6 @@ function escapeHtml(input) {
 
 function linkify(text) {
   const input = text || '';
-  console.log('🔗 Linkify input:', input);
   
   // Simple and generalizable: [text](anything) becomes a clickable link
   // Everything between () becomes the href, regardless of format
@@ -26,7 +25,6 @@ function linkify(text) {
     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
   });
   
-  console.log('🔗 Final result:', result);
   return result;
 }
 
