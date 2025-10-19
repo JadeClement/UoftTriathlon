@@ -86,6 +86,7 @@ const requireAdmin = requireRole('administrator');
 // Middleware to check if user is member or higher
 const requireMember = (req, res, next) => {
   console.log('🔍 requireMember middleware - User:', req.user);
+  console.log('🔍 requireMember middleware - VERSION: v2.0 - FIXED ROLE HIERARCHY');
 
   if (!req.user) {
     console.log('❌ requireMember: No user found');
@@ -103,6 +104,12 @@ const requireMember = (req, res, next) => {
   const userRole = req.user.role || 'pending';
   console.log('🔍 requireMember: User role:', userRole);
   console.log('🔍 requireMember: User object:', req.user);
+  console.log('🔍 requireMember: Role hierarchy check:', {
+    userRole,
+    memberLevel: roleHierarchy['member'],
+    userLevel: roleHierarchy[userRole],
+    shouldAllow: roleHierarchy[userRole] >= roleHierarchy['member']
+  });
 
   // Allow member, exec, and admin roles
   if (roleHierarchy[userRole] >= roleHierarchy['member']) {
