@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './Login.css';
 
 const Login = () => {
@@ -30,6 +30,35 @@ const Login = () => {
   
   const { signup, login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check for redirect reasons and show appropriate messages
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const reason = urlParams.get('reason');
+    
+    if (reason) {
+      switch (reason) {
+        case 'session_expired':
+          setError('Your session has expired. Please log in again.');
+          break;
+        case 'Token expired or invalid':
+          setError('Your login session has expired. Please log in again.');
+          break;
+        case 'Token expired during session':
+          setError('Your session expired while you were using the app. Please log in again.');
+          break;
+        case 'Invalid user data':
+          setError('There was an issue with your account data. Please log in again.');
+          break;
+        case 'user_logout':
+          setError('You have been logged out successfully.');
+          break;
+        default:
+          setError('Please log in to continue.');
+      }
+    }
+  }, [location.search]);
 
   // Validation functions
   const validateEmail = (email) => {

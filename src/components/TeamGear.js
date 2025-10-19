@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { showSuccess, showError } from './SimpleNotification';
 import './TeamGear.css';
 
 const TeamGear = () => {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, validateTokenBeforeAction } = useAuth();
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [gearItems, setGearItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +41,23 @@ const TeamGear = () => {
   // Success modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderSuccessData, setOrderSuccessData] = useState(null);
+  
+  // Offline state
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Listen for online/offline events
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const normalizeImageUrl = (url) => {
     if (!url) {
@@ -242,7 +258,7 @@ const TeamGear = () => {
   // Add new gear item
   const addGearItem = async () => {
     if (!addForm.title.trim()) {
-      showError('Please enter a title', { title: 'Missing Information' });
+      alert('Please enter a title');
       return;
     }
     
@@ -383,6 +399,17 @@ const TeamGear = () => {
 
   // Order confirmation handlers
   const handleOrderClick = (item) => {
+    // Check if user is logged in and has member role
+    if (!currentUser) {
+      alert('Please log in to place an order.');
+      return;
+    }
+    
+    if (!['member', 'coach', 'exec', 'administrator'].includes(currentUser.role)) {
+      alert('You need to be a member to place orders. Please contact an administrator to upgrade your account.');
+      return;
+    }
+    
     setSelectedItem(item);
     setShowOrderModal(true);
     document.body.style.overflow = 'hidden';
@@ -405,6 +432,22 @@ const TeamGear = () => {
 
   const submitOrder = async () => {
     if (!selectedItem || !currentUser) return;
+    
+    // Validate token before proceeding
+    console.log('🔍 About to validate token for order submission');
+    console.log('🔍 Current user:', currentUser);
+    console.log('🔍 Token exists:', !!localStorage.getItem('triathlonToken'));
+    
+    const isTokenValid = await validateTokenBeforeAction('order submission');
+    console.log('🔍 Token validation result:', isTokenValid);
+    
+    if (!isTokenValid) {
+      console.log('❌ Token validation failed, redirecting to login');
+      return; // User will be redirected to login
+    }
+    
+    console.log('✅ Token validation passed, proceeding with order');
+    
     // Validate email confirmation
     const emailToUse = (orderEmail || '').trim();
     const emailConfirmToUse = (orderEmailConfirm || '').trim();
@@ -419,6 +462,12 @@ const TeamGear = () => {
       return;
     }
     setOrderError('');
+
+    // Check if user is offline
+    if (isOffline) {
+      setOrderError('You appear to be offline. Please check your internet connection and try again.');
+      return;
+    }
 
     setOrderSubmitting(true);
     try {
@@ -442,7 +491,19 @@ const TeamGear = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit order');
+        // Handle specific HTTP status codes
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please log in again.');
+        } else if (response.status === 403) {
+          throw new Error('Access denied. You need to be a member to place orders.');
+        } else if (response.status === 400) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Invalid order data. Please check your information.');
+        } else if (response.status >= 500) {
+          throw new Error('Server error. Please try again later.');
+        } else {
+          throw new Error(`Failed to submit order (${response.status})`);
+        }
       }
 
       const result = await response.json();
@@ -459,7 +520,15 @@ const TeamGear = () => {
       document.body.style.overflow = 'hidden';
     } catch (error) {
       console.error('Order submission error:', error);
-      showError('Failed to submit order. Please try again.', { title: 'Order Failed' });
+      
+      // Provide more specific error messages based on the error type
+      if (error.message.includes('Failed to fetch') || error.message.includes('ERR_INTERNET_DISCONNECTED')) {
+        setOrderError('Unable to connect to the server. Please check your internet connection and try again.');
+      } else if (error.message.includes('Failed to submit order')) {
+        setOrderError('Server error occurred. Please try again later.');
+      } else {
+        setOrderError('Failed to submit order. Please try again.');
+      }
     } finally {
       setOrderSubmitting(false);
     }
@@ -481,6 +550,7 @@ const TeamGear = () => {
       
       <h3 style={{ marginTop: '2rem' }}>Under Armour Gear</h3>
       <p>Please order through website by October 19th. After this you will receive an invoice from the university.</p>
+      <p>Under construction, please check back later today.</p>
       <div className="gear-grid">
         {gearItems.map(item => (
           <div key={item.id} className="gear-item">
@@ -625,9 +695,35 @@ const TeamGear = () => {
                 }
               })()}
               <div className="gear-buttons">
-                <button className="gear-button" onClick={() => handleOrderClick(item)}>
-                  Order Now
-                </button>
+                {currentUser && ['member', 'coach', 'exec', 'administrator'].includes(currentUser.role) ? (
+                  <button className="gear-button" onClick={() => handleOrderClick(item)}>
+                    Order Now
+                  </button>
+                ) : currentUser ? (
+                  <div className="gear-button-disabled" style={{ 
+                    padding: '8px 16px', 
+                    backgroundColor: '#f3f4f6', 
+                    color: '#6b7280', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '4px',
+                    cursor: 'not-allowed',
+                    fontSize: '14px'
+                  }}>
+                    Member required to order
+                  </div>
+                ) : (
+                  <div className="gear-button-disabled" style={{ 
+                    padding: '8px 16px', 
+                    backgroundColor: '#f3f4f6', 
+                    color: '#6b7280', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '4px',
+                    cursor: 'not-allowed',
+                    fontSize: '14px'
+                  }}>
+                    Login to order
+                  </div>
+                )}
                 {isAdmin && isAdmin(currentUser) && (
                   <button className="gear-edit-button" onClick={() => openEditModal(item)}>
                     ✎ Edit
@@ -832,11 +928,12 @@ const TeamGear = () => {
         <div className="gear-modal-overlay" onClick={closeOrderModal}>
           <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
             <div className="gear-modal-header">
-              <h2>Order Details</h2>
+              <h2>Confirm Order</h2>
               <button className="gear-modal-close" onClick={closeOrderModal}>×</button>
             </div>
             <div className="gear-modal-body">
               <div className="order-confirmation">
+                <h3>Order Details</h3>
                 <div className="order-item">
                   <strong>Item:</strong> {selectedItem.title}
                 </div>

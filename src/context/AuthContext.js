@@ -25,38 +25,66 @@ export const AuthProvider = ({ children }) => {
       () => localStorage.getItem('triathlonToken'),
       ({ status, message }) => {
         console.warn('🔒 Auth interceptor caught unauthorized response:', status, message);
-        localStorage.removeItem('triathlonUser');
-        localStorage.removeItem('triathlonToken');
-        const params = new URLSearchParams();
-        params.set('reason', (message || 'session_expired'));
-        window.location.href = `/login?${params.toString()}`;
+        handleTokenExpired(message);
       }
     );
 
-    // Check if user is logged in from localStorage (for now)
-    const savedUser = localStorage.getItem('triathlonUser');
-    console.log('📦 Saved user from localStorage:', savedUser);
-    
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        console.log('✅ Parsed user successfully:', parsedUser);
-        setCurrentUser(parsedUser);
-      } catch (error) {
-        console.error('❌ Error parsing saved user:', error);
-        localStorage.removeItem('triathlonUser');
+    // Check if user is logged in and validate token
+    const initializeAuth = async () => {
+      const savedUser = localStorage.getItem('triathlonUser');
+      const savedToken = localStorage.getItem('triathlonToken');
+      
+      console.log('📦 Saved user from localStorage:', savedUser);
+      console.log('🔑 Saved token from localStorage:', savedToken ? 'present' : 'missing');
+      
+      if (savedUser && savedToken) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          console.log('✅ Parsed user successfully:', parsedUser);
+          
+          // Validate token before setting user
+          const isValid = await isTokenValid();
+          if (isValid) {
+            console.log('✅ Token is valid, setting current user');
+            setCurrentUser(parsedUser);
+          } else {
+            console.warn('⚠️ Token is invalid, clearing auth data');
+            handleTokenExpired('Token expired or invalid');
+          }
+        } catch (error) {
+          console.error('❌ Error parsing saved user:', error);
+          handleTokenExpired('Invalid user data');
+        }
+      } else {
+        console.log('❌ No saved user or token found in localStorage');
+        setCurrentUser(null);
       }
-    } else {
-      console.log('❌ No saved user found in localStorage');
-    }
-    
-    setLoading(false);
-    console.log('🏁 AuthContext loading complete');
+      
+      setLoading(false);
+      console.log('🏁 AuthContext loading complete');
+    };
+
+    initializeAuth();
 
     return () => {
       if (typeof remove === 'function') remove();
     };
   }, []);
+
+  // Handle token expiration/invalidation
+  const handleTokenExpired = (reason = 'session_expired') => {
+    console.log('🔒 Handling token expiration:', reason);
+    localStorage.removeItem('triathlonUser');
+    localStorage.removeItem('triathlonToken');
+    setCurrentUser(null);
+    
+    // Only redirect if not already on login page
+    if (!window.location.pathname.includes('/login')) {
+      const params = new URLSearchParams();
+      params.set('reason', reason);
+      window.location.href = `/login?${params.toString()}`;
+    }
+  };
 
   const signup = async (email, password, name, phoneNumber) => {
     try {
@@ -166,12 +194,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('triathlonUser');
-    localStorage.removeItem('triathlonToken');
-    setCurrentUser(null);
-    
-    // Force a page reload to clear any protected routes
-    window.location.href = '/login';
+    console.log('🚪 Logging out user');
+    handleTokenExpired('user_logout');
   };
 
   const getUserRole = (user) => {
@@ -253,12 +277,36 @@ export const AuthProvider = ({ children }) => {
           'Authorization': `Bearer ${token}`
         }
       });
-      return response.ok;
+      
+      if (!response.ok) {
+        console.warn('🔒 Token validation failed:', response.status, response.statusText);
+        return false;
+      }
+      
+      return true;
     } catch (error) {
-      console.error('Token validation error:', error);
+      console.error('❌ Token validation error:', error);
       return false;
     }
   };
+
+  // Periodic token validation (every 5 minutes)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const validateTokenPeriodically = async () => {
+      const isValid = await isTokenValid();
+      if (!isValid) {
+        console.warn('⚠️ Periodic token validation failed, logging out user');
+        handleTokenExpired('Token expired during session');
+      }
+    };
+
+    // Validate token every 5 minutes
+    const interval = setInterval(validateTokenPeriodically, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   // Refresh user data and token
   const refreshUserData = async () => {
@@ -299,6 +347,28 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Validate token before critical operations (less aggressive)
+  const validateTokenBeforeAction = async (actionName = 'action') => {
+    const token = localStorage.getItem('triathlonToken');
+    if (!token) {
+      console.warn(`⚠️ No token found before ${actionName}, redirecting to login`);
+      handleTokenExpired(`No token found before ${actionName}`);
+      return false;
+    }
+
+    // Only validate token if we have a current user (avoid unnecessary API calls)
+    if (!currentUser) {
+      console.warn(`⚠️ No current user before ${actionName}, redirecting to login`);
+      handleTokenExpired(`No current user before ${actionName}`);
+      return false;
+    }
+
+    // For now, just check if token exists and user is logged in
+    // The actual API call will handle token validation
+    console.log(`✅ Token validation passed for ${actionName}`);
+    return true;
+  };
+
   const value = {
     currentUser,
     signup,
@@ -314,6 +384,7 @@ export const AuthProvider = ({ children }) => {
     promoteToAdmin,
     updateUser,
     isTokenValid,
+    validateTokenBeforeAction,
     refreshUserData
   };
 
