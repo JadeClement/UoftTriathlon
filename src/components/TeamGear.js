@@ -466,6 +466,11 @@ const TeamGear = () => {
         quantity: 1
       };
 
+      console.log('🔍 About to make API call to:', `${API_BASE}/merch-orders`);
+      console.log('🔍 Token exists:', !!token);
+      console.log('🔍 Order data:', orderData);
+      console.log('🔍 Current user:', currentUser);
+      
       const response = await fetch(`${API_BASE}/merch-orders`, {
         method: 'POST',
         headers: {
@@ -474,6 +479,9 @@ const TeamGear = () => {
         },
         body: JSON.stringify(orderData)
       });
+      
+      console.log('🔍 API response status:', response.status);
+      console.log('🔍 API response ok:', response.ok);
 
       if (!response.ok) {
         // Handle specific HTTP status codes

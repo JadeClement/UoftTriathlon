@@ -16,11 +16,12 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
     try {
       const url = typeof input === 'string' ? input : input.url;
       
-      // Don't intercept auth endpoints or role notifications to avoid redirect loops
+      // Don't intercept auth endpoints, role notifications, or merch orders to avoid redirect loops
       if (url && (
         url.includes('/auth/') || 
         url.includes('/users/role-change-notifications') ||
-        url.includes('/users/mark-role-notification-read')
+        url.includes('/users/mark-role-notification-read') ||
+        url.includes('/merch-orders')
       )) {
         return originalFetch(input, init);
       }
