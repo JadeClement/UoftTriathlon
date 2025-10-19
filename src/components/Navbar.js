@@ -19,7 +19,6 @@ function linkify(text) {
   // Simple and generalizable: [text](anything) becomes a clickable link
   // Everything between () becomes the href, regardless of format
   let result = input.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
-    console.log('🔗 Found link:', { label, url });
     // Clean up the URL - add https:// if it doesn't start with http
     const cleanUrl = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
