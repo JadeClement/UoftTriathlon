@@ -61,28 +61,19 @@ const TeamGear = () => {
 
   const normalizeImageUrl = (url) => {
     if (!url) {
-      console.log('🖼️ [NORMALIZE] No URL provided, using placeholder');
       return '/images/placeholder-gear.svg';
     }
     
-    console.log('🖼️ [NORMALIZE] Processing URL:', url);
-    
     if (url.startsWith('/uploads/')) {
-      const normalized = `${API_BASE}/..${url}`;
-      console.log('🖼️ [NORMALIZE] Uploads URL ->', normalized);
-      return normalized;
+      return `${API_BASE}/..${url}`;
     }
     if (url.startsWith('/api/')) {
-      const normalized = `${API_BASE.replace('/api','')}${url}`;
-      console.log('🖼️ [NORMALIZE] API URL ->', normalized);
-      return normalized;
+      return `${API_BASE.replace('/api','')}${url}`;
     }
     if (url.startsWith('http')) {
-      console.log('🖼️ [NORMALIZE] Full URL ->', url);
       return url;
     }
     
-    console.log('🖼️ [NORMALIZE] Fallback to placeholder for:', url);
     return '/images/placeholder-gear.svg';
   };
 
@@ -177,7 +168,6 @@ const TeamGear = () => {
 
   // Edit handlers
   const openEditModal = (item) => {
-    console.log('📝 [GEAR EDIT] Opening modal for item:', item);
     setEditingItem(item);
     setEditForm({
       title: item.title || '',
@@ -197,7 +187,6 @@ const TeamGear = () => {
 
   const handleFilesChange = (e) => {
     const files = Array.from(e.target.files || []);
-    console.log('📁 [GEAR FILES] Selected files:', files.map(f => ({name: f.name, size: f.size, type: f.type})));
     setNewImages(files);
   };
 
@@ -207,13 +196,11 @@ const TeamGear = () => {
     
     // Don't try to delete placeholder images
     if (imageUrl.includes('placeholder-gear.svg') || imageUrl.includes('/images/')) {
-      console.log('🗑️ [FRONTEND] Skipping placeholder image deletion:', imageUrl);
       setCurrentImages(prev => prev.filter(img => img !== imageUrl));
       return;
     }
     
     try {
-      console.log('🗑️ [FRONTEND] Attempting to remove image:', imageUrl);
       const token = localStorage.getItem('triathlonToken');
       const res = await fetch(`${API_BASE}/gear/${editingItem.id}/images`, {
         method: 'DELETE',
@@ -226,12 +213,10 @@ const TeamGear = () => {
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        console.error('❌ [FRONTEND] Delete image failed:', res.status, errorData);
         throw new Error(errorData.error || `Failed to remove image (${res.status})`);
       }
       
       const result = await res.json();
-      console.log('✅ [FRONTEND] Image removed successfully:', result);
       
       // Update local state
       setCurrentImages(prev => prev.filter(img => img !== imageUrl));
@@ -329,16 +314,10 @@ const TeamGear = () => {
   };
 
   const saveEdit = async () => {
-    console.log('🚀 [GEAR SAVE] Function called, editingItem:', editingItem);
     if (!editingItem) return;
     try {
       setSaving(true);
       const token = localStorage.getItem('triathlonToken');
-      console.log('🔑 [GEAR SAVE] Token exists:', !!token);
-
-      // Update fields including reordered images
-      console.log('📤 [GEAR SAVE] PUT details', editForm);
-      console.log('📤 [GEAR SAVE] Current images order:', currentImages);
       const putRes = await fetch(`${API_BASE}/gear/${editingItem.id}`, {
         method: 'PUT',
         headers: {
@@ -358,7 +337,6 @@ const TeamGear = () => {
       if (newImages.length > 0) {
         const formData = new FormData();
         newImages.forEach(f => formData.append('images', f));
-        console.log('📤 [GEAR SAVE] POST images', newImages.map(f=>({name:f.name,size:f.size,type:f.type})));
         const imgRes = await fetch(`${API_BASE}/gear/${editingItem.id}/images`, {
           method: 'POST',
           headers: {
@@ -368,17 +346,14 @@ const TeamGear = () => {
         });
         if (!imgRes.ok) throw new Error('Failed to upload images');
         const imgJson = await imgRes.json().catch(()=>null);
-        console.log('✅ [GEAR SAVE] Images response:', imgJson);
         
         // Update currentImages with the new images from server
         if (imgJson && imgJson.images) {
           setCurrentImages(imgJson.images);
-          console.log('🔄 [GEAR SAVE] Updated currentImages with server response:', imgJson.images);
         }
       }
 
       // Refetch list
-      console.log('🔄 [GEAR SAVE] Refetch gear list');
       const res = await fetch(`${API_BASE}/gear`);
       const data = await res.json();
       const updatedItems = (data.items || []).map(item => ({
@@ -386,8 +361,6 @@ const TeamGear = () => {
         images: Array.isArray(item.images) && item.images.length > 0 ? item.images : ['/images/placeholder-gear.svg']
       }));
       setGearItems(updatedItems);
-      console.log('✅ [GEAR SAVE] Updated gear items:', updatedItems);
-
       closeEditModal();
     } catch (e) {
       console.error(e);
