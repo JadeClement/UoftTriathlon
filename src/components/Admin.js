@@ -321,7 +321,7 @@ const Admin = () => {
       await loadOrders();
       setShowOrderModal(false);
     } catch (e) {
-      showError(e.message, { title: 'Failed to Save Order' });
+      alert(`Failed to Save Order: ${e.message}`);
     }
   };
 
@@ -334,7 +334,7 @@ const Admin = () => {
       if (!res.ok) throw new Error('Failed to delete order');
       await loadOrders();
     } catch (e) {
-      showError(e.message, { title: 'Failed to Delete Order' });
+      alert(`Failed to Delete Order: ${e.message}`);
     }
   };
 
