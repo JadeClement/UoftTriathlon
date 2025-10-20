@@ -6,8 +6,10 @@ const Admin = () => {
   const { currentUser, isAdmin } = useAuth();
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState('members');
-  const [bannerForm, setBannerForm] = useState({ enabled: false, message: '' });
+  // Banner form supports multiple items and rotation interval
+  const [bannerForm, setBannerForm] = useState({ enabled: false, items: [''], rotationIntervalMs: 6000 });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -122,10 +124,16 @@ const Admin = () => {
       const response = await fetch(`${API_BASE_URL}/site/banner`);
       if (response.ok) {
         const data = await response.json();
-        setBannerForm({
-          enabled: data.banner?.enabled || false,
-          message: data.banner?.message || ''
-        });
+        const enabled = !!data?.banner?.enabled;
+        const rotationIntervalMs = Number(data?.banner?.rotationIntervalMs) > 0 ? Number(data.banner.rotationIntervalMs) : 6000;
+        // Normalize items to a flat array of strings
+        let items = [];
+        if (Array.isArray(data?.banner?.items)) {
+          items = data.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean);
+        } else if (data?.banner?.message) {
+          items = [String(data.banner.message)];
+        }
+        setBannerForm({ enabled: enabled && items.length > 0, items: items.length ? items : [''], rotationIntervalMs });
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
@@ -761,6 +769,14 @@ const Admin = () => {
         {activeTab === 'members' && (
                       <div className="members-section">
               <h2>All Members</h2>
+              <div className="form-group" style={{ maxWidth: 420, marginBottom: 16 }}>
+                <input
+                  type="text"
+                  placeholder="Search by name or email…"
+                  value={memberSearch}
+                  onChange={(e)=> setMemberSearch(e.target.value)}
+                />
+              </div>
               <div className="admin-warning">
                 <p><strong>⚠️ Important:</strong> The "Delete" button will permanently remove users and all their data. This action cannot be undone.</p>
               </div>
@@ -780,7 +796,16 @@ const Admin = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {members.map(member => (
+                  {members
+                    .filter(member => {
+                      const q = memberSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      return (
+                        String(member.name || '').toLowerCase().includes(q) ||
+                        String(member.email || '').toLowerCase().includes(q)
+                      );
+                    })
+                    .map(member => (
                     <tr key={member.id}>
                       <td>{member.name}</td>
                       <td>{member.email}</td>
@@ -853,7 +878,7 @@ const Admin = () => {
         {activeTab === 'banner' && (
           <div className="email-section">
             <h2>Site Banner</h2>
-            <p>Toggle a banner at the top of the site with a message.</p>
+            <p>Toggle one or more rotating banners at the top of the site.</p>
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
@@ -861,7 +886,11 @@ const Admin = () => {
                 const resp = await fetch(`${API_BASE_URL}/site/banner`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify(bannerForm)
+                  body: JSON.stringify({
+                    enabled: !!bannerForm.enabled,
+                    rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000,
+                    items: (bannerForm.items || []).map((m) => ({ message: String(m || '').trim() })).filter((m) => m.message)
+                  })
                 });
                 if (!resp.ok) {
                   const err = await resp.json().catch(() => ({}));
@@ -879,18 +908,48 @@ const Admin = () => {
                 </label>
                 <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
               </div>
+              {/* Rotation interval */}
               <div className="form-group">
-                <label>Message (max 50 characters)</label>
-                <input 
-                  type="text" 
-                  value={bannerForm.message} 
-                  onChange={(e)=> setBannerForm({ ...bannerForm, message: e.target.value })} 
-                  placeholder="Work in progress…" 
-                  maxLength={50}
+                <label>Rotation Interval (ms)</label>
+                <input
+                  type="number"
+                  value={bannerForm.rotationIntervalMs}
+                  min={1000}
+                  step={500}
+                  onChange={(e)=> setBannerForm({ ...bannerForm, rotationIntervalMs: Number(e.target.value) })}
                 />
-                <div style={{fontSize: '12px', color: '#666', textAlign: 'right', marginTop: '4px'}}>
-                  {bannerForm.message.length}/50 characters
-                </div>
+              </div>
+
+              {/* Multiple banner items */}
+              <div className="form-group">
+                <label>Banner Messages (max 10)</label>
+                {(bannerForm.items || []).map((msg, idx) => (
+                  <div key={idx} style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
+                    <input
+                      type="text"
+                      value={msg}
+                      onChange={(e)=> {
+                        const next = [...(bannerForm.items || [])];
+                        next[idx] = e.target.value;
+                        setBannerForm({ ...bannerForm, items: next });
+                      }}
+                      placeholder={`Message #${idx+1}`}
+                    />
+                    <button type="button" className="btn" onClick={()=> {
+                      const next = (bannerForm.items || []).filter((_,i)=> i!==idx);
+                      setBannerForm({ ...bannerForm, items: next.length ? next : [''] });
+                    }}>Remove</button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={()=> {
+                    const next = [...(bannerForm.items || [])];
+                    if (next.length < 10) next.push('');
+                    setBannerForm({ ...bannerForm, items: next });
+                  }}
+                >+ Add Banner</button>
               </div>
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Save Banner</button>

@@ -119,6 +119,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip unsupported request schemes (like chrome-extension://)
+  if (request.url.startsWith('chrome-extension://') || 
+      request.url.startsWith('moz-extension://') || 
+      request.url.startsWith('safari-extension://')) {
+    return;
+  }
+
   // For all other requests, use network-first with cache fallback
   event.respondWith(
     fetch(request).then((response) => {
