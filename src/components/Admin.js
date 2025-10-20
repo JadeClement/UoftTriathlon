@@ -1875,12 +1875,33 @@ const Admin = () => {
               </div>
               <div className="form-group">
                 <label>Size:</label>
-                <input
-                  type="text"
+                <select
                   value={orderForm.size}
                   onChange={(e) => setOrderForm({...orderForm, size: e.target.value})}
                   required
-                />
+                >
+                  <option value="">Select a size...</option>
+                  {orderForm.gender === 'womens' ? (
+                    // Women's sizes: XS, S, M, L, XL, 2XL
+                    <>
+                      <option value="XS">XS</option>
+                      <option value="S">S</option>
+                      <option value="M">M</option>
+                      <option value="L">L</option>
+                      <option value="XL">XL</option>
+                      <option value="2XL">2XL</option>
+                    </>
+                  ) : (
+                    // Men's sizes: S, M, L, XL, 2XL (no XS, no XXS)
+                    <>
+                      <option value="S">S</option>
+                      <option value="M">M</option>
+                      <option value="L">L</option>
+                      <option value="XL">XL</option>
+                      <option value="2XL">2XL</option>
+                    </>
+                  )}
+                </select>
               </div>
               <div className="form-group">
                 <label>Quantity:</label>
