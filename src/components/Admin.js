@@ -344,9 +344,6 @@ const Admin = () => {
         name: `${orderForm.firstName} ${orderForm.lastName}`.trim()
       };
       
-      // Remove gender from orderData as it's not needed by backend
-      delete orderData.gender;
-      
       const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) });
 
       if (!res.ok) throw new Error('Failed to save order');
@@ -1366,6 +1363,7 @@ const Admin = () => {
                       <th>Email</th>
                       <th>Item</th>
                       <th>Size</th>
+                      <th>Gender</th>
                       <th>Qty</th>
                       <th>Created</th>
                       <th>Actions</th>
@@ -1379,6 +1377,7 @@ const Admin = () => {
                         <td>{o.email}</td>
                         <td>{o.item}</td>
                         <td>{o.size}</td>
+                        <td>{o.gender || 'M'}</td>
                         <td>{o.quantity}</td>
                         <td>{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
                         <td>
@@ -1388,7 +1387,7 @@ const Admin = () => {
                       </tr>
                     ))}
                     {orders.length === 0 && (
-                      <tr><td colSpan="8" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
+                      <tr><td colSpan="9" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
                     )}
                   </tbody>
                 </table>

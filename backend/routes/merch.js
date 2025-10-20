@@ -8,8 +8,8 @@ const router = express.Router();
 router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, first_name, last_name, email, item, size, quantity, created_at
-       FROM merch_orders
+      `SELECT id, first_name, last_name, email, item, size, quantity, gender, created_at 
+       FROM merch_orders 
        ORDER BY created_at DESC`
     );
     const orders = (result.rows || []).map(row => ({
@@ -20,6 +20,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
       item: row.item,
       size: row.size,
       quantity: row.quantity,
+      gender: row.gender,
       created_at: row.created_at,
     }));
     res.json({ orders });
@@ -32,16 +33,17 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 // POST /api/merch-orders - create merch order
 router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
-    const { firstName, lastName, email, item, size, quantity } = req.body;
+    const { firstName, lastName, email, item, size, quantity, gender } = req.body;
     if (!firstName || !lastName || !email || !item) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     const qty = Number.isFinite(quantity) ? quantity : parseInt(quantity, 10) || 1;
+    const genderValue = gender === 'womens' ? 'W' : 'M'; // Store as M/W
     const result = await pool.query(
-      `INSERT INTO merch_orders (first_name, last_name, email, item, size, quantity)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, first_name, last_name, email, item, size, quantity, created_at`,
-      [firstName, lastName, email, item, size || null, qty]
+      `INSERT INTO merch_orders (first_name, last_name, email, item, size, quantity, gender)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, first_name, last_name, email, item, size, quantity, gender, created_at`,
+      [firstName, lastName, email, item, size || null, qty, genderValue]
     );
     const row = result.rows[0];
     res.status(201).json({
@@ -53,6 +55,7 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
         item: row.item,
         size: row.size,
         quantity: row.quantity,
+        gender: row.gender,
         created_at: row.created_at,
       }
     });
