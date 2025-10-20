@@ -57,8 +57,10 @@ const Admin = () => {
     email: '',
     item: '',
     size: '',
-    quantity: 1
+    quantity: 1,
+    gender: 'mens' // Add gender field
   });
+  const [gearItems, setGearItems] = useState([]);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -137,6 +139,18 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
+    }
+  };
+
+  const loadGearItems = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/gear`);
+      if (response.ok) {
+        const data = await response.json();
+        setGearItems(data.items || []);
+      }
+    } catch (error) {
+      console.error('Error loading gear items:', error);
     }
   };
 
@@ -230,6 +244,9 @@ const Admin = () => {
 
       // Load banner data
       await loadBannerData();
+      
+      // Load gear items for order form
+      await loadGearItems();
 
       // Load all members
       const membersResponse = await fetch(`${API_BASE_URL}/admin/members`, {
@@ -293,7 +310,7 @@ const Admin = () => {
   }, [activeTab]);
 
   const openNewOrder = () => {
-    setOrderForm({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1 });
+    setOrderForm({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1, gender: 'mens' });
     setShowOrderModal(true);
   };
 
@@ -305,6 +322,10 @@ const Admin = () => {
       formData.firstName = nameParts[0] || '';
       formData.lastName = nameParts.slice(1).join(' ') || '';
       delete formData.name;
+    }
+    // Add default gender if not present
+    if (!formData.gender) {
+      formData.gender = 'mens';
     }
     setOrderForm(formData);
     setShowOrderModal(true);
@@ -322,6 +343,9 @@ const Admin = () => {
         ...orderForm,
         name: `${orderForm.firstName} ${orderForm.lastName}`.trim()
       };
+      
+      // Remove gender from orderData as it's not needed by backend
+      delete orderData.gender;
       
       const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) });
 
@@ -1824,13 +1848,30 @@ const Admin = () => {
                 />
               </div>
               <div className="form-group">
+                <label>Gender:</label>
+                <select
+                  value={orderForm.gender}
+                  onChange={(e) => setOrderForm({...orderForm, gender: e.target.value})}
+                  required
+                >
+                  <option value="mens">Men's</option>
+                  <option value="womens">Women's</option>
+                </select>
+              </div>
+              <div className="form-group">
                 <label>Item:</label>
-                <input
-                  type="text"
+                <select
                   value={orderForm.item}
                   onChange={(e) => setOrderForm({...orderForm, item: e.target.value})}
                   required
-                />
+                >
+                  <option value="">Select an item...</option>
+                  {gearItems.map(item => (
+                    <option key={item.id} value={item.title}>
+                      {item.title} - ${item.price}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Size:</label>
