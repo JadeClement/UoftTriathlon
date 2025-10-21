@@ -8,6 +8,15 @@ const Admin = () => {
   const [pendingMembers, setPendingMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState('members');
+  
+  // Pagination state for members
+  const [currentPage, setCurrentPage] = useState(1);
+  const [membersPerPage] = useState(15);
+  
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [memberSearch]);
   // Banner form supports multiple items and rotation interval
   const [bannerForm, setBannerForm] = useState({ enabled: false, items: [''], rotationIntervalMs: 6000 });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
@@ -825,42 +834,136 @@ const Admin = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {members
-                    .filter(member => {
+                  {(() => {
+                    // Filter members based on search
+                    const filteredMembers = members.filter(member => {
                       const q = memberSearch.trim().toLowerCase();
                       if (!q) return true;
                       return (
                         String(member.name || '').toLowerCase().includes(q) ||
                         String(member.email || '').toLowerCase().includes(q)
                       );
-                    })
-                    .map(member => (
-                    <tr key={member.id}>
-                      <td>{member.name}</td>
-                      <td>{member.email}</td>
-                      <td><span className={`role-badge ${member.role}`}>{member.role}</span></td>
-                      <td>{member.phone_number || 'Not set'}</td>
-                      <td>{member.joinDate}</td>
-                      <td>{member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</td>
-                      <td>
-                        <span className={`absence-count ${member.absences > 0 ? 'has-absences' : 'no-absences'}`}>
-                          {member.absences || 0}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`charter-status ${member.charterAccepted ? 'accepted' : 'not-accepted'}`}>
-                          {member.charterAccepted ? '✅ Yes' : '❌ No'}
-                        </span>
-                      </td>
+                    });
 
-                      <td>
-                        <button className="action-btn small" onClick={() => editMember(member)}>Edit</button>
-                        <button className="action-btn small danger" onClick={() => removeMember(member.id)}>Delete</button>
-                      </td>
-                    </tr>
-                  ))}
+                    // Calculate pagination
+                    const totalPages = Math.ceil(filteredMembers.length / membersPerPage);
+                    const startIndex = (currentPage - 1) * membersPerPage;
+                    const endIndex = startIndex + membersPerPage;
+                    const currentMembers = filteredMembers.slice(startIndex, endIndex);
+
+                    return currentMembers.map(member => (
+                      <tr key={member.id}>
+                        <td>{member.name}</td>
+                        <td>{member.email}</td>
+                        <td><span className={`role-badge ${member.role}`}>{member.role}</span></td>
+                        <td>{member.phone_number || 'Not set'}</td>
+                        <td>{member.joinDate}</td>
+                        <td>{member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</td>
+                        <td>
+                          <span className={`absence-count ${member.absences > 0 ? 'has-absences' : 'no-absences'}`}>
+                            {member.absences || 0}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`charter-status ${member.charterAccepted ? 'accepted' : 'not-accepted'}`}>
+                            {member.charterAccepted ? '✅ Yes' : '❌ No'}
+                          </span>
+                        </td>
+                        <td>
+                          <button className="action-btn small" onClick={() => editMember(member)}>Edit</button>
+                          <button className="action-btn small danger" onClick={() => removeMember(member.id)}>Delete</button>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
                 </tbody>
               </table>
+              
+              {/* Pagination Controls */}
+              {(() => {
+                const filteredMembers = members.filter(member => {
+                  const q = memberSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    String(member.name || '').toLowerCase().includes(q) ||
+                    String(member.email || '').toLowerCase().includes(q)
+                  );
+                });
+                
+                const totalPages = Math.ceil(filteredMembers.length / membersPerPage);
+                const startIndex = (currentPage - 1) * membersPerPage;
+                const endIndex = Math.min(startIndex + membersPerPage, filteredMembers.length);
+                
+                if (totalPages <= 1) return null;
+                
+                return (
+                  <div className="pagination-controls">
+                    <div className="pagination-info">
+                      Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members
+                    </div>
+                    <div className="pagination-buttons">
+                      <button 
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                      >
+                        First
+                      </button>
+                      <button 
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                      
+                      {/* Page numbers */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                        // Show first page, last page, current page, and pages around current
+                        const shouldShow = pageNum === 1 || 
+                                         pageNum === totalPages || 
+                                         Math.abs(pageNum - currentPage) <= 2;
+                        
+                        if (!shouldShow) {
+                          // Show ellipsis for gaps
+                          if (pageNum === 2 && currentPage > 4) {
+                            return <span key={`ellipsis-${pageNum}`} className="pagination-ellipsis">...</span>;
+                          }
+                          if (pageNum === totalPages - 1 && currentPage < totalPages - 3) {
+                            return <span key={`ellipsis-${pageNum}`} className="pagination-ellipsis">...</span>;
+                          }
+                          return null;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
+                            onClick={() => setCurrentPage(pageNum)}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      
+                      <button 
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </button>
+                      <button 
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Last
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
