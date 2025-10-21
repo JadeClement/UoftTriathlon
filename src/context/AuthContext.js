@@ -218,7 +218,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isAdmin = (user) => {
-    return hasPermission(user, 'administrator');
+    return hasPermission(user, 'administrator') || hasPermission(user, 'exec');
   };
 
   const isExec = (user) => {
