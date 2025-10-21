@@ -993,10 +993,7 @@ const Admin = () => {
             <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
               {/* Left side - Form */}
               <div style={{ flex: 1, minWidth: '400px' }}>
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  await handleSendEmail();
-                }}>
+                <form>
                   {/* Email Type Selection */}
                   <div className="form-group" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -1100,9 +1097,10 @@ const Admin = () => {
                   {/* Submit Button */}
                   <div className="modal-actions">
                     <button 
-                      type="submit" 
+                      type="button" 
                       className="btn btn-primary" 
                       disabled={sendingEmail || sendingBulkEmail}
+                      onClick={handleSendEmail}
                       style={{ 
                         backgroundColor: emailType === 'everyone' ? '#dc2626' : '#3b82f6',
                         width: '100%'
