@@ -158,10 +158,16 @@ const Admin = () => {
     setEmailStatus(null);
     setBulkEmailStatus(null);
     
-    // For individual emails, check if there's a message
-    if (emailType === 'individual' && !emailForm.message.trim()) {
-      setEmailStatus({ type: 'error', text: 'Please provide a message.' });
-      return;
+    // For individual emails, check if there's a subject and message
+    if (emailType === 'individual') {
+      if (!emailForm.subject.trim()) {
+        setEmailStatus({ type: 'error', text: 'Please provide a subject.' });
+        return;
+      }
+      if (!emailForm.message.trim()) {
+        setEmailStatus({ type: 'error', text: 'Please provide a message.' });
+        return;
+      }
     }
     
     // For bulk emails, check template content
@@ -184,8 +190,8 @@ const Admin = () => {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ 
             to: emailForm.to, 
-            subject: template.title || 'UofT Tri Club Update',
-            message: emailForm.message || '',
+            subject: emailForm.subject,
+            message: emailForm.message,
             template: template 
           })
         });
@@ -1025,6 +1031,16 @@ const Admin = () => {
                           value={emailForm.to} 
                           onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} 
                           placeholder="recipient@example.com"
+                          required 
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Subject</label>
+                        <input 
+                          type="text" 
+                          value={emailForm.subject} 
+                          onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} 
+                          placeholder="Email subject"
                           required 
                         />
                       </div>
