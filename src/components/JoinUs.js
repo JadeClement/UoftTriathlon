@@ -65,7 +65,7 @@ const JoinUs = () => {
               <div className="step-number">1</div>
               <div className="step-content">
                 <h3>Try Us Out</h3>
-                <p>Attend any one of our workouts to meet us and try it out! For indoor spin workouts, email <a href="mailto:info@uofttriathlon.com">info@uofttriathlon.com</a> to make sure there is a bike reserved for you.</p>
+                <p>Attend any one of our workouts to meet us and try it out! For indoor spin workouts, email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> to make sure there is a bike reserved for you.</p>
               </div>
             </div>
 
@@ -134,7 +134,7 @@ const JoinUs = () => {
               <div className="step-number">4</div>
               <div className="step-content">
                 <h3>Join the Forum, Facebook Page and Google Groups</h3>
-                <p>The Forum is where the workouts, including locations, are posted, and where members sign up for indoor spin. For Forum access, please email <a href="mailto:info@uofttriathlon.com">info@uoft-tri.club</a> with your registration receipt.</p>
+                <p>The Forum is where the workouts, including locations, are posted, and where members sign up for indoor spin. For Forum access, please email <a href="mailto:info@uoft-triathlon.com">info@uoft-tri.club</a> with your registration receipt.</p>
                 <p>Joining the Google Group subscribes you to the weekly bulletin of updates and news about the club. You can find the group by searching "University of Toronto Triathlon" in the Google Groups function.</p>
               </div>
             </div>
@@ -143,7 +143,7 @@ const JoinUs = () => {
               <div className="step-number">5</div>
               <div className="step-content">
                 <h3>Come to the workouts!</h3>
-                <p>For all other inquiries or questions please email <a href="mailto:info@uofttriathlon.com">info@uofttriathlon.com</a></p>
+                <p>For all other inquiries or questions please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a></p>
               </div>
             </div>
           </div>
@@ -163,7 +163,7 @@ const JoinUs = () => {
             <h4>Introduction</h4>
             <p>The University of Toronto Triathlon Club ("UofT Tri Club") is a triathlon club which is open to all individuals which are members of the Athletic Center - please note you have to be 18 years old, unless you are a 17 year old student (see the Athletic Centers guidelines for more information).</p>
             
-            <p>The UofT Tri Club is run by an executive team, which consists of different members who volunteer their time. While the executive team will change, they are best reached by email at <a href="mailto:info@uofttriathlon.com">info@uofttriathlon.com</a>, additionally you can reach out through social media. Please give them time to answer.</p>
+            <p>The UofT Tri Club is run by an executive team, which consists of different members who volunteer their time. While the executive team will change, they are best reached by email at <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a>, additionally you can reach out through social media. Please give them time to answer.</p>
             
             <p>The Executive Team consists of the following positions: President, Treasurer, Secretary, Webmaster, Social coordinator and Social Media Manager; positions can be filled by one or more individuals.</p>
             
