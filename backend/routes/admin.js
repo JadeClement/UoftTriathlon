@@ -807,7 +807,27 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
     const now = new Date();
     const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     const bannerTitle = template?.bannerTitle || `University of Toronto Triathlon Club – ${dateStr}`;
-    const body = template?.body || message || '';
+    
+    // Combine all template content: intro + bullets + body
+    let combinedContent = '';
+    
+    if (template?.intro) {
+      combinedContent += template.intro + '\n\n';
+    }
+    
+    if (template?.bullets && template.bullets.length > 0) {
+      const validBullets = template.bullets.filter(b => b && b.trim());
+      if (validBullets.length > 0) {
+        combinedContent += validBullets.map((bullet, index) => `${index + 1}. ${bullet}`).join('\n') + '\n\n';
+      }
+    }
+    
+    if (template?.body) {
+      combinedContent += template.body;
+    }
+    
+    // Fallback to message if no template content
+    const body = combinedContent || message || '';
 
     const escapeHtml = (s = '') => String(s)
       .replace(/&/g, '&amp;')
