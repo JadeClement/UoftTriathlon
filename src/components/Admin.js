@@ -1027,6 +1027,7 @@ const Admin = () => {
                           type="email" 
                           value={emailForm.to} 
                           onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })} 
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
                           placeholder="recipient@example.com"
                           required 
                         />
@@ -1037,6 +1038,7 @@ const Admin = () => {
                           type="text" 
                           value={emailForm.subject} 
                           onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} 
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
                           placeholder="Email subject"
                           required 
                         />
@@ -1060,11 +1062,23 @@ const Admin = () => {
                       <h3 style={{marginTop:0}}>Email Template</h3>
                       <div className="form-group">
                         <label>Banner Title</label>
-                        <input type="text" value={template.bannerTitle} onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} />
+                        <input 
+                          type="text" 
+                          value={template.bannerTitle} 
+                          onChange={(e)=>setTemplate({...template, bannerTitle:e.target.value})} 
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                          placeholder={`UofT Tri Club – ${new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}`} 
+                        />
                       </div>
                       <div className="form-group">
                         <label>Title</label>
-                        <input type="text" value={template.title} onChange={(e)=>setTemplate({...template, title:e.target.value})} placeholder="Email subject/title" />
+                        <input 
+                          type="text" 
+                          value={template.title} 
+                          onChange={(e)=>setTemplate({...template, title:e.target.value})} 
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                          placeholder="Email subject/title" 
+                        />
                       </div>
                       <div className="form-group">
                         <label>Intro</label>
@@ -1074,7 +1088,13 @@ const Admin = () => {
                         <label>Bullets</label>
                         {(template.bullets||[]).map((b, idx)=> (
                           <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
-                            <input type="text" value={b} onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} placeholder="Bullet point..." />
+                            <input 
+                              type="text" 
+                              value={b} 
+                              onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} 
+                              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                              placeholder="Bullet point..." 
+                            />
                             <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
                           </div>
                         ))}
