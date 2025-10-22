@@ -20,12 +20,43 @@ const Admin = () => {
   // Banner form supports multiple items and rotation interval
   const [bannerForm, setBannerForm] = useState({ enabled: false, items: [''], rotationIntervalMs: 6000 });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
-  const [template, setTemplate] = useState({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+  const [template, setTemplate] = useState({ bannerTitle: '', title: '', body: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
   const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
+
+  // Rich text editor functions
+  const insertText = (text, wrapper = '') => {
+    const textarea = document.getElementById('email-body-textarea');
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    const newText = wrapper ? `${wrapper}${selectedText || text}${wrapper}` : text;
+    
+    const newValue = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+    setTemplate({ ...template, body: newValue });
+    
+    // Restore cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + newText.length, start + newText.length);
+    }, 0);
+  };
+
+  const insertBold = () => insertText('', '**');
+  const insertItalic = () => insertText('', '*');
+  const insertNumberedList = () => insertText('1. ');
+  const insertUrl = () => {
+    const url = prompt('Enter URL:');
+    const text = prompt('Enter link text (optional):') || url;
+    if (url) {
+      insertText(`[${text}](${url})`);
+    }
+  };
 
   // Attendance dashboard state
   const [attendanceWorkouts, setAttendanceWorkouts] = useState([]);
@@ -180,7 +211,7 @@ const Admin = () => {
     }
     
     // For bulk emails, check template content
-    if (emailType === 'everyone' && !template.title && !template.intro && !template.bullets.some(b => b.trim()) && !template.body) {
+    if (emailType === 'everyone' && !template.title && !template.body) {
       setBulkEmailStatus({ type: 'error', text: 'Please provide template content.' });
       return;
     }
@@ -1327,28 +1358,102 @@ const Admin = () => {
                         />
                       </div>
                       <div className="form-group">
-                        <label>Intro</label>
-                        <textarea rows="3" value={template.intro} onChange={(e)=>setTemplate({...template, intro:e.target.value})} placeholder="Introduction text..." />
-                      </div>
-                      <div className="form-group">
-                        <label>Bullets</label>
-                        {(template.bullets||[]).map((b, idx)=> (
-                          <div key={idx} style={{display:'flex', gap:8, marginBottom:8}}>
-                            <input 
-                              type="text" 
-                              value={b} 
-                              onChange={(e)=>{ const copy=[...template.bullets]; copy[idx]=e.target.value; setTemplate({...template, bullets:copy}); }} 
-                              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-                              placeholder="Bullet point..." 
-                            />
-                            <button type="button" className="action-btn small danger" onClick={()=>{ const copy=[...template.bullets]; copy.splice(idx,1); if(copy.length===0) copy.push(''); setTemplate({...template, bullets:copy}); }}>Remove</button>
+                        <label>Email Body</label>
+                        <div style={{ border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
+                          {/* Formatting Toolbar */}
+                          <div style={{ 
+                            background: '#f8f9fa', 
+                            padding: '8px 12px', 
+                            borderBottom: '1px solid #ddd',
+                            display: 'flex',
+                            gap: '8px',
+                            flexWrap: 'wrap'
+                          }}>
+                            <button 
+                              type="button" 
+                              onClick={insertBold}
+                              style={{
+                                padding: '6px 12px',
+                                border: '1px solid #ccc',
+                                background: 'white',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: 'bold'
+                              }}
+                              title="Bold"
+                            >
+                              B
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={insertItalic}
+                              style={{
+                                padding: '6px 12px',
+                                border: '1px solid #ccc',
+                                background: 'white',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontStyle: 'italic'
+                              }}
+                              title="Italic"
+                            >
+                              I
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={insertNumberedList}
+                              style={{
+                                padding: '6px 12px',
+                                border: '1px solid #ccc',
+                                background: 'white',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '14px'
+                              }}
+                              title="Numbered List"
+                            >
+                              1.
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={insertUrl}
+                              style={{
+                                padding: '6px 12px',
+                                border: '1px solid #ccc',
+                                background: 'white',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '14px'
+                              }}
+                              title="Insert Link"
+                            >
+                              🔗
+                            </button>
                           </div>
-                        ))}
-                        <button type="button" className="action-btn small" onClick={()=> setTemplate({...template, bullets:[...template.bullets, '']})}>Add bullet</button>
-                      </div>
-                      <div className="form-group">
-                        <label>Body</label>
-                        <textarea rows="6" value={template.body} onChange={(e)=>setTemplate({...template, body:e.target.value})} placeholder="Main email content..." />
+                          {/* Textarea */}
+                          <textarea 
+                            id="email-body-textarea"
+                            rows="8" 
+                            value={template.body} 
+                            onChange={(e)=>setTemplate({...template, body:e.target.value})} 
+                            placeholder="Type your email content here... Use Enter for new lines. Use the buttons above for formatting."
+                            style={{
+                              width: '100%',
+                              border: 'none',
+                              padding: '12px',
+                              fontSize: '14px',
+                              lineHeight: '1.5',
+                              resize: 'vertical',
+                              outline: 'none',
+                              fontFamily: 'inherit'
+                            }}
+                          />
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                          💡 Tip: Use **bold**, *italic*, numbered lists (1. 2. 3.), and [links](url) for formatting
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1405,57 +1510,40 @@ const Admin = () => {
                       
                       {/* Content */}
                       <div style={{ padding: '32px 24px' }}>
-                        {template.intro && (
-                          <div style={{
-                            background: '#f8fafc',
-                            padding: '24px',
-                            borderRadius: '12px',
-                            borderLeft: '4px solid #dc2626',
-                            marginBottom: '24px'
-                          }}>
-                            <p style={{margin: 0, color: '#64748b', fontSize: '16px', lineHeight: 1.6}}>
-                              {template.intro}
-                            </p>
-                          </div>
-                        )}
-                        
-                        {(template.bullets||[]).filter(Boolean).length>0 && (
-                          <div style={{
-                            background: '#f8fafc',
-                            padding: '24px',
-                            borderRadius: '12px',
-                            marginBottom: '24px'
-                          }}>
-                            <ol style={{margin: 0, paddingLeft: '20px'}}>
-                              {template.bullets.filter(Boolean).map((b, i)=> (
-                                <li key={i} style={{
-                                  marginBottom: '12px',
-                                  color: '#475569',
-                                  fontSize: '16px',
-                                  lineHeight: 1.6
-                                }}>
-                                  {b}
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        )}
-                        
                         {template.body && (
                           <div style={{
                             background: '#f8fafc',
                             padding: '24px',
                             borderRadius: '12px'
                           }}>
-                            <p style={{
+                            <div style={{
                               margin: 0,
                               color: '#475569',
                               fontSize: '16px',
                               lineHeight: 1.6,
                               whiteSpace: 'pre-wrap'
                             }}>
-                              {template.body}
-                            </p>
+                              {template.body.split('\n').map((line, index) => {
+                                // Simple markdown-like formatting
+                                let formattedLine = line;
+                                
+                                // Bold text
+                                formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                                
+                                // Italic text
+                                formattedLine = formattedLine.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                                
+                                // Links
+                                formattedLine = formattedLine.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: none;">$1</a>');
+                                
+                                // Numbered lists
+                                if (formattedLine.match(/^\d+\.\s/)) {
+                                  return <div key={index} style={{ marginLeft: '20px', marginBottom: '8px' }} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
+                                }
+                                
+                                return <div key={index} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
