@@ -60,6 +60,7 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
 // Allow exec and admin to view members; restrict mutating routes to admin below
 router.get('/members', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
+    console.log('🔍 Admin members endpoint called by user:', req.user?.email, 'role:', req.user?.role);
     const { page = 1, limit = 50, search = '', role = '' } = req.query;
     const offset = (page - 1) * limit;
 
@@ -82,6 +83,7 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
 
     // Get total count
     const countResult = await pool.query(`SELECT COUNT(*) as total FROM users ${whereClause}`, params);
+    console.log('🔍 Total members count:', countResult.rows[0].total);
     
     // Get members
     const membersResult = await pool.query(`
@@ -93,6 +95,9 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
       ORDER BY created_at DESC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `, [...params, limit, offset]);
+
+    console.log('🔍 Members query returned:', membersResult.rows.length, 'members');
+    console.log('🔍 Sample member:', membersResult.rows[0]);
 
     res.json({
       members: membersResult.rows || [],
