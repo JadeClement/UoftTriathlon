@@ -87,6 +87,13 @@ console.log('🔍 Uploads directory exists:', require('fs').existsSync(uploadsPa
 
 app.use('/uploads', express.static(uploadsPath));
 
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`📡 ${new Date().toISOString()} - ${req.method} ${req.path} from ${req.ip}`);
+  console.log(`📡 Headers:`, req.headers);
+  next();
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
@@ -217,6 +224,10 @@ async function startServer() {
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log('📊 Database: PostgreSQL (uofttriathlon)');
+      console.log('🔑 JWT_SECRET configured:', !!process.env.JWT_SECRET);
+      console.log('🔑 JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
+      console.log('📧 AWS SES configured:', !!process.env.AWS_ACCESS_KEY_ID);
+      console.log('🌐 FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
       // startAutoBackup(); // Commented out for now
     });
   } catch (error) {
