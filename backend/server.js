@@ -41,6 +41,7 @@ app.use(cors({
   origin: [
     'https://www.uoft-tri.club',
     'https://uoft-tri.club', 
+    'https://uoft-triathlon-staging.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:55731'
