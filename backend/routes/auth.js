@@ -5,6 +5,8 @@ const crypto = require('crypto');
 const { pool } = require('../database-pg');
 const { authenticateToken } = require('../middleware/auth');
 
+console.log('🔧 Auth routes file loaded successfully');
+
 const router = express.Router();
 
 // CORS is handled by main server middleware

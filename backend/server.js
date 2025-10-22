@@ -95,16 +95,27 @@ app.use((req, res, next) => {
 });
 
 // API Routes
+console.log('🔧 Registering API routes...');
+console.log('🔧 Auth routes:', typeof authRoutes);
 app.use('/api/auth', authRoutes);
+console.log('✅ Auth routes registered');
+
+console.log('🔧 Members routes:', typeof memberRoutes);
 app.use('/api/members', memberRoutes);
-app.use('/api/forum', forumRoutes);
+console.log('✅ Members routes registered');
+
+console.log('🔧 Admin routes:', typeof adminRoutes);
 app.use('/api/admin', adminRoutes);
+console.log('✅ Admin routes registered');
+
+app.use('/api/forum', forumRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/races', raceRoutes);
 app.use('/api/site', siteRoutes);
 app.use('/api/gear', gearRoutes);
 app.use('/api/merch-orders', merchRoutes);
+console.log('✅ All API routes registered');
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
