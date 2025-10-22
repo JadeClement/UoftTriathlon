@@ -291,6 +291,14 @@ const Admin = () => {
         console.log('🔍 Sample member with charter:', transformedMembers.find(m => m.id)?.charterAccepted);
         console.log('🔍 Raw charter_accepted values:', membersData.members.map(m => ({ id: m.id, charter_accepted: m.charter_accepted })));
         console.log('🔍 Full transformed members:', JSON.stringify(transformedMembers, null, 2));
+        
+        // Debug: Check for jade members
+        const jadeMembers = transformedMembers.filter(m => 
+          (m.name && m.name.toLowerCase().includes('jade')) || 
+          (m.email && m.email.toLowerCase().includes('jade'))
+        );
+        console.log('🔍 Jade members found:', jadeMembers);
+        
         setMembers(transformedMembers);
         
         // Filter pending members
@@ -807,13 +815,23 @@ const Admin = () => {
         {activeTab === 'members' && (
                       <div className="members-section">
               <h2>All Members</h2>
-              <div className="form-group" style={{ maxWidth: 420, marginBottom: 16 }}>
+              <div className="form-group" style={{ maxWidth: 420, marginBottom: 16, display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
                   placeholder="Search by name or email…"
                   value={memberSearch}
                   onChange={(e)=> setMemberSearch(e.target.value)}
+                  style={{ flex: 1 }}
                 />
+                {memberSearch && (
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => setMemberSearch('')}
+                    style={{ padding: '8px 12px', fontSize: '14px' }}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
               <div className="admin-warning">
                 <p><strong>⚠️ Important:</strong> The "Delete" button will permanently remove users and all their data. This action cannot be undone.</p>
@@ -839,10 +857,23 @@ const Admin = () => {
                     const filteredMembers = members.filter(member => {
                       const q = memberSearch.trim().toLowerCase();
                       if (!q) return true;
-                      return (
-                        String(member.name || '').toLowerCase().includes(q) ||
-                        String(member.email || '').toLowerCase().includes(q)
-                      );
+                      
+                      const nameMatch = String(member.name || '').toLowerCase().includes(q);
+                      const emailMatch = String(member.email || '').toLowerCase().includes(q);
+                      const matches = nameMatch || emailMatch;
+                      
+                      // Debug logging
+                      if (q === 'jade') {
+                        console.log('🔍 Search debug for "jade":', {
+                          memberName: member.name,
+                          memberEmail: member.email,
+                          nameMatch,
+                          emailMatch,
+                          matches
+                        });
+                      }
+                      
+                      return matches;
                     });
 
                     // Calculate pagination
@@ -894,12 +925,19 @@ const Admin = () => {
                 const startIndex = (currentPage - 1) * membersPerPage;
                 const endIndex = Math.min(startIndex + membersPerPage, filteredMembers.length);
                 
-                if (totalPages <= 1) return null;
+                // Show pagination if there are more than 15 members total OR if there are filtered results with multiple pages
+                const shouldShowPagination = members.length > membersPerPage || totalPages > 1;
+                
+                if (!shouldShowPagination) return null;
                 
                 return (
                   <div className="pagination-controls">
                     <div className="pagination-info">
-                      Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members
+                      {memberSearch ? (
+                        <>Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members (filtered from {members.length} total)</>
+                      ) : (
+                        <>Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members</>
+                      )}
                     </div>
                     <div className="pagination-buttons">
                       <button 
