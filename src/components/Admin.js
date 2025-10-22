@@ -1327,6 +1327,11 @@ const Admin = () => {
                                   return <div key={index} style={{ marginLeft: '20px', marginBottom: '8px' }} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
                                 }
                                 
+                                // For empty lines, preserve them with a non-breaking space to maintain height
+                                if (formattedLine === '') {
+                                  return <div key={index} style={{ height: '1.6em' }}>&nbsp;</div>;
+                                }
+                                
                                 return <div key={index} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
                               })}
                             </div>
