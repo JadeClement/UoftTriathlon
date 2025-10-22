@@ -1555,26 +1555,21 @@ const Admin = () => {
                               lineHeight: 1.6,
                               whiteSpace: 'pre-wrap'
                             }}>
-                              {template.body.split('\n').map((line, index) => {
-                                // Simple markdown-like formatting
-                                let formattedLine = line;
+                              {(() => {
+                                // Apply markdown-like formatting to the entire text
+                                let formattedText = template.body;
                                 
                                 // Bold text
-                                formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                                formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                                 
                                 // Italic text
-                                formattedLine = formattedLine.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                                formattedText = formattedText.replace(/\*(.*?)\*/g, '<em>$1</em>');
                                 
                                 // Links
-                                formattedLine = formattedLine.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: none;">$1</a>');
+                                formattedText = formattedText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: none;">$1</a>');
                                 
-                                // Numbered lists
-                                if (formattedLine.match(/^\d+\.\s/)) {
-                                  return <div key={index} style={{ marginLeft: '20px', marginBottom: '8px' }} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
-                                }
-                                
-                                return <div key={index} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
-                              })}
+                                return <div dangerouslySetInnerHTML={{ __html: formattedText }} />;
+                              })()}
                             </div>
                           </div>
                         )}
