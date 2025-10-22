@@ -41,6 +41,37 @@ const Admin = () => {
   const insertBold = () => insertText('', '**');
   const insertItalic = () => insertText('', '*');
   const insertNumberedList = () => insertText('1. ');
+  
+  const handleTextareaKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      const textarea = e.target;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const textBeforeCursor = textarea.value.substring(0, start);
+      const lines = textBeforeCursor.split('\n');
+      const currentLine = lines[lines.length - 1];
+      
+      // Check if current line starts with a number followed by a dot
+      const numberedListMatch = currentLine.match(/^(\d+)\.\s/);
+      
+      if (numberedListMatch) {
+        e.preventDefault();
+        const currentNumber = parseInt(numberedListMatch[1]);
+        const nextNumber = currentNumber + 1;
+        const newText = `\n${nextNumber}. `;
+        
+        const newValue = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+        setTemplate({ ...template, body: newValue });
+        
+        // Position cursor after the new number
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + newText.length, start + newText.length);
+        }, 0);
+      }
+    }
+  };
+  
   const insertUrl = () => {
     const url = prompt('Enter URL:');
     const text = prompt('Enter link text (optional):') || url;
@@ -1192,6 +1223,7 @@ const Admin = () => {
                             rows="8" 
                             value={template.body} 
                             onChange={(e)=>setTemplate({...template, body:e.target.value})} 
+                            onKeyDown={handleTextareaKeyDown}
                             placeholder="Type your email content here... Use Enter for new lines. Use the buttons above for formatting."
                             style={{
                               width: '100%',
@@ -1206,7 +1238,7 @@ const Admin = () => {
                           />
                         </div>
                         <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                          💡 Tip: Use **bold**, *italic*, numbered lists (1. 2. 3.), and [links](url) for formatting
+                          💡 Tip: Use **bold**, *italic*, numbered lists (1. 2. 3.), and [links](url) for formatting. Press Enter after numbered items to auto-continue the list!
                         </div>
                       </div>
                     </div>
