@@ -815,23 +815,115 @@ const Admin = () => {
         {activeTab === 'members' && (
                       <div className="members-section">
               <h2>All Members</h2>
-              <div className="form-group" style={{ maxWidth: 420, marginBottom: 16, display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Search by name or email…"
-                  value={memberSearch}
-                  onChange={(e)=> setMemberSearch(e.target.value)}
-                  style={{ flex: 1 }}
-                />
-                {memberSearch && (
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => setMemberSearch('')}
-                    style={{ padding: '8px 12px', fontSize: '14px' }}
-                  >
-                    Clear
-                  </button>
-                )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: '16px' }}>
+                <div className="form-group" style={{ maxWidth: 420, display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search by name or email…"
+                    value={memberSearch}
+                    onChange={(e)=> setMemberSearch(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  {memberSearch && (
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={() => setMemberSearch('')}
+                      style={{ padding: '8px 12px', fontSize: '14px' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                
+                {/* Top Pagination Controls */}
+                {(() => {
+                  const filteredMembers = members.filter(member => {
+                    const q = memberSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return (
+                      String(member.name || '').toLowerCase().includes(q) ||
+                      String(member.email || '').toLowerCase().includes(q)
+                    );
+                  });
+                  
+                  const totalPages = Math.ceil(filteredMembers.length / membersPerPage);
+                  const startIndex = (currentPage - 1) * membersPerPage;
+                  const endIndex = Math.min(startIndex + membersPerPage, filteredMembers.length);
+                  
+                  if (totalPages <= 1) return null;
+                  
+                  return (
+                    <div className="pagination-controls-top">
+                      <div className="pagination-info">
+                        {memberSearch ? (
+                          <>Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members (filtered from {members.length} total)</>
+                        ) : (
+                          <>Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members</>
+                        )}
+                      </div>
+                      <div className="pagination-buttons">
+                        <button 
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1}
+                        >
+                          First
+                        </button>
+                        <button 
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </button>
+                        
+                        {/* Page numbers */}
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                          // Show first page, last page, current page, and pages around current
+                          const shouldShow = pageNum === 1 || 
+                                           pageNum === totalPages || 
+                                           Math.abs(pageNum - currentPage) <= 2;
+                          
+                          if (!shouldShow) {
+                            // Show ellipsis for gaps
+                            if (pageNum === 2 && currentPage > 4) {
+                              return <span key={`ellipsis-${pageNum}`} className="pagination-ellipsis">...</span>;
+                            }
+                            if (pageNum === totalPages - 1 && currentPage < totalPages - 3) {
+                              return <span key={`ellipsis-${pageNum}`} className="pagination-ellipsis">...</span>;
+                            }
+                            return null;
+                          }
+                          
+                          return (
+                            <button
+                              key={pageNum}
+                              className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
+                              onClick={() => setCurrentPage(pageNum)}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                        
+                        <button 
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                        </button>
+                        <button 
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(totalPages)}
+                          disabled={currentPage === totalPages}
+                        >
+                          Last
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="admin-warning">
                 <p><strong>⚠️ Important:</strong> The "Delete" button will permanently remove users and all their data. This action cannot be undone.</p>
