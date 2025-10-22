@@ -265,8 +265,8 @@ const Admin = () => {
       // Load gear items for order form
       await loadGearItems();
 
-      // Load all members
-      const membersResponse = await fetch(`${API_BASE_URL}/admin/members`, {
+      // Load all members (set high limit to get all members)
+      const membersResponse = await fetch(`${API_BASE_URL}/admin/members?limit=1000`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
