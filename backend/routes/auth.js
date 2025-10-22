@@ -94,15 +94,22 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
   try {
+    console.log('🔐 LOGIN DEBUG - Backend received request');
     const { email, password } = req.body;
+    console.log('🔐 Email received:', email);
+    console.log('🔐 Password length:', password ? password.length : 'null');
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Find user by email
+    console.log('🔍 Looking for user with email:', email);
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [email]);
+    console.log('🔍 User query result:', userResult.rows.length, 'rows found');
+    
     if (userResult.rows.length === 0) {
+      console.log('❌ No user found with email:', email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -216,15 +223,21 @@ router.put('/change-password', authenticateToken, async (req, res) => {
 // Forgot password - send reset email
 router.post('/forgot-password', async (req, res) => {
   try {
+    console.log('🔑 FORGOT PASSWORD DEBUG - Backend received request');
     const { email } = req.body;
+    console.log('🔑 Email received:', email);
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
     // Check if user exists
+    console.log('🔍 Checking if user exists for email:', email);
     const userResult = await pool.query('SELECT id, name FROM users WHERE email = $1 AND is_active = true', [email]);
+    console.log('🔍 User query result:', userResult.rows.length, 'rows found');
+    
     if (userResult.rows.length === 0) {
+      console.log('❌ No user found with email:', email);
       // Don't reveal if user exists or not for security
       return res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
     }
@@ -262,16 +275,20 @@ router.post('/forgot-password', async (req, res) => {
     console.log('✉️  Forgot-password: using FRONTEND origin =', frontendOrigin, ' resetLink =', resetLink);
 
     // Send email with reset link
+    console.log('📧 Attempting to send password reset email...');
     try {
       const emailService = require('../services/emailService');
+      console.log('📧 Email service loaded, calling sendPasswordReset...');
       const result = await emailService.sendPasswordReset(email, resetToken);
+      console.log('📧 Email service result:', result);
+      
       if (result.success) {
-        console.log('✉️  Password reset email sent successfully:', result.messageId);
+        console.log('✅ Password reset email sent successfully:', result.messageId);
       } else {
-        console.error('✉️  Failed to send password reset email:', result.error);
+        console.error('❌ Failed to send password reset email:', result.error);
       }
     } catch (mailError) {
-      console.error('✉️  Failed to send password reset email:', mailError);
+      console.error('❌ Exception sending password reset email:', mailError);
       // Do not leak email send failures to client for security; still respond with success message
     }
 
