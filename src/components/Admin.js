@@ -925,10 +925,23 @@ const Admin = () => {
                 const startIndex = (currentPage - 1) * membersPerPage;
                 const endIndex = Math.min(startIndex + membersPerPage, filteredMembers.length);
                 
-                // Show pagination if there are more than 15 members total OR if there are filtered results with multiple pages
-                const shouldShowPagination = members.length > membersPerPage || totalPages > 1;
+                // Show pagination if there are members and we have more than 1 page
+                const shouldShowPagination = members.length > 0 && totalPages > 1;
                 
-                if (!shouldShowPagination) return null;
+                if (!shouldShowPagination) {
+                  // If no pagination needed, show member count info
+                  return (
+                    <div className="pagination-controls">
+                      <div className="pagination-info">
+                        {memberSearch ? (
+                          <>Showing {filteredMembers.length} members (filtered from {members.length} total)</>
+                        ) : (
+                          <>Showing all {filteredMembers.length} members</>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
                 
                 return (
                   <div className="pagination-controls">
