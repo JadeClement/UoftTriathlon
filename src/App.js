@@ -18,7 +18,6 @@ import FAQ from './components/FAQ';
 import Resources from './components/Resources';
 import TeamGear from './components/TeamGear';
 import Footer from './components/Footer';
-import InstallPrompt from './components/InstallPrompt';
 import ResetPassword from './components/ResetPassword';
 import Logout from './components/Logout';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -176,7 +175,6 @@ function App() {
         <div className="App">
           <ScrollToTop />
           <Navbar />
-          <InstallPrompt />
           <CharterPrompt />
           <AppContent />
           <SimpleNotification />
