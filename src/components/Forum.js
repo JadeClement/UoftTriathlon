@@ -297,17 +297,25 @@ const Forum = () => {
             qp.set('workout_type', workoutFilter);
           }
           
-          const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
+          const fetchUrl = `${API_BASE_URL}/forum/posts?${qp.toString()}`;
+          console.log('🌐 Fetching:', fetchUrl);
+          
+          const workoutResponse = await fetch(fetchUrl, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
           });
 
-          if (!workoutResponse.ok) break;
+          if (!workoutResponse.ok) {
+            console.error('❌ Fetch failed:', workoutResponse.status);
+            break;
+          }
           
           const workoutData = await workoutResponse.json();
           const posts = workoutData.posts || [];
           const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
+          
+          console.log('📦 Backend returned:', { totalPosts: posts.length, validPosts: validPosts.length });
           
           if (validPosts.length === 0) {
             hasMore = false;
@@ -316,6 +324,8 @@ const Forum = () => {
           
           // Add new workouts to collection
           allWorkouts = [...allWorkouts, ...validPosts];
+          
+          console.log('📊 Total loaded so far:', allWorkouts.length);
           
           // Temporarily update state so getFilteredWorkouts() can use it
           // (We'll set it properly at the end)
