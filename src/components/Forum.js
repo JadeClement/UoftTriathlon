@@ -231,12 +231,16 @@ const Forum = () => {
         return;
       }
 
+      console.log('🔄 loadForumPosts called:', { timeFilter, workoutFilter, pastPage });
+
       // Load workout posts - load in batches until we have enough filtered results
       setWorkoutsLoading(true);
       
       // Determine if we need to reset (when filters change) or continue loading (when navigating pages)
       const filterChanged = workoutFilter !== lastWorkoutFilter;
       const shouldReset = timeFilter === 'past' && (allLoadedWorkouts.length === 0 || filterChanged);
+      
+      console.log('🔄 Loading state:', { filterChanged, shouldReset, allLoadedWorkoutsCount: allLoadedWorkouts.length });
       
       if (filterChanged) {
         setLastWorkoutFilter(workoutFilter);
@@ -273,6 +277,8 @@ const Forum = () => {
         // 2. Accumulate in allWorkouts
         // 3. After each batch, check getFilteredWorkouts() to see if we have enough
         // 4. Keep loading until we have enough for current page OR run out of data
+        
+        console.log('📋 Loading past workouts:', { shouldReset, page, pastPage, workoutFilter });
         
         const itemsPerPage = 5;
         const neededForCurrentPage = pastPage * itemsPerPage;
