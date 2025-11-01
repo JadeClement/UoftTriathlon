@@ -12,6 +12,7 @@ const Forum = () => {
   const [workoutPosts, setWorkoutPosts] = useState([]);
   const [allLoadedWorkouts, setAllLoadedWorkouts] = useState([]); // Store all loaded workouts from backend
   const [workoutsFullyLoaded, setWorkoutsFullyLoaded] = useState(false); // Track if we've loaded all workouts
+  const [lastWorkoutFilter, setLastWorkoutFilter] = useState('all'); // Track last filter to detect changes
   const [eventPosts, setEventPosts] = useState([]);
   const [newWorkout, setNewWorkout] = useState('');
   const [newEvent, setNewEvent] = useState('');
@@ -72,6 +73,21 @@ const Forum = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workoutFilter]);
+
+  // Load more workouts when navigating to later pages if needed
+  useEffect(() => {
+    if (timeFilter === 'past' && isMember(currentUser) && pastPage > 1) {
+      const filtered = getFilteredWorkouts();
+      const itemsPerPage = 5;
+      const neededForCurrentPage = pastPage * itemsPerPage;
+      
+      // If we don't have enough workouts for the current page, load more
+      if (filtered.length < neededForCurrentPage && !workoutsFullyLoaded) {
+        loadForumPosts();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pastPage]);
   
   // Function to check if a workout type is allowed for the user's sport
   const isWorkoutTypeAllowed = (workoutType) => {
@@ -218,14 +234,18 @@ const Forum = () => {
       // Load workout posts - load in batches until we have enough filtered results
       setWorkoutsLoading(true);
       
-      // Reset loaded workouts when filters change
-      if (timeFilter === 'past') {
+      // Determine if we need to reset (when filters change) or continue loading (when navigating pages)
+      const filterChanged = workoutFilter !== lastWorkoutFilter;
+      const shouldReset = timeFilter === 'past' && (allLoadedWorkouts.length === 0 || filterChanged);
+      
+      if (filterChanged) {
+        setLastWorkoutFilter(workoutFilter);
         setAllLoadedWorkouts([]);
         setWorkoutsFullyLoaded(false);
       }
       
-      let allWorkouts = [];
-      let page = 1;
+      let allWorkouts = shouldReset ? [] : [...allLoadedWorkouts]; // Keep existing workouts if continuing
+      let page = shouldReset ? 1 : Math.floor(allLoadedWorkouts.length / 20) + 1; // Continue from where we left off
       let hasMore = true;
       const limit = 20; // Load 20 at a time
       
@@ -249,9 +269,9 @@ const Forum = () => {
         }
       } else {
         // For past workouts, load pages until we have enough filtered results
-        const itemsPerPage = 4;
-        const minNeededForFirstPage = itemsPerPage; // We want at least 4 workouts after filtering
-        const targetCount = itemsPerPage * 2; // Load enough for 2 pages (8 items) to be safe
+        const itemsPerPage = 5;
+        const minNeededForFirstPage = itemsPerPage; // We want at least 5 workouts after filtering
+        const targetCount = itemsPerPage * 3; // Load enough for 3 pages (15 items) to ensure pagination works smoothly
         
         while (hasMore) {
           const qp = new URLSearchParams();
@@ -326,9 +346,31 @@ const Forum = () => {
           const pagination = workoutData.pagination;
           hasMore = pagination?.hasMore || false;
           
-          // If we have enough filtered workouts for at least 2 pages (8 items), we can stop
-          // This ensures the first page will be full and pagination will work correctly
-          if (filteredCount >= targetCount) {
+          // Calculate how many workouts we need - always load enough for at least current page + 1 more
+          const itemsPerPage = 5;
+          const neededForCurrentView = Math.max(
+            targetCount, // At least 15 for initial load
+            (pastPage + 1) * itemsPerPage // Enough for current page + next page (e.g., page 1 needs 10, page 2 needs 15)
+          );
+          
+          // Critical check: ensure we have enough for the current page being viewed
+          // Calculate what we need: if on page 1, need at least 5; if on page 2, need at least 10, etc.
+          const neededForCurrentPage = pastPage * itemsPerPage;
+          
+          // If we don't have enough for the current page, KEEP LOADING (unless no more data)
+          if (filteredCount < neededForCurrentPage) {
+            if (!hasMore) {
+              // No more data available, have to stop with what we have
+              break;
+            }
+            // Continue to next backend page to get more workouts
+            page++;
+            continue;
+          }
+          
+          // We have enough for the current page - now check if we need more for smooth pagination
+          // Load enough for current page + next page to ensure smooth navigation
+          if (filteredCount >= neededForCurrentView) {
             break;
           }
           
@@ -1095,7 +1137,7 @@ const Forum = () => {
     });
   };
 
-  // Get paginated workouts for past workouts (4 per page)
+  // Get paginated workouts for past workouts (5 per page)
   const getPaginatedWorkouts = () => {
     const filtered = getFilteredWorkouts();
     if (timeFilter === 'upcoming') {
@@ -1103,20 +1145,23 @@ const Forum = () => {
       return filtered;
     }
     // Past workouts: paginate
-    const itemsPerPage = 4;
+    const itemsPerPage = 5;
     const startIndex = (pastPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filtered.slice(startIndex, endIndex);
   };
 
-  // Calculate pagination info for past workouts
+  // Calculate pagination info for past workouts and load more if needed
   const getPaginationInfo = () => {
     if (timeFilter === 'upcoming') {
       return null; // No pagination for upcoming
     }
     const filtered = getFilteredWorkouts();
-    const itemsPerPage = 4;
+    const itemsPerPage = 5;
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    
+    // Note: Loading more workouts is handled by the useEffect on pastPage change
+    
     return {
       currentPage: pastPage,
       totalPages: totalPages || 1,
