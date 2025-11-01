@@ -342,7 +342,7 @@ const Admin = () => {
         // Transform backend data to frontend format (snake_case to camelCase)
         const transformedMembers = membersData.members.map(member => ({
           ...member,
-          joinDate: member.join_date,
+          joinDate: member.join_date || member.created_at, // Use created_at as fallback if join_date is null
           expiryDate: member.expiry_date,
           absences: member.absences || 0,
           charterAccepted: member.charter_accepted || 0
@@ -1058,7 +1058,7 @@ const Admin = () => {
                           </span>
                         </td>
                         <td>{member.phone_number || 'Not set'}</td>
-                        <td>{member.joinDate}</td>
+                        <td>{member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : 'Not set'}</td>
                         <td>{member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</td>
                         <td>
                           <span className={`absence-count ${member.absences > 0 ? 'has-absences' : 'no-absences'}`}>
@@ -1203,7 +1203,7 @@ const Admin = () => {
                       <p><strong>Email:</strong> {member.email}</p>
                       <p><strong>Role:</strong> <span className="role-badge">{member.role}</span></p>
                       <p><strong>Phone Number:</strong> {member.phone_number || 'Not set'}</p>
-                      <p><strong>Join Date:</strong> {member.joinDate}</p>
+                      <p><strong>Join Date:</strong> {member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : member.created_at ? new Date(member.created_at).toLocaleDateString() : 'Not set'}</p>
                       <p><strong>Expiry Date:</strong> {member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</p>
       
                     </div>
