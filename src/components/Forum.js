@@ -79,7 +79,7 @@ const Forum = () => {
         case 'run_only':
           return workoutType === 'run';
         case 'duathlon':
-          return ['run', 'outdoor-ride', 'brick'].includes(workoutType);
+          return ['run', 'outdoor-ride', 'brick', 'spin'].includes(workoutType);
         case 'triathlon':
           return ['run', 'outdoor-ride', 'brick', 'swim', 'spin'].includes(workoutType);
         default:
@@ -118,6 +118,7 @@ const Forum = () => {
           { value: 'run', label: 'Run' },
           { value: 'outdoor-ride', label: 'Outdoor Ride' },
           { value: 'brick', label: 'Brick (Bike + Run)' },
+          { value: 'spin', label: 'Spin' },
           { value: 'other', label: 'Other' }
         ];
       case 'triathlon':
