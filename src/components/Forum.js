@@ -65,6 +65,12 @@ const Forum = () => {
   // Reset to page 1 when filters change (so pagination starts fresh)
   useEffect(() => {
     setPastPage(1);
+    // When workout filter changes, reload workouts if we're on past view
+    // This ensures we load enough workouts for the new filter
+    if (timeFilter === 'past' && isMember(currentUser)) {
+      loadForumPosts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workoutFilter]);
   
   // Function to check if a workout type is allowed for the user's sport
@@ -211,6 +217,13 @@ const Forum = () => {
 
       // Load workout posts - load in batches until we have enough filtered results
       setWorkoutsLoading(true);
+      
+      // Reset loaded workouts when filters change
+      if (timeFilter === 'past') {
+        setAllLoadedWorkouts([]);
+        setWorkoutsFullyLoaded(false);
+      }
+      
       let allWorkouts = [];
       let page = 1;
       let hasMore = true;
@@ -235,9 +248,10 @@ const Forum = () => {
           allWorkouts = validPosts;
         }
       } else {
-        // For past workouts, load pages until we have enough filtered results to fill the first page
+        // For past workouts, load pages until we have enough filtered results
         const itemsPerPage = 4;
         const minNeededForFirstPage = itemsPerPage; // We want at least 4 workouts after filtering
+        const targetCount = itemsPerPage * 2; // Load enough for 2 pages (8 items) to be safe
         
         while (hasMore) {
           const qp = new URLSearchParams();
@@ -257,6 +271,11 @@ const Forum = () => {
           const workoutData = await workoutResponse.json();
           const posts = workoutData.posts || [];
           const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
+          
+          if (validPosts.length === 0) {
+            hasMore = false;
+            break;
+          }
           
           allWorkouts = [...allWorkouts, ...validPosts];
           
@@ -303,18 +322,22 @@ const Forum = () => {
             return true;
           }).length;
           
-          // If we have enough filtered workouts for at least 2 pages (8 items), we can stop
-          // This ensures the first page will be full and pagination will work correctly
-          if (filteredCount >= minNeededForFirstPage * 2) {
-            break;
-          }
-          
           // Check if we should load more
           const pagination = workoutData.pagination;
           hasMore = pagination?.hasMore || false;
           
-          if (!hasMore || validPosts.length === 0) break;
+          // If we have enough filtered workouts for at least 2 pages (8 items), we can stop
+          // This ensures the first page will be full and pagination will work correctly
+          if (filteredCount >= targetCount) {
+            break;
+          }
+          
+          // If there's no more data, stop anyway
+          if (!hasMore) break;
           page++;
+          
+          // Safety limit to prevent infinite loops
+          if (page > 50) break;
         }
       }
       
