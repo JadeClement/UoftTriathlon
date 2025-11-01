@@ -407,7 +407,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           increment: updatedAbsences - currentAbsences
         });
       } else {
-        console.log(`✅ CANCELLATION OUTSIDE 24 HOURS - No Absence:`, {
+        console.log(`✅ CANCELLATION OUTSIDE 12 HOURS - No Absence:`, {
           workoutId: id,
           workoutTitle,
           userId: userId,
