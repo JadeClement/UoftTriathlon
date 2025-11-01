@@ -66,7 +66,6 @@ const Schedule = () => {
                 </div>
                 <div className="schedule-day">
                   <h5>Friday</h5>
-                  <div className="workout-item brick">Brick 6:30-8pm</div>
                 </div>
                 <div className="schedule-day">
                   <h5>Saturday</h5>
