@@ -10,6 +10,8 @@ const Forum = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('workouts');
   const [workoutPosts, setWorkoutPosts] = useState([]);
+  const [allLoadedWorkouts, setAllLoadedWorkouts] = useState([]); // Store all loaded workouts from backend
+  const [workoutsFullyLoaded, setWorkoutsFullyLoaded] = useState(false); // Track if we've loaded all workouts
   const [eventPosts, setEventPosts] = useState([]);
   const [newWorkout, setNewWorkout] = useState('');
   const [newEvent, setNewEvent] = useState('');
@@ -59,6 +61,11 @@ const Forum = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeFilter, pastPage]);
+
+  // Reset to page 1 when filters change (so pagination starts fresh)
+  useEffect(() => {
+    setPastPage(1);
+  }, [workoutFilter]);
   
   // Function to check if a workout type is allowed for the user's sport
   const isWorkoutTypeAllowed = (workoutType) => {
@@ -202,41 +209,118 @@ const Forum = () => {
         return;
       }
 
-      // Load workout posts
-      const qp = new URLSearchParams();
-      qp.set('type', 'workout');
-      // Upcoming loads without pagination; past loads paginated 4/page
-      if (timeFilter === 'past') {
-        qp.set('time', 'past');
-        qp.set('page', String(pastPage));
-        qp.set('limit', '4');
-      } else {
-        qp.set('time', 'upcoming');
-      }
+      // Load workout posts - load in batches until we have enough filtered results
       setWorkoutsLoading(true);
-      const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      let allWorkouts = [];
+      let page = 1;
+      let hasMore = true;
+      const limit = 20; // Load 20 at a time
+      
+      // For upcoming workouts, just load once (no pagination needed client-side)
+      if (timeFilter === 'upcoming') {
+        const qp = new URLSearchParams();
+        qp.set('type', 'workout');
+        qp.set('time', 'upcoming');
+        
+        const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-      if (workoutResponse.ok) {
-        const workoutData = await workoutResponse.json();
-        console.log('🔍 Workout data received:', workoutData);
-        
-        // Ensure we have valid posts data
-        const posts = workoutData.posts || workoutData || [];
-        console.log('🔍 Posts to set:', posts);
-        
-        // Filter out any invalid posts
-        const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
-        console.log('🔍 Valid posts:', validPosts);
-        
-        
-        setWorkoutPosts(validPosts);
-        if (timeFilter === 'past' && workoutData.pagination) {
-          setPastPagination(workoutData.pagination);
+        if (workoutResponse.ok) {
+          const workoutData = await workoutResponse.json();
+          const posts = workoutData.posts || [];
+          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
+          allWorkouts = validPosts;
         }
+      } else {
+        // For past workouts, load pages until we have enough filtered results to fill the first page
+        const itemsPerPage = 4;
+        const minNeededForFirstPage = itemsPerPage; // We want at least 4 workouts after filtering
+        
+        while (hasMore) {
+          const qp = new URLSearchParams();
+          qp.set('type', 'workout');
+          qp.set('time', 'past');
+          qp.set('page', String(page));
+          qp.set('limit', String(limit));
+          
+          const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!workoutResponse.ok) break;
+          
+          const workoutData = await workoutResponse.json();
+          const posts = workoutData.posts || [];
+          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
+          
+          allWorkouts = [...allWorkouts, ...validPosts];
+          
+          // Check if we have enough after applying client-side filters
+          // We'll apply the filters that we can determine here (sport and workout type)
+          const filteredCount = allWorkouts.filter(post => {
+            // Apply sport filter if user has sport preference
+            if (currentUser?.sport) {
+              const sport = currentUser.sport;
+              let workoutTypeAllowed = true;
+              
+              switch (sport) {
+                case 'run_only':
+                  workoutTypeAllowed = post.workout_type === 'run';
+                  break;
+                case 'duathlon':
+                  workoutTypeAllowed = ['run', 'outdoor-ride', 'brick', 'spin'].includes(post.workout_type);
+                  break;
+                case 'triathlon':
+                  workoutTypeAllowed = ['run', 'outdoor-ride', 'brick', 'swim', 'spin'].includes(post.workout_type);
+                  break;
+                default:
+                  workoutTypeAllowed = true;
+              }
+              
+              if (!workoutTypeAllowed) return false;
+            }
+            
+            // Apply workout type filter if not 'all'
+            if (workoutFilter !== 'all') {
+              switch (workoutFilter) {
+                case 'bike':
+                  if (!['spin', 'outdoor-ride', 'brick'].includes(post.workout_type)) return false;
+                  break;
+                case 'swim':
+                  if (post.workout_type !== 'swim') return false;
+                  break;
+                case 'run':
+                  if (post.workout_type !== 'run') return false;
+                  break;
+              }
+            }
+            
+            return true;
+          }).length;
+          
+          // If we have enough filtered workouts for at least 2 pages (8 items), we can stop
+          // This ensures the first page will be full and pagination will work correctly
+          if (filteredCount >= minNeededForFirstPage * 2) {
+            break;
+          }
+          
+          // Check if we should load more
+          const pagination = workoutData.pagination;
+          hasMore = pagination?.hasMore || false;
+          
+          if (!hasMore || validPosts.length === 0) break;
+          page++;
+        }
+      }
+      
+      setAllLoadedWorkouts(allWorkouts);
+      setWorkoutPosts(allWorkouts);
+      setWorkoutsFullyLoaded(!hasMore || timeFilter === 'upcoming');
         
         // Do not load per-workout signups/waitlists here; fetch on demand in detail view
       }
@@ -953,8 +1037,9 @@ const Forum = () => {
 
   // Filter workouts based on selected filters (time + type + sport)
   const getFilteredWorkouts = () => {
+    // Use all loaded workouts for filtering
     // First filter by sport preference
-    const bySport = workoutPosts.filter(post => {
+    const bySport = allLoadedWorkouts.filter(post => {
       return isWorkoutTypeAllowed(post.workout_type);
     });
 
@@ -985,6 +1070,36 @@ const Forum = () => {
           return true;
       }
     });
+  };
+
+  // Get paginated workouts for past workouts (4 per page)
+  const getPaginatedWorkouts = () => {
+    const filtered = getFilteredWorkouts();
+    if (timeFilter === 'upcoming') {
+      // Upcoming workouts: show all (no pagination)
+      return filtered;
+    }
+    // Past workouts: paginate
+    const itemsPerPage = 4;
+    const startIndex = (pastPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  // Calculate pagination info for past workouts
+  const getPaginationInfo = () => {
+    if (timeFilter === 'upcoming') {
+      return null; // No pagination for upcoming
+    }
+    const filtered = getFilteredWorkouts();
+    const itemsPerPage = 4;
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    return {
+      currentPage: pastPage,
+      totalPages: totalPages || 1,
+      totalPosts: filtered.length,
+      hasMore: pastPage < totalPages
+    };
   };
 
   if (loading) {
@@ -1075,25 +1190,29 @@ const Forum = () => {
                 </button>
               </div>
 
-              {timeFilter === 'past' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pastPagination.currentPage} of {pastPagination.totalPages}</span>
-                  <button 
-                    className="filter-btn"
-                    onClick={() => setPastPage(p => Math.max(1, p - 1))}
-                    disabled={pastPagination.currentPage <= 1}
-                  >
-                    Previous
-                  </button>
-                  <button 
-                    className="filter-btn"
-                    onClick={() => setPastPage(p => Math.min(pastPagination.totalPages, p + 1))}
-                    disabled={pastPagination.currentPage >= pastPagination.totalPages}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
+              {(() => {
+                const pagination = getPaginationInfo();
+                if (!pagination) return null;
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalPosts} workouts)</span>
+                    <button 
+                      className="filter-btn"
+                      onClick={() => setPastPage(p => Math.max(1, p - 1))}
+                      disabled={pagination.currentPage <= 1}
+                    >
+                      Previous
+                    </button>
+                    <button 
+                      className="filter-btn"
+                      onClick={() => setPastPage(p => Math.min(pagination.totalPages, p + 1))}
+                      disabled={pagination.currentPage >= pagination.totalPages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Type Filters (row 2) */}
@@ -1124,17 +1243,25 @@ const Forum = () => {
               </button>
             </div>
 
-            {getFilteredWorkouts().length === 0 ? (
-              <p className="no-posts">
-                {workoutsLoading 
-                  ? 'Loading workouts...'
-                  : (workoutPosts.length === 0 
-                      ? 'No workout posts yet.' 
-                      : `No ${workoutFilter === 'all' ? '' : workoutFilter} workouts found.`)}
-              </p>
-            ) : (
-              <div className="posts-list">
-                {getFilteredWorkouts().filter(post => post && post.id).map(post => (
+            {(() => {
+              const paginatedWorkouts = getPaginatedWorkouts();
+              const filteredCount = getFilteredWorkouts().length;
+              
+              if (filteredCount === 0) {
+                return (
+                  <p className="no-posts">
+                    {workoutsLoading 
+                      ? 'Loading workouts...'
+                      : (workoutPosts.length === 0 
+                          ? 'No workout posts yet.' 
+                          : `No ${workoutFilter === 'all' ? '' : workoutFilter} workouts found.`)}
+                  </p>
+                );
+              }
+              
+              return (
+                <div className="posts-list">
+                  {paginatedWorkouts.filter(post => post && post.id).map(post => (
                   <div key={post.id} className="post-card workout-post" onClick={() => window.location.href = `/workout/${post.id}`}>
                     <div className="post-header">
                       {post.title ? (
