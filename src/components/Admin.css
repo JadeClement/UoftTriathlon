@@ -284,6 +284,30 @@
   color: #be185d;
 }
 
+.sport-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.sport-badge.triathlon {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+
+.sport-badge.duathlon {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.sport-badge.run_only {
+  background: #fce7f3;
+  color: #be185d;
+}
+
 /* Absence count styling */
 .absence-count {
   display: inline-block;

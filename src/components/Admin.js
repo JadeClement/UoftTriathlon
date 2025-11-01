@@ -109,7 +109,8 @@ const Admin = () => {
     role: '',
     expiryDate: '',
     phoneNumber: '',
-    charterAccepted: false
+    charterAccepted: false,
+    sport: 'triathlon'
   });
   const [approvingMember, setApprovingMember] = useState(null);
   const [approvalForm, setApprovalForm] = useState({
@@ -682,7 +683,8 @@ const Admin = () => {
       role: member.role,
       expiryDate: member.expiryDate || '',
       phoneNumber: member.phone_number || '',
-      charterAccepted: initialCharterAccepted
+      charterAccepted: initialCharterAccepted,
+      sport: member.sport || 'triathlon'
     });
     console.log('📝 Edit form set to:', {
       name: member.name,
@@ -706,10 +708,13 @@ const Admin = () => {
     
     // Clean up the form data - convert empty strings to null for optional fields
     const cleanFormData = {
-      ...editForm,
-      phoneNumber: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending
+      name: editForm.name,
+      email: editForm.email,
+      role: editForm.role,
+      phone_number: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending and map to backend field name
       expiryDate: editForm.expiryDate || null,
-      charterAccepted: editForm.charterAccepted ? 1 : 0
+      charterAccepted: editForm.charterAccepted ? 1 : 0,
+      sport: editForm.sport || 'triathlon'
     };
     
     console.log('🧹 Cleaned form data:', cleanFormData);
@@ -776,7 +781,8 @@ const Admin = () => {
           role: '',
           expiryDate: '',
           phoneNumber: '',
-          charterAccepted: false
+          charterAccepted: false,
+          sport: 'triathlon'
         });
       } else {
         const errorData = await response.json();
@@ -797,7 +803,8 @@ const Admin = () => {
       role: '',
       expiryDate: '',
       phoneNumber: '',
-      charterAccepted: false
+      charterAccepted: false,
+      sport: 'triathlon'
     });
   };
 
@@ -997,6 +1004,7 @@ const Admin = () => {
                     <th>Name</th>
                     <th>Email</th>
                     <th>Role</th>
+                    <th>Sport</th>
                     <th>Phone Number</th>
                     <th>Join Date</th>
                     <th>Expiry Date</th>
@@ -1041,6 +1049,14 @@ const Admin = () => {
                         <td>{member.name}</td>
                         <td>{member.email}</td>
                         <td><span className={`role-badge ${member.role}`}>{member.role}</span></td>
+                        <td>
+                          <span className={`sport-badge ${member.sport || 'triathlon'}`}>
+                            {member.sport === 'run_only' ? 'Run Only' : 
+                             member.sport === 'duathlon' ? 'Duathlon' : 
+                             member.sport === 'triathlon' ? 'Triathlon' : 
+                             'Triathlon'}
+                          </span>
+                        </td>
                         <td>{member.phone_number || 'Not set'}</td>
                         <td>{member.joinDate}</td>
                         <td>{member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</td>
@@ -1859,6 +1875,18 @@ const Admin = () => {
                 <small>For SMS notifications when promoted from waitlists</small>
               </div>
               
+              <div className="form-group">
+                <label>Sport:</label>
+                <select
+                  value={editForm.sport}
+                  onChange={(e) => setEditForm({...editForm, sport: e.target.value})}
+                >
+                  <option value="triathlon">Triathlon</option>
+                  <option value="duathlon">Duathlon</option>
+                  <option value="run_only">Run Only</option>
+                </select>
+                <small>Determines which workout types the member can see and create</small>
+              </div>
               <div className="form-group">
                 <label>Charter Accepted:</label>
                 <select
