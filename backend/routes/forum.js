@@ -39,7 +39,7 @@ const requireMemberOrCoachForWorkouts = (req, res, next) => {
 // Get all forum posts with optional filtering
 router.get('/posts', authenticateToken, requireMember, async (req, res) => {
   try {
-    const { type = '', search = '', page = 1, limit = 20, time = '' } = req.query;
+    const { type = '', search = '', page = 1, limit = 20, time = '', workout_type = '' } = req.query;
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE is_deleted = false';
@@ -66,6 +66,30 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
         whereClause += ' AND (workout_date IS NULL OR workout_date >= CURRENT_DATE)';
       } else if (time === 'past') {
         whereClause += ' AND workout_date < CURRENT_DATE';
+      }
+    }
+
+    // Optional workout_type filter: accepts comma-separated list (e.g., "run,outdoor-ride,brick")
+    // or single value (e.g., "bike" which maps to multiple types)
+    if (type === 'workout' && workout_type && workout_type !== 'all') {
+      // Handle special "bike" filter which includes multiple types
+      if (workout_type === 'bike') {
+        paramCount++;
+        whereClause += ` AND workout_type = ANY($${paramCount}::text[])`;
+        params.push(['spin', 'outdoor-ride', 'brick']);
+      } else if (workout_type.includes(',')) {
+        // Comma-separated list of workout types
+        const types = workout_type.split(',').map(t => t.trim()).filter(t => t);
+        if (types.length > 0) {
+          paramCount++;
+          whereClause += ` AND workout_type = ANY($${paramCount}::text[])`;
+          params.push(types);
+        }
+      } else {
+        // Single workout type
+        paramCount++;
+        whereClause += ` AND workout_type = $${paramCount}`;
+        params.push(workout_type);
       }
     }
 

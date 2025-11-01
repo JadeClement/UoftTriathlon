@@ -268,17 +268,28 @@ const Forum = () => {
           allWorkouts = validPosts;
         }
       } else {
-        // For past workouts, load pages until we have enough filtered results
-        const itemsPerPage = 5;
-        const minNeededForFirstPage = itemsPerPage; // We want at least 5 workouts after filtering
-        const targetCount = itemsPerPage * 3; // Load enough for 3 pages (15 items) to ensure pagination works smoothly
+        // For past workouts: Simple and reliable approach
+        // 1. Load batches from backend (with backend workout_type filter if available)
+        // 2. Accumulate in allWorkouts
+        // 3. After each batch, check getFilteredWorkouts() to see if we have enough
+        // 4. Keep loading until we have enough for current page OR run out of data
         
+        const itemsPerPage = 5;
+        const neededForCurrentPage = pastPage * itemsPerPage;
+        const neededForNextPage = (pastPage + 1) * itemsPerPage;
+        
+        // Load batches until we have enough filtered workouts
         while (hasMore) {
           const qp = new URLSearchParams();
           qp.set('type', 'workout');
           qp.set('time', 'past');
           qp.set('page', String(page));
           qp.set('limit', String(limit));
+          
+          // Use backend filtering for workout_type (efficiency optimization)
+          if (workoutFilter !== 'all') {
+            qp.set('workout_type', workoutFilter);
+          }
           
           const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
             headers: {
@@ -297,89 +308,100 @@ const Forum = () => {
             break;
           }
           
+          // Add new workouts to collection
           allWorkouts = [...allWorkouts, ...validPosts];
           
-          // Check if we have enough after applying client-side filters
-          // We'll apply the filters that we can determine here (sport and workout type)
-          const filteredCount = allWorkouts.filter(post => {
-            // Apply sport filter if user has sport preference
-            if (currentUser?.sport) {
-              const sport = currentUser.sport;
-              let workoutTypeAllowed = true;
-              
-              switch (sport) {
-                case 'run_only':
-                  workoutTypeAllowed = post.workout_type === 'run';
-                  break;
-                case 'duathlon':
-                  workoutTypeAllowed = ['run', 'outdoor-ride', 'brick', 'spin'].includes(post.workout_type);
-                  break;
-                case 'triathlon':
-                  workoutTypeAllowed = ['run', 'outdoor-ride', 'brick', 'swim', 'spin'].includes(post.workout_type);
-                  break;
-                default:
-                  workoutTypeAllowed = true;
-              }
-              
-              if (!workoutTypeAllowed) return false;
-            }
-            
-            // Apply workout type filter if not 'all'
-            if (workoutFilter !== 'all') {
+          // Temporarily update state so getFilteredWorkouts() can use it
+          // (We'll set it properly at the end)
+          const tempAllLoaded = allWorkouts;
+          
+          // Use the EXACT same filtering logic as getFilteredWorkouts() to ensure accuracy
+          // Step 1: Filter by sport (matches getFilteredWorkouts line 1113-1115)
+          const bySport = tempAllLoaded.filter(post => {
+            return isWorkoutTypeAllowed(post.workout_type);
+          });
+          
+          // Step 2: Filter by time (matches getFilteredWorkouts line 1118-1121)
+          const byTime = bySport.filter(post => {
+            const past = isPast(post.workout_date);
+            return timeFilter === 'past' ? past : !past;
+          });
+          
+          // Step 3: Apply workout type filter (matches getFilteredWorkouts line 1115-1128)
+          let tempFiltered = byTime;
+          if (workoutFilter !== 'all') {
+            tempFiltered = byTime.filter(post => {
               switch (workoutFilter) {
                 case 'bike':
-                  if (!['spin', 'outdoor-ride', 'brick'].includes(post.workout_type)) return false;
-                  break;
+                  return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
                 case 'swim':
-                  if (post.workout_type !== 'swim') return false;
-                  break;
+                  return post.workout_type === 'swim';
                 case 'run':
-                  if (post.workout_type !== 'run') return false;
-                  break;
+                  return post.workout_type === 'run';
+                default:
+                  return true;
               }
-            }
-            
-            return true;
-          }).length;
+            });
+          }
           
-          // Check if we should load more
+          const filteredCount = tempFiltered.length;
+          
+          // Check if backend has more pages
           const pagination = workoutData.pagination;
           hasMore = pagination?.hasMore || false;
           
-          // Calculate how many workouts we need - always load enough for at least current page + 1 more
-          const itemsPerPage = 5;
-          const neededForCurrentView = Math.max(
-            targetCount, // At least 15 for initial load
-            (pastPage + 1) * itemsPerPage // Enough for current page + next page (e.g., page 1 needs 10, page 2 needs 15)
-          );
+          // Decision: Do we have enough?
+          // CRITICAL: For page 1, we MUST have at least 5 workouts before stopping
+          // For page 2+, we need at least (pastPage) * 5
           
-          // Critical check: ensure we have enough for the current page being viewed
-          // Calculate what we need: if on page 1, need at least 5; if on page 2, need at least 10, etc.
-          const neededForCurrentPage = pastPage * itemsPerPage;
+          console.log('🔍 Loading check:', {
+            pastPage,
+            filteredCount,
+            neededForCurrentPage,
+            neededForNextPage,
+            hasMore,
+            allWorkoutsCount: allWorkouts.length
+          });
           
-          // If we don't have enough for the current page, KEEP LOADING (unless no more data)
-          if (filteredCount < neededForCurrentPage) {
+          // Priority 1: If on page 1, we MUST keep loading until we have at least 5
+          if (pastPage === 1 && filteredCount < itemsPerPage) {
             if (!hasMore) {
-              // No more data available, have to stop with what we have
+              // No more data, have to stop with what we have
+              console.log('⚠️ Page 1: Only', filteredCount, 'workouts but no more data available');
               break;
             }
-            // Continue to next backend page to get more workouts
+            // Continue loading to try to get at least 5
+            console.log('🔄 Page 1: Only', filteredCount, 'workouts, loading more...');
             page++;
             continue;
           }
           
-          // We have enough for the current page - now check if we need more for smooth pagination
-          // Load enough for current page + next page to ensure smooth navigation
-          if (filteredCount >= neededForCurrentView) {
+          // Priority 2: Stop if we have enough for current + next page (ideal)
+          if (filteredCount >= neededForNextPage) {
+            console.log('✅ Have enough for current + next page:', filteredCount);
             break;
           }
           
-          // If there's no more data, stop anyway
-          if (!hasMore) break;
+          // Priority 3: If we have enough for current page, we can stop
+          if (filteredCount >= neededForCurrentPage) {
+            console.log('✅ Have enough for current page:', filteredCount);
+            break;
+          }
+          
+          // If no more data from backend, stop even if we don't have enough
+          if (!hasMore) {
+            console.log('⚠️ No more data available, stopping with', filteredCount, 'workouts');
+            break;
+          }
+          
+          // Load next batch
           page++;
           
           // Safety limit to prevent infinite loops
-          if (page > 50) break;
+          if (page > 100) {
+            console.warn('Hit safety limit of 100 pages while loading workouts');
+            break;
+          }
         }
       }
       
