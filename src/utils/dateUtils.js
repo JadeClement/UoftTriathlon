@@ -67,15 +67,29 @@ export function parseTime(timeStr) {
  * @returns {Date|null} - Combined Date object or null if invalid
  */
 export function combineDateTime(dateInput, timeStr) {
+  console.log('🕐 combineDateTime called:', { dateInput, timeStr });
+  
   const date = parseDate(dateInput);
   const time = parseTime(timeStr);
   
-  if (!date || !time) return null;
+  console.log('🕐 Parsed values:', { date, time, dateIsValid: date instanceof Date && !isNaN(date.getTime()) });
+  
+  if (!date || !time) {
+    console.warn('⚠️ combineDateTime: Invalid date or time', { date, time });
+    return null;
+  }
   
   // Create a new date with the time set in LOCAL timezone
   // This ensures the workout time matches the user's local timezone
   const result = new Date(date);
   result.setHours(time.hours, time.minutes, time.seconds, 0);
+  
+  console.log('🕐 Combined datetime:', {
+    result: result.toISOString(),
+    resultLocal: result.toString(),
+    hours: time.hours,
+    minutes: time.minutes
+  });
   
   return result;
 }
@@ -165,13 +179,27 @@ export function isPast(date) {
  * @returns {boolean} - True if date is within the specified hours
  */
 export function isWithinHours(date, hours) {
-  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    console.warn('⚠️ isWithinHours: Invalid date', { date });
+    return false;
+  }
   
   const now = new Date();
   const diffMs = date - now;
   const diffHours = diffMs / (1000 * 60 * 60);
+  const within = diffHours >= 0 && diffHours <= hours;
   
-  return diffHours >= 0 && diffHours <= hours;
+  console.log('🕐 isWithinHours:', {
+    workoutDate: date.toISOString(),
+    workoutDateLocal: date.toString(),
+    currentDate: now.toISOString(),
+    currentDateLocal: now.toString(),
+    diffHours: diffHours.toFixed(2),
+    checkHours: hours,
+    within
+  });
+  
+  return within;
 }
 
 /**
@@ -180,11 +208,25 @@ export function isWithinHours(date, hours) {
  * @returns {number} - Number of hours until the date (negative if in the past)
  */
 export function getHoursUntil(date) {
-  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 0;
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    console.warn('⚠️ getHoursUntil: Invalid date', { date });
+    return 0;
+  }
   
   const now = new Date();
   const diffMs = date - now;
-  return diffMs / (1000 * 60 * 60);
+  const hours = diffMs / (1000 * 60 * 60);
+  
+  console.log('🕐 getHoursUntil:', {
+    workoutDate: date.toISOString(),
+    workoutDateLocal: date.toString(),
+    currentDate: now.toISOString(),
+    currentDateLocal: now.toString(),
+    diffMs,
+    hours: hours.toFixed(2)
+  });
+  
+  return hours;
 }
 
 /**

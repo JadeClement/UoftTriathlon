@@ -1175,11 +1175,22 @@ const WorkoutDetail = () => {
         {/* Cancel Confirmation Modal */}
         {showCancelModal && workout && (() => {
           // Calculate hours until workout
+          console.log('🔍 Cancel modal calculation:', {
+            workout_date: workout.workout_date,
+            workout_time: workout.workout_time,
+            workout: workout
+          });
+          
           const workoutDateTime = workout.workout_date && workout.workout_time 
             ? combineDateTime(workout.workout_date, workout.workout_time)
             : null;
+          
+          console.log('🔍 Workout datetime result:', { workoutDateTime });
+          
           const hoursUntil = workoutDateTime ? getHoursUntil(workoutDateTime) : null;
           const within12Hours = workoutDateTime ? isWithinHours(workoutDateTime, 12) : false;
+          
+          console.log('🔍 Final calculation:', { hoursUntil, within12Hours });
           
           return (
             <div className="modal-overlay">
