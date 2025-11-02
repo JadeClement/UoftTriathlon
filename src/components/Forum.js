@@ -900,15 +900,7 @@ const Forum = () => {
     e.preventDefault();
     if (!workoutForm.title.trim() || !workoutForm.date || !workoutForm.time || !workoutForm.content.trim()) return;
 
-    // Check if the selected date is in the future
-    const selectedDate = new Date(workoutForm.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-    
-    if (selectedDate <= today) {
-      alert('Please select a future date for your workout.');
-      return;
-    }
+    // Allow both past and future dates for workouts (practices can be added retroactively)
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -1848,7 +1840,6 @@ const Forum = () => {
                     type="date"
                     value={workoutForm.date}
                     onChange={(e) => setWorkoutForm({...workoutForm, date: e.target.value})}
-                    min={new Date().toISOString().split('T')[0]}
                     required
                   />
                 </div>
