@@ -24,10 +24,11 @@ export function parseDate(dateInput) {
       return isNaN(date.getTime()) ? null : date;
     }
     
-    // Handle YYYY-MM-DD format (treat as UTC to avoid timezone shifts)
+    // Handle YYYY-MM-DD format (treat as local date to match user's timezone)
+    // This ensures workout dates match the user's local timezone
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
       const [year, month, day] = dateInput.split('-').map(Number);
-      return new Date(Date.UTC(year, month - 1, day));
+      return new Date(year, month - 1, day);
     }
     
     // Handle other formats
@@ -71,9 +72,10 @@ export function combineDateTime(dateInput, timeStr) {
   
   if (!date || !time) return null;
   
-  // Create a new date with the time set
+  // Create a new date with the time set in LOCAL timezone
+  // This ensures the workout time matches the user's local timezone
   const result = new Date(date);
-  result.setUTCHours(time.hours, time.minutes, time.seconds, 0);
+  result.setHours(time.hours, time.minutes, time.seconds, 0);
   
   return result;
 }
