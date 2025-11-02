@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import { linkifyText } from '../utils/linkUtils';
+import { combineDateTime, getHoursUntil, isWithinHours } from '../utils/dateUtils';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
 import './WorkoutDetail.css';
 
@@ -1172,23 +1173,46 @@ const WorkoutDetail = () => {
         </div>
 
         {/* Cancel Confirmation Modal */}
-        {showCancelModal && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h2>Cancel Workout Signup</h2>
-              <p>Are you sure you want to cancel your signup for this workout?</p>
-              <p className="warning-text">
-                <strong>Warning:</strong> If you cancel less than 12 hours in advance, it will count as an absence. 
-                Your absences are recorded and once you have three, you will be suspended from signing up for a week. 
-                This is to keep it fair for all members!
-              </p>
-              <div className="modal-actions">
-                <button onClick={handleCancelSignup} className="btn btn-danger">Cancel Signup</button>
-                <button onClick={closeCancelModal} className="btn btn-secondary">Keep Booking</button>
+        {showCancelModal && workout && (() => {
+          // Calculate hours until workout
+          const workoutDateTime = workout.workout_date && workout.workout_time 
+            ? combineDateTime(workout.workout_date, workout.workout_time)
+            : null;
+          const hoursUntil = workoutDateTime ? getHoursUntil(workoutDateTime) : null;
+          const within12Hours = workoutDateTime ? isWithinHours(workoutDateTime, 12) : false;
+          
+          return (
+            <div className="modal-overlay">
+              <div className="modal">
+                <h2>Cancel Workout Signup</h2>
+                <p>Are you sure you want to cancel your signup for this workout?</p>
+                {within12Hours && hoursUntil !== null && (
+                  <p className="warning-text">
+                    <strong>⚠️ Warning:</strong> You are canceling less than 12 hours before this workout ({hoursUntil.toFixed(1)} hours remaining). 
+                    This cancellation will count as an absence. 
+                    Your absences are recorded and once you have three, you will be suspended from signing up for a week. 
+                    This is to keep it fair for all members!
+                  </p>
+                )}
+                {!within12Hours && hoursUntil !== null && hoursUntil > 0 && (
+                  <p style={{ background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '8px', padding: '1rem', margin: '1rem 0', color: '#065f46' }}>
+                    <strong>✓ Safe to Cancel:</strong> You are canceling more than 12 hours in advance ({hoursUntil.toFixed(1)} hours remaining). 
+                    This cancellation will NOT count as an absence.
+                  </p>
+                )}
+                {hoursUntil !== null && hoursUntil <= 0 && (
+                  <p className="warning-text">
+                    <strong>Note:</strong> This workout is in the past. Canceling will not affect your attendance record.
+                  </p>
+                )}
+                <div className="modal-actions">
+                  <button onClick={handleCancelSignup} className="btn btn-danger">Cancel Signup</button>
+                  <button onClick={closeCancelModal} className="btn btn-secondary">Keep Booking</button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
