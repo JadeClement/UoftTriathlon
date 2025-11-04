@@ -435,8 +435,7 @@ const Forum = () => {
       setWorkoutPosts(allWorkouts);
       setWorkoutsFullyLoaded(!hasMore || timeFilter === 'upcoming');
         
-        // Do not load per-workout signups/waitlists here; fetch on demand in detail view
-      }
+      // Do not load per-workout signups/waitlists here; fetch on demand in detail view
 
       // Load event posts only when Events tab is active to speed up initial load
       if (activeTab === 'events') {
@@ -1856,7 +1855,7 @@ const Forum = () => {
                       setWorkoutForm({...workoutForm, date: e.target.value});
                     }}
                     required
-                    // No min attribute - allows past dates for retroactive workout entry
+                    {/* No min attribute - allows past dates for retroactive workout entry */}
                   />
                 </div>
 

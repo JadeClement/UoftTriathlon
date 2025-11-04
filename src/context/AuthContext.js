@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       if (typeof remove === 'function') remove();
     };
-  }, []);
+  }, [isTokenValid]);
 
   // Handle token expiration/invalidation
   const handleTokenExpired = (reason = 'session_expired') => {
@@ -306,7 +306,7 @@ export const AuthProvider = ({ children }) => {
     const interval = setInterval(validateTokenPeriodically, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser, isTokenValid]);
 
   // Refresh user data and token
   const refreshUserData = async () => {

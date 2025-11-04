@@ -30,7 +30,6 @@ const WorkoutDetail = () => {
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   const { 
-    editingWorkout, 
     editForm, 
     saving, 
     startEdit, 
@@ -86,7 +85,7 @@ const WorkoutDetail = () => {
     }
     
     loadWorkoutDetails();
-  }, [currentUser, navigate, isMember, id]);
+  }, [currentUser, navigate, isMember, id, loadWorkoutDetails]);
 
   // Listen for profile updates to refresh profile pictures
   useEffect(() => {
@@ -100,7 +99,7 @@ const WorkoutDetail = () => {
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, []);
+  }, [loadWorkoutDetails]);
 
   const loadWorkoutDetails = async () => {
     try {
