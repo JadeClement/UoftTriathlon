@@ -1592,9 +1592,11 @@ const Forum = () => {
                   </div>
                 ))}
               </div>
-            )}
+            );
+          })()}
           </div>
         )}
+        
 
         {/* Events Section */}
         {activeTab === 'events' && (
@@ -1855,7 +1857,6 @@ const Forum = () => {
                       setWorkoutForm({...workoutForm, date: e.target.value});
                     }}
                     required
-                    {/* No min attribute - allows past dates for retroactive workout entry */}
                   />
                 </div>
 
@@ -1958,5 +1959,6 @@ const Forum = () => {
     </div>
   );
 };
+
 
 export default Forum;
