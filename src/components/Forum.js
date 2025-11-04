@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
@@ -36,6 +36,16 @@ const Forum = () => {
     date: '',
     content: ''
   });
+  // Ref to ensure the workout date input never has a min attribute (Safari/iOS can persist it)
+  const workoutDateInputRef = useRef(null);
+
+  useEffect(() => {
+    if (workoutDateInputRef.current) {
+      try {
+        workoutDateInputRef.current.removeAttribute('min');
+      } catch (_) {}
+    }
+  }, [showWorkoutForm]);
   // Inline edit state for events (admin/exec)
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventEditForm, setEventEditForm] = useState({
@@ -1839,8 +1849,14 @@ const Forum = () => {
                   <input
                     type="date"
                     value={workoutForm.date}
-                    onChange={(e) => setWorkoutForm({...workoutForm, date: e.target.value})}
+                    ref={workoutDateInputRef}
+                    onFocus={(e) => { try { e.target.removeAttribute('min'); } catch (_) {} }}
+                    onChange={(e) => {
+                      console.log('📅 Date selected:', e.target.value);
+                      setWorkoutForm({...workoutForm, date: e.target.value});
+                    }}
                     required
+                    // No min attribute - allows past dates for retroactive workout entry
                   />
                 </div>
 
