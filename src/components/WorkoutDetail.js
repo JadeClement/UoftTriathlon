@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
@@ -39,6 +39,140 @@ const WorkoutDetail = () => {
   } = useWorkoutEdit(API_BASE_URL);
   
   const [editMode, setEditMode] = useState(false);
+
+  // Define loader before effects to avoid temporal dead zone
+  const loadWorkoutDetails = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      // Load workout details
+      const workoutResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (workoutResponse.ok) {
+        const workoutData = await workoutResponse.json();
+        console.log('🔍 Workout details loaded:', workoutData);
+        setWorkout(workoutData.workout);
+        setSignups(workoutData.signups || []);
+        setWaitlist(workoutData.waitlist || []);
+        
+        // Check if this is a swim workout and user is exec/admin
+        const isSwim = workoutData.workout?.workout_type === 'swim';
+        const isExec = currentUser?.role === 'exec' || currentUser?.role === 'administrator' || currentUser?.role === 'coach';
+        setIsSwimWorkout(isSwim);
+        
+        // Load swim members if this is a swim workout and user is exec/admin
+        if (isSwim && isExec) {
+          const swimMembersResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance-members`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (swimMembersResponse.ok) {
+            const swimMembersData = await swimMembersResponse.json();
+            console.log('🏊‍♂️ Swim members loaded:', swimMembersData);
+            setSwimMembers(swimMembersData.members || []);
+          } else {
+            console.error('❌ Failed to load swim members:', swimMembersResponse.status);
+          }
+        }
+      } else {
+        console.error('❌ Failed to load workout details:', workoutResponse.status, workoutResponse.statusText);
+        const errorData = await workoutResponse.json().catch(() => ({}));
+        console.error('❌ Error details:', errorData);
+      }
+
+      // Check if attendance has already been submitted
+      const attendanceResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (attendanceResponse.ok) {
+        const attendanceData = await attendanceResponse.json();
+        console.log('🔍 Attendance data loaded:', attendanceData);
+        // If there are any attendance records, attendance has been submitted
+        setAttendanceSaved(attendanceData.attendance && attendanceData.attendance.length > 0);
+        console.log('📊 Attendance saved status:', attendanceData.attendance && attendanceData.attendance.length > 0);
+        
+        // Process attendance and late status
+        if (attendanceData.attendance && attendanceData.attendance.length > 0) {
+          const attendanceMap = {};
+          const lateMap = {};
+          attendanceData.attendance.forEach(record => {
+            attendanceMap[record.user_id] = record.attended;
+            lateMap[record.user_id] = record.late || false;
+          });
+          setAttendance(attendanceMap);
+          setLateStatus(lateMap);
+        }
+      } else {
+        console.log('ℹ️ No attendance data found or error loading attendance');
+        setAttendanceSaved(false);
+      }
+
+      // Load signups
+      const signupsResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/signups`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (signupsResponse.ok) {
+        const signupsData = await signupsResponse.json();
+        console.log('📋 Signups data received:', signupsData);
+        console.log('👥 Individual signups:', signupsData.signups);
+        
+        // Debug profile picture URLs
+        signupsData.signups.forEach((signup, index) => {
+          console.log(`👤 Signup ${index + 1}:`, {
+            name: signup.user_name,
+            profilePictureUrl: signup.userProfilePictureUrl,
+            hasProfilePicture: !!signup.userProfilePictureUrl
+          });
+        });
+        
+        setSignups(signupsData.signups);
+        
+        // Check if current user is signed up
+        const userSignup = signupsData.signups.find(s => s.user_id === currentUser.id);
+        setIsSignedUp(!!userSignup);
+      }
+
+      // Load waitlist
+      const waitlistResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/waitlist`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (waitlistResponse.ok) {
+        const waitlistData = await waitlistResponse.json();
+        setWaitlist(waitlistData.waitlist);
+        
+        // Check if current user is on waitlist
+        const userWaitlist = waitlistData.waitlist.find(w => w.user_id === currentUser.id);
+        setIsOnWaitlist(!!userWaitlist);
+      }
+
+      // Load comments (will be implemented with real backend data)
+      setComments([]);
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading workout details:', error);
+      setLoading(false);
+    }
+  }, [API_BASE_URL, id, currentUser]);
 
   const isWorkoutArchived = () => {
     try {
@@ -101,7 +235,7 @@ const WorkoutDetail = () => {
     };
   }, [loadWorkoutDetails]);
 
-  const loadWorkoutDetails = async () => {
+  const loadWorkoutDetails_legacy = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
