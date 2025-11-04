@@ -1058,6 +1058,7 @@ const Forum = () => {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
         console.error('No authentication token found');
+        showError('Authentication required. Please log in again.');
         return;
       }
 
@@ -1069,12 +1070,22 @@ const Forum = () => {
       });
 
       if (response.ok) {
+        showSuccess('Workout post deleted successfully');
         loadForumPosts();
       } else {
-        console.error('Failed to delete workout post');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        if (response.status === 404) {
+          showWarning('This workout post may have already been deleted. Refreshing...');
+          loadForumPosts();
+        } else if (response.status === 403) {
+          showError('You are not authorized to delete this post.');
+        } else {
+          showError(errorData.error || 'Failed to delete workout post');
+        }
       }
     } catch (error) {
       console.error('Error deleting workout post:', error);
+      showError('Failed to delete workout post. Please try again.');
     }
   };
 
@@ -1087,6 +1098,7 @@ const Forum = () => {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
         console.error('No authentication token found');
+        showError('Authentication required. Please log in again.');
         return;
       }
 
@@ -1098,12 +1110,22 @@ const Forum = () => {
       });
 
       if (response.ok) {
+        showSuccess('Event post deleted successfully');
         loadForumPosts();
       } else {
-        console.error('Failed to delete event post');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        if (response.status === 404) {
+          showWarning('This event post may have already been deleted. Refreshing...');
+          loadForumPosts();
+        } else if (response.status === 403) {
+          showError('You are not authorized to delete this post.');
+        } else {
+          showError(errorData.error || 'Failed to delete event post');
+        }
       }
     } catch (error) {
       console.error('Error deleting event post:', error);
+      showError('Failed to delete event post. Please try again.');
     }
   };
 
@@ -1962,3 +1984,4 @@ const Forum = () => {
 
 
 export default Forum;
+
