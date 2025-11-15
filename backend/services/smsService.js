@@ -6,12 +6,26 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID || 'your_account_sid_here';
 const authToken = process.env.TWILIO_AUTH_TOKEN || 'your_auth_token_here';
 const fromNumber = process.env.TWILIO_PHONE_NUMBER || '+1234567890'; // Your Twilio number
 
-// Create Twilio client
-const client = twilio(accountSid, authToken);
+// Create Twilio client only if we have valid credentials (skip in test environment)
+let client = null;
+if (process.env.NODE_ENV !== 'test' && accountSid && accountSid.startsWith('AC') && authToken) {
+  try {
+    client = twilio(accountSid, authToken);
+  } catch (error) {
+    console.warn('⚠️ Twilio client initialization failed:', error.message);
+    client = null;
+  }
+}
 
 // Send waitlist promotion SMS
 const sendWaitlistPromotionSMS = async (userPhone, userName, workoutTitle, workoutDate) => {
   try {
+    // Skip SMS in test environment or if client not initialized
+    if (process.env.NODE_ENV === 'test' || !client) {
+      console.log('📱 SMS skipped (test environment or Twilio not configured)');
+      return false;
+    }
+    
     // Format the workout date
     const formattedDate = new Date(workoutDate).toLocaleDateString();
     

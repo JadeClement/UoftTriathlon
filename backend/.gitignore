@@ -1,0 +1,27 @@
+# Test coverage
+coverage/
+*.lcov
+
+# Test environment
+.env.test
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
