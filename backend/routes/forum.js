@@ -452,12 +452,8 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
       // Remove signup
       await client.query('DELETE FROM workout_signups WHERE id = $1', [existingSignup.rows[0].id]);
 
-      // Get workout details for email notifications
-      const workoutDetailsForEmail = await client.query(
-        'SELECT title, workout_date, workout_time FROM forum_posts WHERE id = $1',
-        [id]
-      );
-      const workoutDetails = workoutDetailsForEmail.rows[0] || {};
+      // Get workout details for email notifications (reuse data already fetched)
+      const workoutDetailsForEmail = workoutDetails.rows[0] || {};
 
       // Handle waitlist based on cancellation timing
       const waitlistResult = await client.query(
@@ -490,9 +486,9 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
               await emailService.sendLastMinuteCancellationOpportunity(
                 w.email,
                 w.user_name,
-                workoutDetails.title || workoutTitle || 'Workout',
-                workoutDetails.workout_date,
-                workoutDetails.workout_time,
+                workoutDetailsForEmail.title || workoutTitle || 'Workout',
+                workoutDetailsForEmail.workout_date,
+                workoutDetailsForEmail.workout_time,
                 id
               );
             } catch (e) {
@@ -520,9 +516,9 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
               await emailService.sendWaitlistPromotion(
                 w.email,
                 w.user_name,
-                workoutDetails.title || 'Workout',
-                workoutDetails.workout_date,
-                workoutDetails.workout_time,
+                workoutDetailsForEmail.title || 'Workout',
+                workoutDetailsForEmail.workout_date,
+                workoutDetailsForEmail.workout_time,
                 id
               );
             } catch (e) {
