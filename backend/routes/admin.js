@@ -1163,6 +1163,8 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
     const signupsResult = await pool.query(signupsQuery, [workoutId]);
 
     // Get attendance records - include both attendance records and cancellations
+    // Only include records for users who were actually signed up (not just on waitlist)
+    // This ensures we don't show attendance for people who were never actually signed up
     const attendanceQuery = `
       WITH all_attendance AS (
         SELECT 
@@ -1175,7 +1177,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
           u.email,
           u.role,
         NULL as profile_picture_url,
-        sub.name as submitted_by_name,
+          sub.name as submitted_by_name,
           CASE 
             WHEN wc.marked_absent = true THEN 'cancelled'
             ELSE 'attended'
@@ -1184,6 +1186,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
         JOIN users u ON wa.user_id = u.id
         LEFT JOIN users sub ON wa.submitted_by = sub.id
         LEFT JOIN workout_cancellations wc ON wa.post_id = wc.post_id AND wa.user_id = wc.user_id
+        INNER JOIN workout_signups ws ON wa.post_id = ws.post_id AND wa.user_id = ws.user_id
         WHERE wa.post_id = $1
         
         UNION ALL
@@ -1202,6 +1205,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
           'cancelled' as attendance_type
         FROM workout_cancellations wc
         JOIN users u ON wc.user_id = u.id
+        INNER JOIN workout_signups ws ON wc.post_id = ws.post_id AND wc.user_id = ws.user_id
         WHERE wc.post_id = $1 AND wc.marked_absent = true
         AND NOT EXISTS (
           SELECT 1 FROM workout_attendance wa2 
