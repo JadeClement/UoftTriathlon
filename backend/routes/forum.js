@@ -452,7 +452,14 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
       // Remove signup
       await client.query('DELETE FROM workout_signups WHERE id = $1', [existingSignup.rows[0].id]);
 
-      // Promote first waitlisted user if any (avoid race using SKIP LOCKED)
+      // Get workout details for email notifications
+      const workoutDetailsForEmail = await client.query(
+        'SELECT title, workout_date, workout_time FROM forum_posts WHERE id = $1',
+        [id]
+      );
+      const workoutDetails = workoutDetailsForEmail.rows[0] || {};
+
+      // Handle waitlist based on cancellation timing
       const waitlistResult = await client.query(
         `SELECT ww.id, ww.user_id, u.name as user_name, u.email, u.phone_number
          FROM workout_waitlist ww
@@ -466,29 +473,63 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
 
       if (waitlistResult.rows.length > 0) {
         const w = waitlistResult.rows[0];
-        await client.query('DELETE FROM workout_waitlist WHERE id = $1', [w.id]);
-        await client.query(
-          'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
-          [w.user_id, id]
-        );
-        // Notifications are best-effort after commit
-        setImmediate(async () => {
-          try {
-            const details = await pool.query('SELECT title, workout_date, workout_time FROM forum_posts WHERE id = $1', [id]);
-            if (details.rows.length > 0) {
+        
+        if (within12hrs) {
+          // Within 12 hours: Don't auto-promote, just send last minute cancellation opportunity email
+          // Keep them on the waitlist so they can manually sign up
+          console.log(`📧 Last minute cancellation - sending opportunity email to waitlist user:`, {
+            workoutId: id,
+            workoutTitle: workoutTitle,
+            waitlistUserId: w.user_id,
+            waitlistUserName: w.user_name
+          });
+          
+          // Notifications are best-effort after commit
+          setImmediate(async () => {
+            try {
+              await emailService.sendLastMinuteCancellationOpportunity(
+                w.email,
+                w.user_name,
+                workoutDetails.title || workoutTitle || 'Workout',
+                workoutDetails.workout_date,
+                workoutDetails.workout_time,
+                id
+              );
+            } catch (e) {
+              console.log('Last minute cancellation opportunity email error:', e.message);
+            }
+          });
+        } else {
+          // Outside 12 hours: Auto-promote waitlist person (existing behavior)
+          await client.query('DELETE FROM workout_waitlist WHERE id = $1', [w.id]);
+          await client.query(
+            'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+            [w.user_id, id]
+          );
+          
+          console.log(`✅ Auto-promoted waitlist user:`, {
+            workoutId: id,
+            workoutTitle: workoutTitle,
+            waitlistUserId: w.user_id,
+            waitlistUserName: w.user_name
+          });
+          
+          // Notifications are best-effort after commit
+          setImmediate(async () => {
+            try {
               await emailService.sendWaitlistPromotion(
                 w.email,
                 w.user_name,
-                details.rows[0].title || 'Workout',
-                details.rows[0].workout_date,
-                details.rows[0].workout_time,
+                workoutDetails.title || 'Workout',
+                workoutDetails.workout_date,
+                workoutDetails.workout_time,
                 id
               );
+            } catch (e) {
+              console.log('Waitlist promotion notification error:', e.message);
             }
-          } catch (e) {
-            console.log('Waitlist promotion notification error:', e.message);
-          }
-        });
+          });
+        }
       }
 
       await client.query('COMMIT');
