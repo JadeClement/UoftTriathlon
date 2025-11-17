@@ -511,6 +511,38 @@ const Admin = () => {
     }
   };
 
+  const unarchiveSelectedOrders = async () => {
+    if (selectedOrders.size === 0) {
+      alert('Please select at least one order to unarchive');
+      return;
+    }
+
+    if (!window.confirm(`Unarchive ${selectedOrders.size} selected order(s)?`)) return;
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE_URL}/merch-orders/unarchive`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderIds: Array.from(selectedOrders) })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to unarchive orders');
+      }
+
+      const data = await res.json();
+      alert(data.message || `${selectedOrders.size} order(s) unarchived successfully`);
+      await loadOrders();
+    } catch (e) {
+      alert(`Failed to Unarchive Orders: ${e.message}`);
+    }
+  };
+
   // Load attendance dashboard data
   const loadAttendanceData = async () => {
     try {
@@ -1825,13 +1857,23 @@ const Admin = () => {
                   <option value="all">All Orders</option>
                 </select>
                 {selectedOrders.size > 0 && (
-                  <button 
-                    className="btn btn-primary" 
-                    onClick={archiveSelectedOrders}
-                    style={{backgroundColor: '#f59e0b'}}
-                  >
-                    Archive Selected ({selectedOrders.size})
-                  </button>
+                  orderFilter === 'archived' ? (
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={unarchiveSelectedOrders}
+                      style={{backgroundColor: '#10b981'}}
+                    >
+                      Unarchive Selected ({selectedOrders.size})
+                    </button>
+                  ) : (
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={archiveSelectedOrders}
+                      style={{backgroundColor: '#f59e0b'}}
+                    >
+                      Archive Selected ({selectedOrders.size})
+                    </button>
+                  )
                 )}
                 <button className="btn btn-primary" onClick={openNewOrder}>+ New Order</button>
                 <button className="btn btn-primary" onClick={exportMerchToExcel}>
@@ -1846,14 +1888,7 @@ const Admin = () => {
                 <table>
                   <thead>
                     <tr>
-                      <th style={{width: '40px'}}>
-                        <input 
-                          type="checkbox" 
-                          checked={orders.length > 0 && selectedOrders.size === orders.length}
-                          onChange={handleSelectAll}
-                          style={{cursor: 'pointer'}}
-                        />
-                      </th>
+                      <th style={{width: '40px'}}></th>
                       <th>First Name</th>
                       <th>Last Name</th>
                       <th>Email</th>
@@ -1891,7 +1926,7 @@ const Admin = () => {
                       </tr>
                     ))}
                     {orders.length === 0 && (
-                      <tr><td colSpan="10" style={{textAlign:'center', color:'#6b7280'}}>
+                      <tr><td colSpan="9" style={{textAlign:'center', color:'#6b7280'}}>
                         {orderFilter === 'archived' ? 'No archived orders' : 
                          orderFilter === 'not_archived' ? 'No orders yet' : 
                          'No orders found'}

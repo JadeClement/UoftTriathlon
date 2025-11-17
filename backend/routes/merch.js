@@ -110,6 +110,38 @@ router.put('/archive', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// Unarchive multiple orders - MUST come before /:id route to avoid route conflict
+router.put('/unarchive', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+    
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ error: 'orderIds must be a non-empty array' });
+    }
+    
+    // Validate all IDs are numbers
+    const validIds = orderIds.filter(id => !isNaN(parseInt(id, 10))).map(id => parseInt(id, 10));
+    if (validIds.length === 0) {
+      return res.status(400).json({ error: 'No valid order IDs provided' });
+    }
+    
+    // Update all orders to archived = false
+    const placeholders = validIds.map((_, i) => `$${i + 1}`).join(', ');
+    const result = await pool.query(
+      `UPDATE merch_orders SET archived = false WHERE id IN (${placeholders})`,
+      validIds
+    );
+    
+    res.json({ 
+      message: `${result.rowCount} order(s) unarchived successfully`,
+      unarchivedCount: result.rowCount
+    });
+  } catch (error) {
+    console.error('Unarchive orders error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // PUT /api/merch-orders/:id - update merch order
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
