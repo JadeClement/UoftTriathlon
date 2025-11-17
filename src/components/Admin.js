@@ -121,6 +121,8 @@ const Admin = () => {
   // Orders state
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState(new Set());
+  const [orderFilter, setOrderFilter] = useState('not_archived'); // 'all', 'archived', 'not_archived'
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderForm, setOrderForm] = useState({
     id: null,
@@ -379,11 +381,15 @@ const Admin = () => {
       if (!currentUser || !isAdmin(currentUser)) return;
       setOrdersLoading(true);
       const token = localStorage.getItem('triathlonToken');
-      const res = await fetch(`${API_BASE_URL}/merch-orders`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/merch-orders?filter=${orderFilter}`, { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
 
       if (!res.ok) throw new Error('Failed to load orders');
       const data = await res.json();
       setOrders(Array.isArray(data.orders) ? data.orders : []);
+      // Clear selection when orders change
+      setSelectedOrders(new Set());
     } catch (e) {
       console.error('Failed to load orders:', e);
     } finally {
@@ -395,7 +401,7 @@ const Admin = () => {
     if (activeTab === 'orders') {
       loadOrders();
     }
-  }, [activeTab]);
+  }, [activeTab, orderFilter]);
 
   const openNewOrder = () => {
     setOrderForm({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1, gender: 'mens' });
@@ -452,6 +458,56 @@ const Admin = () => {
       await loadOrders();
     } catch (e) {
       alert(`Failed to Delete Order: ${e.message}`);
+    }
+  };
+
+  const handleOrderSelect = (orderId) => {
+    const newSelected = new Set(selectedOrders);
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId);
+    } else {
+      newSelected.add(orderId);
+    }
+    setSelectedOrders(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedOrders.size === orders.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(orders.map(o => o.id)));
+    }
+  };
+
+  const archiveSelectedOrders = async () => {
+    if (selectedOrders.size === 0) {
+      alert('Please select at least one order to archive');
+      return;
+    }
+
+    if (!window.confirm(`Archive ${selectedOrders.size} selected order(s)?`)) return;
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE_URL}/merch-orders/archive`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderIds: Array.from(selectedOrders) })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to archive orders');
+      }
+
+      const data = await res.json();
+      alert(data.message || `${selectedOrders.size} order(s) archived successfully`);
+      await loadOrders();
+    } catch (e) {
+      alert(`Failed to Archive Orders: ${e.message}`);
     }
   };
 
@@ -1755,9 +1811,27 @@ const Admin = () => {
         {/* Merch Orders Tab */}
         {isAdmin(currentUser) && activeTab === 'orders' && (
           <div className="orders-section">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '16px'}}>
               <h2>Merch Orders</h2>
-              <div style={{display:'flex', gap:8}}>
+              <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                <select 
+                  value={orderFilter} 
+                  onChange={(e) => setOrderFilter(e.target.value)}
+                  style={{padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc'}}
+                >
+                  <option value="not_archived">Not Archived</option>
+                  <option value="archived">Archived</option>
+                  <option value="all">All Orders</option>
+                </select>
+                {selectedOrders.size > 0 && (
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={archiveSelectedOrders}
+                    style={{backgroundColor: '#f59e0b'}}
+                  >
+                    Archive Selected ({selectedOrders.size})
+                  </button>
+                )}
                 <button className="btn btn-primary" onClick={openNewOrder}>+ New Order</button>
                 <button className="btn btn-primary" onClick={exportMerchToExcel}>
                   Export to Excel
@@ -1771,6 +1845,14 @@ const Admin = () => {
                 <table>
                   <thead>
                     <tr>
+                      <th style={{width: '40px'}}>
+                        <input 
+                          type="checkbox" 
+                          checked={orders.length > 0 && selectedOrders.size === orders.length}
+                          onChange={handleSelectAll}
+                          style={{cursor: 'pointer'}}
+                        />
+                      </th>
                       <th>First Name</th>
                       <th>Last Name</th>
                       <th>Email</th>
@@ -1784,7 +1866,15 @@ const Admin = () => {
                   </thead>
                   <tbody>
                     {orders.map(o => (
-                      <tr key={o.id}>
+                      <tr key={o.id} style={o.archived ? {opacity: 0.6, backgroundColor: '#f9fafb'} : {}}>
+                        <td>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedOrders.has(o.id)}
+                            onChange={() => handleOrderSelect(o.id)}
+                            style={{cursor: 'pointer'}}
+                          />
+                        </td>
                         <td>{o.firstName || o.name?.split(' ')[0] || '-'}</td>
                         <td>{o.lastName || o.name?.split(' ').slice(1).join(' ') || '-'}</td>
                         <td>{o.email}</td>
@@ -1800,7 +1890,11 @@ const Admin = () => {
                       </tr>
                     ))}
                     {orders.length === 0 && (
-                      <tr><td colSpan="9" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
+                      <tr><td colSpan="10" style={{textAlign:'center', color:'#6b7280'}}>
+                        {orderFilter === 'archived' ? 'No archived orders' : 
+                         orderFilter === 'not_archived' ? 'No orders yet' : 
+                         'No orders found'}
+                      </td></tr>
                     )}
                   </tbody>
                 </table>

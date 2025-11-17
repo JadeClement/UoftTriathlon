@@ -276,6 +276,29 @@ async function initializeDatabase() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_created_at ON merch_orders(created_at)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_email ON merch_orders(email)');
     
+    // Add archived column to merch_orders if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE merch_orders 
+        ADD COLUMN archived BOOLEAN DEFAULT FALSE
+      `);
+      console.log('✅ Archived column added to merch_orders table');
+    } catch (error) {
+      if (error.code === '42701') {
+        console.log('✅ Archived column already exists in merch_orders table');
+      } else {
+        console.error('❌ Error adding archived column:', error.message);
+      }
+    }
+    
+    // Create index on archived column for better query performance
+    try {
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_archived ON merch_orders(archived)');
+      console.log('✅ Index on archived column created');
+    } catch (error) {
+      console.error('❌ Error creating archived index:', error.message);
+    }
+    
     console.log('✅ Database indexes created');
 
     // Add sport column to users table if it doesn't exist
