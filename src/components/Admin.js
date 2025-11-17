@@ -602,7 +602,7 @@ const Admin = () => {
   const exportMerchToExcel = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/admin/merch/export`, {
+      const response = await fetch(`${API_BASE_URL}/admin/merch/export?filter=${orderFilter}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -615,8 +615,9 @@ const Admin = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       const dateStr = new Date().toISOString().split('T')[0];
+      const filterSuffix = orderFilter === 'archived' ? '_archived' : orderFilter === 'not_archived' ? '_not_archived' : '';
       a.href = url;
-      a.download = `merch_orders_${dateStr}.xlsx`;
+      a.download = `merch_orders${filterSuffix}_${dateStr}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();

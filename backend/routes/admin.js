@@ -1299,11 +1299,23 @@ module.exports = router;
 // Merch export endpoint - must be defined before module export (moved above if needed)
 router.get('/merch/export', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT first_name, last_name, email, item, size, quantity, created_at
-      FROM merch_orders
-      ORDER BY created_at DESC
-    `);
+    // Get filter parameter (all, archived, not_archived) - defaults to all for export
+    const filter = req.query.filter || 'all';
+    
+    // Build query based on filter
+    let query = `SELECT first_name, last_name, email, item, size, quantity, created_at
+                 FROM merch_orders`;
+    
+    if (filter === 'archived') {
+      query += ' WHERE archived = true';
+    } else if (filter === 'not_archived') {
+      query += ' WHERE archived = false OR archived IS NULL';
+    }
+    // If filter is 'all', no WHERE clause needed
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const result = await pool.query(query);
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Merch Orders');
@@ -1322,8 +1334,9 @@ router.get('/merch/export', authenticateToken, requireAdmin, async (req, res) =>
     }
 
     const dateStr = new Date().toISOString().split('T')[0];
+    const filterSuffix = filter === 'archived' ? '_archived' : filter === 'not_archived' ? '_not_archived' : '';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="merch_orders_${dateStr}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="merch_orders${filterSuffix}_${dateStr}.xlsx"`);
 
     const buffer = await workbook.xlsx.writeBuffer();
     return res.send(Buffer.from(buffer));
