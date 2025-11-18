@@ -221,14 +221,20 @@ const Navbar = () => {
     {showPopupModal && popupModal?.message && (
       <div className="popup-overlay" onClick={acknowledgePopup}>
         <div className="popup-modal" onClick={(e) => e.stopPropagation()}>
-          <h3>Important Update</h3>
+          <button className="popup-close" aria-label="Dismiss announcement" onClick={acknowledgePopup}>
+            ×
+          </button>
+          <p className="popup-eyebrow">Club Announcement</p>
+          <h3>Heads up!</h3>
           <div
             className="popup-message"
             dangerouslySetInnerHTML={{ __html: linkify(popupModal.message) }}
           />
-          <button className="btn btn-primary" onClick={acknowledgePopup}>
-            Got it
-          </button>
+          <div className="popup-actions">
+            <button className="btn btn-primary" onClick={acknowledgePopup}>
+              Got it
+            </button>
+          </div>
         </div>
       </div>
     )}
