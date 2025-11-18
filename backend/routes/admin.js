@@ -648,14 +648,24 @@ router.delete('/race-management/:id', authenticateToken, requireAdmin, async (re
   }
 });
 
-// Send email route (execs and admins)
-router.post('/send-email', authenticateToken, requireRole('exec'), async (req, res) => {
+// Send email route (execs and admins) - supports file attachments
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+
+router.post('/send-email', authenticateToken, requireRole('exec'), upload.array('attachments', 10), async (req, res) => {
   try {
-    const { to, subject, message } = req.body;
+    // Handle both JSON (backward compatibility) and multipart/form-data
+    const to = req.body.to;
+    const subject = req.body.subject;
+    const message = req.body.message;
+    const template = req.body.template ? (typeof req.body.template === 'string' ? JSON.parse(req.body.template) : req.body.template) : null;
 
     if (!to || !subject || !message) {
       return res.status(400).json({ error: 'Missing required fields: to, subject, message' });
     }
+
+    // Get attachments from multer
+    const attachments = req.files || [];
 
     // Import email service
     const emailService = require('../services/emailService');
@@ -693,7 +703,11 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
 </body>
 </html>`;
 
-    const result = await emailService.sendEmail(to, subject, htmlContent, message, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+    // Send email with attachments if any
+    const result = attachments.length > 0
+      ? await emailService.sendEmailWithAttachments(to, subject, htmlContent, message, attachments, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club')
+      : await emailService.sendEmail(to, subject, htmlContent, message, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+    
     if (result.success) {
       return res.json({ message: 'Email sent successfully' });
     }

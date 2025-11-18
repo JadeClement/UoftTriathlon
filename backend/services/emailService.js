@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const { SESClient, SendEmailCommand, SendRawEmailCommand } = require('@aws-sdk/client-ses');
 
 // Configure AWS SES
 console.log('🔑 EmailService: Setting up AWS SES...');
@@ -66,6 +66,85 @@ class EmailService {
       return { success: true, messageId: result.MessageId };
     } catch (error) {
       console.error('❌ Error sending email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send email with attachments using SendRawEmailCommand
+  async sendEmailWithAttachments(to, subject, htmlContent, textContent = null, attachments = [], replyTo = null) {
+    try {
+      console.log('📧 EmailService.sendEmailWithAttachments called with:', { to, subject, attachmentsCount: attachments.length, fromEmail: this.fromEmail, replyTo });
+      
+      // Build multipart MIME message
+      const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const fromEmail = this.fromEmail;
+      const fromName = this.fromName;
+      
+      let rawMessage = `From: ${fromName} <${fromEmail}>\r\n`;
+      rawMessage += `To: ${to}\r\n`;
+      rawMessage += `Subject: ${subject}\r\n`;
+      if (replyTo) {
+        rawMessage += `Reply-To: ${Array.isArray(replyTo) ? replyTo[0] : replyTo}\r\n`;
+      }
+      rawMessage += `MIME-Version: 1.0\r\n`;
+      rawMessage += `Content-Type: multipart/mixed; boundary="${boundary}"\r\n`;
+      rawMessage += `\r\n`;
+      
+      // Add HTML body
+      rawMessage += `--${boundary}\r\n`;
+      rawMessage += `Content-Type: multipart/alternative; boundary="${boundary}_alt"\r\n`;
+      rawMessage += `\r\n`;
+      
+      // Text part
+      if (textContent) {
+        rawMessage += `--${boundary}_alt\r\n`;
+        rawMessage += `Content-Type: text/plain; charset=UTF-8\r\n`;
+        rawMessage += `Content-Transfer-Encoding: 7bit\r\n`;
+        rawMessage += `\r\n`;
+        rawMessage += textContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+        rawMessage += `\r\n`;
+      }
+      
+      // HTML part
+      rawMessage += `--${boundary}_alt\r\n`;
+      rawMessage += `Content-Type: text/html; charset=UTF-8\r\n`;
+      rawMessage += `Content-Transfer-Encoding: 7bit\r\n`;
+      rawMessage += `\r\n`;
+      rawMessage += htmlContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+      rawMessage += `\r\n`;
+      rawMessage += `--${boundary}_alt--\r\n`;
+      
+      // Add attachments
+      for (const attachment of attachments) {
+        const filename = attachment.originalname || attachment.filename || 'attachment';
+        const contentType = attachment.mimetype || 'application/octet-stream';
+        const content = attachment.buffer || attachment.data;
+        
+        rawMessage += `--${boundary}\r\n`;
+        rawMessage += `Content-Type: ${contentType}; name="${filename}"\r\n`;
+        rawMessage += `Content-Disposition: attachment; filename="${filename}"\r\n`;
+        rawMessage += `Content-Transfer-Encoding: base64\r\n`;
+        rawMessage += `\r\n`;
+        rawMessage += content.toString('base64').match(/.{1,76}/g).join('\r\n');
+        rawMessage += `\r\n`;
+      }
+      
+      rawMessage += `--${boundary}--\r\n`;
+      
+      const params = {
+        RawMessage: {
+          Data: Buffer.from(rawMessage)
+        },
+        Destinations: [to]
+      };
+      
+      const command = new SendRawEmailCommand(params);
+      const result = await sesClient.send(command);
+      
+      console.log('✅ Email with attachments sent successfully:', result.MessageId);
+      return { success: true, messageId: result.MessageId };
+    } catch (error) {
+      console.error('❌ Error sending email with attachments:', error);
       return { success: false, error: error.message };
     }
   }

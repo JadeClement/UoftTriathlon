@@ -21,6 +21,7 @@ const Admin = () => {
   const [bannerForm, setBannerForm] = useState({ enabled: false, items: [''], rotationIntervalMs: 6000 });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', body: '' });
+  const [emailAttachments, setEmailAttachments] = useState([]);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
@@ -259,21 +260,30 @@ const Admin = () => {
       if (emailType === 'individual') {
         setSendingEmail(true);
         const token = localStorage.getItem('triathlonToken');
+        
+        // Prepare form data for file uploads
+        const formData = new FormData();
+        formData.append('to', emailForm.to);
+        formData.append('subject', emailForm.subject);
+        formData.append('message', emailForm.message);
+        formData.append('template', JSON.stringify(template));
+        
+        // Add attachments if any
+        emailAttachments.forEach((file) => {
+          formData.append('attachments', file);
+        });
+        
         const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ 
-            to: emailForm.to, 
-            subject: emailForm.subject,
-            message: emailForm.message,
-            template: template 
-          })
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
         });
         const data = await resp.json();
         if (resp.ok) {
           setEmailStatus({ type: 'success', text: 'Email sent successfully!' });
           setEmailForm({ to: '', subject: '', message: '' });
           setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+          setEmailAttachments([]);
         } else {
           setEmailStatus({ type: 'error', text: data.error || 'Failed to send email' });
         }
@@ -1465,6 +1475,45 @@ const Admin = () => {
                           placeholder="Type your message here..."
                           required 
                         />
+                      </div>
+                      <div className="form-group">
+                        <label>Attachments (optional)</label>
+                        <input 
+                          type="file" 
+                          multiple
+                          onChange={(e) => setEmailAttachments(Array.from(e.target.files))}
+                          style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+                        />
+                        {emailAttachments.length > 0 && (
+                          <div style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>
+                            {emailAttachments.map((file, idx) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                <span>📎 {file.name}</span>
+                                <span style={{ color: '#999', fontSize: '12px'}}>
+                                  ({(file.size / 1024).toFixed(1)} KB)
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newFiles = [...emailAttachments];
+                                    newFiles.splice(idx, 1);
+                                    setEmailAttachments(newFiles);
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#dc2626',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    padding: '2px 6px'
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
