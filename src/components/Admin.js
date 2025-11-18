@@ -24,7 +24,18 @@ const Admin = () => {
     items: [''],
     rotationIntervalMs: 6000,
     popupEnabled: false,
-    popupMessage: ''
+    popupDraft: '',
+    popupPreview: ''
+  });
+  const [bannerSnapshot, setBannerSnapshot] = useState({
+    enabled: false,
+    items: [],
+    rotationIntervalMs: 6000
+  });
+  const [popupPreview, setPopupPreview] = useState({
+    enabled: false,
+    message: '',
+    popupId: null
   });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', body: '' });
@@ -224,11 +235,55 @@ const Admin = () => {
           items: items.length ? items : [''],
           rotationIntervalMs,
           popupEnabled,
-          popupMessage
+          popupDraft: ''
+        });
+        setBannerSnapshot({
+          enabled: enabled && items.length > 0,
+          items: items.length ? items : [],
+          rotationIntervalMs
+        });
+        setPopupPreview({
+          enabled: popupEnabled,
+          message: popupMessage,
+          popupId: data?.popup?.popupId || null
         });
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
+    }
+  };
+
+  const handleRemovePopup = async () => {
+    if (!popupPreview.enabled) {
+      return;
+    }
+
+    if (!window.confirm('Remove the current pop up message?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const resp = await fetch(`${API_BASE_URL}/site/banner`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          enabled: !!bannerSnapshot.enabled,
+          rotationIntervalMs: Number(bannerSnapshot.rotationIntervalMs) || 6000,
+          items: (bannerSnapshot.items || []).map((message) => ({ message })),
+          popupEnabled: false,
+          popupMessage: ''
+        })
+      });
+      const payload = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        throw new Error(payload?.error || 'Failed to remove pop up');
+      }
+      setPopupPreview({ enabled: false, message: '', popupId: null });
+      setBannerForm((prev) => ({ ...prev, popupEnabled: false, popupDraft: '' }));
+      alert('Pop up removed');
+    } catch (error) {
+      alert(error.message);
     }
   };
 
@@ -1358,14 +1413,37 @@ const Admin = () => {
                     rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000,
                     items: (bannerForm.items || []).map((m) => ({ message: String(m || '').trim() })).filter((m) => m.message),
                     popupEnabled: !!bannerForm.popupEnabled,
-                    popupMessage: bannerForm.popupMessage || ''
+                    popupMessage: bannerForm.popupDraft || ''
                   })
                 });
+                const payload = await resp.json().catch(() => null);
                 if (!resp.ok) {
-                  const err = await resp.json().catch(() => ({}));
+                  const err = payload || {};
                   throw new Error(err.error || 'Failed to update banner');
                 }
                 alert('Banner updated');
+                if (payload?.banner) {
+                  const savedItems = Array.isArray(payload.banner.items)
+                    ? payload.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
+                    : [];
+                  setBannerSnapshot({
+                    enabled: !!payload.banner.enabled && savedItems.length > 0,
+                    items: savedItems,
+                    rotationIntervalMs: Number(payload.banner.rotationIntervalMs) > 0 ? Number(payload.banner.rotationIntervalMs) : 6000
+                  });
+                }
+                if (payload?.popup) {
+                  setPopupPreview({
+                    enabled: !!payload.popup.enabled && !!payload.popup.message,
+                    message: payload.popup.message || '',
+                    popupId: payload.popup.popupId || null
+                  });
+                }
+                setBannerForm((prev) => ({
+                  ...prev,
+                  popupEnabled: !!payload?.popup?.enabled,
+                  popupDraft: ''
+                }));
               } catch (err) {
                 alert(err.message);
               }
@@ -1436,13 +1514,32 @@ const Admin = () => {
                 <textarea
                   rows="4"
                   placeholder="Write the message you want members to see after logging in..."
-                  value={bannerForm.popupMessage}
-                  onChange={(e)=> setBannerForm({ ...bannerForm, popupMessage: e.target.value })}
+                  value={bannerForm.popupDraft}
+                  onChange={(e)=> setBannerForm({ ...bannerForm, popupDraft: e.target.value })}
                   disabled={!bannerForm.popupEnabled}
                 />
                 <small style={{ color: '#6b7280' }}>
                   Tip: Keep it short. Use markdown-style links like [Click here](https://uoft-tri.club) if needed.
                 </small>
+              </div>
+              <div className="popup-preview-section">
+                <label>Published Pop Up</label>
+                {popupPreview.enabled && popupPreview.message ? (
+                  <div className="popup-preview-card">
+                    <div className="popup-preview-message">
+                      {popupPreview.message}
+                    </div>
+                    <button type="button" className="btn popup-remove-btn" onClick={() => handleRemovePopup()}>
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="popup-preview-card muted">
+                    <div className="popup-preview-message">
+                      No pop up is currently active.
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="modal-actions">
