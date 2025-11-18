@@ -4,6 +4,29 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
+const parsePopupSettings = (rawValue) => {
+  let popup = { enabled: false, message: '', popupId: null };
+  if (!rawValue) return popup;
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (parsed && typeof parsed === 'object') {
+      popup = {
+        enabled: !!parsed.enabled && !!parsed.message,
+        message: parsed.message || '',
+        popupId: parsed.popupId || null
+      };
+    }
+  } catch (_err) {
+    // ignore parse errors, fall back to defaults
+  }
+  return popup;
+};
+
+const loadPopupSettings = async () => {
+  const result = await pool.query('SELECT value FROM site_settings WHERE key = $1', ['popup_json']);
+  return parsePopupSettings(result.rows[0]?.value || '');
+};
+
 // Public: get banner (supports single or multiple banners)
 router.get('/banner', async (req, res) => {
   try {
@@ -34,7 +57,9 @@ router.get('/banner', async (req, res) => {
       }
     }
 
-    res.json({ banner });
+    const popup = await loadPopupSettings();
+
+    res.json({ banner, popup });
   } catch (error) {
     console.error('Get banner error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -86,9 +111,85 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
       ['banner_json', value]
     );
 
-    res.json({ message: 'Banner updated', banner });
+    // Handle popup settings
+    const popupEnabled = !!body.popupEnabled;
+    const popupMessage = (body.popupMessage || '').toString().trim();
+    const previousPopup = await loadPopupSettings();
+
+    let popupPayload = { enabled: false, message: '', popupId: null };
+    if (popupEnabled && popupMessage) {
+      let popupId = previousPopup.popupId;
+      if (!popupId || previousPopup.message !== popupMessage) {
+        popupId = `popup-${Date.now()}`;
+      }
+      popupPayload = {
+        enabled: true,
+        message: popupMessage,
+        popupId
+      };
+    }
+
+    await pool.query(
+      `
+      INSERT INTO site_settings(key, value) VALUES ($1, $2)
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    `,
+      ['popup_json', JSON.stringify(popupPayload)]
+    );
+
+    res.json({ message: 'Banner updated', banner, popup: popupPayload });
   } catch (error) {
     console.error('Update banner error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Authenticated: get popup status for current user
+router.get('/popup/status', authenticateToken, async (req, res) => {
+  try {
+    const popup = await loadPopupSettings();
+
+    if (!popup.enabled || !popup.message || !popup.popupId) {
+      return res.json({ popup: { enabled: false, shouldShow: false } });
+    }
+
+    const result = await pool.query(
+      'SELECT 1 FROM user_popup_views WHERE user_id = $1 AND popup_id = $2',
+      [req.user.id, popup.popupId]
+    );
+
+    res.json({
+      popup: {
+        ...popup,
+        shouldShow: result.rowCount === 0
+      }
+    });
+  } catch (error) {
+    console.error('Get popup status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Authenticated: mark popup as seen for the current user
+router.post('/popup/seen', authenticateToken, async (req, res) => {
+  try {
+    const popupId = req.body?.popupId;
+    if (!popupId) {
+      return res.status(400).json({ error: 'popupId is required' });
+    }
+
+    await pool.query(
+      `
+      INSERT INTO user_popup_views (user_id, popup_id, seen_at)
+      VALUES ($1, $2, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id, popup_id) DO UPDATE SET seen_at = EXCLUDED.seen_at
+    `,
+      [req.user.id, popupId]
+    );
+
+    res.json({ message: 'Popup marked as seen' });
+  } catch (error) {
+    console.error('Mark popup seen error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

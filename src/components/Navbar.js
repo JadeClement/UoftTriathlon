@@ -35,6 +35,9 @@ const Navbar = () => {
   const [banner, setBanner] = useState({ enabled: false, items: [], rotationIntervalMs: 6000 });
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [isBannerHovered, setIsBannerHovered] = useState(false);
+  const [popupModal, setPopupModal] = useState({ enabled: false, message: '', popupId: null });
+  const [showPopupModal, setShowPopupModal] = useState(false);
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const navigate = useNavigate();
   const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
   const profileRef = useRef(null);
@@ -78,8 +81,7 @@ const Navbar = () => {
   useEffect(() => {
     const loadBanner = async () => {
       try {
-        const base = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
-        const resp = await fetch(`${base}/site/banner`);
+        const resp = await fetch(`${API_BASE_URL}/site/banner`);
         if (!resp.ok) return;
         const data = await resp.json();
         const normalized = data.banner || {};
@@ -91,11 +93,52 @@ const Navbar = () => {
           items,
           rotationIntervalMs: Number(normalized.rotationIntervalMs) > 0 ? Number(normalized.rotationIntervalMs) : 6000,
         });
+        if (data.popup) {
+          setPopupModal((prev) => ({
+            ...prev,
+            enabled: !!data.popup.enabled && !!data.popup.message,
+            message: data.popup.message || '',
+            popupId: data.popup.popupId || null
+          }));
+        }
         setActiveBannerIndex(0);
       } catch (_) {}
     };
     loadBanner();
-  }, []);
+  }, [API_BASE_URL]);
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setShowPopupModal(false);
+      return;
+    }
+
+    const loadPopupStatus = async () => {
+      try {
+        const token = localStorage.getItem('triathlonToken');
+        if (!token) return;
+        const resp = await fetch(`${API_BASE_URL}/site/popup/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.popup && data.popup.shouldShow && data.popup.message) {
+          setPopupModal({
+            enabled: true,
+            message: data.popup.message,
+            popupId: data.popup.popupId
+          });
+          setShowPopupModal(true);
+        } else {
+          setShowPopupModal(false);
+        }
+      } catch (_error) {
+        // ignore errors
+      }
+    };
+
+    loadPopupStatus();
+  }, [API_BASE_URL, currentUser?.id]);
 
   // Reflect banner height to CSS variable for page spacing
   useEffect(() => {
@@ -117,6 +160,30 @@ const Navbar = () => {
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
+  };
+
+  const acknowledgePopup = async () => {
+    if (!popupModal?.popupId) {
+      setShowPopupModal(false);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      if (token) {
+        await fetch(`${API_BASE_URL}/site/popup/seen`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ popupId: popupModal.popupId })
+        });
+      }
+    } catch (_error) {
+      // ignore errors; still close popup
+    } finally {
+      setShowPopupModal(false);
+    }
   };
 
   const closeMenu = () => {
@@ -151,6 +218,20 @@ const Navbar = () => {
 
   return (
     <>
+    {showPopupModal && popupModal?.message && (
+      <div className="popup-overlay" onClick={acknowledgePopup}>
+        <div className="popup-modal" onClick={(e) => e.stopPropagation()}>
+          <h3>Important Update</h3>
+          <div
+            className="popup-message"
+            dangerouslySetInnerHTML={{ __html: linkify(popupModal.message) }}
+          />
+          <button className="btn btn-primary" onClick={acknowledgePopup}>
+            Got it
+          </button>
+        </div>
+      </div>
+    )}
     {banner.enabled && (banner.items?.length > 0) && (
       <div 
         className="site-banner active"

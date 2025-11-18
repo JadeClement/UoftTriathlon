@@ -397,6 +397,49 @@
   .more-dropdown {
     width: 100%;
   }
+
+/* Login Popup Modal */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 16px;
+}
+
+.popup-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+  text-align: left;
+}
+
+.popup-modal h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.4rem;
+  color: #1e293b;
+}
+
+.popup-message {
+  color: #0f172a;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.popup-message a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.popup-modal .btn {
+  width: 100%;
+}
   .more-menu {
     position: static;
     box-shadow: none;

@@ -8,8 +8,14 @@ const Admin = () => {
   const [pendingMembers, setPendingMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState('members');
-  // Banner form supports multiple items and rotation interval
-  const [bannerForm, setBannerForm] = useState({ enabled: false, items: [''], rotationIntervalMs: 6000 });
+  // Banner + popup form supports multiple items and rotation interval
+  const [bannerForm, setBannerForm] = useState({
+    enabled: false,
+    items: [''],
+    rotationIntervalMs: 6000,
+    popupEnabled: false,
+    popupMessage: ''
+  });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', body: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -197,7 +203,15 @@ const Admin = () => {
         } else if (data?.banner?.message) {
           items = [String(data.banner.message)];
         }
-        setBannerForm({ enabled: enabled && items.length > 0, items: items.length ? items : [''], rotationIntervalMs });
+        const popupEnabled = !!data?.popup?.enabled && !!data?.popup?.message;
+        const popupMessage = data?.popup?.message || '';
+        setBannerForm({
+          enabled: enabled && items.length > 0,
+          items: items.length ? items : [''],
+          rotationIntervalMs,
+          popupEnabled,
+          popupMessage
+        });
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
@@ -968,8 +982,8 @@ const Admin = () => {
 
         {activeTab === 'banner' && (
           <div className="email-section">
-            <h2>Site Banner</h2>
-            <p>Toggle one or more rotating banners at the top of the site.</p>
+            <h2>Site Banner & Pop Ups</h2>
+            <p>Configure the rotating site banner and an optional login pop-up message.</p>
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
@@ -980,7 +994,9 @@ const Admin = () => {
                   body: JSON.stringify({
                     enabled: !!bannerForm.enabled,
                     rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000,
-                    items: (bannerForm.items || []).map((m) => ({ message: String(m || '').trim() })).filter((m) => m.message)
+                    items: (bannerForm.items || []).map((m) => ({ message: String(m || '').trim() })).filter((m) => m.message),
+                    popupEnabled: !!bannerForm.popupEnabled,
+                    popupMessage: bannerForm.popupMessage || ''
                   })
                 });
                 if (!resp.ok) {
@@ -1042,6 +1058,31 @@ const Admin = () => {
                   }}
                 >+ Add Banner</button>
               </div>
+
+              <hr style={{ margin: '24px 0' }} />
+              <h3>Pop Up Modal</h3>
+              <p>Show a pop up in the middle of the screen when users log in. Each user will only see it once per pop up.</p>
+              <div className="form-group" style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                <label className="toggle-switch">
+                  <input type="checkbox" checked={!!bannerForm.popupEnabled} onChange={(e)=> setBannerForm({ ...bannerForm, popupEnabled: e.target.checked })} />
+                  <span className="toggle-slider"></span>
+                </label>
+                <span className="toggle-label">{bannerForm.popupEnabled ? 'Pop Up On' : 'Pop Up Off'}</span>
+              </div>
+              <div className="form-group">
+                <label>Pop Up Message</label>
+                <textarea
+                  rows="4"
+                  placeholder="Write the message you want members to see after logging in..."
+                  value={bannerForm.popupMessage}
+                  onChange={(e)=> setBannerForm({ ...bannerForm, popupMessage: e.target.value })}
+                  disabled={!bannerForm.popupEnabled}
+                />
+                <small style={{ color: '#6b7280' }}>
+                  Tip: Keep it short. Use markdown-style links like [Click here](https://uoft-tri.club) if needed.
+                </small>
+              </div>
+
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Save Banner</button>
               </div>
