@@ -244,6 +244,17 @@ async function initializeDatabase() {
     `);
     console.log('✅ Site settings table created');
 
+    // Track which users have seen specific popups
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_popup_views (
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        popup_id VARCHAR(100) NOT NULL,
+        seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, popup_id)
+      )
+    `);
+    console.log('✅ user_popup_views table created');
+
     // Create merch_orders table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS merch_orders (
