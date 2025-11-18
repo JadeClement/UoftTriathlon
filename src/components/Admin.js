@@ -34,6 +34,15 @@ const Admin = () => {
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
   const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' }); // 'success' or 'error'
+
+  // Show notification helper
+  const showNotification = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => {
+      setNotification({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
 
   // Rich text editor functions
   const insertText = (text, wrapper = '') => {
@@ -260,7 +269,7 @@ const Admin = () => {
         const err = payload || {};
         throw new Error(err.error || 'Failed to update banner');
       }
-      alert('Banner updated');
+      showNotification('Banner updated successfully!', 'success');
       if (payload?.banner) {
         const savedItems = Array.isArray(payload.banner.items)
           ? payload.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
@@ -272,14 +281,14 @@ const Admin = () => {
         });
       }
     } catch (err) {
-      alert(err.message);
+      showNotification(err.message, 'error');
     }
   };
 
   const handleSavePopup = async (e) => {
     e.preventDefault();
     if (!bannerForm.popupEnabled || !bannerForm.popupDraft?.trim()) {
-      alert('Please enable the pop up and enter a message');
+      showNotification('Please enable the pop up and enter a message', 'error');
       return;
     }
     try {
@@ -301,7 +310,7 @@ const Admin = () => {
         const err = payload || {};
         throw new Error(err.error || 'Failed to update pop up');
       }
-      alert('Pop up updated');
+      showNotification('Pop up updated successfully!', 'success');
       if (payload?.popup) {
         setPopupPreview({
           enabled: !!payload.popup.enabled && !!payload.popup.message,
@@ -314,7 +323,7 @@ const Admin = () => {
         popupDraft: ''
       }));
     } catch (err) {
-      alert(err.message);
+      showNotification(err.message, 'error');
     }
   };
 
@@ -346,9 +355,9 @@ const Admin = () => {
       }
       setPopupPreview({ enabled: false, message: '', popupId: null });
       setBannerForm((prev) => ({ ...prev, popupEnabled: false, popupDraft: '' }));
-      alert('Pop up removed');
+      showNotification('Pop up removed successfully!', 'success');
     } catch (error) {
-      alert(error.message);
+      showNotification(error.message, 'error');
     }
   };
 
@@ -955,11 +964,22 @@ const Admin = () => {
 
   return (
     <div className="admin-container">
-              <div className="admin-header">
-          <h1>Admin Dashboard</h1>
-          <p>Manage club members and monitor activity</p>
-
+      {/* Notification Toast */}
+      {notification.show && (
+        <div className={`notification-toast notification-${notification.type}`}>
+          <div className="notification-content">
+            <span className="notification-icon">
+              {notification.type === 'success' ? '✓' : '✕'}
+            </span>
+            <span className="notification-message">{notification.message}</span>
+          </div>
         </div>
+      )}
+
+      <div className="admin-header">
+        <h1>Admin Dashboard</h1>
+        <p>Manage club members and monitor activity</p>
+      </div>
 
       <div className="admin-tabs">
         <button 
