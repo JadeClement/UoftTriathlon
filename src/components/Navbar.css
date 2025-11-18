@@ -393,11 +393,6 @@
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-@media (max-width: 768px) {
-  .more-dropdown {
-    width: 100%;
-  }
-
 /* Login Popup Modal */
 .popup-overlay {
   position: fixed;
@@ -473,6 +468,11 @@
 .popup-actions .btn {
   min-width: 120px;
 }
+
+@media (max-width: 768px) {
+  .more-dropdown {
+    width: 100%;
+  }
   .more-menu {
     position: static;
     box-shadow: none;
