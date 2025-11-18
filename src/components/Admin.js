@@ -239,6 +239,85 @@ const Admin = () => {
     }
   };
 
+  const handleSaveBanner = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const resp = await fetch(`${API_BASE_URL}/site/banner`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          enabled: !!bannerForm.enabled,
+          rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000,
+          items: (bannerForm.items || []).map((m) => ({ message: String(m || '').trim() })).filter((m) => m.message),
+          // Preserve current popup settings
+          popupEnabled: popupPreview.enabled,
+          popupMessage: popupPreview.message || ''
+        })
+      });
+      const payload = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        const err = payload || {};
+        throw new Error(err.error || 'Failed to update banner');
+      }
+      alert('Banner updated');
+      if (payload?.banner) {
+        const savedItems = Array.isArray(payload.banner.items)
+          ? payload.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
+          : [];
+        setBannerSnapshot({
+          enabled: !!payload.banner.enabled && savedItems.length > 0,
+          items: savedItems,
+          rotationIntervalMs: Number(payload.banner.rotationIntervalMs) > 0 ? Number(payload.banner.rotationIntervalMs) : 6000
+        });
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleSavePopup = async (e) => {
+    e.preventDefault();
+    if (!bannerForm.popupEnabled || !bannerForm.popupDraft?.trim()) {
+      alert('Please enable the pop up and enter a message');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const resp = await fetch(`${API_BASE_URL}/site/banner`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          // Preserve current banner settings
+          enabled: !!bannerSnapshot.enabled,
+          rotationIntervalMs: Number(bannerSnapshot.rotationIntervalMs) || 6000,
+          items: (bannerSnapshot.items || []).map((message) => ({ message })),
+          popupEnabled: !!bannerForm.popupEnabled,
+          popupMessage: bannerForm.popupDraft.trim()
+        })
+      });
+      const payload = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        const err = payload || {};
+        throw new Error(err.error || 'Failed to update pop up');
+      }
+      alert('Pop up updated');
+      if (payload?.popup) {
+        setPopupPreview({
+          enabled: !!payload.popup.enabled && !!payload.popup.message,
+          message: payload.popup.message || '',
+          popupId: payload.popup.popupId || null
+        });
+      }
+      setBannerForm((prev) => ({
+        ...prev,
+        popupDraft: ''
+      }));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const handleRemovePopup = async () => {
     if (!popupPreview.enabled) {
       return;
@@ -1039,53 +1118,7 @@ const Admin = () => {
           <div className="email-section">
             <h2>Site Banner & Pop Ups</h2>
             <p>Configure the rotating site banner and an optional login pop-up message.</p>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                const token = localStorage.getItem('triathlonToken');
-                const resp = await fetch(`${API_BASE_URL}/site/banner`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify({
-                    enabled: !!bannerForm.enabled,
-                    rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000,
-                    items: (bannerForm.items || []).map((m) => ({ message: String(m || '').trim() })).filter((m) => m.message),
-                    popupEnabled: !!bannerForm.popupEnabled,
-                    popupMessage: bannerForm.popupDraft || ''
-                  })
-                });
-                const payload = await resp.json().catch(() => null);
-                if (!resp.ok) {
-                  const err = payload || {};
-                  throw new Error(err.error || 'Failed to update banner');
-                }
-                alert('Banner updated');
-                if (payload?.banner) {
-                  const savedItems = Array.isArray(payload.banner.items)
-                    ? payload.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
-                    : [];
-                  setBannerSnapshot({
-                    enabled: !!payload.banner.enabled && savedItems.length > 0,
-                    items: savedItems,
-                    rotationIntervalMs: Number(payload.banner.rotationIntervalMs) > 0 ? Number(payload.banner.rotationIntervalMs) : 6000
-                  });
-                }
-                if (payload?.popup) {
-                  setPopupPreview({
-                    enabled: !!payload.popup.enabled && !!payload.popup.message,
-                    message: payload.popup.message || '',
-                    popupId: payload.popup.popupId || null
-                  });
-                }
-                setBannerForm((prev) => ({
-                  ...prev,
-                  popupEnabled: !!payload?.popup?.enabled,
-                  popupDraft: ''
-                }));
-              } catch (err) {
-                alert(err.message);
-              }
-            }}>
+            <form>
               <div className="form-group" style={{display:'flex', alignItems:'center', gap:'12px'}}>
                 <label className="toggle-switch">
                   <input type="checkbox" checked={!!bannerForm.enabled} onChange={(e)=> setBannerForm({ ...bannerForm, enabled: e.target.checked })} />
@@ -1180,8 +1213,9 @@ const Admin = () => {
                 )}
               </div>
 
-              <div className="modal-actions">
-                <button type="submit" className="btn btn-primary">Save Banner</button>
+              <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-start' }}>
+                <button type="button" onClick={handleSaveBanner} className="btn btn-primary">Save Banner</button>
+                <button type="button" onClick={handleSavePopup} className="btn btn-primary">Save Pop Up</button>
               </div>
             </form>
           </div>
