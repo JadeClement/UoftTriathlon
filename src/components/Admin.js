@@ -288,11 +288,19 @@ const Admin = () => {
         const savedItems = Array.isArray(payload.banner.items)
           ? payload.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
           : [];
-        setBannerSnapshot({
+        const savedBanner = {
           enabled: !!payload.banner.enabled && savedItems.length > 0,
           items: savedItems,
           rotationIntervalMs: Number(payload.banner.rotationIntervalMs) > 0 ? Number(payload.banner.rotationIntervalMs) : 6000
-        });
+        };
+        setBannerSnapshot(savedBanner);
+        // Also update bannerForm to reflect what was saved
+        setBannerForm(prev => ({
+          ...prev,
+          enabled: savedBanner.enabled,
+          items: savedItems.length ? savedItems : [''],
+          rotationIntervalMs: savedBanner.rotationIntervalMs
+        }));
       }
     } catch (err) {
       showNotification(err.message, 'error');
