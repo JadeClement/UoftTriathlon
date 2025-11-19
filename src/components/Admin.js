@@ -1940,6 +1940,132 @@ const Admin = () => {
                           💡 Tip: Use **bold**, *italic*, numbered lists (1. 2. 3.), and [links](url) for formatting. Press Enter after numbered items to auto-continue the list!
                         </div>
                       </div>
+                      <div className="form-group" style={{ marginTop: '20px' }}>
+                        <label>Attachments (optional)</label>
+                        <div style={{ 
+                          border: '2px dashed #cbd5e1', 
+                          borderRadius: '8px', 
+                          padding: '20px', 
+                          textAlign: 'center',
+                          backgroundColor: '#f8fafc',
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#3b82f6';
+                          e.currentTarget.style.backgroundColor = '#eff6ff';
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#cbd5e1';
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#cbd5e1';
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                          const files = Array.from(e.dataTransfer.files);
+                          setEmailAttachments([...emailAttachments, ...files]);
+                        }}
+                        onClick={() => document.getElementById('email-file-input-everyone').click()}
+                        >
+                          <input 
+                            id="email-file-input-everyone"
+                            type="file" 
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files);
+                              setEmailAttachments([...emailAttachments, ...files]);
+                              e.target.value = ''; // Reset so same file can be selected again
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          <div style={{ color: '#64748b', marginBottom: '8px' }}>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 8px', display: 'block' }}>
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="17 8 12 3 7 8"></polyline>
+                              <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: '500' }}>
+                              Click to upload or drag and drop
+                            </p>
+                            <p style={{ margin: '0', fontSize: '12px', color: '#94a3b8' }}>
+                              PDF, DOC, DOCX, images, or other files (max 10MB per file)
+                            </p>
+                          </div>
+                        </div>
+                        {emailAttachments.length > 0 && (
+                          <div style={{ 
+                            marginTop: '16px', 
+                            padding: '12px', 
+                            backgroundColor: '#f1f5f9', 
+                            borderRadius: '6px',
+                            border: '1px solid #e2e8f0'
+                          }}>
+                            <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: '#475569' }}>
+                              Attached Files ({emailAttachments.length})
+                            </div>
+                            {emailAttachments.map((file, idx) => (
+                              <div key={idx} style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                gap: '12px', 
+                                padding: '8px 12px',
+                                marginBottom: '6px',
+                                backgroundColor: 'white',
+                                borderRadius: '6px',
+                                border: '1px solid #e2e8f0'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                  <span style={{ fontSize: '18px' }}>📎</span>
+                                  <span style={{ 
+                                    fontSize: '14px', 
+                                    color: '#1e293b',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {file.name}
+                                  </span>
+                                  <span style={{ color: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                                    ({(file.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newFiles = [...emailAttachments];
+                                    newFiles.splice(idx, 1);
+                                    setEmailAttachments(newFiles);
+                                  }}
+                                  style={{
+                                    background: '#fee2e2',
+                                    border: '1px solid #fecaca',
+                                    color: '#dc2626',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    fontWeight: '500',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.background = '#fecaca';
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.background = '#fee2e2';
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
