@@ -457,25 +457,34 @@ const Admin = () => {
       } else {
         setSendingBulkEmail(true);
         const token = localStorage.getItem('triathlonToken');
+        
+        // Prepare form data for file uploads
+        const formData = new FormData();
+        formData.append('subject', template.title || 'UofT Tri Club Update');
+        formData.append('message', template.body || '');
+        formData.append('template', JSON.stringify(template));
+        formData.append('recipients', JSON.stringify({
+          members: true,
+          exec: true,
+          admin: true,
+          pending: false
+        }));
+        
+        // Add attachments if any
+        emailAttachments.forEach((file) => {
+          formData.append('attachments', file);
+        });
+        
         const resp = await fetch(`${API_BASE_URL}/admin/send-bulk-email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            subject: template.title || 'UofT Tri Club Update',
-            message: template.body || '',
-            template: template,
-            recipients: {
-              members: true,
-              exec: true,
-              admin: true,
-              pending: false
-            }
-          })
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
         });
         const data = await resp.json();
         if (resp.ok) {
-          setBulkEmailStatus({ type: 'success', text: `Bulk email sent successfully to ${data.sentCount} recipients!` });
+          setBulkEmailStatus({ type: 'success', text: `Bulk email sent successfully to ${data.recipientCount || data.sentCount || 0} recipients!` });
           setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+          setEmailAttachments([]);
         } else {
           setBulkEmailStatus({ type: 'error', text: data.error || 'Failed to send bulk email' });
         }

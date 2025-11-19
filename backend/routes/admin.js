@@ -718,10 +718,18 @@ router.post('/send-email', authenticateToken, requireRole('exec'), upload.array(
   }
 });
 
-// Send bulk email route (execs and admins)
-router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (req, res) => {
+// Send bulk email route (execs and admins) - supports file attachments
+router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.array('attachments', 10), async (req, res) => {
   try {
-    const { subject, message, recipients, template, customEmails } = req.body;
+    // Handle both JSON (backward compatibility) and multipart/form-data
+    const subject = req.body.subject;
+    const message = req.body.message;
+    const recipients = req.body.recipients ? (typeof req.body.recipients === 'string' ? JSON.parse(req.body.recipients) : req.body.recipients) : {};
+    const template = req.body.template ? (typeof req.body.template === 'string' ? JSON.parse(req.body.template) : req.body.template) : null;
+    const customEmails = req.body.customEmails;
+    
+    // Get attachments from multer
+    const attachments = req.files || [];
 
     if (process.env.NODE_ENV !== 'production') {
       console.log('🔍 Bulk email request body (sanitized):', { subject, template: !!template });
@@ -925,7 +933,10 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
           const personalizedHtml = htmlContent.replace(/\[name\]/g, recipient.name);
           const personalizedText = textContent.replace(/\[name\]/g, recipient.name);
           
-          const result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+          // Send email with attachments if any
+          const result = attachments.length > 0
+            ? await emailService.sendEmailWithAttachments(recipient.email, subject, personalizedHtml, personalizedText, attachments, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club')
+            : await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
           
           if (result.success) {
             
