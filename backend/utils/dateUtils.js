@@ -24,10 +24,14 @@ function parseDate(dateInput) {
       return isNaN(date.getTime()) ? null : date;
     }
     
-    // Handle YYYY-MM-DD format (treat as UTC to avoid timezone shifts)
+    // Handle YYYY-MM-DD format
+    // PREVIOUSLY: we used Date.UTC(...) which treated this as midnight UTC.
+    // For workouts, all times are local to the club (Toronto), so we should
+    // treat this as a LOCAL date to keep 12-hour cutoff logic intuitive.
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
       const [year, month, day] = dateInput.split('-').map(Number);
-      return new Date(Date.UTC(year, month - 1, day));
+      // Local midnight in the server's timezone (which should be set to America/Toronto)
+      return new Date(year, month - 1, day);
     }
     
     // Handle other formats
@@ -71,9 +75,12 @@ function combineDateTime(dateInput, timeStr) {
   
   if (!date || !time) return null;
   
-  // Create a new date with the time set
+  // Create a new date with the time set.
+  // IMPORTANT: use local hours here so that workout times are interpreted
+  // as local club time (America/Toronto), not UTC. This keeps the
+  // 12-hour cancellation window aligned with what members see on the schedule.
   const result = new Date(date);
-  result.setUTCHours(time.hours, time.minutes, time.seconds, 0);
+  result.setHours(time.hours, time.minutes, time.seconds, 0);
   
   return result;
 }
