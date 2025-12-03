@@ -3,11 +3,30 @@ import { useAuth } from '../context/AuthContext';
 import './Admin.css';
 
 const Admin = () => {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, isCoach, isExec } = useAuth();
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState('members');
+  
+  // Test Events state
+  const [testEvents, setTestEvents] = useState([]);
+  const [selectedTestEvent, setSelectedTestEvent] = useState(null);
+  const [testEventRecords, setTestEventRecords] = useState([]);
+  const [showTestEventModal, setShowTestEventModal] = useState(false);
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [testEventForm, setTestEventForm] = useState({
+    title: '',
+    sport: 'swim',
+    date: '',
+    workout: '',
+    workout_post_id: null
+  });
+  const [recordForm, setRecordForm] = useState({
+    title: '',
+    result: '',
+    description: ''
+  });
   
   // Pagination state for members
   const [currentPage, setCurrentPage] = useState(1);
@@ -789,6 +808,107 @@ const Admin = () => {
     }
   };
 
+  // Load test events
+  const loadTestEvents = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/test-events`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTestEvents(data.testEvents || []);
+      }
+    } catch (error) {
+      console.error('Error loading test events:', error);
+      showNotification('Failed to load test events', 'error');
+    }
+  };
+
+  // Load records for a test event
+  const loadTestEventRecords = async (testEventId) => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/test-events/${testEventId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedTestEvent(data.testEvent);
+        setTestEventRecords(data.records || []);
+      }
+    } catch (error) {
+      console.error('Error loading test event records:', error);
+      showNotification('Failed to load records', 'error');
+    }
+  };
+
+  // Create or update test event
+  const createTestEvent = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const isEdit = !!testEventForm.id;
+      const url = isEdit ? `${API_BASE_URL}/test-events/${testEventForm.id}` : `${API_BASE_URL}/test-events`;
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(testEventForm)
+      });
+      if (response.ok) {
+        showNotification(`Test event ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        setShowTestEventModal(false);
+        setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+        await loadTestEvents();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || `Failed to ${isEdit ? 'update' : 'create'} test event`);
+      }
+    } catch (error) {
+      showNotification(`Failed to ${testEventForm.id ? 'update' : 'create'} test event: ${error.message}`, 'error');
+    }
+  };
+
+  // Create new record
+  const createRecord = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/records`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...recordForm,
+          test_event_id: selectedTestEvent.id,
+          title: recordForm.title || selectedTestEvent.title
+        })
+      });
+      if (response.ok) {
+        showNotification('Record created successfully', 'success');
+        setShowRecordModal(false);
+        setRecordForm({ title: '', result: '', description: '' });
+        await loadTestEventRecords(selectedTestEvent.id);
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create record');
+      }
+    } catch (error) {
+      showNotification(`Failed to create record: ${error.message}`, 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'test-events' && !selectedTestEvent) {
+      loadTestEvents();
+    }
+  }, [activeTab]);
+
   // Load detailed attendance for a specific workout
   const loadAttendanceDetails = async (workoutId) => {
     try {
@@ -1177,6 +1297,18 @@ const Admin = () => {
             onClick={() => setActiveTab('orders')}
           >
             Merch Orders
+          </button>
+        )}
+        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && (
+          <button 
+            className={`tab-button ${activeTab === 'test-events' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('test-events');
+              setSelectedTestEvent(null);
+              loadTestEvents();
+            }}
+          >
+            Test Events
           </button>
         )}
       </div>
@@ -2454,6 +2586,114 @@ const Admin = () => {
           </div>
         )}
 
+        {/* Test Events Tab */}
+        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && activeTab === 'test-events' && (
+          <div className="test-events-section">
+            {!selectedTestEvent ? (
+              // Test Events List View
+              <>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '16px'}}>
+                  <h2>Test Events</h2>
+                  <button className="btn btn-primary" onClick={() => {
+                    setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+                    setShowTestEventModal(true);
+                  }}>+ New</button>
+                </div>
+                <div className="test-events-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Sport</th>
+                        <th>Date</th>
+                        <th>Workout</th>
+                        <th>Created By</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {testEvents.map(te => (
+                        <tr 
+                          key={te.id} 
+                          style={{cursor: 'pointer'}}
+                          onClick={() => loadTestEventRecords(te.id)}
+                        >
+                          <td>{te.title}</td>
+                          <td><span className={`sport-badge ${te.sport}`}>{te.sport}</span></td>
+                          <td>{new Date(te.date).toLocaleDateString()}</td>
+                          <td style={{maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{te.workout}</td>
+                          <td>{te.created_by_name || '-'}</td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <button className="action-btn small" onClick={() => {
+                              setTestEventForm(te);
+                              setShowTestEventModal(true);
+                            }}>Edit</button>
+                          </td>
+                        </tr>
+                      ))}
+                      {testEvents.length === 0 && (
+                        <tr><td colSpan="6" style={{textAlign:'center', color:'#6b7280'}}>No test events yet</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              // Records Detail View
+              <>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '16px'}}>
+                  <div>
+                    <button className="btn btn-secondary" onClick={() => {
+                      setSelectedTestEvent(null);
+                      setTestEventRecords([]);
+                    }} style={{marginRight: '12px'}}>← Back</button>
+                    <h2 style={{display: 'inline', marginLeft: '12px'}}>{selectedTestEvent.title}</h2>
+                  </div>
+                  <button className="btn btn-primary" onClick={() => {
+                    setRecordForm({ title: selectedTestEvent.title || '', result: '', description: '' });
+                    setShowRecordModal(true);
+                  }}>+ New Record</button>
+                </div>
+                <div style={{marginBottom: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px'}}>
+                  <p><strong>Sport:</strong> <span className={`sport-badge ${selectedTestEvent.sport}`}>{selectedTestEvent.sport}</span></p>
+                  <p><strong>Date:</strong> {new Date(selectedTestEvent.date).toLocaleDateString()}</p>
+                  <p><strong>Workout:</strong> {selectedTestEvent.workout}</p>
+                  {selectedTestEvent.workout_post_title && (
+                    <p><strong>Linked Workout:</strong> {selectedTestEvent.workout_post_title}</p>
+                  )}
+                </div>
+                <div className="records-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Title</th>
+                        <th>Result</th>
+                        <th>Description</th>
+                        <th>Created</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {testEventRecords.map(r => (
+                        <tr key={r.id}>
+                          <td>{r.user_name || r.user_email}</td>
+                          <td>{r.title}</td>
+                          <td>{r.result || '-'}</td>
+                          <td style={{maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{r.description || '-'}</td>
+                          <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                      {testEventRecords.length === 0 && (
+                        <tr><td colSpan="5" style={{textAlign:'center', color:'#6b7280'}}>No records yet</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* Edit Member Modal */}
@@ -2986,6 +3226,130 @@ const Admin = () => {
                 </button>
                 <button type="submit" className="btn btn-primary">
                   {orderForm.id ? 'Update Order' : 'Create Order'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Test Event Modal */}
+      {showTestEventModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>{testEventForm.id ? 'Edit Test Event' : 'New Test Event'}</h2>
+            <form onSubmit={(e) => { e.preventDefault(); createTestEvent(); }}>
+              <div className="form-group">
+                <label>Title:</label>
+                <input
+                  type="text"
+                  value={testEventForm.title}
+                  onChange={(e) => setTestEventForm({...testEventForm, title: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Sport:</label>
+                <select
+                  value={testEventForm.sport}
+                  onChange={(e) => setTestEventForm({...testEventForm, sport: e.target.value})}
+                  required
+                >
+                  <option value="swim">Swim</option>
+                  <option value="bike">Bike</option>
+                  <option value="run">Run</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Date:</label>
+                <input
+                  type="date"
+                  value={testEventForm.date}
+                  onChange={(e) => setTestEventForm({...testEventForm, date: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Workout Description:</label>
+                <textarea
+                  rows="3"
+                  value={testEventForm.workout}
+                  onChange={(e) => setTestEventForm({...testEventForm, workout: e.target.value})}
+                  placeholder="e.g., 5 400ms fast on the track"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Link to Workout (optional):</label>
+                <input
+                  type="number"
+                  value={testEventForm.workout_post_id || ''}
+                  onChange={(e) => setTestEventForm({...testEventForm, workout_post_id: e.target.value ? parseInt(e.target.value) : null})}
+                  placeholder="Workout post ID"
+                />
+                <small>Optional: Link this test event to a specific workout post</small>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => {
+                  setShowTestEventModal(false);
+                  setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+                }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {testEventForm.id ? 'Update Test Event' : 'Create Test Event'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Record Modal */}
+      {showRecordModal && selectedTestEvent && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>New Record</h2>
+            <form onSubmit={(e) => { e.preventDefault(); createRecord(); }}>
+              <div className="form-group">
+                <label>Title:</label>
+                <input
+                  type="text"
+                  value={recordForm.title}
+                  onChange={(e) => setRecordForm({...recordForm, title: e.target.value})}
+                  placeholder={selectedTestEvent.title}
+                  required
+                />
+                <small>Defaults to test event title</small>
+              </div>
+              <div className="form-group">
+                <label>Result:</label>
+                <textarea
+                  rows="3"
+                  value={recordForm.result}
+                  onChange={(e) => setRecordForm({...recordForm, result: e.target.value})}
+                  placeholder="e.g., 1:20, 1:18, 1:19, 1:17, 1:16"
+                />
+                <small>Text description of times/results</small>
+              </div>
+              <div className="form-group">
+                <label>Description (optional):</label>
+                <textarea
+                  rows="3"
+                  value={recordForm.description}
+                  onChange={(e) => setRecordForm({...recordForm, description: e.target.value})}
+                  placeholder="Additional notes..."
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => {
+                  setShowRecordModal(false);
+                  setRecordForm({ title: '', result: '', description: '' });
+                }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Create Record
                 </button>
               </div>
             </form>

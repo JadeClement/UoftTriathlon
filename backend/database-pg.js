@@ -266,6 +266,38 @@ async function initializeDatabase() {
     `);
     console.log('✅ user_popup_views table created');
 
+    // Create test_events table (coaches create test events)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS test_events (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        sport VARCHAR(20) NOT NULL CHECK(sport IN ('swim', 'bike', 'run')),
+        date DATE NOT NULL,
+        workout TEXT NOT NULL,
+        workout_post_id INTEGER REFERENCES forum_posts(id) ON DELETE SET NULL,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Test events table created');
+
+    // Create records table (users/coaches add their results to test events)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS records (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        test_event_id INTEGER NOT NULL REFERENCES test_events(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        result TEXT,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+    console.log('✅ Records table created');
+
     // Create merch_orders table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS merch_orders (
@@ -295,6 +327,12 @@ async function initializeDatabase() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_post_likes_user_id ON post_likes(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_post_id ON event_rsvps(post_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_user_id ON event_rsvps(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_test_events_date ON test_events(date)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_test_events_sport ON test_events(sport)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_test_events_created_by ON test_events(created_by)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_test_events_workout_post_id ON test_events(workout_post_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_records_user_id ON records(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_records_test_event_id ON records(test_event_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_created_at ON merch_orders(created_at)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_email ON merch_orders(email)');
     

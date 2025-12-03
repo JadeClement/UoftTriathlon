@@ -1,6 +1,7 @@
 /* UofT Triathlon PWA Service Worker */
 
-const CACHE_VERSION = 'v1.0.2';
+// Increment this version on each deployment to force service worker update
+const CACHE_VERSION = 'v1.0.3';
 const STATIC_CACHE = `static-cache-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
@@ -127,10 +128,13 @@ self.addEventListener('fetch', (event) => {
   }
 
   // For all other requests, use network-first with cache fallback
+  // Don't cache JS/CSS bundles aggressively - they have hashes and change on each build
+  const shouldCache = !request.url.match(/\.(js|css)$/);
+  
   event.respondWith(
     fetch(request).then((response) => {
-      // If successful, cache it and return
-      if (response.status === 200) {
+      // Only cache non-JS/CSS files to avoid stale bundle issues
+      if (response.status === 200 && shouldCache) {
         const responseClone = response.clone();
         caches.open(STATIC_CACHE).then((cache) => {
           cache.put(request, responseClone);

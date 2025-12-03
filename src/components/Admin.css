@@ -308,6 +308,21 @@
   color: #be185d;
 }
 
+.sport-badge.swim {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.sport-badge.bike {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.sport-badge.run {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .term-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
