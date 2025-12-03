@@ -48,6 +48,9 @@ async function initializeDatabase() {
         phone_number VARCHAR(50),
         absences INTEGER DEFAULT 0,
         sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only')),
+        term VARCHAR(50) CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
+        term_start_date DATE,
+        term_end_date DATE,
         charter_accepted BOOLEAN DEFAULT FALSE,
         charter_accepted_at TIMESTAMP,
         reset_token VARCHAR(255),
@@ -324,6 +327,49 @@ async function initializeDatabase() {
         console.log('✅ sport column already exists in users table');
       } else {
         console.error('❌ Error adding sport column:', error.message);
+      }
+    }
+
+    // Add term columns to users table
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN term VARCHAR(50) CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer'))
+      `);
+      console.log('✅ term column added to users table');
+    } catch (error) {
+      if (error.code === '42701') {
+        console.log('✅ term column already exists in users table');
+      } else {
+        console.error('❌ Error adding term column:', error.message);
+      }
+    }
+
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN term_start_date DATE
+      `);
+      console.log('✅ term_start_date column added to users table');
+    } catch (error) {
+      if (error.code === '42701') {
+        console.log('✅ term_start_date column already exists in users table');
+      } else {
+        console.error('❌ Error adding term_start_date column:', error.message);
+      }
+    }
+
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN term_end_date DATE
+      `);
+      console.log('✅ term_end_date column added to users table');
+    } catch (error) {
+      if (error.code === '42701') {
+        console.log('✅ term_end_date column already exists in users table');
+      } else {
+        console.error('❌ Error adding term_end_date column:', error.message);
       }
     }
 
