@@ -910,7 +910,7 @@ const Admin = () => {
       setUserSearchResults([]);
       setShowUserDropdown(false);
       setSelectedUser(null);
-      setRecordForm({ ...recordForm, user_id: null });
+      setRecordForm((prev) => ({ ...prev, user_id: null }));
     }
   };
 
@@ -918,7 +918,7 @@ const Admin = () => {
   const selectUser = (user) => {
     setSelectedUser(user);
     setUserSearchQuery(user.name || user.email);
-    setRecordForm({ ...recordForm, user_id: user.id });
+    setRecordForm((prev) => ({ ...prev, user_id: user.id }));
     setShowUserDropdown(false);
     setUserSearchResults([]);
   };
