@@ -7,7 +7,7 @@ const router = express.Router();
 // Get all records (optionally filtered by test_event_id)
 router.get('/', authenticateToken, requireMember, async (req, res) => {
   try {
-    const { test_event_id } = req.query;
+    const { test_event_id, user_id } = req.query;
     
     let query = `
       SELECT 
@@ -33,9 +33,20 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
     `;
     
     const params = [];
+    const conditions = [];
+    
     if (test_event_id) {
-      query += ` WHERE r.test_event_id = $1`;
       params.push(test_event_id);
+      conditions.push(`r.test_event_id = $${params.length}`);
+    }
+    
+    if (user_id) {
+      params.push(user_id);
+      conditions.push(`r.user_id = $${params.length}`);
+    }
+    
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
     }
     
     query += ` ORDER BY r.created_at DESC`;

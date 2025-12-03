@@ -2736,7 +2736,7 @@ const Admin = () => {
                         <th>User</th>
                         <th>Title</th>
                         <th>Result</th>
-                        <th>Description</th>
+                        <th>Notes</th>
                         <th>Created</th>
                       </tr>
                     </thead>

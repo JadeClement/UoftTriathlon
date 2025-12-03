@@ -62,6 +62,97 @@ const Profile = () => {
 
     loadTeamMembers();
   }, []);
+
+  // Load user records (only for user's own profile)
+  useEffect(() => {
+    const loadUserRecords = async () => {
+      if (!isUserProfile || !currentUser?.id) return;
+      
+      try {
+        const token = localStorage.getItem('triathlonToken');
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/records?user_id=${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUserRecords(data.records || []);
+        }
+      } catch (error) {
+        console.error('Error loading user records:', error);
+      }
+    };
+
+    loadUserRecords();
+  }, [isUserProfile, currentUser?.id]);
+
+  // Load test events for dropdown
+  useEffect(() => {
+    const loadTestEvents = async () => {
+      if (!showRecordModal) return;
+      
+      try {
+        const token = localStorage.getItem('triathlonToken');
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/test-events`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setTestEvents(data.testEvents || []);
+        }
+      } catch (error) {
+        console.error('Error loading test events:', error);
+      }
+    };
+
+    loadTestEvents();
+  }, [showRecordModal]);
+
+  // Create new record
+  const createRecord = async () => {
+    if (!recordForm.test_event_id) {
+      setError('Please select a test event');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const selectedTestEvent = testEvents.find(te => te.id === parseInt(recordForm.test_event_id));
+      
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/records`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          test_event_id: parseInt(recordForm.test_event_id),
+          title: selectedTestEvent?.title || '',
+          result: recordForm.result,
+          description: recordForm.description
+        })
+      });
+      
+      if (response.ok) {
+        // Reload records
+        const recordsResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/records?user_id=${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (recordsResponse.ok) {
+          const data = await recordsResponse.json();
+          setUserRecords(data.records || []);
+        }
+        setShowRecordModal(false);
+        setRecordForm({ test_event_id: '', result: '', description: '' });
+        setError('');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create record');
+      }
+    } catch (error) {
+      console.error('Error creating record:', error);
+      setError(error.message);
+    }
+  };
   
   const [editMode, setEditMode] = useState(false);
   const [editedName, setEditedName] = useState('');
@@ -73,6 +164,16 @@ const Profile = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState('');
+  
+  // Results section state
+  const [userRecords, setUserRecords] = useState([]);
+  const [testEvents, setTestEvents] = useState([]);
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [recordForm, setRecordForm] = useState({
+    test_event_id: '',
+    result: '',
+    description: ''
+  });
 
   // Phone number formatting functions (same as Login.js)
   const validatePhoneNumber = (phone) => {
@@ -666,6 +767,139 @@ const Profile = () => {
             )}
           </div>
         </div>
+
+        {/* Results Section - Only show for user's own profile */}
+        {isUserProfile && (
+          <div style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, color: '#374151' }}>Results</h2>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => {
+                  setShowRecordModal(true);
+                  setRecordForm({ test_event_id: '', result: '', description: '' });
+                  setError('');
+                }}
+              >
+                + New
+              </button>
+            </div>
+            
+            {userRecords.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Title</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Sport</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userRecords.map(record => (
+                      <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.test_event_title || record.title}</td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <span className={`sport-badge ${record.test_event_sport || record.sport}`}>
+                            {record.test_event_sport || record.sport}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          {record.test_event_date ? new Date(record.test_event_date).toLocaleDateString() : '-'}
+                        </td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.result || '-'}</td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.description || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>No results yet. Click "+ New" to add your first result!</p>
+            )}
+          </div>
+        )}
+
+        {/* Record Modal */}
+        {showRecordModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div className="modal" style={{ background: 'white', padding: '2rem', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <h2 style={{ marginTop: 0 }}>New Result</h2>
+              {error && (
+                <div style={{ color: '#dc2626', marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', borderRadius: '4px' }}>
+                  {error}
+                </div>
+              )}
+              <form onSubmit={(e) => { e.preventDefault(); createRecord(); }}>
+                <div className="form-group">
+                  <label className="form-label">Test Event:</label>
+                  <select
+                    value={recordForm.test_event_id}
+                    onChange={(e) => {
+                      setRecordForm({ ...recordForm, test_event_id: e.target.value });
+                      setError('');
+                    }}
+                    className="form-input"
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  >
+                    <option value="">Select a test event...</option>
+                    {testEvents.map(te => (
+                      <option key={te.id} value={te.id}>
+                        {te.title} - {te.sport} ({new Date(te.date).toLocaleDateString()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Result:</label>
+                  <textarea
+                    value={recordForm.result}
+                    onChange={(e) => {
+                      setRecordForm({ ...recordForm, result: e.target.value });
+                      setError('');
+                    }}
+                    className="form-input"
+                    placeholder="e.g., 1:20, 1:18, 1:19, 1:17, 1:16"
+                    rows="3"
+                  />
+                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Text description of times/results</small>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Notes (optional):</label>
+                  <textarea
+                    value={recordForm.description}
+                    onChange={(e) => {
+                      setRecordForm({ ...recordForm, description: e.target.value });
+                      setError('');
+                    }}
+                    className="form-input"
+                    placeholder="Additional notes..."
+                    rows="3"
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => {
+                      setShowRecordModal(false);
+                      setRecordForm({ test_event_id: '', result: '', description: '' });
+                      setError('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Create Result
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
