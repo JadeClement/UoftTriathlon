@@ -9,6 +9,27 @@ const Profile = () => {
   const { currentUser, updateUser } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [editedEmail, setEditedEmail] = useState('');
+  const [editedPhone, setEditedPhone] = useState('');
+  const [editedBio, setEditedBio] = useState('');
+  const [editedImage, setEditedImage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [justSaved, setJustSaved] = useState(false);
+  const [error, setError] = useState('');
+  
+  // Results section state
+  const [userRecords, setUserRecords] = useState([]);
+  const [testEvents, setTestEvents] = useState([]);
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [recordForm, setRecordForm] = useState({
+    test_event_id: '',
+    result: '',
+    description: ''
+  });
+  const [loading, setLoading] = useState(true);
   
   console.log('🔍 All URL params:', params);
   console.log('🔍 Role param:', role);
@@ -16,6 +37,13 @@ const Profile = () => {
   console.log('👤 Current user:', currentUser);
   console.log('👤 Current user ID:', currentUser?.id);
   console.log('👤 Current user profile_picture_url:', currentUser?.profile_picture_url);
+
+  // Check if this is a user profile page or team member page
+  const isUserProfile = React.useMemo(() => {
+    const result = !role;
+    console.log('🧮 isUserProfile calculated:', { role, result });
+    return result;
+  }, [role]);
 
   // Load team members from backend API
   useEffect(() => {
@@ -153,27 +181,6 @@ const Profile = () => {
       setError(error.message);
     }
   };
-  
-  const [editMode, setEditMode] = useState(false);
-  const [editedName, setEditedName] = useState('');
-  const [editedEmail, setEditedEmail] = useState('');
-  const [editedPhone, setEditedPhone] = useState('');
-  const [editedBio, setEditedBio] = useState('');
-  const [editedImage, setEditedImage] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [userProfile, setUserProfile] = useState(null);
-  const [justSaved, setJustSaved] = useState(false);
-  const [error, setError] = useState('');
-  
-  // Results section state
-  const [userRecords, setUserRecords] = useState([]);
-  const [testEvents, setTestEvents] = useState([]);
-  const [showRecordModal, setShowRecordModal] = useState(false);
-  const [recordForm, setRecordForm] = useState({
-    test_event_id: '',
-    result: '',
-    description: ''
-  });
 
   // Phone number formatting functions (same as Login.js)
   const validatePhoneNumber = (phone) => {
@@ -212,13 +219,6 @@ const Profile = () => {
       setEditedPhone(formatted);
     }
   };
-
-  // Check if this is a user profile page or team member page
-  const isUserProfile = React.useMemo(() => {
-    const result = !role;
-    console.log('🧮 isUserProfile calculated:', { role, result });
-    return result;
-  }, [role]);
   
   // If it's a user profile, use current user data
   React.useEffect(() => {
@@ -314,8 +314,6 @@ const Profile = () => {
       });
     }
   }, [userProfile, isUserProfile, justSaved]);
-
-  const [loading, setLoading] = useState(true);
 
   const handleEdit = () => {
     if (!isUserProfile) return; // Only allow editing for user profiles, not team member bios
