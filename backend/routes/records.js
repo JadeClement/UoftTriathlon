@@ -141,9 +141,9 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
     values.push(id);
 
     const query = `UPDATE records SET ${updates.join(', ')} WHERE id = $${paramCount}`;
-    const result = await pool.query(query, values);
+    const updateResult = await pool.query(query, values);
 
-    if (result.rowCount === 0) {
+    if (updateResult.rowCount === 0) {
       return res.status(404).json({ error: 'Record not found' });
     }
 
