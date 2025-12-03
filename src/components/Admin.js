@@ -878,6 +878,51 @@ const Admin = () => {
     }
   };
 
+  // Search users for record creation
+  const searchUsers = async (query) => {
+    if (!query || query.length < 2) {
+      setUserSearchResults([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/members?search=${encodeURIComponent(query)}&limit=10`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserSearchResults(data.members || []);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+    }
+  };
+
+  // Handle user search input
+  const handleUserSearchChange = (e) => {
+    const query = e.target.value;
+    setUserSearchQuery(query);
+    if (query) {
+      searchUsers(query);
+      setShowUserDropdown(true);
+    } else {
+      setUserSearchResults([]);
+      setShowUserDropdown(false);
+      setSelectedUser(null);
+      setRecordForm({ ...recordForm, user_id: null });
+    }
+  };
+
+  // Select a user from search results
+  const selectUser = (user) => {
+    setSelectedUser(user);
+    setUserSearchQuery(user.name || user.email);
+    setRecordForm({ ...recordForm, user_id: user.id });
+    setShowUserDropdown(false);
+    setUserSearchResults([]);
+  };
+
   // Create new record
   const createRecord = async () => {
     try {
