@@ -3333,15 +3333,21 @@ const Admin = () => {
           <div className="modal">
             <h2>New Record</h2>
             <form onSubmit={(e) => { e.preventDefault(); createRecord(); }}>
-              <div className="form-group user-search-container" style={{ position: 'relative' }}>
-                <label>User:</label>
+              <div className="form-group user-search-container" style={{ position: 'relative', marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>User:</label>
                 <input
                   type="text"
                   value={userSearchQuery}
                   onChange={handleUserSearchChange}
                   onFocus={() => userSearchQuery && setShowUserDropdown(true)}
                   placeholder="Start typing user's name..."
-                  style={{ width: '100%' }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 12px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
                 />
                 {showUserDropdown && userSearchResults.length > 0 && (
                   <div style={{
