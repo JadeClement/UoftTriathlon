@@ -1364,8 +1364,8 @@ const WorkoutDetail = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h2 style={{ margin: 0, color: '#374151' }}>Test Results</h2>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {/* Show "Create Test Event" button for coaches/admins if no test event exists */}
-              {!testEvent && currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+              {/* Show "Create Test Event" button for coaches/admins only if no test event exists */}
+              {!testEvent && currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator') && (
                 <button 
                   className="btn btn-primary" 
                   onClick={openTestEventModal}
@@ -1392,7 +1392,7 @@ const WorkoutDetail = () => {
 
           {!testEvent ? (
             <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
-              {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator')
+              {currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator')
                 ? 'No test event linked to this workout. Click "Create Test Event" to add one.'
                 : 'No test event linked to this workout.'}
             </p>
@@ -1407,8 +1407,8 @@ const WorkoutDetail = () => {
                 </div>
               </div>
 
-              {/* Show results table only to coaches/admins */}
-              {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+              {/* Show results table to all members */}
+              {currentUser && (
                 <>
                   {testEventRecords.length > 0 ? (
                     <div style={{ overflowX: 'auto' }}>
