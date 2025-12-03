@@ -51,20 +51,28 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
 
       const isAuthError = response.status === 401 || response.status === 403;
       const message = (body && (body.error || body.message)) || '';
+      const errorType = body && body.error;
       const mentionsExpired = /token.*expired|jwt.*expired|expired token/i.test(message);
+      
+      // Don't treat term_expired as an auth error - it's a business logic error
+      // The user IS authenticated, their term just expired
+      const isTermExpired = errorType === 'term_expired';
 
-      if (isAuthError || mentionsExpired) {
+      if ((isAuthError || mentionsExpired) && !isTermExpired) {
         console.warn('🔒 Auth interceptor: Unauthorized response detected', { 
           url, 
           status: response.status, 
           message,
           isAuthError,
-          mentionsExpired
+          mentionsExpired,
+          isTermExpired
         });
         
         if (typeof onUnauthorized === 'function') {
           onUnauthorized({ status: response.status, message });
         }
+      } else if (isTermExpired) {
+        console.log('🔍 Auth interceptor: Term expired error detected, not redirecting (business logic error)');
       }
 
       return response;
