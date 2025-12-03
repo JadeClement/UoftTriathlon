@@ -22,6 +22,7 @@ const Admin = () => {
     workout: '',
     workout_post_id: null
   });
+  const [testEventRecordCount, setTestEventRecordCount] = useState(0);
   const [recordForm, setRecordForm] = useState({
     title: '',
     result: '',
@@ -845,6 +846,55 @@ const Admin = () => {
     } catch (error) {
       console.error('Error loading test event records:', error);
       showNotification('Failed to load records', 'error');
+    }
+  };
+
+  // Load record count for a test event
+  const loadTestEventRecordCount = async (testEventId) => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/records?test_event_id=${testEventId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTestEventRecordCount(data.records?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error loading record count:', error);
+      setTestEventRecordCount(0);
+    }
+  };
+
+  // Delete test event
+  const deleteTestEvent = async () => {
+    if (!testEventForm.id) return;
+
+    const confirmMessage = `Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`;
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/test-events/${testEventForm.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        showNotification('Test event deleted successfully', 'success');
+        setShowTestEventModal(false);
+        setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+        setTestEventRecordCount(0);
+        await loadTestEvents();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete test event');
+      }
+    } catch (error) {
+      showNotification(`Failed to delete test event: ${error.message}`, 'error');
     }
   };
 
@@ -2660,6 +2710,7 @@ const Admin = () => {
                   <h2>Test Events</h2>
                   <button className="btn btn-primary" onClick={() => {
                     setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+                    setTestEventRecordCount(0);
                     setShowTestEventModal(true);
                   }}>+ New</button>
                 </div>
@@ -2688,9 +2739,12 @@ const Admin = () => {
                           <td>{te.workout}</td>
                           <td>{te.created_by_name || '-'}</td>
                           <td onClick={(e) => e.stopPropagation()}>
-                            <button className="action-btn small" onClick={() => {
+                            <button className="action-btn small" onClick={async () => {
                               setTestEventForm(te);
                               setShowTestEventModal(true);
+                              if (te.id) {
+                                await loadTestEventRecordCount(te.id);
+                              }
                             }}>Edit</button>
                           </td>
                         </tr>
@@ -3356,16 +3410,35 @@ const Admin = () => {
                 />
                 <small>Optional: Link this test event to a specific workout post</small>
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => {
-                  setShowTestEventModal(false);
-                  setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
-                }}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {testEventForm.id ? 'Update Test Event' : 'Create Test Event'}
-                </button>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  {testEventForm.id && (
+                    <button 
+                      type="button" 
+                      className="btn" 
+                      onClick={deleteTestEvent}
+                      style={{ 
+                        background: '#dc2626', 
+                        color: 'white',
+                        border: 'none'
+                      }}
+                    >
+                      Delete Event
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => {
+                    setShowTestEventModal(false);
+                    setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+                    setTestEventRecordCount(0);
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    {testEventForm.id ? 'Update Test Event' : 'Create Test Event'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
