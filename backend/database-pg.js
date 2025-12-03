@@ -33,6 +33,18 @@ async function initializeDatabase() {
   try {
     console.log('🔧 Initializing PostgreSQL database tables...');
     
+    // Create terms table first (users table references it)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS terms (
+        id SERIAL PRIMARY KEY,
+        term VARCHAR(50) NOT NULL UNIQUE CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Terms table created');
+
     // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -48,9 +60,7 @@ async function initializeDatabase() {
         phone_number VARCHAR(50),
         absences INTEGER DEFAULT 0,
         sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only')),
-        term VARCHAR(50) CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
-        term_start_date DATE,
-        term_end_date DATE,
+        term_id INTEGER REFERENCES terms(id),
         charter_accepted BOOLEAN DEFAULT FALSE,
         charter_accepted_at TIMESTAMP,
         reset_token VARCHAR(255),
@@ -330,46 +340,79 @@ async function initializeDatabase() {
       }
     }
 
-    // Add term columns to users table
+    // Create terms table if it doesn't exist (for existing databases)
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS terms (
+          id SERIAL PRIMARY KEY,
+          term VARCHAR(50) NOT NULL UNIQUE CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
+          start_date DATE NOT NULL,
+          end_date DATE NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('✅ Terms table created/verified');
+    } catch (error) {
+      console.error('❌ Error creating terms table:', error.message);
+    }
+
+    // Remove old term columns from users table if they exist (migration)
     try {
       await pool.query(`
         ALTER TABLE users
-        ADD COLUMN term VARCHAR(50) CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer'))
+        DROP COLUMN IF EXISTS term
       `);
-      console.log('✅ term column added to users table');
+      console.log('✅ Removed term column from users table');
+    } catch (error) {
+      console.log('ℹ️  term column does not exist or already removed');
+    }
+
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        DROP COLUMN IF EXISTS term_start_date
+      `);
+      console.log('✅ Removed term_start_date column from users table');
+    } catch (error) {
+      console.log('ℹ️  term_start_date column does not exist or already removed');
+    }
+
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        DROP COLUMN IF EXISTS term_end_date
+      `);
+      console.log('✅ Removed term_end_date column from users table');
+    } catch (error) {
+      console.log('ℹ️  term_end_date column does not exist or already removed');
+    }
+
+    // Add term_id foreign key to users table if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN term_id INTEGER
+      `);
+      console.log('✅ term_id column added to users table');
     } catch (error) {
       if (error.code === '42701') {
-        console.log('✅ term column already exists in users table');
+        console.log('✅ term_id column already exists in users table');
       } else {
-        console.error('❌ Error adding term column:', error.message);
+        console.error('❌ Error adding term_id column:', error.message);
       }
     }
 
     try {
       await pool.query(`
         ALTER TABLE users
-        ADD COLUMN term_start_date DATE
+        ADD CONSTRAINT users_term_id_fkey FOREIGN KEY (term_id) REFERENCES terms(id)
       `);
-      console.log('✅ term_start_date column added to users table');
+      console.log('✅ term_id foreign key constraint added to users table');
     } catch (error) {
-      if (error.code === '42701') {
-        console.log('✅ term_start_date column already exists in users table');
+      if (error.code === '42710' || error.code === '42P16') {
+        console.log('✅ term_id foreign key constraint already exists in users table');
       } else {
-        console.error('❌ Error adding term_start_date column:', error.message);
-      }
-    }
-
-    try {
-      await pool.query(`
-        ALTER TABLE users
-        ADD COLUMN term_end_date DATE
-      `);
-      console.log('✅ term_end_date column added to users table');
-    } catch (error) {
-      if (error.code === '42701') {
-        console.log('✅ term_end_date column already exists in users table');
-      } else {
-        console.error('❌ Error adding term_end_date column:', error.message);
+        console.error('❌ Error adding term_id foreign key constraint:', error.message);
       }
     }
 
