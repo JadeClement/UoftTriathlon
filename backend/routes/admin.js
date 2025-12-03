@@ -135,16 +135,31 @@ router.put('/members/:id/role', authenticateToken, requireAdmin, async (req, res
       }
     }
 
-    await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+    // Get current role and join_date
+    const currentUser = await pool.query('SELECT role, join_date FROM users WHERE id = $1', [id]);
+    const oldRole = currentUser.rows[0]?.role || req.body.oldRole || 'unknown';
+    const currentJoinDate = currentUser.rows[0]?.join_date;
+
+    // Set join_date only if:
+    // 1. User is transitioning from 'pending' to any role, AND
+    // 2. join_date is currently NULL
+    // This preserves the original join_date if they change roles later (e.g., member -> exec)
+    const shouldSetJoinDate = oldRole === 'pending' && !currentJoinDate;
+    
+    if (shouldSetJoinDate) {
+      await pool.query('UPDATE users SET role = $1, join_date = CURRENT_DATE WHERE id = $2', [role, id]);
+    } else {
+      await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+    }
 
     // Create role change notification
     await pool.query(`
       INSERT INTO role_change_notifications (user_id, old_role, new_role)
       VALUES ($1, $2, $3)
-    `, [id, req.body.oldRole || 'unknown', role]);
+    `, [id, oldRole, role]);
 
     // Send role change email notification
-    console.log(`🔍 DEBUG: Starting role change email process for user ${id} from ${req.body.oldRole || 'unknown'} to ${role}`);
+    console.log(`🔍 DEBUG: Starting role change email process for user ${id} from ${oldRole} to ${role}`);
     try {
       const emailService = require('../services/emailService');
       console.log(`🔍 DEBUG: EmailService loaded successfully for role change`);
@@ -154,7 +169,6 @@ router.put('/members/:id/role', authenticateToken, requireAdmin, async (req, res
       
       if (userDetails.rows.length > 0) {
         const { name, email } = userDetails.rows[0];
-        const oldRole = req.body.oldRole || 'unknown';
         console.log(`🔍 DEBUG: Found user for role change - Name: ${name}, Email: ${email}, Old Role: ${oldRole}, New Role: ${role}`);
         
         const result = await emailService.sendRoleChangeNotification(email, name, oldRole, role);
@@ -399,8 +413,15 @@ router.post('/members/:id/approve', authenticateToken, requireAdmin, async (req,
       return res.status(400).json({ error: 'User is not pending approval' });
     }
 
-    // Update user role
-    await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+    // Update user role and set join_date if it's not already set
+    // join_date should be the first time they're approved (pending -> any role)
+    // If they change roles later (member -> exec), keep the original join_date
+    await pool.query(`
+      UPDATE users 
+      SET role = $1, 
+          join_date = COALESCE(join_date, CURRENT_DATE)
+      WHERE id = $2
+    `, [role, id]);
 
     // Create role change notification
     await pool.query(`
@@ -730,6 +751,11 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
     
     // Get attachments from multer
     const attachments = req.files || [];
+    
+    console.log('📎 Bulk email attachments received:', {
+      count: attachments.length,
+      files: attachments.map(f => ({ name: f.originalname, size: f.size, mimetype: f.mimetype }))
+    });
 
     if (process.env.NODE_ENV !== 'production') {
       console.log('🔍 Bulk email request body (sanitized):', { subject, template: !!template });
@@ -934,9 +960,14 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
           const personalizedText = textContent.replace(/\[name\]/g, recipient.name);
           
           // Send email with attachments if any
-          const result = attachments.length > 0
-            ? await emailService.sendEmailWithAttachments(recipient.email, subject, personalizedHtml, personalizedText, attachments, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club')
-            : await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+          let result;
+          if (attachments.length > 0) {
+            console.log(`📧 Sending bulk email with ${attachments.length} attachment(s) to ${recipient.email}`);
+            result = await emailService.sendEmailWithAttachments(recipient.email, subject, personalizedHtml, personalizedText, attachments, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+          } else {
+            console.log(`📧 Sending bulk email without attachments to ${recipient.email}`);
+            result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+          }
           
           if (result.success) {
             
