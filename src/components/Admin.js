@@ -2607,7 +2607,7 @@ const Admin = () => {
 
         {/* Test Events Tab */}
         {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && activeTab === 'test-events' && (
-          <div className="test-events-section">
+          <div className="test-events-section" style={{ padding: '2rem' }}>
             {!selectedTestEvent ? (
               // Test Events List View
               <>
@@ -2640,7 +2640,7 @@ const Admin = () => {
                           <td>{te.title}</td>
                           <td><span className={`sport-badge ${te.sport}`}>{te.sport}</span></td>
                           <td>{new Date(te.date).toLocaleDateString()}</td>
-                          <td style={{maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{te.workout}</td>
+                          <td>{te.workout}</td>
                           <td>{te.created_by_name || '-'}</td>
                           <td onClick={(e) => e.stopPropagation()}>
                             <button className="action-btn small" onClick={() => {

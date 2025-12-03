@@ -921,6 +921,93 @@
   border-bottom: none;
 }
 
+/* Test Events Table */
+.test-events-section {
+  padding: 2rem;
+}
+
+.test-events-section h2 {
+  margin: 0 0 1.5rem 0;
+  color: #374151;
+}
+
+.test-events-table {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.test-events-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.test-events-table th {
+  background: #f8fafc;
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.test-events-table td {
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  color: #6b7280;
+  vertical-align: middle;
+}
+
+.test-events-table tr:hover {
+  background: #f9fafb;
+}
+
+.test-events-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Records Table */
+.records-table {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.records-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.records-table th {
+  background: #f8fafc;
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.records-table td {
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  color: #6b7280;
+  vertical-align: middle;
+}
+
+.records-table tr:hover {
+  background: #f9fafb;
+}
+
+.records-table tr:last-child td {
+  border-bottom: none;
+}
+
 /* Column-specific styling for better spacing */
 .orders-table th:nth-child(1),
 .orders-table td:nth-child(1) {
