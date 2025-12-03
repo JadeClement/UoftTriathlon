@@ -16,7 +16,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
         r.test_event_id,
         r.title,
         r.result,
-        r.description,
+        r.notes,
         r.created_at,
         r.updated_at,
         r.created_by,
@@ -63,7 +63,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
 // Create new record
 router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
-    const { test_event_id, title, result, description, user_id } = req.body;
+    const { test_event_id, title, result, notes, user_id } = req.body;
 
     if (!test_event_id || !title) {
       return res.status(400).json({ error: 'test_event_id and title are required' });
@@ -86,10 +86,10 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
     }
 
     const insertResult = await pool.query(`
-      INSERT INTO records (user_id, test_event_id, title, result, description, created_by)
+      INSERT INTO records (user_id, test_event_id, title, result, notes, created_by)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [targetUserId, test_event_id, title, result || null, description || null, req.user.id]);
+    `, [targetUserId, test_event_id, title, result || null, notes || null, req.user.id]);
 
     res.status(201).json({ 
       message: 'Record created successfully',
@@ -105,7 +105,7 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
 router.put('/:id', authenticateToken, requireMember, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, result, description } = req.body;
+    const { title, result, notes } = req.body;
 
     // Check if record exists and user has permission
     const recordCheck = await pool.query('SELECT user_id FROM records WHERE id = $1', [id]);
@@ -138,10 +138,10 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
       values.push(result);
     }
 
-    if (description !== undefined) {
+    if (notes !== undefined) {
       paramCount++;
-      updates.push(`description = $${paramCount}`);
-      values.push(description);
+      updates.push(`notes = $${paramCount}`);
+      values.push(notes);
     }
 
     if (updates.length === 0) {

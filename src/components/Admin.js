@@ -23,6 +23,8 @@ const Admin = () => {
     workout_post_id: null
   });
   const [testEventRecordCount, setTestEventRecordCount] = useState(0);
+  const [availableWorkouts, setAvailableWorkouts] = useState([]);
+  const [loadingWorkouts, setLoadingWorkouts] = useState(false);
   const [recordForm, setRecordForm] = useState({
     title: '',
     result: '',
@@ -849,6 +851,37 @@ const Admin = () => {
     }
   };
 
+  // Load workouts for linking (filtered by sport and optional date)
+  const loadAvailableWorkouts = async (sport, date = null) => {
+    if (!sport) {
+      setAvailableWorkouts([]);
+      return;
+    }
+
+    try {
+      setLoadingWorkouts(true);
+      const token = localStorage.getItem('triathlonToken');
+      const params = new URLSearchParams({ sport });
+      if (date) {
+        params.append('date', date);
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/test-events/workouts/search?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableWorkouts(data.workouts || []);
+      }
+    } catch (error) {
+      console.error('Error loading workouts:', error);
+      setAvailableWorkouts([]);
+    } finally {
+      setLoadingWorkouts(false);
+    }
+  };
+
   // Load record count for a test event
   const loadTestEventRecordCount = async (testEventId) => {
     try {
@@ -1011,6 +1044,13 @@ const Admin = () => {
       loadTestEvents();
     }
   }, [activeTab]);
+
+  // Load workouts when sport or date changes in test event form
+  useEffect(() => {
+    if (showTestEventModal && testEventForm.sport) {
+      loadAvailableWorkouts(testEventForm.sport, testEventForm.date || null);
+    }
+  }, [showTestEventModal, testEventForm.sport, testEventForm.date]);
 
   // Close user dropdown when clicking outside
   useEffect(() => {
@@ -2711,6 +2751,7 @@ const Admin = () => {
                   <button className="btn btn-primary" onClick={() => {
                     setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
                     setTestEventRecordCount(0);
+                    setAvailableWorkouts([]);
                     setShowTestEventModal(true);
                   }}>+ New</button>
                 </div>
@@ -2744,6 +2785,9 @@ const Admin = () => {
                               setShowTestEventModal(true);
                               if (te.id) {
                                 await loadTestEventRecordCount(te.id);
+                              }
+                              if (te.sport && te.date) {
+                                await loadAvailableWorkouts(te.sport, te.date);
                               }
                             }}>Edit</button>
                           </td>
@@ -3402,13 +3446,34 @@ const Admin = () => {
               </div>
               <div className="form-group">
                 <label>Link to Workout (optional):</label>
-                <input
-                  type="number"
-                  value={testEventForm.workout_post_id || ''}
-                  onChange={(e) => setTestEventForm({...testEventForm, workout_post_id: e.target.value ? parseInt(e.target.value) : null})}
-                  placeholder="Workout post ID"
-                />
-                <small>Optional: Link this test event to a specific workout post</small>
+                {testEventForm.sport && testEventForm.date ? (
+                  <select
+                    value={testEventForm.workout_post_id || ''}
+                    onChange={(e) => setTestEventForm({...testEventForm, workout_post_id: e.target.value ? parseInt(e.target.value) : null})}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                    disabled={loadingWorkouts}
+                  >
+                    <option value="">No workout linked</option>
+                    {availableWorkouts.map(workout => (
+                      <option key={workout.id} value={workout.id}>
+                        {workout.title} - {workout.workout_type} ({new Date(workout.workout_date).toLocaleDateString()} {workout.workout_time ? workout.workout_time.substring(0, 5) : ''})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{ padding: '0.75rem', background: '#f3f4f6', borderRadius: '4px', color: '#6b7280' }}>
+                    {!testEventForm.sport && !testEventForm.date ? 'Select sport and date to see available workouts' :
+                     !testEventForm.sport ? 'Select sport to see available workouts' :
+                     'Select date to see available workouts'}
+                  </div>
+                )}
+                {loadingWorkouts && (
+                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Loading workouts...</small>
+                )}
+                {!loadingWorkouts && testEventForm.sport && testEventForm.date && availableWorkouts.length === 0 && (
+                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>No workouts found for {testEventForm.sport} on {new Date(testEventForm.date).toLocaleDateString()}</small>
+                )}
+                <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Optional: Link this test event to a specific workout</small>
               </div>
               <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -3432,6 +3497,7 @@ const Admin = () => {
                     setShowTestEventModal(false);
                     setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
                     setTestEventRecordCount(0);
+                    setAvailableWorkouts([]);
                   }}>
                     Cancel
                   </button>

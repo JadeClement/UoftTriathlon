@@ -27,6 +27,20 @@ const WorkoutDetail = () => {
   const [editingAttendance, setEditingAttendance] = useState(false);
   const [swimMembers, setSwimMembers] = useState([]);
   const [isSwimWorkout, setIsSwimWorkout] = useState(false);
+  const [testEvent, setTestEvent] = useState(null);
+  const [testEventRecords, setTestEventRecords] = useState([]);
+  const [showTestEventModal, setShowTestEventModal] = useState(false);
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [testEventForm, setTestEventForm] = useState({
+    title: '',
+    sport: 'run',
+    date: '',
+    workout: ''
+  });
+  const [recordForm, setRecordForm] = useState({
+    result: '',
+    notes: ''
+  });
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   const { 
@@ -166,6 +180,19 @@ const WorkoutDetail = () => {
 
       // Load comments (will be implemented with real backend data)
       setComments([]);
+
+      // Load test event for this workout
+      const testEventResponse = await fetch(`${API_BASE_URL}/test-events/by-workout/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (testEventResponse.ok) {
+        const testEventData = await testEventResponse.json();
+        setTestEvent(testEventData.testEvent);
+        setTestEventRecords(testEventData.records || []);
+      }
 
       setLoading(false);
     } catch (error) {
@@ -709,6 +736,100 @@ const WorkoutDetail = () => {
     }
   };
 
+  // Test Event functions
+  const handleCreateTestEvent = async () => {
+    if (!testEventForm.title || !testEventForm.sport || !testEventForm.date || !testEventForm.workout) {
+      showError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/test-events`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...testEventForm,
+          workout_post_id: parseInt(id)
+        })
+      });
+
+      if (response.ok) {
+        showSuccess('Test event created successfully!');
+        setShowTestEventModal(false);
+        setTestEventForm({ title: '', sport: 'run', date: '', workout: '' });
+        loadWorkoutDetails();
+      } else {
+        const error = await response.json();
+        showError(`Failed to create test event: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating test event:', error);
+      showError('Error creating test event');
+    }
+  };
+
+  const handleAddRecord = async () => {
+    if (!recordForm.result) {
+      showError('Please enter a result');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/records`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          test_event_id: testEvent.id,
+          title: testEvent.title,
+          result: recordForm.result,
+          notes: recordForm.notes
+        })
+      });
+
+      if (response.ok) {
+        showSuccess('Result added successfully!');
+        setShowRecordModal(false);
+        setRecordForm({ result: '', notes: '' });
+        loadWorkoutDetails();
+      } else {
+        const error = await response.json();
+        showError(`Failed to add result: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error adding record:', error);
+      showError('Error adding result');
+    }
+  };
+
+  const openTestEventModal = () => {
+    // Pre-fill form with workout info
+    const workoutDate = workout.workout_date ? workout.workout_date.split('T')[0] : '';
+    const sportMap = {
+      'swim': 'swim',
+      'spin': 'bike',
+      'outdoor-ride': 'bike',
+      'brick': 'bike',
+      'run': 'run'
+    };
+    const mappedSport = sportMap[workout.workout_type] || 'run';
+    
+    setTestEventForm({
+      title: workout.title || '',
+      sport: mappedSport,
+      date: workoutDate,
+      workout: workout.content || ''
+    });
+    setShowTestEventModal(true);
+  };
+
   if (loading) {
     return <div className="loading">Loading workout details...</div>;
   }
@@ -1238,6 +1359,96 @@ const WorkoutDetail = () => {
           </div>
         )}
 
+        {/* Test Event / Results Section */}
+        <div className="test-event-section" style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h2 style={{ margin: 0, color: '#374151' }}>Test Results</h2>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {/* Show "Create Test Event" button for coaches/admins if no test event exists */}
+              {!testEvent && currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                <button 
+                  className="btn btn-primary" 
+                  onClick={openTestEventModal}
+                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                >
+                  + Create Test Event
+                </button>
+              )}
+              {/* Show "Add My Result" button if test event exists and user is a member */}
+              {testEvent && currentUser && (currentUser.role === 'member' || currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    setShowRecordModal(true);
+                    setRecordForm({ result: '', notes: '' });
+                  }}
+                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                >
+                  + Add My Result
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!testEvent ? (
+            <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
+              {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator')
+                ? 'No test event linked to this workout. Click "Create Test Event" to add one.'
+                : 'No test event linked to this workout.'}
+            </p>
+          ) : (
+            <>
+              <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>{testEvent.title}</h3>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: '#6b7280' }}>
+                  <span><strong>Sport:</strong> <span className={`sport-badge ${testEvent.sport}`} style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 500, textTransform: 'capitalize' }}>{testEvent.sport}</span></span>
+                  <span><strong>Date:</strong> {new Date(testEvent.date).toLocaleDateString()}</span>
+                  <span><strong>Workout:</strong> {testEvent.workout}</span>
+                </div>
+              </div>
+
+              {/* Show results table only to coaches/admins */}
+              {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                <>
+                  {testEventRecords.length > 0 ? (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testEventRecords.map(record => (
+                            <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.75rem', color: '#475569' }}>{record.user_name}</td>
+                              <td style={{ padding: '0.75rem', color: '#475569' }}>{record.result || '-'}</td>
+                              <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
+                              <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>No results yet. Be the first to add one!</p>
+                  )}
+                </>
+              )}
+
+              {/* For regular members, just show a message if they haven't added a result yet */}
+              {currentUser && currentUser.role === 'member' && (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>
+                  Click "Add My Result" to record your performance for this test.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
         <div className="comments-section">
           <h2>Comments ({comments.length})</h2>
           
@@ -1304,6 +1515,120 @@ const WorkoutDetail = () => {
             </div>
           )}
         </div>
+
+        {/* Create Test Event Modal */}
+        {showTestEventModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>Create Test Event</h2>
+              <form onSubmit={(e) => { e.preventDefault(); handleCreateTestEvent(); }}>
+                <div className="form-group">
+                  <label>Title:</label>
+                  <input
+                    type="text"
+                    value={testEventForm.title}
+                    onChange={(e) => setTestEventForm({...testEventForm, title: e.target.value})}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Sport:</label>
+                  <select
+                    value={testEventForm.sport}
+                    onChange={(e) => setTestEventForm({...testEventForm, sport: e.target.value})}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  >
+                    <option value="swim">Swim</option>
+                    <option value="bike">Bike</option>
+                    <option value="run">Run</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Date:</label>
+                  <input
+                    type="date"
+                    value={testEventForm.date}
+                    onChange={(e) => setTestEventForm({...testEventForm, date: e.target.value})}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Workout Description:</label>
+                  <textarea
+                    rows="3"
+                    value={testEventForm.workout}
+                    onChange={(e) => setTestEventForm({...testEventForm, workout: e.target.value})}
+                    placeholder="e.g., 5 400ms fast on the track"
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => {
+                    setShowTestEventModal(false);
+                    setTestEventForm({ title: '', sport: 'run', date: '', workout: '' });
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Create Test Event
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Add Record Modal */}
+        {showRecordModal && testEvent && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>Add My Result</h2>
+              <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#374151' }}>{testEvent.title}</h3>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{testEvent.workout}</p>
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); handleAddRecord(); }}>
+                <div className="form-group">
+                  <label>Result:</label>
+                  <textarea
+                    rows="3"
+                    value={recordForm.result}
+                    onChange={(e) => setRecordForm({...recordForm, result: e.target.value})}
+                    placeholder="e.g., 1:20, 1:18, 1:19, 1:17, 1:16"
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                  <small style={{ color: '#6b7280' }}>Text description of times/results</small>
+                </div>
+                <div className="form-group">
+                  <label>Notes (optional):</label>
+                  <textarea
+                    rows="3"
+                    value={recordForm.notes}
+                    onChange={(e) => setRecordForm({...recordForm, notes: e.target.value})}
+                    placeholder="Additional notes..."
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => {
+                    setShowRecordModal(false);
+                    setRecordForm({ result: '', notes: '' });
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Add Result
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Cancel Confirmation Modal */}
         {showCancelModal && workout && (() => {

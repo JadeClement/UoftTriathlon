@@ -4,6 +4,58 @@ const { authenticateToken, requireCoach } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Get workouts filtered by sport and optional date (for linking to test events)
+router.get('/workouts/search', authenticateToken, requireCoach, async (req, res) => {
+  try {
+    const { sport, date } = req.query;
+    
+    if (!sport) {
+      return res.status(400).json({ error: 'Sport parameter is required' });
+    }
+
+    // Map test event sport to workout types
+    const workoutTypeMap = {
+      'swim': ['swim'],
+      'bike': ['spin', 'outdoor-ride', 'brick'],
+      'run': ['run']
+    };
+
+    const workoutTypes = workoutTypeMap[sport.toLowerCase()] || [];
+    
+    if (workoutTypes.length === 0) {
+      return res.json({ workouts: [] });
+    }
+
+    let query = `
+      SELECT 
+        fp.id,
+        fp.title,
+        fp.workout_type,
+        fp.workout_date,
+        fp.workout_time
+      FROM forum_posts fp
+      WHERE fp.type = 'workout'
+        AND fp.is_deleted = false
+        AND fp.workout_type = ANY($1::text[])
+    `;
+    
+    const params = [workoutTypes];
+    
+    if (date) {
+      query += ` AND fp.workout_date = $2`;
+      params.push(date);
+    }
+    
+    query += ` ORDER BY fp.workout_date DESC, fp.workout_time DESC LIMIT 50`;
+    
+    const result = await pool.query(query, params);
+    res.json({ workouts: result.rows || [] });
+  } catch (error) {
+    console.error('Get workouts search error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get all test events
 router.get('/', authenticateToken, requireCoach, async (req, res) => {
   try {
@@ -28,6 +80,64 @@ router.get('/', authenticateToken, requireCoach, async (req, res) => {
     res.json({ testEvents: result.rows || [] });
   } catch (error) {
     console.error('Get test events error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get test event by workout_post_id (for workout detail page)
+router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { workoutId } = req.params;
+
+    const testEventResult = await pool.query(`
+      SELECT 
+        te.id,
+        te.title,
+        te.sport,
+        te.date,
+        te.workout,
+        te.workout_post_id,
+        te.created_by,
+        te.created_at,
+        te.updated_at,
+        u.name as created_by_name
+      FROM test_events te
+      LEFT JOIN users u ON te.created_by = u.id
+      WHERE te.workout_post_id = $1
+    `, [workoutId]);
+
+    if (testEventResult.rows.length === 0) {
+      return res.json({ testEvent: null });
+    }
+
+    // Get records for this test event
+    const recordsResult = await pool.query(`
+      SELECT 
+        r.id,
+        r.user_id,
+        r.test_event_id,
+        r.title,
+        r.result,
+        r.notes,
+        r.created_at,
+        r.updated_at,
+        r.created_by,
+        u.name as user_name,
+        u.email as user_email,
+        creator.name as created_by_name
+      FROM records r
+      JOIN users u ON r.user_id = u.id
+      LEFT JOIN users creator ON r.created_by = creator.id
+      WHERE r.test_event_id = $1
+      ORDER BY r.created_at DESC
+    `, [testEventResult.rows[0].id]);
+
+    res.json({
+      testEvent: testEventResult.rows[0],
+      records: recordsResult.rows || []
+    });
+  } catch (error) {
+    console.error('Get test event by workout error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -69,7 +179,7 @@ router.get('/:id', authenticateToken, requireCoach, async (req, res) => {
         r.test_event_id,
         r.title,
         r.result,
-        r.description,
+        r.notes,
         r.created_at,
         r.updated_at,
         r.created_by,

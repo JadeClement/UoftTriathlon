@@ -889,3 +889,31 @@
   cursor: not-allowed;
 }
 
+/* Sport badge styles for test events */
+.sport-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+}
+
+.sport-badge.swim {
+  background: #bfdbfe; /* Light blue */
+  color: #1d4ed8;
+}
+
+.sport-badge.bike {
+  background: #d1fae5; /* Light green */
+  color: #047857;
+}
+
+.sport-badge.run {
+  background: #fee2e2; /* Light red */
+  color: #b91c1c;
+}
+
