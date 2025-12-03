@@ -791,6 +791,7 @@ const Profile = () => {
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Title</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Sport</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Workout</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
                     </tr>
@@ -807,6 +808,7 @@ const Profile = () => {
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>
                           {record.test_event_date ? new Date(record.test_event_date).toLocaleDateString() : '-'}
                         </td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.test_event_workout || '-'}</td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.result || '-'}</td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.description || '-'}</td>
                       </tr>

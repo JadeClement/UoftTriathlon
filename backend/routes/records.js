@@ -25,7 +25,8 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
         creator.name as created_by_name,
         te.title as test_event_title,
         te.sport as test_event_sport,
-        te.date as test_event_date
+        te.date as test_event_date,
+        te.workout as test_event_workout
       FROM records r
       JOIN users u ON r.user_id = u.id
       LEFT JOIN users creator ON r.created_by = creator.id
