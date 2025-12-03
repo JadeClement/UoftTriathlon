@@ -64,6 +64,8 @@ const Forum = () => {
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [workoutsLoading, setWorkoutsLoading] = useState(false);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [termExpired, setTermExpired] = useState(false);
+  const [termExpiredMessage, setTermExpiredMessage] = useState('');
   
   // Reload when time filter or past page changes
   useEffect(() => {
@@ -241,6 +243,10 @@ const Forum = () => {
         return;
       }
 
+      // Reset term expired state when loading
+      setTermExpired(false);
+      setTermExpiredMessage('');
+
       console.log('🔄 loadForumPosts called:', { timeFilter, workoutFilter, pastPage });
 
       // Load workout posts - load in batches until we have enough filtered results
@@ -274,6 +280,15 @@ const Forum = () => {
             'Authorization': `Bearer ${token}`
           }
         });
+
+        if (workoutResponse.status === 403) {
+          const errorData = await workoutResponse.json();
+          if (errorData.error === 'term_expired') {
+            setTermExpired(true);
+            setTermExpiredMessage(errorData.message || 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.');
+            return;
+          }
+        }
 
         if (workoutResponse.ok) {
           const workoutData = await workoutResponse.json();
@@ -315,6 +330,15 @@ const Forum = () => {
               'Authorization': `Bearer ${token}`
             }
           });
+
+          if (workoutResponse.status === 403) {
+            const errorData = await workoutResponse.json();
+            if (errorData.error === 'term_expired') {
+              setTermExpired(true);
+              setTermExpiredMessage(errorData.message || 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.');
+              return;
+            }
+          }
 
           if (!workoutResponse.ok) {
             console.error('❌ Fetch failed:', workoutResponse.status);
@@ -445,6 +469,15 @@ const Forum = () => {
             'Authorization': `Bearer ${token}`
           }
         });
+
+        if (eventResponse.status === 403) {
+          const errorData = await eventResponse.json();
+          if (errorData.error === 'term_expired') {
+            setTermExpired(true);
+            setTermExpiredMessage(errorData.message || 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.');
+            return;
+          }
+        }
 
         if (eventResponse.ok) {
           const eventData = await eventResponse.json();
@@ -1258,6 +1291,29 @@ const Forum = () => {
             </p>
             <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
               <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Gate for expired terms: show message instead of forum content
+  if (termExpired) {
+    return (
+      <div className="forum-container">
+        <div className="container">
+          <h1 className="section-title">Team Forum</h1>
+          <div className="notice-card" style={{
+            background: '#fee2e2',
+            border: '1px solid #ef4444',
+            color: '#991b1b',
+            padding: '16px',
+            borderRadius: '8px',
+            lineHeight: 1.6
+          }}>
+            <p style={{margin: 0}}>
+              {termExpiredMessage}
             </p>
           </div>
         </div>

@@ -84,9 +84,9 @@ const requireRole = (requiredRole) => {
 const requireAdmin = requireRole('administrator');
 
 // Middleware to check if user is member or higher
-const requireMember = (req, res, next) => {
+const requireMember = async (req, res, next) => {
   console.log('🔍 requireMember middleware - User:', req.user);
-  console.log('🔍 requireMember middleware - VERSION: v2.0 - FIXED ROLE HIERARCHY');
+  console.log('🔍 requireMember middleware - VERSION: v2.1 - WITH TERM EXPIRY CHECK');
 
   if (!req.user) {
     console.log('❌ requireMember: No user found');
@@ -113,6 +113,42 @@ const requireMember = (req, res, next) => {
 
   // Allow member, exec, and admin roles
   if (roleHierarchy[userRole] >= roleHierarchy['member']) {
+    // Check if user's term has expired (only for member role, not exec/admin)
+    if (userRole === 'member') {
+      try {
+        const termCheck = await pool.query(`
+          SELECT t.end_date, t.term
+          FROM users u
+          LEFT JOIN terms t ON u.term_id = t.id
+          WHERE u.id = $1
+        `, [req.user.id]);
+
+        if (termCheck.rows.length > 0) {
+          const termData = termCheck.rows[0];
+          const termEndDate = termData.end_date;
+          
+          // If user has a term assigned, check if it's expired
+          if (termEndDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const endDate = new Date(termEndDate);
+            endDate.setHours(0, 0, 0, 0);
+            
+            if (endDate < today) {
+              console.log('❌ requireMember: Term expired for user:', req.user.id);
+              return res.status(403).json({ 
+                error: 'term_expired',
+                message: 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.'
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error checking term expiry:', error);
+        // Don't block access if there's an error checking term - allow through
+      }
+    }
+    
     console.log('✅ requireMember: Access granted for role:', userRole);
     next();
   } else {
