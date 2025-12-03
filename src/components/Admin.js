@@ -25,8 +25,13 @@ const Admin = () => {
   const [recordForm, setRecordForm] = useState({
     title: '',
     result: '',
-    description: ''
+    description: '',
+    user_id: null
   });
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   
   // Pagination state for members
   const [currentPage, setCurrentPage] = useState(1);
@@ -886,13 +891,16 @@ const Admin = () => {
         body: JSON.stringify({
           ...recordForm,
           test_event_id: selectedTestEvent.id,
-          title: recordForm.title || selectedTestEvent.title
+          title: recordForm.title || selectedTestEvent.title,
+          user_id: recordForm.user_id || currentUser?.id
         })
       });
       if (response.ok) {
         showNotification('Record created successfully', 'success');
         setShowRecordModal(false);
-        setRecordForm({ title: '', result: '', description: '' });
+        setRecordForm({ title: '', result: '', description: '', user_id: null });
+        setUserSearchQuery('');
+        setSelectedUser(null);
         await loadTestEventRecords(selectedTestEvent.id);
       } else {
         const error = await response.json();
@@ -908,6 +916,17 @@ const Admin = () => {
       loadTestEvents();
     }
   }, [activeTab]);
+
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserDropdown && !event.target.closest('.user-search-container')) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserDropdown]);
 
   // Load detailed attendance for a specific workout
   const loadAttendanceDetails = async (workoutId) => {
@@ -2650,7 +2669,10 @@ const Admin = () => {
                     <h2 style={{display: 'inline', marginLeft: '12px'}}>{selectedTestEvent.title}</h2>
                   </div>
                   <button className="btn btn-primary" onClick={() => {
-                    setRecordForm({ title: selectedTestEvent.title || '', result: '', description: '' });
+                    setRecordForm({ title: selectedTestEvent.title || '', result: '', description: '', user_id: null });
+                    setUserSearchQuery('');
+                    setSelectedUser(null);
+                    setShowUserDropdown(false);
                     setShowRecordModal(true);
                   }}>+ New Record</button>
                 </div>
@@ -3311,6 +3333,59 @@ const Admin = () => {
           <div className="modal">
             <h2>New Record</h2>
             <form onSubmit={(e) => { e.preventDefault(); createRecord(); }}>
+              <div className="form-group user-search-container" style={{ position: 'relative' }}>
+                <label>User:</label>
+                <input
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={handleUserSearchChange}
+                  onFocus={() => userSearchQuery && setShowUserDropdown(true)}
+                  placeholder="Start typing user's name..."
+                  style={{ width: '100%' }}
+                />
+                {showUserDropdown && userSearchResults.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'white',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    marginTop: '4px'
+                  }}>
+                    {userSearchResults.map(user => (
+                      <div
+                        key={user.id}
+                        onClick={() => selectUser(user)}
+                        style={{
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #eee',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                      >
+                        <div style={{ fontWeight: '500' }}>{user.name || user.email}</div>
+                        {user.name && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{user.email}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedUser && (
+                  <small style={{ display: 'block', marginTop: '4px', color: '#059669' }}>
+                    Selected: {selectedUser.name || selectedUser.email}
+                  </small>
+                )}
+                <small style={{ display: 'block', marginTop: '4px', color: '#6b7280' }}>
+                  {!selectedUser && 'Leave empty to create record for yourself'}
+                </small>
+              </div>
               <div className="form-group">
                 <label>Title:</label>
                 <input
@@ -3344,7 +3419,10 @@ const Admin = () => {
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => {
                   setShowRecordModal(false);
-                  setRecordForm({ title: '', result: '', description: '' });
+                  setRecordForm({ title: '', result: '', description: '', user_id: null });
+                  setUserSearchQuery('');
+                  setSelectedUser(null);
+                  setShowUserDropdown(false);
                 }}>
                   Cancel
                 </button>
