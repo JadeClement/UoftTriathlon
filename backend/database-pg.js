@@ -39,8 +39,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         term VARCHAR(50) NOT NULL UNIQUE CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
         start_date DATE NOT NULL,
-        end_date DATE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        end_date DATE NOT NULL
       )
     `);
     console.log('✅ Terms table created');
@@ -347,8 +346,7 @@ async function initializeDatabase() {
           id SERIAL PRIMARY KEY,
           term VARCHAR(50) NOT NULL UNIQUE CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
           start_date DATE NOT NULL,
-          end_date DATE NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          end_date DATE NOT NULL
         )
       `);
       console.log('✅ Terms table created/verified');
