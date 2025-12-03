@@ -64,35 +64,39 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
     const { page = 1, limit = 50, search = '', role = '' } = req.query;
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE is_active = true';
+    let whereClause = 'WHERE u.is_active = true';
     let params = [];
     let paramCount = 0;
 
     if (search) {
       paramCount++;
-      whereClause += ` AND (name ILIKE $${paramCount} OR email ILIKE $${paramCount + 1})`;
+      whereClause += ` AND (u.name ILIKE $${paramCount} OR u.email ILIKE $${paramCount + 1})`;
       params.push(`%${search}%`, `%${search}%`);
       paramCount++;
     }
 
     if (role && role !== 'all') {
       paramCount++;
-      whereClause += ` AND role = $${paramCount}`;
+      whereClause += ` AND u.role = $${paramCount}`;
       params.push(role);
     }
 
-    // Get total count
-    const countResult = await pool.query(`SELECT COUNT(*) as total FROM users ${whereClause}`, params);
+    // Get total count (using users table for count)
+    const countWhereClause = whereClause.replace(/u\./g, '');
+    const countResult = await pool.query(`SELECT COUNT(*) as total FROM users ${countWhereClause}`, params);
     console.log('🔍 Total members count:', countResult.rows[0].total);
     
-    // Get members
+    // Get members with term information
+    // JOIN is needed to get t.term (term name) for display in the UI
     const membersResult = await pool.query(`
       SELECT 
-        id, email, name, role, created_at,
-        join_date, expiry_date, phone_number, absences, charter_accepted, sport
-      FROM users
+        u.id, u.email, u.name, u.role, u.created_at,
+        u.join_date, u.phone_number, u.absences, u.charter_accepted, u.sport,
+        t.term
+      FROM users u
+      LEFT JOIN terms t ON u.term_id = t.id
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY u.created_at DESC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `, [...params, limit, offset]);
 
@@ -220,9 +224,9 @@ router.put('/members/:id/charter', authenticateToken, requireAdmin, async (req, 
 router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone_number, role, charterAccepted, expiryDate, sport } = req.body;
+    const { name, email, phone_number, role, charterAccepted, sport } = req.body;
     
-    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, expiryDate });
+    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted });
 
     // Get the current role before updating to check if it actually changed
     let currentRole = null;
@@ -290,14 +294,7 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       console.log('🔧 Charter update:', { charterAccepted, charterValue });
     }
 
-    if (expiryDate !== undefined) {
-      paramCount++;
-      updates.push(`expiry_date = $${paramCount}`);
-      // Convert empty string to null, otherwise use the date
-      const expiryValue = expiryDate === '' ? null : expiryDate;
-      values.push(expiryValue);
-      console.log('🔧 Expiry date update:', { expiryDate, expiryValue });
-    }
+    // Note: expiry_date removed - expiry is now determined by term.end_date
 
     if (sport !== undefined) {
       // Validate sport

@@ -135,15 +135,13 @@ const Admin = () => {
     name: '',
     email: '',
     role: '',
-    expiryDate: '',
     phoneNumber: '',
     charterAccepted: false,
     sport: 'triathlon'
   });
   const [approvingMember, setApprovingMember] = useState(null);
   const [approvalForm, setApprovalForm] = useState({
-    role: 'member',
-    expiryDate: ''
+    role: 'member'
   });
 
   // Orders state
@@ -471,7 +469,9 @@ const Admin = () => {
         }));
         
         // Add attachments if any
-        emailAttachments.forEach((file) => {
+        console.log('📎 Frontend: Preparing to send bulk email with attachments:', emailAttachments.length);
+        emailAttachments.forEach((file, idx) => {
+          console.log(`📎 Frontend: Adding attachment ${idx + 1}:`, file.name, `(${(file.size / 1024).toFixed(1)} KB)`);
           formData.append('attachments', file);
         });
         
@@ -530,7 +530,7 @@ const Admin = () => {
         const transformedMembers = membersData.members.map(member => ({
           ...member,
           joinDate: member.join_date || member.created_at, // Use created_at as fallback if join_date is null
-          expiryDate: member.expiry_date,
+          term: member.term || null, // Term name (fall, winter, etc.)
           absences: member.absences || 0,
           charterAccepted: member.charter_accepted || 0
         }));
@@ -847,28 +847,26 @@ const Admin = () => {
   const approveMember = (member) => {
     setApprovingMember(member);
     setApprovalForm({
-      role: 'member',
-      expiryDate: ''
+      role: 'member'
     });
   };
 
   const handleApprovalSubmit = async () => {
-    if (!approvingMember || !approvalForm.expiryDate) {
-      alert('Please set an expiry date before approving the member.');
+    if (!approvingMember) {
+      alert('Please select a member to approve.');
       return;
     }
 
     try {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/members/${approvingMember.id}/approve`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-          role: approvalForm.role,
-          expiryDate: approvalForm.expiryDate
+          role: approvalForm.role
         })
       });
 
@@ -876,7 +874,7 @@ const Admin = () => {
         // Reload data to get updated information
         await loadAdminData();
         setApprovingMember(null);
-        setApprovalForm({ role: 'member', expiryDate: '' });
+        setApprovalForm({ role: 'member' });
       } else {
         console.error('Failed to approve member');
       }
@@ -887,7 +885,7 @@ const Admin = () => {
 
   const cancelApproval = () => {
     setApprovingMember(null);
-    setApprovalForm({ role: 'member', expiryDate: '' });
+    setApprovalForm({ role: 'member' });
   };
 
 
@@ -955,7 +953,6 @@ const Admin = () => {
       name: member.name,
       email: member.email,
       role: member.role,
-      expiryDate: member.expiryDate || '',
       phoneNumber: member.phone_number || '',
       charterAccepted: initialCharterAccepted,
       sport: member.sport || 'triathlon'
@@ -964,7 +961,6 @@ const Admin = () => {
       name: member.name,
       email: member.email,
       role: member.role,
-      expiryDate: member.expiryDate || '',
       phoneNumber: member.phone_number || '',
       charterAccepted: initialCharterAccepted
     });
@@ -986,7 +982,6 @@ const Admin = () => {
       email: editForm.email,
       role: editForm.role,
       phone_number: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending and map to backend field name
-      expiryDate: editForm.expiryDate || null,
       charterAccepted: editForm.charterAccepted ? 1 : 0,
       sport: editForm.sport || 'triathlon'
     };
@@ -1053,7 +1048,6 @@ const Admin = () => {
           name: '',
           email: '',
           role: '',
-          expiryDate: '',
           phoneNumber: '',
           charterAccepted: false,
           sport: 'triathlon'
@@ -1075,7 +1069,6 @@ const Admin = () => {
       name: '',
       email: '',
       role: '',
-      expiryDate: '',
       phoneNumber: '',
       charterAccepted: false,
       sport: 'triathlon'
@@ -1292,7 +1285,7 @@ const Admin = () => {
                     <th>Sport</th>
                     <th>Phone Number</th>
                     <th>Join Date</th>
-                    <th>Expiry Date</th>
+                    <th>Term</th>
                     <th>Absences</th>
                     <th>Charter Accepted</th>
                     <th>Actions</th>
@@ -1344,7 +1337,7 @@ const Admin = () => {
                         </td>
                         <td>{member.phone_number || 'Not set'}</td>
                         <td>{member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : 'Not set'}</td>
-                        <td>{member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</td>
+                        <td>{member.term ? member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/') : 'Not set'}</td>
                         <td>
                           <span className={`absence-count ${member.absences > 0 ? 'has-absences' : 'no-absences'}`}>
                             {member.absences || 0}
@@ -1489,7 +1482,7 @@ const Admin = () => {
                       <p><strong>Role:</strong> <span className="role-badge">{member.role}</span></p>
                       <p><strong>Phone Number:</strong> {member.phone_number || 'Not set'}</p>
                       <p><strong>Join Date:</strong> {member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : member.created_at ? new Date(member.created_at).toLocaleDateString() : 'Not set'}</p>
-                      <p><strong>Expiry Date:</strong> {member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</p>
+                      <p><strong>Term:</strong> {member.term ? member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/') : 'Not set'}</p>
       
                     </div>
                     <div className="approval-actions">
@@ -2464,15 +2457,6 @@ const Admin = () => {
               </div>
 
               <div className="form-group">
-                <label>Expiry Date:</label>
-                <input
-                  type="date"
-                  value={editForm.expiryDate}
-                  onChange={(e) => setEditForm({...editForm, expiryDate: e.target.value})}
-                />
-              </div>
-              
-              <div className="form-group">
                 <label>Phone Number:</label>
                 <input
                   type="tel"
@@ -2546,16 +2530,6 @@ const Admin = () => {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Expiry Date:</label>
-                <input
-                  type="date"
-                  value={approvalForm.expiryDate}
-                  onChange={(e) => setApprovalForm({...approvalForm, expiryDate: e.target.value})}
-                  required
-                />
-                <small>Membership will expire on this date</small>
-              </div>
 
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Approve Member</button>

@@ -1,0 +1,46 @@
+-- Migration script to remove expiry_date column from users table
+-- THIS VERSION APPLIES THE CHANGES (uses COMMIT instead of ROLLBACK)
+-- 
+-- After this migration, expiry dates will be determined by term.end_date via JOIN
+--
+-- Run this in your PostgreSQL database (psql or pgAdmin)
+
+BEGIN;
+
+-- Check if expiry_date column exists
+SELECT 
+  column_name,
+  data_type
+FROM information_schema.columns
+WHERE table_name = 'users' AND column_name = 'expiry_date';
+
+-- Show current expiry_date values before removal (for reference)
+SELECT 
+  u.id,
+  u.name,
+  u.email,
+  u.expiry_date,
+  u.term_id,
+  t.term,
+  t.end_date as term_end_date
+FROM users u
+LEFT JOIN terms t ON u.term_id = t.id
+WHERE u.expiry_date IS NOT NULL
+ORDER BY u.id
+LIMIT 20;
+
+-- Remove expiry_date column
+ALTER TABLE users DROP COLUMN IF EXISTS expiry_date;
+
+-- Verify the column was removed
+SELECT 
+  column_name,
+  data_type
+FROM information_schema.columns
+WHERE table_name = 'users' AND column_name = 'expiry_date';
+
+-- IMPORTANT: Review the output above before committing!
+-- If everything looks good, the transaction will commit
+-- If something is wrong, you can still ROLLBACK before this point
+COMMIT;
+

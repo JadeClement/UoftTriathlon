@@ -53,7 +53,6 @@ async function initializeDatabase() {
         password_hash VARCHAR(255) NOT NULL,
         role VARCHAR(50) DEFAULT 'pending' CHECK(role IN ('pending', 'member', 'coach', 'exec', 'administrator')),
         join_date DATE,
-        expiry_date DATE,
         bio TEXT,
         profile_picture_url VARCHAR(500),
         phone_number VARCHAR(50),
@@ -385,6 +384,22 @@ async function initializeDatabase() {
       console.log('✅ Removed term_start_date column from users table');
     } catch (error) {
       console.log('ℹ️  term_start_date column does not exist or already removed');
+    }
+
+    // Remove expiry_date column if it exists (migration - expiry now determined by term.end_date)
+    try {
+      const checkExpiryDate = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'expiry_date'
+      `);
+      
+      if (checkExpiryDate.rows.length > 0) {
+        await pool.query(`ALTER TABLE users DROP COLUMN expiry_date`);
+        console.log('✅ Removed expiry_date column from users table');
+      }
+    } catch (error) {
+      console.error('❌ Error removing expiry_date column:', error.message);
     }
 
     try {
