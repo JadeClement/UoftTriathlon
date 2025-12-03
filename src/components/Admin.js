@@ -131,13 +131,15 @@ const Admin = () => {
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
 
   const [editingMember, setEditingMember] = useState(null);
+  const [terms, setTerms] = useState([]);
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
     role: '',
     phoneNumber: '',
     charterAccepted: false,
-    sport: 'triathlon'
+    sport: 'triathlon',
+    term_id: null
   });
   const [approvingMember, setApprovingMember] = useState(null);
   const [approvalForm, setApprovalForm] = useState({
@@ -210,6 +212,7 @@ const Admin = () => {
     }
 
     loadAdminData();
+    loadTerms();
   }, [currentUser, isAdmin]);
 
   // Load attendance data when filters change
@@ -501,6 +504,23 @@ const Admin = () => {
     }
   };
 
+  const loadTerms = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/terms`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTerms(data.terms || []);
+      }
+    } catch (error) {
+      console.error('Error loading terms:', error);
+    }
+  };
+
   const loadAdminData = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -531,6 +551,7 @@ const Admin = () => {
           ...member,
           joinDate: member.join_date || member.created_at, // Use created_at as fallback if join_date is null
           term: member.term || null, // Term name (fall, winter, etc.)
+          term_id: member.term_id || null, // Term ID for editing
           absences: member.absences || 0,
           charterAccepted: member.charter_accepted || 0
         }));
@@ -955,7 +976,8 @@ const Admin = () => {
       role: member.role,
       phoneNumber: member.phone_number || '',
       charterAccepted: initialCharterAccepted,
-      sport: member.sport || 'triathlon'
+      sport: member.sport || 'triathlon',
+      term_id: member.term_id || null
     });
     console.log('📝 Edit form set to:', {
       name: member.name,
@@ -983,7 +1005,8 @@ const Admin = () => {
       role: editForm.role,
       phone_number: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending and map to backend field name
       charterAccepted: editForm.charterAccepted ? 1 : 0,
-      sport: editForm.sport || 'triathlon'
+      sport: editForm.sport || 'triathlon',
+      term_id: editForm.term_id || null
     };
     
     console.log('🧹 Cleaned form data:', cleanFormData);
@@ -1050,7 +1073,8 @@ const Admin = () => {
           role: '',
           phoneNumber: '',
           charterAccepted: false,
-          sport: 'triathlon'
+          sport: 'triathlon',
+          term_id: null
         });
       } else {
         const errorData = await response.json();
@@ -1071,7 +1095,8 @@ const Admin = () => {
       role: '',
       phoneNumber: '',
       charterAccepted: false,
-      sport: 'triathlon'
+      sport: 'triathlon',
+      term_id: null
     });
   };
 
@@ -2484,6 +2509,23 @@ const Admin = () => {
                 </select>
                 <small>Determines which workout types the member can see and create</small>
               </div>
+
+              <div className="form-group">
+                <label>Term:</label>
+                <select
+                  value={editForm.term_id || ''}
+                  onChange={(e) => setEditForm({...editForm, term_id: e.target.value === '' ? null : parseInt(e.target.value, 10)})}
+                >
+                  <option value="">No term assigned</option>
+                  {terms.map(term => (
+                    <option key={term.id} value={term.id}>
+                      {term.term.charAt(0).toUpperCase() + term.term.slice(1).replace('/', '/')} ({new Date(term.start_date).toLocaleDateString()} - {new Date(term.end_date).toLocaleDateString()})
+                    </option>
+                  ))}
+                </select>
+                <small>Determines membership expiry date</small>
+              </div>
+
               <div className="form-group">
                 <label>Charter Accepted:</label>
                 <select

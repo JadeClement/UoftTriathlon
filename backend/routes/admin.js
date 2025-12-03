@@ -92,7 +92,7 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
       SELECT 
         u.id, u.email, u.name, u.role, u.created_at,
         u.join_date, u.phone_number, u.absences, u.charter_accepted, u.sport,
-        t.term
+        u.term_id, t.term
       FROM users u
       LEFT JOIN terms t ON u.term_id = t.id
       ${whereClause}
@@ -114,6 +114,21 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
     });
   } catch (error) {
     console.error('Get members error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all terms
+router.get('/terms', authenticateToken, requireRole('exec'), async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, term, start_date, end_date
+      FROM terms
+      ORDER BY start_date DESC
+    `);
+    res.json({ terms: result.rows || [] });
+  } catch (error) {
+    console.error('Get terms error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -305,6 +320,54 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       updates.push(`sport = $${paramCount}`);
       values.push(sport);
       console.log('🔧 Sport update:', { sport });
+    }
+
+    if (term_id !== undefined) {
+      // Validate term_id - can be null or a valid integer
+      if (term_id !== null && term_id !== '') {
+        const termIdInt = parseInt(term_id, 10);
+        if (isNaN(termIdInt)) {
+          return res.status(400).json({ error: 'Invalid term_id. Must be a number or empty' });
+        }
+        // Verify term exists
+        const termCheck = await pool.query('SELECT id FROM terms WHERE id = $1', [termIdInt]);
+        if (termCheck.rows.length === 0) {
+          return res.status(400).json({ error: 'Term not found' });
+        }
+        paramCount++;
+        updates.push(`term_id = $${paramCount}`);
+        values.push(termIdInt);
+      } else {
+        // Set to null if empty string or null
+        paramCount++;
+        updates.push(`term_id = $${paramCount}`);
+        values.push(null);
+      }
+      console.log('🔧 Term update:', { term_id });
+    }
+
+    if (term_id !== undefined) {
+      // Validate term_id - can be null or a valid integer
+      if (term_id !== null && term_id !== '') {
+        const termIdInt = parseInt(term_id, 10);
+        if (isNaN(termIdInt)) {
+          return res.status(400).json({ error: 'Invalid term_id. Must be a number or empty' });
+        }
+        // Verify term exists
+        const termCheck = await pool.query('SELECT id FROM terms WHERE id = $1', [termIdInt]);
+        if (termCheck.rows.length === 0) {
+          return res.status(400).json({ error: 'Term not found' });
+        }
+        paramCount++;
+        updates.push(`term_id = $${paramCount}`);
+        values.push(termIdInt);
+      } else {
+        // Set to null if empty string or null
+        paramCount++;
+        updates.push(`term_id = $${paramCount}`);
+        values.push(null);
+      }
+      console.log('🔧 Term update:', { term_id });
     }
 
     if (updates.length === 0) {
