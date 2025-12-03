@@ -1362,7 +1362,15 @@ const Admin = () => {
                         </td>
                         <td>{member.phone_number || 'Not set'}</td>
                         <td>{member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : 'Not set'}</td>
-                        <td>{member.term ? member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/') : 'Not set'}</td>
+                        <td>
+                          {member.term ? (
+                            <span className={`term-badge ${member.term.toLowerCase().replace('/', '-')}`}>
+                              {member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/')}
+                            </span>
+                          ) : (
+                            <span className="term-badge no-term">Not set</span>
+                          )}
+                        </td>
                         <td>
                           <span className={`absence-count ${member.absences > 0 ? 'has-absences' : 'no-absences'}`}>
                             {member.absences || 0}
@@ -1507,7 +1515,13 @@ const Admin = () => {
                       <p><strong>Role:</strong> <span className="role-badge">{member.role}</span></p>
                       <p><strong>Phone Number:</strong> {member.phone_number || 'Not set'}</p>
                       <p><strong>Join Date:</strong> {member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : member.created_at ? new Date(member.created_at).toLocaleDateString() : 'Not set'}</p>
-                      <p><strong>Term:</strong> {member.term ? member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/') : 'Not set'}</p>
+                      <p><strong>Term:</strong> {member.term ? (
+                        <span className={`term-badge ${member.term.toLowerCase().replace('/', '-')}`}>
+                          {member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/')}
+                        </span>
+                      ) : (
+                        <span className="term-badge no-term">Not set</span>
+                      )}</p>
       
                     </div>
                     <div className="approval-actions">
