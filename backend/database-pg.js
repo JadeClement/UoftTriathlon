@@ -541,3 +541,20 @@ module.exports = {
   seedDatabase,
   checkDatabaseHealth
 };
+
+// If this file is run directly (not required), initialize the database
+if (require.main === module) {
+  (async () => {
+    try {
+      await initializeDatabase();
+      await seedDatabase();
+      console.log('✅ Database initialization complete!');
+      await pool.end();
+      process.exit(0);
+    } catch (error) {
+      console.error('❌ Database initialization failed:', error);
+      await pool.end();
+      process.exit(1);
+    }
+  })();
+}
