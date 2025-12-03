@@ -239,9 +239,9 @@ router.put('/members/:id/charter', authenticateToken, requireAdmin, async (req, 
 router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone_number, role, charterAccepted, sport } = req.body;
+    const { name, email, phone_number, role, charterAccepted, sport, term_id } = req.body;
     
-    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted });
+    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, term_id });
 
     // Get the current role before updating to check if it actually changed
     let currentRole = null;
@@ -320,30 +320,6 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       updates.push(`sport = $${paramCount}`);
       values.push(sport);
       console.log('🔧 Sport update:', { sport });
-    }
-
-    if (term_id !== undefined) {
-      // Validate term_id - can be null or a valid integer
-      if (term_id !== null && term_id !== '') {
-        const termIdInt = parseInt(term_id, 10);
-        if (isNaN(termIdInt)) {
-          return res.status(400).json({ error: 'Invalid term_id. Must be a number or empty' });
-        }
-        // Verify term exists
-        const termCheck = await pool.query('SELECT id FROM terms WHERE id = $1', [termIdInt]);
-        if (termCheck.rows.length === 0) {
-          return res.status(400).json({ error: 'Term not found' });
-        }
-        paramCount++;
-        updates.push(`term_id = $${paramCount}`);
-        values.push(termIdInt);
-      } else {
-        // Set to null if empty string or null
-        paramCount++;
-        updates.push(`term_id = $${paramCount}`);
-        values.push(null);
-      }
-      console.log('🔧 Term update:', { term_id });
     }
 
     if (term_id !== undefined) {
