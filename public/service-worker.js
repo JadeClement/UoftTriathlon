@@ -1,7 +1,7 @@
 /* UofT Triathlon PWA Service Worker */
 
 // Increment this version on each deployment to force service worker update
-const CACHE_VERSION = 'v1.0.3';
+const CACHE_VERSION = 'v1.0.4';
 const STATIC_CACHE = `static-cache-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
