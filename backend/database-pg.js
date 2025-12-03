@@ -350,6 +350,18 @@ async function initializeDatabase() {
         )
       `);
       console.log('✅ Terms table created/verified');
+      
+      // Remove created_at column if it exists (migration)
+      const checkCreatedAt = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'terms' AND column_name = 'created_at'
+      `);
+      
+      if (checkCreatedAt.rows.length > 0) {
+        await pool.query(`ALTER TABLE terms DROP COLUMN created_at`);
+        console.log('✅ Removed created_at column from terms table');
+      }
     } catch (error) {
       console.error('❌ Error creating terms table:', error.message);
     }
