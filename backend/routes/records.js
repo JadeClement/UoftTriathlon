@@ -9,14 +9,17 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
   try {
     const { test_event_id, user_id } = req.query;
     
-    let query = `
+    const params = [];
+    const conditions = [];
+
+    const buildBaseQuery = (notesColumn) => `
       SELECT 
         r.id,
         r.user_id,
         r.test_event_id,
         r.title,
         r.result,
-        r.notes,
+        r.${notesColumn} as notes,
         r.created_at,
         r.updated_at,
         r.created_by,
@@ -32,10 +35,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
       LEFT JOIN users creator ON r.created_by = creator.id
       JOIN test_events te ON r.test_event_id = te.id
     `;
-    
-    const params = [];
-    const conditions = [];
-    
+
     if (test_event_id) {
       params.push(test_event_id);
       conditions.push(`r.test_event_id = $${params.length}`);
@@ -45,14 +45,25 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
       params.push(user_id);
       conditions.push(`r.user_id = $${params.length}`);
     }
-    
-    if (conditions.length > 0) {
-      query += ` WHERE ${conditions.join(' AND ')}`;
+
+    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+    const orderClause = ` ORDER BY r.created_at DESC`;
+
+    let result;
+    try {
+      // Primary: assume "notes" column exists
+      let query = buildBaseQuery('notes') + whereClause + orderClause;
+      result = await pool.query(query, params);
+    } catch (err) {
+      if (err.code === '42703') {
+        // Fallback: older DBs might have "description" instead
+        let query = buildBaseQuery('description') + whereClause + orderClause;
+        result = await pool.query(query, params);
+      } else {
+        throw err;
+      }
     }
-    
-    query += ` ORDER BY r.created_at DESC`;
-    
-    const result = await pool.query(query, params);
+
     res.json({ records: result.rows || [] });
   } catch (error) {
     console.error('Get records error:', error);
@@ -85,11 +96,27 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
       }
     }
 
-    const insertResult = await pool.query(`
-      INSERT INTO records (user_id, test_event_id, title, result, notes, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-    `, [targetUserId, test_event_id, title, result || null, notes || null, req.user.id]);
+    let insertResult;
+
+    try {
+      // Primary path: databases that use the new "notes" column
+      insertResult = await pool.query(`
+        INSERT INTO records (user_id, test_event_id, title, result, notes, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `, [targetUserId, test_event_id, title, result || null, notes || null, req.user.id]);
+    } catch (err) {
+      // Backwards-compat: some databases may still have "description" instead of "notes"
+      if (err.code === '42703') { // undefined_column
+        insertResult = await pool.query(`
+          INSERT INTO records (user_id, test_event_id, title, result, description, created_by)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING *
+        `, [targetUserId, test_event_id, title, result || null, notes || null, req.user.id]);
+      } else {
+        throw err;
+      }
+    }
 
     res.status(201).json({ 
       message: 'Record created successfully',
@@ -122,38 +149,108 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
     }
 
     // Build update query dynamically
-    const updates = [];
+    const baseUpdates = [];
     const values = [];
     let paramCount = 0;
 
     if (title !== undefined) {
       paramCount++;
-      updates.push(`title = $${paramCount}`);
+      baseUpdates.push(`title = $${paramCount}`);
       values.push(title);
     }
 
     if (result !== undefined) {
       paramCount++;
-      updates.push(`result = $${paramCount}`);
+      baseUpdates.push(`result = $${paramCount}`);
       values.push(result);
     }
 
-    if (notes !== undefined) {
-      paramCount++;
-      updates.push(`notes = $${paramCount}`);
-      values.push(notes);
-    }
+    // We'll handle notes/description below for compatibility
+    const hasNotesUpdate = notes !== undefined;
 
-    if (updates.length === 0) {
+    if (!hasNotesUpdate && baseUpdates.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
     paramCount++;
-    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    const idParamIndex = paramCount;
     values.push(id);
 
-    const query = `UPDATE records SET ${updates.join(', ')} WHERE id = $${paramCount}`;
-    const updateResult = await pool.query(query, values);
+    let updateResult;
+
+    try {
+      const updates = [...baseUpdates];
+      if (hasNotesUpdate) {
+        paramCount = values.length - 1; // reset to last index before id
+        // notes param index is the last non-id param
+        const notesParamIndex = hasNotesUpdate ? (values.length) : null;
+        if (hasNotesUpdate) {
+          // notes value was already pushed above? It wasn't; push now.
+          values.splice(values.length - 1, 0, notes);
+        }
+        // recompute indices: title/result/notes are before id
+        // For simplicity, rebuild from scratch when notes present
+        const rebuiltValues = [];
+        const rebuiltUpdates = [];
+        let idx = 0;
+        if (title !== undefined) {
+          idx++;
+          rebuiltUpdates.push(`title = $${idx}`);
+          rebuiltValues.push(title);
+        }
+        if (result !== undefined) {
+          idx++;
+          rebuiltUpdates.push(`result = $${idx}`);
+          rebuiltValues.push(result);
+        }
+        if (notes !== undefined) {
+          idx++;
+          rebuiltUpdates.push(`notes = $${idx}`);
+          rebuiltValues.push(notes);
+        }
+        idx++;
+        rebuiltUpdates.push(`updated_at = CURRENT_TIMESTAMP`);
+        rebuiltValues.push(id);
+
+        const query = `UPDATE records SET ${rebuiltUpdates.join(', ')} WHERE id = $${idx}`;
+        updateResult = await pool.query(query, rebuiltValues);
+      } else {
+        // No notes field to update, just use base updates
+        const finalUpdates = [...baseUpdates, `updated_at = CURRENT_TIMESTAMP`];
+        const query = `UPDATE records SET ${finalUpdates.join(', ')} WHERE id = $${idParamIndex}`;
+        updateResult = await pool.query(query, values);
+      }
+    } catch (err) {
+      if (err.code === '42703' && hasNotesUpdate) {
+        // Fallback for databases that still use "description" instead of "notes"
+        const rebuiltValues = [];
+        const rebuiltUpdates = [];
+        let idx = 0;
+        if (title !== undefined) {
+          idx++;
+          rebuiltUpdates.push(`title = $${idx}`);
+          rebuiltValues.push(title);
+        }
+        if (result !== undefined) {
+          idx++;
+          rebuiltUpdates.push(`result = $${idx}`);
+          rebuiltValues.push(result);
+        }
+        if (notes !== undefined) {
+          idx++;
+          rebuiltUpdates.push(`description = $${idx}`);
+          rebuiltValues.push(notes);
+        }
+        idx++;
+        rebuiltUpdates.push(`updated_at = CURRENT_TIMESTAMP`);
+        rebuiltValues.push(id);
+
+        const fallbackQuery = `UPDATE records SET ${rebuiltUpdates.join(', ')} WHERE id = $${idx}`;
+        updateResult = await pool.query(fallbackQuery, rebuiltValues);
+      } else {
+        throw err;
+      }
+    }
 
     if (updateResult.rowCount === 0) {
       return res.status(404).json({ error: 'Record not found' });
