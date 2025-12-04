@@ -1197,13 +1197,34 @@ const Forum = () => {
   // Filter workouts based on selected filters (time + type + sport)
   const getFilteredWorkouts = () => {
     // Use all loaded workouts for filtering
-    // First filter by sport preference
-    const bySport = allLoadedWorkouts.filter(post => {
-      return isWorkoutTypeAllowed(post.workout_type);
-    });
+    let filtered = allLoadedWorkouts;
+
+    // Only apply sport preference filtering when a specific workout type is selected
+    // When "all" is selected, show all workout types regardless of sport preference
+    if (workoutFilter !== 'all') {
+      filtered = filtered.filter(post => {
+        return isWorkoutTypeAllowed(post.workout_type);
+      });
+    }
+
+    // Filter by workout type if not "all"
+    if (workoutFilter !== 'all') {
+      filtered = filtered.filter(post => {
+        switch (workoutFilter) {
+          case 'bike':
+            return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
+          case 'swim':
+            return post.workout_type === 'swim';
+          case 'run':
+            return post.workout_type === 'run';
+          default:
+            return true;
+        }
+      });
+    }
 
     // Then filter by time
-    const byTime = bySport.filter(post => {
+    const byTime = filtered.filter(post => {
       const past = isPast(post.workout_date);
       return timeFilter === 'past' ? past : !past;
     });
@@ -1215,20 +1236,7 @@ const Forum = () => {
       return timeFilter === 'past' ? db - da : da - db; // past: newest first, upcoming: soonest first
     });
 
-    if (workoutFilter === 'all') return byTime;
-
-    return byTime.filter(post => {
-      switch (workoutFilter) {
-        case 'bike':
-          return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
-        case 'swim':
-          return post.workout_type === 'swim';
-        case 'run':
-          return post.workout_type === 'run';
-        default:
-          return true;
-      }
-    });
+    return byTime;
   };
 
   // Get paginated workouts for past workouts (5 per page)
