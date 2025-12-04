@@ -96,7 +96,9 @@ const Profile = () => {
   // Load user's results_public setting
   useEffect(() => {
     if (!isUserProfile || !currentUser?.id) return;
-    setResultsPublic(currentUser.results_public || false);
+    // Check both possible field names (normalized and original)
+    const resultsPublicValue = currentUser.results_public || currentUser.resultsPublic || false;
+    setResultsPublic(resultsPublicValue);
   }, [isUserProfile, currentUser]);
 
   // Load user records (only for user's own profile)
@@ -879,45 +881,53 @@ const Profile = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ margin: 0, color: '#374151' }}>Results</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={resultsPublic}
-                    onChange={async (e) => {
-                      const newValue = e.target.checked;
-                      setResultsPublic(newValue);
-                      // Save to backend
-                      try {
-                        const token = localStorage.getItem('triathlonToken');
-                        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile`, {
-                          method: 'PUT',
-                          headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                          },
-                          body: JSON.stringify({
-                            name: currentUser.name,
-                            email: currentUser.email,
-                            phone_number: currentUser.phone_number,
-                            bio: currentUser.bio,
-                            results_public: newValue
-                          })
-                        });
-                        if (!response.ok) {
-                          // Revert on error
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={resultsPublic}
+                      onChange={async (e) => {
+                        const newValue = e.target.checked;
+                        setResultsPublic(newValue);
+                        // Save to backend
+                        try {
+                          const token = localStorage.getItem('triathlonToken');
+                          const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile`, {
+                            method: 'PUT',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              name: currentUser.name,
+                              email: currentUser.email,
+                              phone_number: currentUser.phone_number || currentUser.phoneNumber,
+                              bio: currentUser.bio,
+                              results_public: newValue
+                            })
+                          });
+                          if (response.ok) {
+                            // Update currentUser in AuthContext to persist the change
+                            const updatedUser = { ...currentUser, results_public: newValue, resultsPublic: newValue };
+                            updateUser(updatedUser);
+                          } else {
+                            // Revert on error
+                            setResultsPublic(!newValue);
+                            setError('Failed to update privacy setting');
+                          }
+                        } catch (error) {
+                          console.error('Error updating privacy setting:', error);
                           setResultsPublic(!newValue);
-                          setError('Failed to update privacy setting');
+                          setError('Error updating privacy setting');
                         }
-                      } catch (error) {
-                        console.error('Error updating privacy setting:', error);
-                        setResultsPublic(!newValue);
-                        setError('Error updating privacy setting');
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span>Public (visible to all members)</span>
-                </label>
+                      }}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
+                  <span className="toggle-label" style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    {resultsPublic ? 'Public' : 'Private'}
+                  </span>
+                </div>
                 <button 
                   className="btn btn-primary" 
                   onClick={() => {
