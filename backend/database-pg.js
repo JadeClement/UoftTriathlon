@@ -64,6 +64,7 @@ async function initializeDatabase() {
         reset_token VARCHAR(255),
         reset_token_expiry TIMESTAMP,
         is_active BOOLEAN DEFAULT TRUE,
+        results_public BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP
       )
@@ -297,6 +298,28 @@ async function initializeDatabase() {
       )
     `);
     console.log('✅ Records table created');
+
+    // Add results_public column to users table if it doesn't exist (migration for existing databases)
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS results_public BOOLEAN DEFAULT FALSE
+      `);
+      console.log('✅ results_public column added to users table (or already exists)');
+    } catch (error) {
+      console.log('ℹ️  results_public column may already exist in users table');
+    }
+
+    // Remove is_public from records table if it exists (migration - privacy is now per-user)
+    try {
+      await pool.query(`
+        ALTER TABLE records
+        DROP COLUMN IF EXISTS is_public
+      `);
+      console.log('✅ Removed is_public column from records table (privacy is now per-user)');
+    } catch (error) {
+      console.log('ℹ️  is_public column does not exist in records table');
+    }
 
     // Create merch_orders table
     await pool.query(`

@@ -25,6 +25,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
         r.created_by,
         u.name as user_name,
         u.email as user_email,
+        u.results_public,
         creator.name as created_by_name,
         te.title as test_event_title,
         te.sport as test_event_sport,

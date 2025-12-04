@@ -64,7 +64,7 @@ router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     const userId = req.user.id;
 
     const userResult = await pool.query(`
-      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted
+      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, results_public
       FROM users 
       WHERE id = $1 AND is_active = true
     `, [userId]);
@@ -90,7 +90,7 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     console.log('🔍 Backend received request body:', req.body);
     console.log('🔍 Backend received headers:', req.headers);
     
-    const { name, email, phone_number, bio } = req.body;
+    const { name, email, phone_number, bio, results_public } = req.body;
     console.log('🔍 Profile update route: Extracted data:', { name, email, phone_number, bio });
 
     if (!name || !email) {
@@ -118,12 +118,37 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
 
     console.log('🔍 Profile update route: Email and phone unique, updating database...');
 
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+    let paramCount = 0;
+
+    updates.push(`name = $${++paramCount}`);
+    values.push(name);
+    
+    updates.push(`email = $${++paramCount}`);
+    values.push(email);
+    
+    updates.push(`phone_number = $${++paramCount}`);
+    values.push(phone_number || null);
+    
+    updates.push(`bio = $${++paramCount}`);
+    values.push(bio || null);
+
+    if (results_public !== undefined) {
+      updates.push(`results_public = $${++paramCount}`);
+      values.push(results_public === true || results_public === 'true');
+    }
+
+    updates.push(`id = $${++paramCount}`);
+    values.push(userId);
+
     // Update user profile
     await pool.query(`
       UPDATE users 
-      SET name = $1, email = $2, phone_number = $3, bio = $4
-      WHERE id = $5
-    `, [name, email, phone_number || null, bio || null, userId]);
+      SET ${updates.slice(0, -1).join(', ')}
+      WHERE id = $${paramCount}
+    `, values.slice(0, -1).concat([userId]));
 
     console.log('✅ Profile update route: Database update successful');
     res.json({ message: 'Profile updated successfully' });

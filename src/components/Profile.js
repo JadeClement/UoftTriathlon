@@ -30,6 +30,7 @@ const Profile = () => {
     result: '',
     description: ''
   });
+  const [resultsPublic, setResultsPublic] = useState(false); // User's privacy setting for all results
   const [loading, setLoading] = useState(true);
   
   console.log('🔍 All URL params:', params);
@@ -91,6 +92,12 @@ const Profile = () => {
 
     loadTeamMembers();
   }, []);
+
+  // Load user's results_public setting
+  useEffect(() => {
+    if (!isUserProfile || !currentUser?.id) return;
+    setResultsPublic(currentUser.results_public || false);
+  }, [isUserProfile, currentUser]);
 
   // Load user records (only for user's own profile)
   useEffect(() => {
@@ -157,7 +164,7 @@ const Profile = () => {
           test_event_id: parseInt(recordForm.test_event_id),
           title: selectedTestEvent?.title || '',
           result: recordForm.result,
-          description: recordForm.description
+          notes: recordForm.description
         })
       });
       
@@ -871,16 +878,57 @@ const Profile = () => {
           <div style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ margin: 0, color: '#374151' }}>Results</h2>
-              <button 
-                className="btn btn-primary" 
-                onClick={() => {
-                  setShowRecordModal(true);
-                  setRecordForm({ test_event_id: '', result: '', description: '' });
-                  setError('');
-                }}
-              >
-                + New
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={resultsPublic}
+                    onChange={async (e) => {
+                      const newValue = e.target.checked;
+                      setResultsPublic(newValue);
+                      // Save to backend
+                      try {
+                        const token = localStorage.getItem('triathlonToken');
+                        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile`, {
+                          method: 'PUT',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                            name: currentUser.name,
+                            email: currentUser.email,
+                            phone_number: currentUser.phone_number,
+                            bio: currentUser.bio,
+                            results_public: newValue
+                          })
+                        });
+                        if (!response.ok) {
+                          // Revert on error
+                          setResultsPublic(!newValue);
+                          setError('Failed to update privacy setting');
+                        }
+                      } catch (error) {
+                        console.error('Error updating privacy setting:', error);
+                        setResultsPublic(!newValue);
+                        setError('Error updating privacy setting');
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>Public (visible to all members)</span>
+                </label>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    setShowRecordModal(true);
+                    setRecordForm({ test_event_id: '', result: '', description: '' });
+                    setError('');
+                  }}
+                >
+                  + New
+                </button>
+              </div>
             </div>
             
             {userRecords.length > 0 ? (
@@ -1025,12 +1073,12 @@ const Profile = () => {
                     <button 
                       type="button" 
                       className="btn btn-secondary" 
-                      onClick={() => {
-                        setShowRecordModal(false);
-                        setEditingRecordId(null);
-                        setRecordForm({ test_event_id: '', result: '', description: '' });
-                        setError('');
-                      }}
+                    onClick={() => {
+                      setShowRecordModal(false);
+                      setEditingRecordId(null);
+                      setRecordForm({ test_event_id: '', result: '', description: '' });
+                      setError('');
+                    }}
                     >
                       Cancel
                     </button>

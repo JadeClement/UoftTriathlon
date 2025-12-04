@@ -1778,6 +1778,17 @@ const WorkoutDetail = () => {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
                   />
                 </div>
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={recordForm.is_public || false}
+                      onChange={(e) => setRecordForm({...recordForm, is_public: e.target.checked})}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span>Make this result public (visible to all members)</span>
+                  </label>
+                </div>
                 <div className="modal-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => {
                     setShowRecordModal(false);

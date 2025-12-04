@@ -121,8 +121,22 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
 
     // Get records for this test event
     // Handle both 'notes' and 'description' column names for backwards compatibility
+    // Filter: show results from users with results_public=true + user's own results + all for coaches/admins
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    const isCoachOrAdmin = ['coach', 'administrator'].includes(userRole);
+    
     let recordsResult;
     try {
+      let whereClause = `WHERE r.test_event_id = $1`;
+      const params = [testEventResult.rows[0].id];
+      
+      if (!isCoachOrAdmin) {
+        // For regular members: show results from users with results_public=true OR their own results
+        whereClause = `WHERE r.test_event_id = $1 AND (u.results_public = true OR r.user_id = $2)`;
+        params.push(userId);
+      }
+      
       recordsResult = await pool.query(`
         SELECT 
           r.id,
@@ -136,16 +150,25 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
           r.created_by,
           u.name as user_name,
           u.email as user_email,
+          u.results_public,
           creator.name as created_by_name
         FROM records r
         JOIN users u ON r.user_id = u.id
         LEFT JOIN users creator ON r.created_by = creator.id
-        WHERE r.test_event_id = $1
+        ${whereClause}
         ORDER BY r.created_at DESC
-      `, [testEventResult.rows[0].id]);
+      `, params);
     } catch (error) {
       // If 'notes' column doesn't exist, try 'description' instead
       if (error.code === '42703') {
+        let whereClause = `WHERE r.test_event_id = $1`;
+        const params = [testEventResult.rows[0].id];
+        
+        if (!isCoachOrAdmin) {
+          whereClause = `WHERE r.test_event_id = $1 AND (u.results_public = true OR r.user_id = $2)`;
+          params.push(userId);
+        }
+        
         recordsResult = await pool.query(`
           SELECT 
             r.id,
@@ -159,13 +182,14 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
             r.created_by,
             u.name as user_name,
             u.email as user_email,
+            u.results_public,
             creator.name as created_by_name
           FROM records r
           JOIN users u ON r.user_id = u.id
           LEFT JOIN users creator ON r.created_by = creator.id
-          WHERE r.test_event_id = $1
+          ${whereClause}
           ORDER BY r.created_at DESC
-        `, [testEventResult.rows[0].id]);
+        `, params);
       } else {
         throw error;
       }
