@@ -88,6 +88,13 @@ router.get('/', authenticateToken, requireCoach, async (req, res) => {
 router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (req, res) => {
   try {
     const { workoutId } = req.params;
+    const workoutIdInt = parseInt(workoutId, 10);
+    
+    if (isNaN(workoutIdInt)) {
+      return res.status(400).json({ error: 'Invalid workout ID' });
+    }
+
+    console.log('🔍 Fetching test event for workout ID:', workoutIdInt);
 
     const testEventResult = await pool.query(`
       SELECT 
@@ -104,33 +111,65 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
       FROM test_events te
       LEFT JOIN users u ON te.created_by = u.id
       WHERE te.workout_post_id = $1
-    `, [workoutId]);
+    `, [workoutIdInt]);
+    
+    console.log('🔍 Test event query result:', testEventResult.rows.length, 'events found');
 
     if (testEventResult.rows.length === 0) {
       return res.json({ testEvent: null });
     }
 
     // Get records for this test event
-    const recordsResult = await pool.query(`
-      SELECT 
-        r.id,
-        r.user_id,
-        r.test_event_id,
-        r.title,
-        r.result,
-        r.notes,
-        r.created_at,
-        r.updated_at,
-        r.created_by,
-        u.name as user_name,
-        u.email as user_email,
-        creator.name as created_by_name
-      FROM records r
-      JOIN users u ON r.user_id = u.id
-      LEFT JOIN users creator ON r.created_by = creator.id
-      WHERE r.test_event_id = $1
-      ORDER BY r.created_at DESC
-    `, [testEventResult.rows[0].id]);
+    // Handle both 'notes' and 'description' column names for backwards compatibility
+    let recordsResult;
+    try {
+      recordsResult = await pool.query(`
+        SELECT 
+          r.id,
+          r.user_id,
+          r.test_event_id,
+          r.title,
+          r.result,
+          r.notes,
+          r.created_at,
+          r.updated_at,
+          r.created_by,
+          u.name as user_name,
+          u.email as user_email,
+          creator.name as created_by_name
+        FROM records r
+        JOIN users u ON r.user_id = u.id
+        LEFT JOIN users creator ON r.created_by = creator.id
+        WHERE r.test_event_id = $1
+        ORDER BY r.created_at DESC
+      `, [testEventResult.rows[0].id]);
+    } catch (error) {
+      // If 'notes' column doesn't exist, try 'description' instead
+      if (error.code === '42703') {
+        recordsResult = await pool.query(`
+          SELECT 
+            r.id,
+            r.user_id,
+            r.test_event_id,
+            r.title,
+            r.result,
+            r.description as notes,
+            r.created_at,
+            r.updated_at,
+            r.created_by,
+            u.name as user_name,
+            u.email as user_email,
+            creator.name as created_by_name
+          FROM records r
+          JOIN users u ON r.user_id = u.id
+          LEFT JOIN users creator ON r.created_by = creator.id
+          WHERE r.test_event_id = $1
+          ORDER BY r.created_at DESC
+        `, [testEventResult.rows[0].id]);
+      } else {
+        throw error;
+      }
+    }
 
     res.json({
       testEvent: testEventResult.rows[0],
