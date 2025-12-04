@@ -80,7 +80,7 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
     
     // If user_id is provided and different from current user, check permissions
     if (user_id && user_id !== req.user.id) {
-      if (!['coach', 'exec', 'administrator'].includes(req.user.role)) {
+      if (!['coach', 'administrator'].includes(req.user.role)) {
         return res.status(403).json({ error: 'Only coaches and admins can add records for other users' });
       }
     }
@@ -115,7 +115,7 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
 
     const recordUserId = recordCheck.rows[0].user_id;
     const isOwner = recordUserId === req.user.id;
-    const isAdmin = ['coach', 'exec', 'administrator'].includes(req.user.role);
+    const isAdmin = ['coach', 'administrator'].includes(req.user.role);
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ error: 'You can only edit your own records' });

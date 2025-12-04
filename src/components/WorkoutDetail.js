@@ -39,8 +39,15 @@ const WorkoutDetail = () => {
   });
   const [recordForm, setRecordForm] = useState({
     result: '',
-    notes: ''
+    notes: '',
+    user_id: null
   });
+  // User selection state for coaches/admins when adding a result
+  const [recordUserSearchQuery, setRecordUserSearchQuery] = useState('');
+  const [recordUserSearchResults, setRecordUserSearchResults] = useState([]);
+  const [showRecordUserDropdown, setShowRecordUserDropdown] = useState(false);
+  const [selectedRecordUser, setSelectedRecordUser] = useState(null);
+
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   const { 
@@ -53,6 +60,8 @@ const WorkoutDetail = () => {
   } = useWorkoutEdit(API_BASE_URL);
   
   const [editMode, setEditMode] = useState(false);
+
+  const isCoachOrAdmin = currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator');
 
   // Define loader before effects to avoid temporal dead zone
   const loadWorkoutDetails = useCallback(async () => {
@@ -736,6 +745,52 @@ const WorkoutDetail = () => {
     }
   };
 
+  // User search helpers for coaches/admins when adding a result
+  const searchRecordUsers = async (query) => {
+    if (!query || query.length < 2) {
+      setRecordUserSearchResults([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(
+        `${API_BASE_URL}/admin/members?search=${encodeURIComponent(query)}&limit=10`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setRecordUserSearchResults(data.members || []);
+      }
+    } catch (error) {
+      console.error('Error searching users for test result:', error);
+    }
+  };
+
+  const handleRecordUserSearchChange = (e) => {
+    const query = e.target.value;
+    setRecordUserSearchQuery(query);
+    if (query) {
+      searchRecordUsers(query);
+      setShowRecordUserDropdown(true);
+    } else {
+      setRecordUserSearchResults([]);
+      setShowRecordUserDropdown(false);
+      setSelectedRecordUser(null);
+      setRecordForm((prev) => ({ ...prev, user_id: null }));
+    }
+  };
+
+  const selectRecordUser = (user) => {
+    setSelectedRecordUser(user);
+    setRecordUserSearchQuery(user.name || user.email);
+    setRecordForm((prev) => ({ ...prev, user_id: user.id }));
+    setShowRecordUserDropdown(false);
+    setRecordUserSearchResults([]);
+  };
+
   // Test Event functions
   const handleCreateTestEvent = async () => {
     if (!testEventForm.title || !testEventForm.sport || !testEventForm.date || !testEventForm.workout) {
@@ -780,24 +835,35 @@ const WorkoutDetail = () => {
 
     try {
       const token = localStorage.getItem('triathlonToken');
+      const payload = {
+        test_event_id: testEvent.id,
+        title: testEvent.title,
+        result: recordForm.result,
+        notes: recordForm.notes
+      };
+
+      // Only allow coaches/admins to specify a different user_id
+      if (isCoachOrAdmin && recordForm.user_id) {
+        payload.user_id = recordForm.user_id;
+      }
+
       const response = await fetch(`${API_BASE_URL}/records`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          test_event_id: testEvent.id,
-          title: testEvent.title,
-          result: recordForm.result,
-          notes: recordForm.notes
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
         showSuccess('Result added successfully!');
         setShowRecordModal(false);
-        setRecordForm({ result: '', notes: '' });
+        setRecordForm({ result: '', notes: '', user_id: null });
+        setSelectedRecordUser(null);
+        setRecordUserSearchQuery('');
+        setRecordUserSearchResults([]);
+        setShowRecordUserDropdown(false);
         loadWorkoutDetails();
       } else {
         const error = await response.json();
@@ -1374,17 +1440,21 @@ const WorkoutDetail = () => {
                   + Create Test Event
                 </button>
               )}
-              {/* Show "Add My Result" button if test event exists and user is a member */}
+              {/* Show \"Add Test Result\" button if test event exists and user is a member/coach/admin */}
               {testEvent && currentUser && (currentUser.role === 'member' || currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
                 <button 
                   className="btn btn-primary" 
                   onClick={() => {
                     setShowRecordModal(true);
-                    setRecordForm({ result: '', notes: '' });
+                    setRecordForm({ result: '', notes: '', user_id: null });
+                    setSelectedRecordUser(null);
+                    setRecordUserSearchQuery('');
+                    setRecordUserSearchResults([]);
+                    setShowRecordUserDropdown(false);
                   }}
                   style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
                 >
-                  + Add My Result
+                  + Add Test Result
                 </button>
               )}
             </div>
@@ -1407,43 +1477,74 @@ const WorkoutDetail = () => {
                 </div>
               </div>
 
-              {/* Show results table to all members */}
               {currentUser && (
                 <>
-                  {testEventRecords.length > 0 ? (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {testEventRecords.map(record => (
-                            <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '0.75rem', color: '#475569' }}>{record.user_name}</td>
-                              <td style={{ padding: '0.75rem', color: '#475569' }}>{record.result || '-'}</td>
-                              <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
-                              <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  {isCoachOrAdmin ? (
+                    // Coaches/admins see all results
+                    <>
+                      {testEventRecords.length > 0 ? (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {testEventRecords.map(record => (
+                                <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '0.75rem', color: '#475569' }}>{record.user_name}</td>
+                                  <td style={{ padding: '0.75rem', color: '#475569' }}>{record.result || '-'}</td>
+                                  <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
+                                  <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>No results yet. Be the first to add one!</p>
+                      )}
+                    </>
                   ) : (
-                    <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>No results yet. Be the first to add one!</p>
+                    // Regular members/execs only see their own result(s)
+                    (() => {
+                      const myRecords = testEventRecords.filter(r => r.user_id === currentUser.id);
+                      if (myRecords.length === 0) {
+                        return (
+                          <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>
+                            No result recorded yet. Click "Add Test Result" to add yours.
+                          </p>
+                        );
+                      }
+                      return (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {myRecords.map(record => (
+                                <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '0.75rem', color: '#475569' }}>{record.result || '-'}</td>
+                                  <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
+                                  <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()
                   )}
                 </>
-              )}
-
-              {/* For regular members, just show a message if they haven't added a result yet */}
-              {currentUser && currentUser.role === 'member' && (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>
-                  Click "Add My Result" to record your performance for this test.
-                </p>
               )}
             </>
           )}
@@ -1592,6 +1693,60 @@ const WorkoutDetail = () => {
                 <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{testEvent.workout}</p>
               </div>
               <form onSubmit={(e) => { e.preventDefault(); handleAddRecord(); }}>
+                {isCoachOrAdmin && (
+                  <div className="form-group">
+                    <label>Athlete:</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        value={recordUserSearchQuery}
+                        onChange={handleRecordUserSearchChange}
+                        placeholder="Search members by name or email"
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                      />
+                      {showRecordUserDropdown && recordUserSearchResults.length > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          background: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          marginTop: '0.25rem',
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          zIndex: 10,
+                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                        }}>
+                          {recordUserSearchResults.map(user => (
+                            <button
+                              key={user.id}
+                              type="button"
+                              onClick={() => selectRecordUser(user)}
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '0.5rem 0.75rem',
+                                border: 'none',
+                                background: selectedRecordUser && selectedRecordUser.id === user.id ? '#eff6ff' : 'white',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              <div style={{ fontWeight: 500, color: '#111827' }}>{user.name || user.email}</div>
+                              {user.name && user.email && (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{user.email}</div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <small style={{ color: '#6b7280' }}>Leave blank to use your own name.</small>
+                  </div>
+                )}
                 <div className="form-group">
                   <label>Result:</label>
                   <textarea
@@ -1617,7 +1772,11 @@ const WorkoutDetail = () => {
                 <div className="modal-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => {
                     setShowRecordModal(false);
-                    setRecordForm({ result: '', notes: '' });
+                    setRecordForm({ result: '', notes: '', user_id: null });
+                    setSelectedRecordUser(null);
+                    setRecordUserSearchQuery('');
+                    setRecordUserSearchResults([]);
+                    setShowRecordUserDropdown(false);
                   }}>
                     Cancel
                   </button>
