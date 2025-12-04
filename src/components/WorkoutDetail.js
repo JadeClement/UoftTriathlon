@@ -1490,29 +1490,23 @@ const WorkoutDetail = () => {
                       )}
                     </>
                   ) : (
-                    // Regular members/execs only see their own result(s)
-                    (() => {
-                      const myRecords = testEventRecords.filter(r => r.user_id === currentUser.id);
-                      if (myRecords.length === 0) {
-                        return (
-                          <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>
-                            No result recorded yet. Click "Add Test Result" to add yours.
-                          </p>
-                        );
-                      }
-                      return (
+                    // Regular members/execs see public results + their own results (already filtered by backend)
+                    <>
+                      {testEventRecords.length > 0 ? (
                         <div style={{ overflowX: 'auto' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
                                 <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
                                 <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
                                 <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {myRecords.map(record => (
+                              {testEventRecords.map(record => (
                                 <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '0.75rem', color: '#475569' }}>{record.user_name}</td>
                                   <td style={{ padding: '0.75rem', color: '#475569' }}>{record.result || '-'}</td>
                                   <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
                                   <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
@@ -1521,8 +1515,12 @@ const WorkoutDetail = () => {
                             </tbody>
                           </table>
                         </div>
-                      );
-                    })()
+                      ) : (
+                        <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>
+                          No result recorded yet. Click "Add Test Result" to add yours.
+                        </p>
+                      )}
+                    </>
                   )}
                 </>
               )}
