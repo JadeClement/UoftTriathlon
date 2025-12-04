@@ -242,6 +242,46 @@ const Profile = () => {
     setError('');
   };
 
+  // Delete record
+  const deleteRecord = async () => {
+    if (!editingRecordId) return;
+
+    if (!window.confirm('Are you sure you want to delete this result? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/records/${editingRecordId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        // Reload records
+        const recordsResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/records?user_id=${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (recordsResponse.ok) {
+          const data = await recordsResponse.json();
+          setUserRecords(data.records || []);
+        }
+        setShowRecordModal(false);
+        setEditingRecordId(null);
+        setRecordForm({ test_event_id: '', result: '', description: '' });
+        setError('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to delete record');
+      }
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      setError('Error deleting record');
+    }
+  };
+
   // Phone number formatting functions (same as Login.js)
   const validatePhoneNumber = (phone) => {
     // Remove all non-digit characters
@@ -960,22 +1000,44 @@ const Profile = () => {
                     rows="3"
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
-                    onClick={() => {
-                      setShowRecordModal(false);
-                      setEditingRecordId(null);
-                      setRecordForm({ test_event_id: '', result: '', description: '' });
-                      setError('');
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    {editingRecordId ? 'Update Result' : 'Create Result'}
-                  </button>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
+                  <div>
+                    {editingRecordId && (
+                      <button 
+                        type="button" 
+                        onClick={deleteRecord}
+                        style={{
+                          background: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 500
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={() => {
+                        setShowRecordModal(false);
+                        setEditingRecordId(null);
+                        setRecordForm({ test_event_id: '', result: '', description: '' });
+                        setError('');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      {editingRecordId ? 'Update Result' : 'Create Result'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
