@@ -915,40 +915,6 @@ const WorkoutDetail = () => {
           <div className="workout-header">
             <div className="workout-title-section">
               <h1 className="workout-title">{workout.title}</h1>
-              {/* Edit and Delete buttons for workout author or executives */}
-              {(() => {
-                const canEdit = currentUser.id === workout.user_id || currentUser.role === 'exec' || currentUser.role === 'administrator';
-                console.log('🔍 Edit button permission check:', {
-                  currentUserId: currentUser.id,
-                  workoutUserId: workout.user_id,
-                  currentUserRole: currentUser.role,
-                  isAuthor: currentUser.id === workout.user_id,
-                  isExec: currentUser.role === 'exec',
-                  isAdmin: currentUser.role === 'administrator',
-                  canEdit: canEdit
-                });
-                return canEdit;
-              })() && (
-                <div className="workout-actions-admin">
-                  <button 
-                    className="edit-btn"
-                    onClick={() => {
-                      startEdit(workout);
-                      setEditMode(true);
-                    }}
-                    disabled={editMode}
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button 
-                    className="delete-btn"
-                    onClick={handleDeleteWorkout}
-                    disabled={editMode}
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              )}
             </div>
             <div className="workout-author">
               <div className="author-info">
@@ -1549,6 +1515,35 @@ const WorkoutDetail = () => {
             </>
           )}
         </div>
+
+        {/* Edit/Delete actions for workout author or exec/admin - bottom right */}
+        {(() => {
+          const canEdit =
+            currentUser.id === workout.user_id ||
+            currentUser.role === 'exec' ||
+            currentUser.role === 'administrator';
+          return canEdit;
+        })() && (
+          <div className="workout-actions-admin-bottom">
+            <button
+              className="edit-btn"
+              onClick={() => {
+                startEdit(workout);
+                setEditMode(true);
+              }}
+              disabled={editMode}
+            >
+              ✏️ Edit
+            </button>
+            <button
+              className="delete-btn"
+              onClick={handleDeleteWorkout}
+              disabled={editMode}
+            >
+              🗑️ Delete
+            </button>
+          </div>
+        )}
 
         <div className="comments-section">
           <h2>Comments ({comments.length})</h2>
