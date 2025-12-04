@@ -876,7 +876,12 @@ const WorkoutDetail = () => {
         loadWorkoutDetails();
       } else {
         const error = await response.json();
-        showError(`Failed to add result: ${error.error}`);
+        // Check for duplicate record error
+        if (error.error === 'duplicate_record') {
+          showError(error.message || 'Whoops! You already have a result for this test event. Please edit that one instead.');
+        } else {
+          showError(`Failed to add result: ${error.error}`);
+        }
       }
     } catch (error) {
       console.error('Error adding record:', error);

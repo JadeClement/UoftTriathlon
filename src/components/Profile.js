@@ -24,6 +24,7 @@ const Profile = () => {
   const [userRecords, setUserRecords] = useState([]);
   const [testEvents, setTestEvents] = useState([]);
   const [showRecordModal, setShowRecordModal] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState(null);
   const [recordForm, setRecordForm] = useState({
     test_event_id: '',
     result: '',
@@ -170,16 +171,75 @@ const Profile = () => {
           setUserRecords(data.records || []);
         }
         setShowRecordModal(false);
+        setEditingRecordId(null);
         setRecordForm({ test_event_id: '', result: '', description: '' });
         setError('');
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create record');
+        // Check for duplicate record error
+        if (errorData.error === 'duplicate_record') {
+          setError(errorData.message || 'Whoops! You already have a result for this test event. Please edit that one instead.');
+        } else {
+          setError(errorData.error || 'Failed to create record');
+        }
       }
     } catch (error) {
       console.error('Error creating record:', error);
-      setError(error.message);
+      setError(error.message || 'Error creating record');
     }
+  };
+
+  // Update existing record
+  const updateRecord = async () => {
+    if (!editingRecordId) return;
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/records/${editingRecordId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          result: recordForm.result,
+          notes: recordForm.description
+        })
+      });
+
+      if (response.ok) {
+        // Reload records
+        const recordsResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/records?user_id=${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (recordsResponse.ok) {
+          const data = await recordsResponse.json();
+          setUserRecords(data.records || []);
+        }
+        setShowRecordModal(false);
+        setEditingRecordId(null);
+        setRecordForm({ test_event_id: '', result: '', description: '' });
+        setError('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to update record');
+      }
+    } catch (error) {
+      console.error('Error updating record:', error);
+      setError('Error updating record');
+    }
+  };
+
+  // Handle edit button click
+  const handleEditRecord = (record) => {
+    setEditingRecordId(record.id);
+    setRecordForm({
+      test_event_id: record.test_event_id.toString(),
+      result: record.result || '',
+      description: record.notes || record.description || ''
+    });
+    setShowRecordModal(true);
+    setError('');
   };
 
   // Phone number formatting functions (same as Login.js)
@@ -794,6 +854,7 @@ const Profile = () => {
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Workout</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -810,7 +871,24 @@ const Profile = () => {
                         </td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.test_event_workout || '-'}</td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.result || '-'}</td>
-                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.description || '-'}</td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.notes || record.description || '-'}</td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <button
+                            onClick={() => handleEditRecord(record)}
+                            style={{
+                              background: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              padding: '0.375rem 0.75rem',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem',
+                              fontWeight: 500
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -826,13 +904,13 @@ const Profile = () => {
         {showRecordModal && (
           <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div className="modal" style={{ background: 'white', padding: '2rem', borderRadius: '12px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
-              <h2 style={{ marginTop: 0 }}>New Result</h2>
+              <h2 style={{ marginTop: 0 }}>{editingRecordId ? 'Edit Result' : 'New Result'}</h2>
               {error && (
                 <div style={{ color: '#dc2626', marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', borderRadius: '4px' }}>
                   {error}
                 </div>
               )}
-              <form onSubmit={(e) => { e.preventDefault(); createRecord(); }}>
+              <form onSubmit={(e) => { e.preventDefault(); editingRecordId ? updateRecord() : createRecord(); }}>
                 <div className="form-group">
                   <label className="form-label">Test Event:</label>
                   <select
@@ -843,7 +921,8 @@ const Profile = () => {
                     }}
                     className="form-input"
                     required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                    disabled={!!editingRecordId}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px', opacity: editingRecordId ? 0.6 : 1 }}
                   >
                     <option value="">Select a test event...</option>
                     {testEvents.map(te => (
@@ -852,6 +931,7 @@ const Profile = () => {
                       </option>
                     ))}
                   </select>
+                  {editingRecordId && <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Test event cannot be changed when editing</small>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Result:</label>
@@ -886,6 +966,7 @@ const Profile = () => {
                     className="btn btn-secondary" 
                     onClick={() => {
                       setShowRecordModal(false);
+                      setEditingRecordId(null);
                       setRecordForm({ test_event_id: '', result: '', description: '' });
                       setError('');
                     }}
@@ -893,7 +974,7 @@ const Profile = () => {
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary">
-                    Create Result
+                    {editingRecordId ? 'Update Result' : 'Create Result'}
                   </button>
                 </div>
               </form>

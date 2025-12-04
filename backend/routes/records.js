@@ -96,6 +96,19 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
       }
     }
 
+    // Check if user already has a result for this test event
+    const existingRecord = await pool.query(
+      'SELECT id FROM records WHERE user_id = $1 AND test_event_id = $2',
+      [targetUserId, test_event_id]
+    );
+
+    if (existingRecord.rows.length > 0) {
+      return res.status(409).json({ 
+        error: 'duplicate_record',
+        message: 'Whoops! You already have a result for this test event. Please edit that one instead.'
+      });
+    }
+
     let insertResult;
 
     try {
