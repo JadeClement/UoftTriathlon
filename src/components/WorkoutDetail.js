@@ -813,9 +813,18 @@ const WorkoutDetail = () => {
       });
 
       if (response.ok) {
+        const data = await response.json().catch(() => null);
+
+        // Optimistically update local state so the UI reflects the new test event
+        if (data && data.testEvent) {
+          setTestEvent(data.testEvent);
+          setTestEventRecords([]);
+        }
+
         showSuccess('Test event created successfully!');
         setShowTestEventModal(false);
         setTestEventForm({ title: '', sport: 'run', date: '', workout: '' });
+        // Also reload from the backend to stay in sync
         loadWorkoutDetails();
       } else {
         const error = await response.json();
