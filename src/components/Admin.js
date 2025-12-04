@@ -3471,7 +3471,15 @@ const Admin = () => {
                   <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Loading workouts...</small>
                 )}
                 {!loadingWorkouts && testEventForm.sport && testEventForm.date && availableWorkouts.length === 0 && (
-                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>No workouts found for {testEventForm.sport} on {new Date(testEventForm.date).toLocaleDateString()}</small>
+                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>No workouts found for {testEventForm.sport} on {(() => {
+                    // Format date string directly to avoid timezone issues
+                    const dateStr = testEventForm.date;
+                    if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                      const [year, month, day] = dateStr.split('-');
+                      return `${month}/${day}/${year}`;
+                    }
+                    return new Date(testEventForm.date).toLocaleDateString();
+                  })()}</small>
                 )}
                 <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Optional: Link this test event to a specific workout</small>
               </div>
