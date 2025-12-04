@@ -126,6 +126,24 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
     const userRole = req.user.role;
     const isCoachOrAdmin = ['coach', 'administrator'].includes(userRole);
     
+    console.log('🔍 Fetching records for test event:', testEventResult.rows[0].id);
+    console.log('🔍 User ID:', userId, 'Role:', userRole, 'IsCoachOrAdmin:', isCoachOrAdmin);
+    
+    // Check if results_public column exists
+    let hasResultsPublicColumn = true;
+    try {
+      const columnCheck = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'results_public'
+      `);
+      hasResultsPublicColumn = columnCheck.rows.length > 0;
+      console.log('🔍 results_public column exists:', hasResultsPublicColumn);
+    } catch (err) {
+      console.warn('⚠️ Error checking for results_public column:', err.message);
+      hasResultsPublicColumn = false;
+    }
+    
     let recordsResult;
     try {
       let whereClause = `WHERE r.test_event_id = $1`;
@@ -133,50 +151,27 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
       
       if (!isCoachOrAdmin) {
         // For regular members: show results from users with results_public=true OR their own results
-        whereClause = `WHERE r.test_event_id = $1 AND (u.results_public = true OR r.user_id = $2)`;
+        if (hasResultsPublicColumn) {
+          // Use COALESCE to handle NULL values (treat NULL as false)
+          whereClause = `WHERE r.test_event_id = $1 AND (COALESCE(u.results_public, false) = true OR r.user_id = $2)`;
+        } else {
+          // Column doesn't exist yet - show only user's own results
+          whereClause = `WHERE r.test_event_id = $1 AND r.user_id = $2`;
+        }
         params.push(userId);
+        console.log('🔍 Filtering for regular member - showing public results or own results');
+      } else {
+        console.log('🔍 Coach/Admin - showing all results');
       }
       
-      recordsResult = await pool.query(`
-        SELECT 
-          r.id,
-          r.user_id,
-          r.test_event_id,
-          r.title,
-          r.result,
-          r.notes,
-          r.created_at,
-          r.updated_at,
-          r.created_by,
-          u.name as user_name,
-          u.email as user_email,
-          u.results_public,
-          creator.name as created_by_name
-        FROM records r
-        JOIN users u ON r.user_id = u.id
-        LEFT JOIN users creator ON r.created_by = creator.id
-        ${whereClause}
-        ORDER BY r.created_at DESC
-      `, params);
-    } catch (error) {
-      // If 'notes' column doesn't exist, try 'description' instead
-      if (error.code === '42703') {
-        let whereClause = `WHERE r.test_event_id = $1`;
-        const params = [testEventResult.rows[0].id];
-        
-        if (!isCoachOrAdmin) {
-          whereClause = `WHERE r.test_event_id = $1 AND (u.results_public = true OR r.user_id = $2)`;
-          params.push(userId);
-        }
-        
-        recordsResult = await pool.query(`
-          SELECT 
+      const selectClause = hasResultsPublicColumn 
+        ? `SELECT 
             r.id,
             r.user_id,
             r.test_event_id,
             r.title,
             r.result,
-            r.description as notes,
+            r.notes,
             r.created_at,
             r.updated_at,
             r.created_by,
@@ -186,7 +181,89 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
             creator.name as created_by_name
           FROM records r
           JOIN users u ON r.user_id = u.id
-          LEFT JOIN users creator ON r.created_by = creator.id
+          LEFT JOIN users creator ON r.created_by = creator.id`
+        : `SELECT 
+            r.id,
+            r.user_id,
+            r.test_event_id,
+            r.title,
+            r.result,
+            r.notes,
+            r.created_at,
+            r.updated_at,
+            r.created_by,
+            u.name as user_name,
+            u.email as user_email,
+            creator.name as created_by_name
+          FROM records r
+          JOIN users u ON r.user_id = u.id
+          LEFT JOIN users creator ON r.created_by = creator.id`;
+      
+      recordsResult = await pool.query(`
+        ${selectClause}
+        ${whereClause}
+        ORDER BY r.created_at DESC
+      `, params);
+      
+      console.log('🔍 Records query returned:', recordsResult.rows.length, 'records');
+      if (recordsResult.rows.length > 0) {
+        console.log('🔍 Sample record user results_public values:', recordsResult.rows.slice(0, 3).map(r => ({ user_id: r.user_id, user_name: r.user_name, results_public: r.results_public })));
+      }
+    } catch (error) {
+      // If 'notes' column doesn't exist, try 'description' instead
+      if (error.code === '42703') {
+        let whereClause = `WHERE r.test_event_id = $1`;
+        const params = [testEventResult.rows[0].id];
+        
+        if (!isCoachOrAdmin) {
+          // For regular members: show results from users with results_public=true OR their own results
+          if (hasResultsPublicColumn) {
+            // Use COALESCE to handle NULL values (treat NULL as false)
+            whereClause = `WHERE r.test_event_id = $1 AND (COALESCE(u.results_public, false) = true OR r.user_id = $2)`;
+          } else {
+            // Column doesn't exist yet - show only user's own results
+            whereClause = `WHERE r.test_event_id = $1 AND r.user_id = $2`;
+          }
+          params.push(userId);
+        }
+        
+        const selectClause = hasResultsPublicColumn
+          ? `SELECT 
+              r.id,
+              r.user_id,
+              r.test_event_id,
+              r.title,
+              r.result,
+              r.description as notes,
+              r.created_at,
+              r.updated_at,
+              r.created_by,
+              u.name as user_name,
+              u.email as user_email,
+              u.results_public,
+              creator.name as created_by_name
+            FROM records r
+            JOIN users u ON r.user_id = u.id
+            LEFT JOIN users creator ON r.created_by = creator.id`
+          : `SELECT 
+              r.id,
+              r.user_id,
+              r.test_event_id,
+              r.title,
+              r.result,
+              r.description as notes,
+              r.created_at,
+              r.updated_at,
+              r.created_by,
+              u.name as user_name,
+              u.email as user_email,
+              creator.name as created_by_name
+            FROM records r
+            JOIN users u ON r.user_id = u.id
+            LEFT JOIN users creator ON r.created_by = creator.id`;
+        
+        recordsResult = await pool.query(`
+          ${selectClause}
           ${whereClause}
           ORDER BY r.created_at DESC
         `, params);
