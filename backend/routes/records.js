@@ -75,7 +75,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
 // Create new record
 router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
-    const { test_event_id, title, result, notes, user_id } = req.body;
+    const { test_event_id, title, result, notes, user_id, result_fields } = req.body;
 
     if (!test_event_id || !title) {
       return res.status(400).json({ error: 'test_event_id and title are required' });
@@ -112,21 +112,46 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
 
     let insertResult;
 
+    // Parse result_fields if it's a string (from JSON)
+    let parsedResultFields = null;
+    if (result_fields) {
+      try {
+        parsedResultFields = typeof result_fields === 'string' ? JSON.parse(result_fields) : result_fields;
+      } catch (e) {
+        console.warn('Invalid result_fields JSON, storing as null:', e);
+        parsedResultFields = null;
+      }
+    }
+
     try {
       // Primary path: databases that use the new "notes" column
       insertResult = await pool.query(`
-        INSERT INTO records (user_id, test_event_id, title, result, notes, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO records (user_id, test_event_id, title, result, notes, result_fields, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
-      `, [targetUserId, test_event_id, title, result || null, notes || null, req.user.id]);
+      `, [targetUserId, test_event_id, title, result || null, notes || null, parsedResultFields ? JSON.stringify(parsedResultFields) : null, req.user.id]);
     } catch (err) {
       // Backwards-compat: some databases may still have "description" instead of "notes"
       if (err.code === '42703') { // undefined_column
-        insertResult = await pool.query(`
-          INSERT INTO records (user_id, test_event_id, title, result, description, created_by)
-          VALUES ($1, $2, $3, $4, $5, $6)
-          RETURNING *
-        `, [targetUserId, test_event_id, title, result || null, notes || null, req.user.id]);
+        // Check if result_fields column exists
+        const hasResultFields = await pool.query(`
+          SELECT column_name FROM information_schema.columns 
+          WHERE table_name = 'records' AND column_name = 'result_fields'
+        `);
+        
+        if (hasResultFields.rows.length > 0) {
+          insertResult = await pool.query(`
+            INSERT INTO records (user_id, test_event_id, title, result, description, result_fields, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+          `, [targetUserId, test_event_id, title, result || null, notes || null, parsedResultFields ? JSON.stringify(parsedResultFields) : null, req.user.id]);
+        } else {
+          insertResult = await pool.query(`
+            INSERT INTO records (user_id, test_event_id, title, result, description, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+          `, [targetUserId, test_event_id, title, result || null, notes || null, req.user.id]);
+        }
       } else {
         throw err;
       }
@@ -222,6 +247,18 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
           rebuiltUpdates.push(`notes = $${idx}`);
           rebuiltValues.push(notes);
         }
+        if (result_fields !== undefined) {
+          idx++;
+          let parsedResultFields = null;
+          try {
+            parsedResultFields = typeof result_fields === 'string' ? JSON.parse(result_fields) : result_fields;
+          } catch (e) {
+            console.warn('Invalid result_fields JSON, storing as null:', e);
+            parsedResultFields = null;
+          }
+          rebuiltUpdates.push(`result_fields = $${idx}`);
+          rebuiltValues.push(parsedResultFields ? JSON.stringify(parsedResultFields) : null);
+        }
         idx++;
         rebuiltUpdates.push(`updated_at = CURRENT_TIMESTAMP`);
         rebuiltValues.push(id);
@@ -254,6 +291,18 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
           idx++;
           rebuiltUpdates.push(`description = $${idx}`);
           rebuiltValues.push(notes);
+        }
+        if (result_fields !== undefined) {
+          idx++;
+          let parsedResultFields = null;
+          try {
+            parsedResultFields = typeof result_fields === 'string' ? JSON.parse(result_fields) : result_fields;
+          } catch (e) {
+            console.warn('Invalid result_fields JSON, storing as null:', e);
+            parsedResultFields = null;
+          }
+          rebuiltUpdates.push(`result_fields = $${idx}`);
+          rebuiltValues.push(parsedResultFields ? JSON.stringify(parsedResultFields) : null);
         }
         idx++;
         rebuiltUpdates.push(`updated_at = CURRENT_TIMESTAMP`);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getFieldsForSport } from '../config/sportFields';
 import './Admin.css';
 
 const Admin = () => {
@@ -29,7 +30,8 @@ const Admin = () => {
     title: '',
     result: '',
     description: '',
-    user_id: null
+    user_id: null,
+    result_fields: {}
   });
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userSearchResults, setUserSearchResults] = useState([]);
@@ -1020,13 +1022,14 @@ const Admin = () => {
           ...recordForm,
           test_event_id: selectedTestEvent.id,
           title: recordForm.title || selectedTestEvent.title,
-          user_id: recordForm.user_id || currentUser?.id
+          user_id: recordForm.user_id || currentUser?.id,
+          result_fields: recordForm.result_fields || {}
         })
       });
       if (response.ok) {
         showNotification('Record created successfully', 'success');
         setShowRecordModal(false);
-        setRecordForm({ title: '', result: '', description: '', user_id: null });
+        setRecordForm({ title: '', result: '', description: '', user_id: null, result_fields: {} });
         setUserSearchQuery('');
         setSelectedUser(null);
         await loadTestEventRecords(selectedTestEvent.id);
@@ -2812,7 +2815,7 @@ const Admin = () => {
                     <h2 style={{display: 'inline', marginLeft: '12px'}}>{selectedTestEvent.title}</h2>
                   </div>
                   <button className="btn btn-primary" onClick={() => {
-                    setRecordForm({ title: selectedTestEvent.title || '', result: '', description: '', user_id: null });
+                    setRecordForm({ title: selectedTestEvent.title || '', result: '', description: '', user_id: null, result_fields: {} });
                     setUserSearchQuery('');
                     setSelectedUser(null);
                     setShowUserDropdown(false);
@@ -2839,15 +2842,47 @@ const Admin = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {testEventRecords.map(r => (
-                        <tr key={r.id}>
-                          <td>{r.user_name || r.user_email}</td>
-                          <td>{r.title}</td>
-                          <td>{r.result || '-'}</td>
-                          <td style={{maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{r.description || '-'}</td>
-                          <td>{new Date(r.created_at).toLocaleDateString()}</td>
-                        </tr>
-                      ))}
+                      {testEventRecords.map(r => {
+                        // Parse result_fields if available
+                        let resultFields = {};
+                        if (r.result_fields) {
+                          try {
+                            resultFields = typeof r.result_fields === 'string' 
+                              ? JSON.parse(r.result_fields) 
+                              : r.result_fields;
+                          } catch (e) {
+                            resultFields = {};
+                          }
+                        }
+                        const sport = selectedTestEvent?.sport;
+                        const fields = sport ? getFieldsForSport(sport) : [];
+                        const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
+                        
+                        return (
+                          <tr key={r.id}>
+                            <td>{r.user_name || r.user_email}</td>
+                            <td>{r.title}</td>
+                            <td>
+                              {r.result || '-'}
+                              {hasFields && (
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                                  {fields.map(field => {
+                                    const value = resultFields[field.key];
+                                    if (value === null || value === undefined || value === '') return null;
+                                    return (
+                                      <div key={field.key} style={{ marginTop: '0.25rem' }}>
+                                        <strong>{field.label}:</strong> {Array.isArray(value) ? value.join(', ') : value}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{r.description || r.notes || '-'}</td>
+                            <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                          </tr>
+                        );
+                      })}
                       {testEventRecords.length === 0 && (
                         <tr><td colSpan="5" style={{textAlign:'center', color:'#6b7280'}}>No records yet</td></tr>
                       )}
@@ -3595,6 +3630,90 @@ const Admin = () => {
                 />
                 <small>Defaults to test event title</small>
               </div>
+              
+              {/* Sport-specific fields */}
+              {selectedTestEvent && (() => {
+                const sport = selectedTestEvent.sport;
+                const sportFields = sport ? getFieldsForSport(sport) : [];
+                
+                if (sportFields.length > 0) {
+                  return (
+                    <div className="form-group" style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                      <label style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#374151', display: 'block' }}>
+                        {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
+                      </label>
+                      {sportFields.map(field => (
+                        <div key={field.key} style={{ marginBottom: '1rem' }}>
+                          <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                            {field.label}:
+                          </label>
+                          {field.type === 'array' ? (
+                            <input
+                              type="text"
+                              value={Array.isArray(recordForm.result_fields?.[field.key]) 
+                                ? recordForm.result_fields[field.key].join(', ') 
+                                : (recordForm.result_fields?.[field.key] || '')}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const arrayValue = value ? value.split(',').map(v => v.trim()).filter(v => v) : [];
+                                setRecordForm({
+                                  ...recordForm,
+                                  result_fields: {
+                                    ...recordForm.result_fields,
+                                    [field.key]: arrayValue.length > 0 ? arrayValue : null
+                                  }
+                                });
+                              }}
+                              placeholder={field.placeholder}
+                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                          ) : field.type === 'number' ? (
+                            <input
+                              type="number"
+                              value={recordForm.result_fields?.[field.key] || ''}
+                              onChange={(e) => {
+                                const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                                setRecordForm({
+                                  ...recordForm,
+                                  result_fields: {
+                                    ...recordForm.result_fields,
+                                    [field.key]: value
+                                  }
+                                });
+                              }}
+                              placeholder={field.placeholder}
+                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={recordForm.result_fields?.[field.key] || ''}
+                              onChange={(e) => {
+                                setRecordForm({
+                                  ...recordForm,
+                                  result_fields: {
+                                    ...recordForm.result_fields,
+                                    [field.key]: e.target.value || null
+                                  }
+                                });
+                              }}
+                              placeholder={field.placeholder}
+                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                          )}
+                          {field.helpText && (
+                            <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem', fontSize: '0.75rem' }}>
+                              {field.helpText}
+                            </small>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
               <div className="form-group">
                 <label>Result:</label>
                 <textarea
@@ -3617,7 +3736,7 @@ const Admin = () => {
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => {
                   setShowRecordModal(false);
-                  setRecordForm({ title: '', result: '', description: '', user_id: null });
+                  setRecordForm({ title: '', result: '', description: '', user_id: null, result_fields: {} });
                   setUserSearchQuery('');
                   setSelectedUser(null);
                   setShowUserDropdown(false);

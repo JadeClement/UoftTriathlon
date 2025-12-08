@@ -292,12 +292,24 @@ async function initializeDatabase() {
         title VARCHAR(255) NOT NULL,
         result TEXT,
         description TEXT,
+        result_fields JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
       )
     `);
     console.log('✅ Records table created');
+
+    // Add result_fields column if it doesn't exist (migration for existing databases)
+    try {
+      await pool.query(`
+        ALTER TABLE records
+        ADD COLUMN IF NOT EXISTS result_fields JSONB
+      `);
+      console.log('✅ result_fields column added to records table (or already exists)');
+    } catch (error) {
+      console.log('ℹ️  result_fields column may already exist in records table');
+    }
 
     // Add results_public column to users table if it doesn't exist (migration for existing databases)
     try {

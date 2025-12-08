@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getFieldsForSport } from '../config/sportFields';
 import './Profile.css';
 
 const Profile = () => {
@@ -28,7 +29,8 @@ const Profile = () => {
   const [recordForm, setRecordForm] = useState({
     test_event_id: '',
     result: '',
-    description: ''
+    description: '',
+    result_fields: {}
   });
   const [resultsPublic, setResultsPublic] = useState(false); // User's privacy setting for all results
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,7 @@ const Profile = () => {
 
     loadTeamMembers();
   }, []);
-
+  
   // Load user's results_public setting
   useEffect(() => {
     if (!isUserProfile || !currentUser?.id) return;
@@ -166,7 +168,8 @@ const Profile = () => {
           test_event_id: parseInt(recordForm.test_event_id),
           title: selectedTestEvent?.title || '',
           result: recordForm.result,
-          notes: recordForm.description
+          notes: recordForm.description,
+          result_fields: recordForm.result_fields || {}
         })
       });
       
@@ -181,7 +184,7 @@ const Profile = () => {
         }
         setShowRecordModal(false);
         setEditingRecordId(null);
-        setRecordForm({ test_event_id: '', result: '', description: '' });
+        setRecordForm({ test_event_id: '', result: '', description: '', result_fields: {} });
         setError('');
       } else {
         const errorData = await response.json();
@@ -212,7 +215,8 @@ const Profile = () => {
         },
         body: JSON.stringify({
           result: recordForm.result,
-          notes: recordForm.description
+          notes: recordForm.description,
+          result_fields: recordForm.result_fields || {}
         })
       });
 
@@ -227,7 +231,7 @@ const Profile = () => {
         }
         setShowRecordModal(false);
         setEditingRecordId(null);
-        setRecordForm({ test_event_id: '', result: '', description: '' });
+        setRecordForm({ test_event_id: '', result: '', description: '', result_fields: {} });
         setError('');
       } else {
         const errorData = await response.json();
@@ -242,10 +246,23 @@ const Profile = () => {
   // Handle edit button click
   const handleEditRecord = (record) => {
     setEditingRecordId(record.id);
+    // Parse result_fields if it's a string
+    let parsedResultFields = {};
+    if (record.result_fields) {
+      try {
+        parsedResultFields = typeof record.result_fields === 'string' 
+          ? JSON.parse(record.result_fields) 
+          : record.result_fields;
+      } catch (e) {
+        console.warn('Error parsing result_fields:', e);
+        parsedResultFields = {};
+      }
+    }
     setRecordForm({
       test_event_id: record.test_event_id.toString(),
       result: record.result || '',
-      description: record.notes || record.description || ''
+      description: record.notes || record.description || '',
+      result_fields: parsedResultFields
     });
     setShowRecordModal(true);
     setError('');
@@ -279,7 +296,7 @@ const Profile = () => {
         }
         setShowRecordModal(false);
         setEditingRecordId(null);
-        setRecordForm({ test_event_id: '', result: '', description: '' });
+        setRecordForm({ test_event_id: '', result: '', description: '', result_fields: {} });
         setError('');
       } else {
         const errorData = await response.json();
@@ -932,7 +949,7 @@ const Profile = () => {
                   className="btn btn-primary" 
                   onClick={() => {
                     setShowRecordModal(true);
-                    setRecordForm({ test_event_id: '', result: '', description: '' });
+                    setRecordForm({ test_event_id: '', result: '', description: '', result_fields: {} });
                     setError('');
                   }}
                 >
@@ -968,7 +985,42 @@ const Profile = () => {
                           {record.test_event_date ? new Date(record.test_event_date).toLocaleDateString() : '-'}
                         </td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.test_event_workout || '-'}</td>
-                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.result || '-'}</td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          {record.result || '-'}
+                          {(() => {
+                            // Parse and display result_fields if available
+                            let resultFields = {};
+                            if (record.result_fields) {
+                              try {
+                                resultFields = typeof record.result_fields === 'string' 
+                                  ? JSON.parse(record.result_fields) 
+                                  : record.result_fields;
+                              } catch (e) {
+                                resultFields = {};
+                              }
+                            }
+                            const sport = record.test_event_sport || record.sport;
+                            const fields = sport ? getFieldsForSport(sport) : [];
+                            const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
+                            
+                            if (hasFields) {
+                              return (
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                                  {fields.map(field => {
+                                    const value = resultFields[field.key];
+                                    if (value === null || value === undefined || value === '') return null;
+                                    return (
+                                      <div key={field.key} style={{ marginTop: '0.25rem' }}>
+                                        <strong>{field.label}:</strong> {Array.isArray(value) ? value.join(', ') : value}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.notes || record.description || '-'}</td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>
                           <button
@@ -1031,6 +1083,97 @@ const Profile = () => {
                   </select>
                   {editingRecordId && <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Test event cannot be changed when editing</small>}
                 </div>
+                
+                {/* Sport-specific fields */}
+                {(() => {
+                  const selectedTestEvent = testEvents.find(te => te.id === parseInt(recordForm.test_event_id));
+                  const sport = selectedTestEvent?.sport;
+                  const sportFields = sport ? getFieldsForSport(sport) : [];
+                  
+                  if (sportFields.length > 0) {
+                    return (
+                      <div className="form-group" style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#374151' }}>
+                          {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
+                        </label>
+                        {sportFields.map(field => (
+                          <div key={field.key} style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                              {field.label}:
+                            </label>
+                            {field.type === 'array' ? (
+                              <input
+                                type="text"
+                                value={Array.isArray(recordForm.result_fields?.[field.key]) 
+                                  ? recordForm.result_fields[field.key].join(', ') 
+                                  : (recordForm.result_fields?.[field.key] || '')}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  const arrayValue = value ? value.split(',').map(v => v.trim()).filter(v => v) : [];
+                                  setRecordForm({
+                                    ...recordForm,
+                                    result_fields: {
+                                      ...recordForm.result_fields,
+                                      [field.key]: arrayValue.length > 0 ? arrayValue : null
+                                    }
+                                  });
+                                  setError('');
+                                }}
+                                placeholder={field.placeholder}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                              />
+                            ) : field.type === 'number' ? (
+                              <input
+                                type="number"
+                                value={recordForm.result_fields?.[field.key] || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                                  setRecordForm({
+                                    ...recordForm,
+                                    result_fields: {
+                                      ...recordForm.result_fields,
+                                      [field.key]: value
+                                    }
+                                  });
+                                  setError('');
+                                }}
+                                placeholder={field.placeholder}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                              />
+                            ) : (
+                              <input
+                                type="text"
+                                value={recordForm.result_fields?.[field.key] || ''}
+                                onChange={(e) => {
+                                  setRecordForm({
+                                    ...recordForm,
+                                    result_fields: {
+                                      ...recordForm.result_fields,
+                                      [field.key]: e.target.value || null
+                                    }
+                                  });
+                                  setError('');
+                                }}
+                                placeholder={field.placeholder}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                              />
+                            )}
+                            {field.helpText && (
+                              <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem', fontSize: '0.75rem' }}>
+                                {field.helpText}
+                              </small>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+                
                 <div className="form-group">
                   <label className="form-label">Result:</label>
                   <textarea
@@ -1086,7 +1229,7 @@ const Profile = () => {
                     onClick={() => {
                       setShowRecordModal(false);
                       setEditingRecordId(null);
-                      setRecordForm({ test_event_id: '', result: '', description: '' });
+                      setRecordForm({ test_event_id: '', result: '', description: '', result_fields: {} });
                       setError('');
                     }}
                     >
