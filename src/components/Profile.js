@@ -987,59 +987,119 @@ const Profile = () => {
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.test_event_workout || '-'}</td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>
                           {record.result || '-'}
-                          {(() => {
-                            // Parse and display result_fields if available
-                            let resultFields = {};
-                            if (record.result_fields) {
-                              try {
-                                resultFields = typeof record.result_fields === 'string' 
-                                  ? JSON.parse(record.result_fields) 
-                                  : record.result_fields;
-                              } catch (e) {
-                                resultFields = {};
-                              }
-                            }
-                            const sport = record.test_event_sport || record.sport;
-                            const fields = sport ? getFieldsForSport(sport) : [];
-                            const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
-                            
-                            if (hasFields) {
-                              return (
-                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
-                                  {fields.map(field => {
-                                    const value = resultFields[field.key];
-                                    if (value === null || value === undefined || value === '') return null;
-                                    return (
-                                      <div key={field.key} style={{ marginTop: '0.25rem' }}>
-                                        <strong>{field.label}:</strong> {Array.isArray(value) ? value.join(', ') : value}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
                         </td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>{record.notes || record.description || '-'}</td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>
-                          <button
-                            onClick={() => handleEditRecord(record)}
-                            style={{
-                              background: '#10b981',
-                              color: 'white',
-                              border: 'none',
-                              padding: '0.375rem 0.75rem',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '0.875rem',
-                              fontWeight: 500
-                            }}
-                          >
-                            ✏️ Edit
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => handleEditRecord(record)}
+                              style={{
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.375rem 0.75rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem',
+                                fontWeight: 500
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            {(() => {
+                              // Parse result_fields to check if there are any sport-specific details
+                              let resultFields = {};
+                              if (record.result_fields) {
+                                try {
+                                  resultFields = typeof record.result_fields === 'string' 
+                                    ? JSON.parse(record.result_fields) 
+                                    : record.result_fields;
+                                } catch (e) {
+                                  resultFields = {};
+                                }
+                              }
+                              const hasFields = Object.keys(resultFields).length > 0 && Object.values(resultFields).some(v => v !== null && v !== undefined && v !== '');
+                              const isExpanded = expandedRecordIds.has(record.id);
+                              
+                              if (hasFields) {
+                                return (
+                                  <button
+                                    onClick={() => {
+                                      const newExpanded = new Set(expandedRecordIds);
+                                      if (isExpanded) {
+                                        newExpanded.delete(record.id);
+                                      } else {
+                                        newExpanded.add(record.id);
+                                      }
+                                      setExpandedRecordIds(newExpanded);
+                                    }}
+                                    style={{
+                                      background: isExpanded ? '#6b7280' : '#3b82f6',
+                                      color: 'white',
+                                      border: 'none',
+                                      padding: '0.375rem 0.75rem',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.875rem',
+                                      fontWeight: 500
+                                    }}
+                                  >
+                                    {isExpanded ? '▼ Collapse' : '▶ Expand'}
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
                         </td>
                       </tr>
+                      {expandedRecordIds.has(record.id) && (() => {
+                        // Parse result_fields and display sport-specific details
+                        let resultFields = {};
+                        if (record.result_fields) {
+                          try {
+                            resultFields = typeof record.result_fields === 'string' 
+                              ? JSON.parse(record.result_fields) 
+                              : record.result_fields;
+                          } catch (e) {
+                            resultFields = {};
+                          }
+                        }
+                        const sport = record.test_event_sport || record.sport;
+                        const fields = sport ? getFieldsForSport(sport) : [];
+                        const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
+                        
+                        if (hasFields) {
+                          return (
+                            <tr key={`${record.id}-expanded`} style={{ background: '#f8fafc' }}>
+                              <td colSpan="7" style={{ padding: '1rem' }}>
+                                <div style={{ padding: '1rem', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                                  <h4 style={{ margin: '0 0 0.75rem 0', color: '#374151', fontSize: '0.875rem', fontWeight: 600 }}>
+                                    {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
+                                  </h4>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                    {fields.map(field => {
+                                      const value = resultFields[field.key];
+                                      if (value === null || value === undefined || value === '') return null;
+                                      return (
+                                        <div key={field.key} style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px' }}>
+                                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                            {field.label}:
+                                          </div>
+                                          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
+                                            {Array.isArray(value) ? value.join(', ') : value}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return null;
+                      })()}
                     ))}
                   </tbody>
                 </table>
