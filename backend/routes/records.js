@@ -20,6 +20,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
         r.title,
         r.result,
         r.${notesColumn} as notes,
+        r.result_fields,
         r.created_at,
         r.updated_at,
         r.created_by,
@@ -57,9 +58,46 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
       result = await pool.query(query, params);
     } catch (err) {
       if (err.code === '42703') {
-        // Fallback: older DBs might have "description" instead
-        let query = buildBaseQuery('description') + whereClause + orderClause;
-        result = await pool.query(query, params);
+        // Fallback: older DBs might have "description" instead of "notes"
+        // Try with description, but still include result_fields
+        try {
+          let query = buildBaseQuery('description') + whereClause + orderClause;
+          result = await pool.query(query, params);
+        } catch (fallbackErr) {
+          // If result_fields column doesn't exist either, select without it
+          if (fallbackErr.code === '42703' && fallbackErr.message.includes('result_fields')) {
+            const buildBaseQueryNoResultFields = (notesColumn) => `
+              SELECT 
+                r.id,
+                r.user_id,
+                r.test_event_id,
+                r.title,
+                r.result,
+                r.${notesColumn} as notes,
+                r.created_at,
+                r.updated_at,
+                r.created_by,
+                u.name as user_name,
+                u.email as user_email,
+                u.results_public,
+                creator.name as created_by_name,
+                te.title as test_event_title,
+                te.sport as test_event_sport,
+                te.date as test_event_date,
+                te.workout as test_event_workout
+              FROM records r
+              JOIN users u ON r.user_id = u.id
+              LEFT JOIN users creator ON r.created_by = creator.id
+              JOIN test_events te ON r.test_event_id = te.id
+            `;
+            let query = buildBaseQueryNoResultFields('description') + whereClause + orderClause;
+            result = await pool.query(query, params);
+            // Add null result_fields to each row for backwards compatibility
+            result.rows = result.rows.map(row => ({ ...row, result_fields: null }));
+          } else {
+            throw fallbackErr;
+          }
+        }
       } else {
         throw err;
       }
