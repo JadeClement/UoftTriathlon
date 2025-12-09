@@ -118,13 +118,20 @@ const Profile = () => {
           const data = await response.json();
           // Parse result_fields for each record if they're strings
           const parsedRecords = (data.records || []).map(record => {
-            if (record.result_fields && typeof record.result_fields === 'string') {
+            if (record.result_fields) {
               try {
-                record.result_fields = JSON.parse(record.result_fields);
+                // Handle both string and already-parsed object cases
+                if (typeof record.result_fields === 'string') {
+                  record.result_fields = JSON.parse(record.result_fields);
+                }
+                // If it's already an object, keep it as is
+                console.log('📊 Record', record.id, 'result_fields:', record.result_fields, 'type:', typeof record.result_fields);
               } catch (e) {
-                console.warn('Error parsing result_fields for record:', record.id, e);
+                console.warn('Error parsing result_fields for record:', record.id, e, 'Raw value:', record.result_fields);
                 record.result_fields = {};
               }
+            } else {
+              console.log('⚠️ Record', record.id, 'has no result_fields');
             }
             return record;
           });
@@ -195,13 +202,20 @@ const Profile = () => {
           const data = await recordsResponse.json();
           // Parse result_fields for each record if they're strings
           const parsedRecords = (data.records || []).map(record => {
-            if (record.result_fields && typeof record.result_fields === 'string') {
+            if (record.result_fields) {
               try {
-                record.result_fields = JSON.parse(record.result_fields);
+                // Handle both string and already-parsed object cases
+                if (typeof record.result_fields === 'string') {
+                  record.result_fields = JSON.parse(record.result_fields);
+                }
+                // If it's already an object, keep it as is
+                console.log('📊 Record', record.id, 'result_fields:', record.result_fields, 'type:', typeof record.result_fields);
               } catch (e) {
-                console.warn('Error parsing result_fields for record:', record.id, e);
+                console.warn('Error parsing result_fields for record:', record.id, e, 'Raw value:', record.result_fields);
                 record.result_fields = {};
               }
+            } else {
+              console.log('⚠️ Record', record.id, 'has no result_fields');
             }
             return record;
           });
@@ -254,13 +268,20 @@ const Profile = () => {
           const data = await recordsResponse.json();
           // Parse result_fields for each record if they're strings
           const parsedRecords = (data.records || []).map(record => {
-            if (record.result_fields && typeof record.result_fields === 'string') {
+            if (record.result_fields) {
               try {
-                record.result_fields = JSON.parse(record.result_fields);
+                // Handle both string and already-parsed object cases
+                if (typeof record.result_fields === 'string') {
+                  record.result_fields = JSON.parse(record.result_fields);
+                }
+                // If it's already an object, keep it as is
+                console.log('📊 Record', record.id, 'result_fields:', record.result_fields, 'type:', typeof record.result_fields);
               } catch (e) {
-                console.warn('Error parsing result_fields for record:', record.id, e);
+                console.warn('Error parsing result_fields for record:', record.id, e, 'Raw value:', record.result_fields);
                 record.result_fields = {};
               }
+            } else {
+              console.log('⚠️ Record', record.id, 'has no result_fields');
             }
             return record;
           });
@@ -340,13 +361,20 @@ const Profile = () => {
           const data = await recordsResponse.json();
           // Parse result_fields for each record if they're strings
           const parsedRecords = (data.records || []).map(record => {
-            if (record.result_fields && typeof record.result_fields === 'string') {
+            if (record.result_fields) {
               try {
-                record.result_fields = JSON.parse(record.result_fields);
+                // Handle both string and already-parsed object cases
+                if (typeof record.result_fields === 'string') {
+                  record.result_fields = JSON.parse(record.result_fields);
+                }
+                // If it's already an object, keep it as is
+                console.log('📊 Record', record.id, 'result_fields:', record.result_fields, 'type:', typeof record.result_fields);
               } catch (e) {
-                console.warn('Error parsing result_fields for record:', record.id, e);
+                console.warn('Error parsing result_fields for record:', record.id, e, 'Raw value:', record.result_fields);
                 record.result_fields = {};
               }
+            } else {
+              console.log('⚠️ Record', record.id, 'has no result_fields');
             }
             return record;
           });
@@ -1032,17 +1060,22 @@ const Profile = () => {
                   </thead>
                   <tbody>
                     {userRecords.map(record => {
-                      // Parse result_fields to check if there are any sport-specific details
+                      // result_fields should already be parsed when loading records
+                      // But handle both cases just in case
                       let resultFields = {};
                       if (record.result_fields) {
-                        try {
-                          resultFields = typeof record.result_fields === 'string' 
-                            ? JSON.parse(record.result_fields) 
-                            : record.result_fields;
-                        } catch (e) {
-                          resultFields = {};
+                        if (typeof record.result_fields === 'string') {
+                          try {
+                            resultFields = JSON.parse(record.result_fields);
+                          } catch (e) {
+                            console.warn('Error parsing result_fields in map:', e);
+                            resultFields = {};
+                          }
+                        } else {
+                          resultFields = record.result_fields;
                         }
                       }
+                      console.log('🔍 Record', record.id, 'title:', record.test_event_title || record.title, 'resultFields:', resultFields, 'keys:', Object.keys(resultFields), 'hasValues:', Object.values(resultFields).some(v => v !== null && v !== undefined && v !== ''));
                       const hasFields = Object.keys(resultFields).length > 0 && Object.values(resultFields).some(v => v !== null && v !== undefined && v !== '');
                       const isExpanded = expandedRecordIds.has(record.id);
                       const sport = record.test_event_sport || record.sport;
