@@ -26,6 +26,7 @@ const Profile = () => {
   const [testEvents, setTestEvents] = useState([]);
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState(null);
+  const [expandedRecordIds, setExpandedRecordIds] = useState(new Set()); // Track which records are expanded
   const [recordForm, setRecordForm] = useState({
     test_event_id: '',
     result: '',
