@@ -7,7 +7,10 @@ const pool = new Pool(
     ? {
         // Production (Railway) - use DATABASE_URL
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false },
+        max: 20, // Maximum number of clients in the pool
+        idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+        connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
       }
     : {
         // Local development - use local database
@@ -16,6 +19,9 @@ const pool = new Pool(
         database: 'uofttriathlon',
         password: '', // No password for local development
         port: 5432,
+        max: 20, // Maximum number of clients in the pool
+        idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+        connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
       }
 );
 
