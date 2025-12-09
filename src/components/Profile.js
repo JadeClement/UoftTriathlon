@@ -116,7 +116,19 @@ const Profile = () => {
         });
         if (response.ok) {
           const data = await response.json();
-          setUserRecords(data.records || []);
+          // Parse result_fields for each record if they're strings
+          const parsedRecords = (data.records || []).map(record => {
+            if (record.result_fields && typeof record.result_fields === 'string') {
+              try {
+                record.result_fields = JSON.parse(record.result_fields);
+              } catch (e) {
+                console.warn('Error parsing result_fields for record:', record.id, e);
+                record.result_fields = {};
+              }
+            }
+            return record;
+          });
+          setUserRecords(parsedRecords);
         }
       } catch (error) {
         console.error('Error loading user records:', error);
@@ -181,7 +193,19 @@ const Profile = () => {
         });
         if (recordsResponse.ok) {
           const data = await recordsResponse.json();
-          setUserRecords(data.records || []);
+          // Parse result_fields for each record if they're strings
+          const parsedRecords = (data.records || []).map(record => {
+            if (record.result_fields && typeof record.result_fields === 'string') {
+              try {
+                record.result_fields = JSON.parse(record.result_fields);
+              } catch (e) {
+                console.warn('Error parsing result_fields for record:', record.id, e);
+                record.result_fields = {};
+              }
+            }
+            return record;
+          });
+          setUserRecords(parsedRecords);
         }
         setShowRecordModal(false);
         setEditingRecordId(null);
@@ -228,7 +252,19 @@ const Profile = () => {
         });
         if (recordsResponse.ok) {
           const data = await recordsResponse.json();
-          setUserRecords(data.records || []);
+          // Parse result_fields for each record if they're strings
+          const parsedRecords = (data.records || []).map(record => {
+            if (record.result_fields && typeof record.result_fields === 'string') {
+              try {
+                record.result_fields = JSON.parse(record.result_fields);
+              } catch (e) {
+                console.warn('Error parsing result_fields for record:', record.id, e);
+                record.result_fields = {};
+              }
+            }
+            return record;
+          });
+          setUserRecords(parsedRecords);
         }
         setShowRecordModal(false);
         setEditingRecordId(null);
@@ -254,11 +290,20 @@ const Profile = () => {
         parsedResultFields = typeof record.result_fields === 'string' 
           ? JSON.parse(record.result_fields) 
           : record.result_fields;
+        console.log('📊 Parsed result_fields for editing:', parsedResultFields);
       } catch (e) {
-        console.warn('Error parsing result_fields:', e);
+        console.warn('Error parsing result_fields:', e, 'Raw value:', record.result_fields);
         parsedResultFields = {};
       }
+    } else {
+      console.log('⚠️ No result_fields found in record:', record);
     }
+    console.log('📝 Setting record form with:', {
+      test_event_id: record.test_event_id.toString(),
+      result: record.result || '',
+      description: record.notes || record.description || '',
+      result_fields: parsedResultFields
+    });
     setRecordForm({
       test_event_id: record.test_event_id.toString(),
       result: record.result || '',
@@ -293,7 +338,19 @@ const Profile = () => {
         });
         if (recordsResponse.ok) {
           const data = await recordsResponse.json();
-          setUserRecords(data.records || []);
+          // Parse result_fields for each record if they're strings
+          const parsedRecords = (data.records || []).map(record => {
+            if (record.result_fields && typeof record.result_fields === 'string') {
+              try {
+                record.result_fields = JSON.parse(record.result_fields);
+              } catch (e) {
+                console.warn('Error parsing result_fields for record:', record.id, e);
+                record.result_fields = {};
+              }
+            }
+            return record;
+          });
+          setUserRecords(parsedRecords);
         }
         setShowRecordModal(false);
         setEditingRecordId(null);
@@ -990,6 +1047,7 @@ const Profile = () => {
                       const isExpanded = expandedRecordIds.has(record.id);
                       const sport = record.test_event_sport || record.sport;
                       const fields = sport ? getFieldsForSport(sport) : [];
+                      const hasSportSpecificFields = fields.length > 0; // Check if this sport has specific fields defined
                       
                       return (
                         <React.Fragment key={record.id}>
@@ -1025,7 +1083,7 @@ const Profile = () => {
                                 >
                                   ✏️ Edit
                                 </button>
-                                {hasFields && (
+                                {hasSportSpecificFields && (
                                   <button
                                     onClick={() => {
                                       const newExpanded = new Set(expandedRecordIds);
