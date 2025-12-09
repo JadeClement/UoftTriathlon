@@ -1111,29 +1111,35 @@ const Profile = () => {
                               </div>
                             </td>
                           </tr>
-                          {isExpanded && hasFields && (
+                          {isExpanded && hasSportSpecificFields && (
                             <tr style={{ background: '#f8fafc' }}>
                               <td colSpan="7" style={{ padding: '1rem' }}>
                                 <div style={{ padding: '1rem', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                                   <h4 style={{ margin: '0 0 0.75rem 0', color: '#374151', fontSize: '0.875rem', fontWeight: 600 }}>
                                     {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
                                   </h4>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                    {fields.map(field => {
-                                      const value = resultFields[field.key];
-                                      if (value === null || value === undefined || value === '') return null;
-                                      return (
-                                        <div key={field.key} style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px' }}>
-                                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                                            {field.label}:
+                                  {hasFields ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                      {fields.map(field => {
+                                        const value = resultFields[field.key];
+                                        if (value === null || value === undefined || value === '') return null;
+                                        return (
+                                          <div key={field.key} style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px' }}>
+                                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                              {field.label}:
+                                            </div>
+                                            <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
+                                              {Array.isArray(value) ? value.join(', ') : value}
+                                            </div>
                                           </div>
-                                          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
-                                            {Array.isArray(value) ? value.join(', ') : value}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
+                                      No sport-specific details recorded yet. Click "Edit" to add them.
+                                    </p>
+                                  )}
                                 </div>
                               </td>
                             </tr>
