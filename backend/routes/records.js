@@ -103,6 +103,26 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
       }
     }
 
+    // Log sample records to debug result_fields
+    if (result.rows.length > 0) {
+      console.log('📊 GET /records - Sample record result_fields:', {
+        record_id: result.rows[0].id,
+        result_fields: result.rows[0].result_fields,
+        result_fields_type: typeof result.rows[0].result_fields,
+        result_fields_keys: result.rows[0].result_fields ? Object.keys(result.rows[0].result_fields) : 'null/undefined',
+        result_fields_stringified: JSON.stringify(result.rows[0].result_fields)
+      });
+      // Log all records
+      result.rows.forEach((row, idx) => {
+        console.log(`📊 Record ${idx + 1} (ID: ${row.id}):`, {
+          title: row.title,
+          result_fields: row.result_fields,
+          result_fields_type: typeof row.result_fields,
+          result_fields_keys: row.result_fields ? Object.keys(row.result_fields) : 'null/undefined'
+        });
+      });
+    }
+    
     res.json({ records: result.rows || [] });
   } catch (error) {
     console.error('Get records error:', error);
@@ -195,6 +215,12 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
       }
     }
 
+    console.log('📊 POST /records - Created record with result_fields:', {
+      record_id: insertResult.rows[0].id,
+      result_fields: insertResult.rows[0].result_fields,
+      result_fields_type: typeof insertResult.rows[0].result_fields
+    });
+    
     res.status(201).json({ 
       message: 'Record created successfully',
       record: insertResult.rows[0]

@@ -116,25 +116,30 @@ const Profile = () => {
         });
         if (response.ok) {
           const data = await response.json();
+          console.log('📥 Raw API response:', data);
+          console.log('📥 First record from API:', data.records?.[0]);
           // Parse result_fields for each record if they're strings
           const parsedRecords = (data.records || []).map(record => {
+            console.log('🔄 Processing record', record.id, 'result_fields:', record.result_fields, 'type:', typeof record.result_fields);
             if (record.result_fields) {
               try {
                 // Handle both string and already-parsed object cases
                 if (typeof record.result_fields === 'string') {
                   record.result_fields = JSON.parse(record.result_fields);
+                  console.log('✅ Parsed string to object:', record.result_fields);
+                } else if (typeof record.result_fields === 'object') {
+                  console.log('✅ Already an object:', record.result_fields, 'keys:', Object.keys(record.result_fields));
                 }
-                // If it's already an object, keep it as is
-                console.log('📊 Record', record.id, 'result_fields:', record.result_fields, 'type:', typeof record.result_fields);
               } catch (e) {
-                console.warn('Error parsing result_fields for record:', record.id, e, 'Raw value:', record.result_fields);
+                console.warn('❌ Error parsing result_fields for record:', record.id, e, 'Raw value:', record.result_fields);
                 record.result_fields = {};
               }
             } else {
-              console.log('⚠️ Record', record.id, 'has no result_fields');
+              console.log('⚠️ Record', record.id, 'has no result_fields (null/undefined)');
             }
             return record;
           });
+          console.log('📤 Final parsed records:', parsedRecords);
           setUserRecords(parsedRecords);
         }
       } catch (error) {
