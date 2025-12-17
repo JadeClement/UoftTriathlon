@@ -604,7 +604,7 @@ router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) =
     const workoutResult = await pool.query(`
       SELECT 
         fp.id, fp.title, fp.content, fp.workout_type, fp.workout_date, 
-        fp.workout_time, fp.capacity, fp.created_at,
+        fp.workout_time, fp.capacity, fp.created_at, fp.user_id,
         u.name as author_name, u.role as author_role
       FROM forum_posts fp
       JOIN users u ON fp.user_id = u.id

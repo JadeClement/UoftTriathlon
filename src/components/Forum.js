@@ -1455,7 +1455,12 @@ const Forum = () => {
               return (
                 <div className="posts-list">
                   {paginatedWorkouts.filter(post => post && post.id).map(post => (
-                  <div key={post.id} className="post-card workout-post" onClick={() => window.location.href = `/workout/${post.id}`}>
+                  <div key={post.id} className="post-card workout-post" onClick={(e) => {
+                      // Only navigate if clicking on the card itself, not on buttons or edit form
+                      if (!e.target.closest('.workout-actions-admin') && !e.target.closest('.workout-edit-form')) {
+                        window.location.href = `/workout/${post.id}`;
+                      }
+                    }}>
                     <div className="post-header">
                       {post.title ? (
                         <div className="workout-title">

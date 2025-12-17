@@ -1607,8 +1607,14 @@ const WorkoutDetail = () => {
             <button
               className="edit-btn"
               onClick={() => {
-                startEdit(workout);
-                setEditMode(true);
+                console.log('🔍 Edit button clicked, workout:', workout);
+                if (workout) {
+                  startEdit(workout);
+                  setEditMode(true);
+                  console.log('✅ Edit mode activated, editForm should be:', editForm);
+                } else {
+                  console.error('❌ Workout is null or undefined');
+                }
               }}
               disabled={editMode}
             >
