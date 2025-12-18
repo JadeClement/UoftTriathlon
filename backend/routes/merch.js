@@ -51,7 +51,13 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     const qty = Number.isFinite(quantity) ? quantity : parseInt(quantity, 10) || 1;
-    const genderValue = gender === 'womens' ? 'W' : 'M'; // Store as M/W
+
+    // Gender is now controlled by the gear item's hasGender flag on the frontend
+    // If gender is provided, store as M/W; otherwise null
+    let genderValue = null;
+    if (gender) {
+      genderValue = gender === 'womens' ? 'W' : 'M';
+    }
     const result = await pool.query(
       `INSERT INTO merch_orders (first_name, last_name, email, item, size, quantity, gender)
        VALUES ($1, $2, $3, $4, $5, $6, $7)

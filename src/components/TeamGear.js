@@ -15,7 +15,7 @@ const TeamGear = () => {
 
   // Admin edit modal state
   const [editingItem, setEditingItem] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', price: '', description: '' });
+  const [editForm, setEditForm] = useState({ title: '', price: '', description: '', hasGender: false, hasSize: false });
   const [newImages, setNewImages] = useState([]);
   const [saving, setSaving] = useState(false);
   const [currentImages, setCurrentImages] = useState([]);
@@ -24,7 +24,7 @@ const TeamGear = () => {
 
   // Admin add modal state
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ title: '', price: '', description: '' });
+  const [addForm, setAddForm] = useState({ title: '', price: '', description: '', hasGender: false, hasSize: false });
   const [adding, setAdding] = useState(false);
 
   // Lightbox (enlarge) state
@@ -173,7 +173,9 @@ const TeamGear = () => {
     setEditForm({
       title: item.title || '',
       price: item.price || '',
-      description: item.description || ''
+      description: item.description || '',
+      hasGender: item.hasGender || false,
+      hasSize: item.hasSize || false
     });
     setCurrentImages([...(item.images || [])]);
     setNewImages([]);
@@ -272,7 +274,7 @@ const TeamGear = () => {
       })));
       
       setShowAddModal(false);
-      setAddForm({ title: '', price: '', description: '' });
+      setAddForm({ title: '', price: '', description: '', hasGender: false, hasSize: false });
     } catch (e) {
       console.error('Error adding gear item:', e);
       alert('Failed to add gear item');
@@ -329,7 +331,9 @@ const TeamGear = () => {
           title: editForm.title,
           price: editForm.price,
           description: editForm.description,
-          images: currentImages
+          images: currentImages,
+          hasGender: editForm.hasGender,
+          hasSize: editForm.hasSize
         })
       });
       if (!putRes.ok) throw new Error('Failed to save gear details');
@@ -436,7 +440,8 @@ const TeamGear = () => {
         lastName: currentUser.last_name || currentUser.name?.split(' ').slice(1).join(' ') || '',
         email: emailToUse,
         item: selectedItem.title,
-        size: orderSelections[selectedItem.id]?.size || '',
+        gender: selectedItem.hasGender && orderSelections[selectedItem.id]?.fit ? (orderSelections[selectedItem.id].fit === 'womens' ? 'womens' : 'mens') : null,
+        size: selectedItem.hasSize ? (orderSelections[selectedItem.id]?.size || null) : null,
         quantity: 1
       };
 
@@ -620,92 +625,69 @@ const TeamGear = () => {
               <h3 className="gear-title">{item.title}</h3>
               <p className="gear-description">{(item.images && item.images.length > 1) ? (item.description || '').replace(/image coming soon\.?/ig, '').trim() : item.description}</p>
               <div className="gear-price">${item.price}</div>
-              {/* Ordering options */}
+              {/* Ordering options - based on gear item flags */}
               {(() => {
-                const isClothingItem = item.title.toLowerCase().includes('suit') || 
-                                     item.title.toLowerCase().includes('jersey') || 
-                                     item.title.toLowerCase().includes('shorts');
-                const isUnisexItem = item.title.toLowerCase().includes('backpack') || 
-                                   item.title.toLowerCase().includes('cap');
+                const hasGender = item.hasGender || false;
+                const hasSize = item.hasSize || false;
                 
-                if (isUnisexItem) {
-                  // No ordering options for unisex items (backpack, cap) - they're one-size
+                // If neither flag is set, show no options
+                if (!hasGender && !hasSize) {
                   return null;
-                } else if (isClothingItem) {
-                  // Show both fit and size for clothing items
-                  return (
-                    <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0 12px' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
-                        <select
-                          value={(orderSelections[item.id]?.fit) || 'mens'}
-                          onChange={(e) => setOrderSelections(prev => {
-                            const fit = e.target.value;
-                            const prevItem = prev[item.id] || {};
-                            const adjustedSize = (fit === 'mens' && prevItem.size === 'xs') ? 's' : (prevItem.size || 'm');
-                            return { ...prev, [item.id]: { ...prevItem, fit, size: adjustedSize } };
-                          })}
-                          aria-label="Select fit"
-                        >
-                          <option value="mens">Men's</option>
-                          <option value="womens">Women's</option>
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
-                        <select
-                          value={(orderSelections[item.id]?.size) || 'm'}
-                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
-                          aria-label="Select size"
-                        >
-                          {((orderSelections[item.id]?.fit) || 'mens') !== 'mens' && (<option value="xs">XS</option>)}
-                          <option value="s">S</option>
-                          <option value="m">M</option>
-                          <option value="l">L</option>
-                          <option value="xl">XL</option>
-                          <option value="2xl">2XL</option>
-                        </select>
-                      </div>
-                    </div>
-                  );
-                } else {
-                  // Default: show both options for other items
-                  return (
-                    <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0 12px' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
-                        <select
-                          value={(orderSelections[item.id]?.fit) || 'mens'}
-                          onChange={(e) => setOrderSelections(prev => {
-                            const fit = e.target.value;
-                            const prevItem = prev[item.id] || {};
-                            const adjustedSize = (fit === 'mens' && prevItem.size === 'xs') ? 's' : (prevItem.size || 'm');
-                            return { ...prev, [item.id]: { ...prevItem, fit, size: adjustedSize } };
-                          })}
-                          aria-label="Select fit"
-                        >
-                          <option value="mens">Men's</option>
-                          <option value="womens">Women's</option>
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
-                        <select
-                          value={(orderSelections[item.id]?.size) || 'm'}
-                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
-                          aria-label="Select size"
-                        >
-                          {((orderSelections[item.id]?.fit) || 'mens') !== 'mens' && (<option value="xs">XS</option>)}
-                          <option value="s">S</option>
-                          <option value="m">M</option>
-                          <option value="l">L</option>
-                          <option value="xl">XL</option>
-                          <option value="2xl">2XL</option>
-                        </select>
-                      </div>
+                }
+                
+                // Build options based on flags
+                const options = [];
+                
+                if (hasGender) {
+                  options.push(
+                    <div key="fit" className="form-group" style={{ margin: 0 }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
+                      <select
+                        value={(orderSelections[item.id]?.fit) || 'mens'}
+                        onChange={(e) => setOrderSelections(prev => {
+                          const fit = e.target.value;
+                          const prevItem = prev[item.id] || {};
+                          const adjustedSize = (fit === 'mens' && prevItem.size === 'xs') ? 's' : (prevItem.size || 'm');
+                          return { ...prev, [item.id]: { ...prevItem, fit, size: adjustedSize } };
+                        })}
+                        aria-label="Select fit"
+                      >
+                        <option value="mens">Men's</option>
+                        <option value="womens">Women's</option>
+                      </select>
                     </div>
                   );
                 }
+                
+                if (hasSize) {
+                  options.push(
+                    <div key="size" className="form-group" style={{ margin: 0 }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
+                      <select
+                        value={(orderSelections[item.id]?.size) || 'm'}
+                        onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
+                        aria-label="Select size"
+                      >
+                        {((orderSelections[item.id]?.fit) || 'mens') !== 'mens' && (<option value="xs">XS</option>)}
+                        <option value="s">S</option>
+                        <option value="m">M</option>
+                        <option value="l">L</option>
+                        <option value="xl">XL</option>
+                        <option value="2xl">2XL</option>
+                      </select>
+                    </div>
+                  );
+                }
+                
+                if (options.length === 0) {
+                  return null;
+                }
+                
+                return (
+                  <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: options.length === 2 ? '1fr 1fr' : '1fr', gap: '8px', margin: '8px 0 12px' }}>
+                    {options}
+                  </div>
+                );
               })()}
               <div className="gear-buttons">
                 {currentUser && ['member', 'coach', 'exec', 'administrator'].includes(currentUser.role) ? (
@@ -817,6 +799,25 @@ const TeamGear = () => {
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
               />
             </div>
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <label style={{ fontWeight: 600 }}>Options</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={editForm.hasGender}
+                  onChange={(e) => setEditForm({ ...editForm, hasGender: e.target.checked })}
+                />
+                <span>Has Men's/Women's fit options</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={editForm.hasSize}
+                  onChange={(e) => setEditForm({ ...editForm, hasSize: e.target.checked })}
+                />
+                <span>Has size options</span>
+              </label>
+            </div>
             <div className="form-group">
               <label>Current Images</label>
               {currentImages.length > 0 ? (
@@ -926,6 +927,25 @@ const TeamGear = () => {
                   onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
                   placeholder="Enter description"
                 />
+              </div>
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ fontWeight: 600 }}>Options</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={addForm.hasGender}
+                    onChange={(e) => setAddForm({ ...addForm, hasGender: e.target.checked })}
+                  />
+                  <span>Has Men's/Women's fit options</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={addForm.hasSize}
+                    onChange={(e) => setAddForm({ ...addForm, hasSize: e.target.checked })}
+                  />
+                  <span>Has size options</span>
+                </label>
               </div>
             </div>
             <div className="gear-modal-actions">
