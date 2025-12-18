@@ -1395,7 +1395,8 @@ router.get('/merch/export', authenticateToken, requireAdmin, async (req, res) =>
     const filter = req.query.filter || 'all';
     
     // Build query based on filter
-    let query = `SELECT first_name, last_name, email, item, size, quantity, created_at
+    // Include gender so it can be exported as its own column
+    let query = `SELECT first_name, last_name, email, item, size, quantity, gender, created_at
                  FROM merch_orders`;
     
     if (filter === 'archived') {
@@ -1418,7 +1419,8 @@ router.get('/merch/export', authenticateToken, requireAdmin, async (req, res) =>
       { header: 'Email', key: 'email', width: 30 },
       { header: 'Item', key: 'item', width: 30 },
       { header: 'Size', key: 'size', width: 12 },
-      { header: 'Quantity', key: 'quantity', width: 10 }
+      { header: 'Quantity', key: 'quantity', width: 10 },
+      { header: 'Gender', key: 'gender', width: 12 }
     ];
 
     for (const row of result.rows) {
