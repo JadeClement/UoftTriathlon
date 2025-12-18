@@ -11,6 +11,17 @@
 BEGIN;
 
 -- ============================================================================
+-- MIGRATION LOGGING
+-- ============================================================================
+DO $$
+BEGIN
+  RAISE NOTICE '========================================';
+  RAISE NOTICE 'Migration: set-term-ids (APPLY)';
+  RAISE NOTICE 'Started at: %', NOW();
+  RAISE NOTICE '========================================';
+END $$;
+
+-- ============================================================================
 -- CONFIGURATION CONSTANTS
 -- ============================================================================
 -- Update these date values if the migration rules change
@@ -58,6 +69,43 @@ BEGIN
     RAISE WARNING 'No non-pending users found. Nothing to migrate.';
   ELSE
     RAISE NOTICE 'Migration will update % users out of % non-pending users.', users_needing_update, total_non_pending_users;
+  END IF;
+END $$;
+
+-- Verify indexes exist for optimal UPDATE performance
+DO $$
+DECLARE
+  has_term_id_index BOOLEAN;
+  has_role_index BOOLEAN;
+  has_expiry_date_index BOOLEAN;
+BEGIN
+  -- Check for index on term_id (used in WHERE clause)
+  SELECT EXISTS (
+    SELECT 1 FROM pg_indexes 
+    WHERE tablename = 'users' 
+    AND indexname LIKE '%term_id%'
+  ) INTO has_term_id_index;
+  
+  -- Check for index on role (used in WHERE clause)
+  SELECT EXISTS (
+    SELECT 1 FROM pg_indexes 
+    WHERE tablename = 'users' 
+    AND indexname LIKE '%role%'
+  ) INTO has_role_index;
+  
+  -- Check for index on expiry_date (used in CASE expression)
+  SELECT EXISTS (
+    SELECT 1 FROM pg_indexes 
+    WHERE tablename = 'users' 
+    AND indexname LIKE '%expiry_date%'
+  ) INTO has_expiry_date_index;
+  
+  RAISE NOTICE '[INDEX CHECK] term_id index: %', CASE WHEN has_term_id_index THEN 'EXISTS' ELSE 'MISSING (may impact performance)' END;
+  RAISE NOTICE '[INDEX CHECK] role index: %', CASE WHEN has_role_index THEN 'EXISTS' ELSE 'MISSING (may impact performance)' END;
+  RAISE NOTICE '[INDEX CHECK] expiry_date index: %', CASE WHEN has_expiry_date_index THEN 'EXISTS' ELSE 'MISSING (may impact performance)' END;
+  
+  IF NOT has_term_id_index OR NOT has_role_index THEN
+    RAISE WARNING '[PERFORMANCE] Consider adding indexes: CREATE INDEX idx_users_term_id_role ON users(term_id, role) WHERE role != ''pending'';';
   END IF;
 END $$;
 
@@ -148,6 +196,14 @@ LIMIT 10;
 
 -- Update term_id based on expiry_date
 -- Constants: FALL_YEAR_START = '2025-01-01', FALL_YEAR_END = '2026-01-01'
+DO $$
+DECLARE
+  update_start_time TIMESTAMP;
+BEGIN
+  update_start_time := clock_timestamp();
+  RAISE NOTICE '[%] Starting UPDATE operation...', update_start_time;
+END $$;
+
 WITH migration_constants AS (
   SELECT 
     '2025-01-01'::DATE as fall_year_start,
@@ -169,6 +225,38 @@ SET term_id = (
 WHERE u.term_id IS NULL
   AND u.role != 'pending';
 
+-- Log update results
+DO $$
+DECLARE
+  rows_updated INTEGER;
+  users_with_term_id INTEGER;
+  users_still_null INTEGER;
+  users_fall INTEGER;
+  users_fall_winter INTEGER;
+  update_end_time TIMESTAMP;
+BEGIN
+  -- Get row count from UPDATE
+  GET DIAGNOSTICS rows_updated = ROW_COUNT;
+  
+  -- Get summary counts
+  SELECT 
+    COUNT(*) FILTER (WHERE term_id IS NOT NULL),
+    COUNT(*) FILTER (WHERE term_id IS NULL AND role != 'pending'),
+    COUNT(*) FILTER (WHERE term_id = (SELECT id FROM terms WHERE term = 'fall')),
+    COUNT(*) FILTER (WHERE term_id = (SELECT id FROM terms WHERE term = 'fall/winter'))
+  INTO users_with_term_id, users_still_null, users_fall, users_fall_winter
+  FROM users;
+  
+  update_end_time := clock_timestamp();
+  
+  RAISE NOTICE '[%] UPDATE operation completed', update_end_time;
+  RAISE NOTICE '[METRICS] Rows updated: %', rows_updated;
+  RAISE NOTICE '[METRICS] Users with term_id: %', users_with_term_id;
+  RAISE NOTICE '[METRICS] Users still null: %', users_still_null;
+  RAISE NOTICE '[METRICS] Users with fall term: %', users_fall;
+  RAISE NOTICE '[METRICS] Users with fall/winter term: %', users_fall_winter;
+END $$;
+
 -- Show summary (optimized with JOINs instead of subqueries)
 SELECT 
   'Summary' as step,
@@ -179,6 +267,34 @@ SELECT
 FROM users u
 CROSS JOIN (SELECT id FROM terms WHERE term = 'fall') t_fall
 CROSS JOIN (SELECT id FROM terms WHERE term = 'fall/winter') t_fall_winter;
+
+-- Final migration summary log
+DO $$
+DECLARE
+  total_with_term_id INTEGER;
+  total_still_null INTEGER;
+  total_fall INTEGER;
+  total_fall_winter INTEGER;
+  migration_end_time TIMESTAMP;
+BEGIN
+  SELECT 
+    COUNT(*) FILTER (WHERE term_id IS NOT NULL),
+    COUNT(*) FILTER (WHERE term_id IS NULL AND role != 'pending'),
+    COUNT(*) FILTER (WHERE term_id = (SELECT id FROM terms WHERE term = 'fall')),
+    COUNT(*) FILTER (WHERE term_id = (SELECT id FROM terms WHERE term = 'fall/winter'))
+  INTO total_with_term_id, total_still_null, total_fall, total_fall_winter
+  FROM users;
+  
+  migration_end_time := clock_timestamp();
+  
+  RAISE NOTICE '========================================';
+  RAISE NOTICE '[%] Migration Summary', migration_end_time;
+  RAISE NOTICE '[METRICS] Users with term_id: %', total_with_term_id;
+  RAISE NOTICE '[METRICS] Users still null: %', total_still_null;
+  RAISE NOTICE '[METRICS] Users with fall term: %', total_fall;
+  RAISE NOTICE '[METRICS] Users with fall/winter term: %', total_fall_winter;
+  RAISE NOTICE '========================================';
+END $$;
 
 -- ⚠️  IMPORTANT: Review the SELECT output above before committing!
 -- The transaction will COMMIT after this point, applying all changes permanently.
