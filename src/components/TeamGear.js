@@ -653,12 +653,21 @@ const TeamGear = () => {
                       <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
                       <select
                         value={(orderSelections[item.id]?.fit) || 'mens'}
-                        onChange={(e) => setOrderSelections(prev => {
+                        onChange={(e) => {
                           const fit = e.target.value;
-                          const prevItem = prev[item.id] || {};
-                          const adjustedSize = (fit === 'mens' && prevItem.size === 'xs') ? 's' : (prevItem.size || 'm');
-                          return { ...prev, [item.id]: { ...prevItem, fit, size: adjustedSize } };
-                        })}
+                          setOrderSelections(prev => {
+                            const prevItem = prev[item.id] || {};
+                            // When gender changes, reset size to first available for that gender
+                            const genderPrefix = fit === 'womens' ? 'w-' : 'm-';
+                            const availableSizes = Array.isArray(item.availableSizes) ? item.availableSizes : [];
+                            const genderSizes = availableSizes
+                              .filter(size => size && size.startsWith(genderPrefix))
+                              .map(size => size.replace(genderPrefix, ''))
+                              .filter(size => ['xs', 's', 'm', 'l', 'xl', '2xl'].includes(size));
+                            const defaultSize = genderSizes.length > 0 ? genderSizes[0] : 'm';
+                            return { ...prev, [item.id]: { ...prevItem, fit, size: defaultSize } };
+                          });
+                        }}
                         aria-label="Select fit"
                       >
                         <option value="mens">Men's</option>
@@ -669,20 +678,44 @@ const TeamGear = () => {
                 }
                 
                 if (hasSize) {
+                  // Get available sizes based on selected gender and item's availableSizes
+                  const selectedFit = (orderSelections[item.id]?.fit) || 'mens';
+                  const availableSizes = Array.isArray(item.availableSizes) ? item.availableSizes : [];
+                  
+                  let sizeOptions = [];
+                  if (hasGender) {
+                    // Filter sizes for the selected gender (w- or m- prefix)
+                    const genderPrefix = selectedFit === 'womens' ? 'w-' : 'm-';
+                    const genderSizes = availableSizes
+                      .filter(size => size && size.startsWith(genderPrefix))
+                      .map(size => size.replace(genderPrefix, ''))
+                      .filter(size => ['xs', 's', 'm', 'l', 'xl', '2xl'].includes(size));
+                    
+                    sizeOptions = genderSizes.length > 0 ? genderSizes : ['xs', 's', 'm', 'l', 'xl', '2xl']; // Fallback if no sizes specified
+                  } else {
+                    // Unisex sizes (no prefix)
+                    const unisexSizes = availableSizes
+                      .filter(size => size && !size.includes('-'))
+                      .filter(size => ['xs', 's', 'm', 'l', 'xl', '2xl'].includes(size));
+                    
+                    sizeOptions = unisexSizes.length > 0 ? unisexSizes : ['xs', 's', 'm', 'l', 'xl', '2xl']; // Fallback if no sizes specified
+                  }
+                  
+                  // Get current size or default to first available
+                  const currentSize = orderSelections[item.id]?.size;
+                  const defaultSize = sizeOptions.includes(currentSize) ? currentSize : (sizeOptions[0] || 'm');
+                  
                   options.push(
                     <div key="size" className="form-group" style={{ margin: 0 }}>
                       <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
                       <select
-                        value={(orderSelections[item.id]?.size) || 'm'}
+                        value={defaultSize}
                         onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
                         aria-label="Select size"
                       >
-                        {((orderSelections[item.id]?.fit) || 'mens') !== 'mens' && (<option value="xs">XS</option>)}
-                        <option value="s">S</option>
-                        <option value="m">M</option>
-                        <option value="l">L</option>
-                        <option value="xl">XL</option>
-                        <option value="2xl">2XL</option>
+                        {sizeOptions.map(size => (
+                          <option key={size} value={size}>{size.toUpperCase()}</option>
+                        ))}
                       </select>
                     </div>
                   );
