@@ -372,6 +372,15 @@
   font-weight: 600;
 }
 
+.success-header {
+  position: relative;
+}
+
+.success-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
 .gear-modal-close {
   background: none;
   border: none;

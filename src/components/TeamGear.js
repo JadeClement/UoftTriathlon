@@ -15,7 +15,7 @@ const TeamGear = () => {
 
   // Admin edit modal state
   const [editingItem, setEditingItem] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', price: '', description: '', hasGender: false, hasSize: false });
+  const [editForm, setEditForm] = useState({ title: '', price: '', description: '', hasGender: false, hasSize: false, availableSizes: [] });
   const [newImages, setNewImages] = useState([]);
   const [saving, setSaving] = useState(false);
   const [currentImages, setCurrentImages] = useState([]);
@@ -24,7 +24,7 @@ const TeamGear = () => {
 
   // Admin add modal state
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ title: '', price: '', description: '', hasGender: false, hasSize: false });
+  const [addForm, setAddForm] = useState({ title: '', price: '', description: '', hasGender: false, hasSize: false, availableSizes: [] });
   const [adding, setAdding] = useState(false);
 
   // Lightbox (enlarge) state
@@ -175,7 +175,8 @@ const TeamGear = () => {
       price: item.price || '',
       description: item.description || '',
       hasGender: item.hasGender || false,
-      hasSize: item.hasSize || false
+      hasSize: item.hasSize || false,
+      availableSizes: Array.isArray(item.availableSizes) ? item.availableSizes : []
     });
     setCurrentImages([...(item.images || [])]);
     setNewImages([]);
@@ -274,7 +275,7 @@ const TeamGear = () => {
       })));
       
       setShowAddModal(false);
-      setAddForm({ title: '', price: '', description: '', hasGender: false, hasSize: false });
+      setAddForm({ title: '', price: '', description: '', hasGender: false, hasSize: false, availableSizes: [] });
     } catch (e) {
       console.error('Error adding gear item:', e);
       alert('Failed to add gear item');
@@ -333,7 +334,8 @@ const TeamGear = () => {
           description: editForm.description,
           images: currentImages,
           hasGender: editForm.hasGender,
-          hasSize: editForm.hasSize
+          hasSize: editForm.hasSize,
+          availableSizes: editForm.availableSizes
         })
       });
       if (!putRes.ok) throw new Error('Failed to save gear details');
@@ -942,10 +944,30 @@ const TeamGear = () => {
                   <input
                     type="checkbox"
                     checked={addForm.hasSize}
-                    onChange={(e) => setAddForm({ ...addForm, hasSize: e.target.checked })}
+                    onChange={(e) => setAddForm({ ...addForm, hasSize: e.target.checked, availableSizes: e.target.checked ? addForm.availableSizes : [] })}
                   />
                   <span>Has size options</span>
                 </label>
+                {addForm.hasSize && (
+                  <div style={{ display: 'flex', gap: '16px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                      <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                        <input
+                          type="checkbox"
+                          checked={addForm.availableSizes.includes(size)}
+                          onChange={(e) => {
+                            const newSizes = e.target.checked
+                              ? [...addForm.availableSizes, size]
+                              : addForm.availableSizes.filter(s => s !== size);
+                            setAddForm({ ...addForm, availableSizes: newSizes });
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>{size}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="gear-modal-actions">
@@ -1041,9 +1063,14 @@ const TeamGear = () => {
       <div className="gear-modal-overlay" onClick={closeSuccessModal}>
         <div className="gear-modal success-modal" onClick={(e) => e.stopPropagation()}>
           <div className="gear-modal-header success-header">
-            <div className="success-icon">🎉</div>
-            <h2>Order Confirmed!</h2>
-            <button className="gear-modal-close" onClick={closeSuccessModal}>×</button>
+            <div style={{ flex: 1 }}></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center', flex: 1 }}>
+              <div className="success-icon">🎉</div>
+              <h2 style={{ margin: 0 }}>Order Confirmed!</h2>
+            </div>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="gear-modal-close" onClick={closeSuccessModal}>×</button>
+            </div>
           </div>
           <div className="gear-modal-body success-body">
             <div className="success-message">
