@@ -815,10 +815,30 @@ const TeamGear = () => {
                 <input
                   type="checkbox"
                   checked={editForm.hasSize}
-                  onChange={(e) => setEditForm({ ...editForm, hasSize: e.target.checked })}
+                  onChange={(e) => setEditForm({ ...editForm, hasSize: e.target.checked, availableSizes: e.target.checked ? editForm.availableSizes : [] })}
                 />
                 <span>Has size options</span>
               </label>
+              {editForm.hasSize && (
+                <div style={{ display: 'flex', gap: '16px', marginTop: '8px', flexWrap: 'wrap' }}>
+                  {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                    <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <input
+                        type="checkbox"
+                        checked={editForm.availableSizes.includes(size)}
+                        onChange={(e) => {
+                          const newSizes = e.target.checked
+                            ? [...editForm.availableSizes, size]
+                            : editForm.availableSizes.filter(s => s !== size);
+                          setEditForm({ ...editForm, availableSizes: newSizes });
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>{size}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label>Current Images</label>

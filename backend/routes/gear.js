@@ -113,7 +113,7 @@ router.get('/', async (_req, res) => {
 // POST create new gear item
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { title, price, description, hasGender, hasSize } = req.body;
+    const { title, price, description, hasGender, hasSize, availableSizes } = req.body;
     
     if (!title) return res.status(400).json({ error: 'Title is required' });
     
@@ -127,7 +127,8 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       description: description || 'Description coming soon.',
       images: [],
       hasGender: hasGender === true || hasGender === 'true',
-      hasSize: hasSize === true || hasSize === 'true'
+      hasSize: hasSize === true || hasSize === 'true',
+      availableSizes: Array.isArray(availableSizes) ? availableSizes : []
     };
     
     items.push(newItem);
@@ -141,12 +142,12 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// PUT update a gear item (price, description, title, images order, hasGender, hasSize)
+// PUT update a gear item (price, description, title, images order, hasGender, hasSize, availableSizes)
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { title, price, description, images, hasGender, hasSize } = req.body;
-    console.log('🛠️ [GEAR PUT] id:', id, 'title:', title, 'price:', price, 'descLen:', (description||'').length, 'images?', Array.isArray(images), 'images:', images, 'hasGender:', hasGender, 'hasSize:', hasSize);
+    const { title, price, description, images, hasGender, hasSize, availableSizes } = req.body;
+    console.log('🛠️ [GEAR PUT] id:', id, 'title:', title, 'price:', price, 'descLen:', (description||'').length, 'images?', Array.isArray(images), 'images:', images, 'hasGender:', hasGender, 'hasSize:', hasSize, 'availableSizes:', availableSizes);
 
     const items = await loadGear();
     const idx = items.findIndex(g => g.id === id);
@@ -159,7 +160,8 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
       description: description !== undefined ? description : items[idx].description,
       images: Array.isArray(images) ? images : items[idx].images,
       hasGender: hasGender !== undefined ? (hasGender === true || hasGender === 'true') : (items[idx].hasGender || false),
-      hasSize: hasSize !== undefined ? (hasSize === true || hasSize === 'true') : (items[idx].hasSize || false)
+      hasSize: hasSize !== undefined ? (hasSize === true || hasSize === 'true') : (items[idx].hasSize || false),
+      availableSizes: availableSizes !== undefined ? (Array.isArray(availableSizes) ? availableSizes : []) : (items[idx].availableSizes || [])
     };
 
     items[idx] = updated;
