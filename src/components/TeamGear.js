@@ -170,13 +170,20 @@ const TeamGear = () => {
   // Edit handlers
   const openEditModal = (item) => {
     setEditingItem(item);
+    // Migrate old size format to new format if needed
+    let availableSizes = Array.isArray(item.availableSizes) ? item.availableSizes : [];
+    // If item has old format (just 'xs', 's', etc) and hasGender, convert to new format
+    if (item.hasGender && availableSizes.length > 0 && availableSizes[0] && !availableSizes[0].includes('-')) {
+      // Old format detected - convert to new format (default to men's for backward compatibility)
+      availableSizes = availableSizes.map(size => `m-${size}`);
+    }
     setEditForm({
       title: item.title || '',
       price: item.price || '',
       description: item.description || '',
       hasGender: item.hasGender || false,
       hasSize: item.hasSize || false,
-      availableSizes: Array.isArray(item.availableSizes) ? item.availableSizes : []
+      availableSizes: availableSizes
     });
     setCurrentImages([...(item.images || [])]);
     setNewImages([]);
