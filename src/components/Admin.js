@@ -2720,8 +2720,8 @@ const Admin = () => {
                         <td>{o.lastName || o.name?.split(' ').slice(1).join(' ') || '-'}</td>
                         <td>{o.email}</td>
                         <td>{o.item}</td>
-                        <td>{o.size}</td>
-                        <td>{o.gender || 'M'}</td>
+                        <td>{o.size || '-'}</td>
+                        <td>{o.gender ? (o.gender === 'W' ? 'W' : 'M') : '-'}</td>
                         <td>{o.quantity}</td>
                         <td>{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
                         <td>
