@@ -820,23 +820,74 @@ const TeamGear = () => {
                 <span>Has size options</span>
               </label>
               {editForm.hasSize && (
-                <div style={{ display: 'flex', gap: '16px', marginTop: '8px', flexWrap: 'wrap' }}>
-                  {['xs', 's', 'm', 'l', 'xl'].map(size => (
-                    <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                      <input
-                        type="checkbox"
-                        checked={editForm.availableSizes.includes(size)}
-                        onChange={(e) => {
-                          const newSizes = e.target.checked
-                            ? [...editForm.availableSizes, size]
-                            : editForm.availableSizes.filter(s => s !== size);
-                          setEditForm({ ...editForm, availableSizes: newSizes });
-                        }}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>{size}</span>
+                <div style={{ marginTop: '8px' }}>
+                  {editForm.hasGender ? (
+                    // Show 10 boxes: 5 women's, then 5 men's
+                    <div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', display: 'block' }}>Women's Sizes:</label>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                          {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                            <div key={`w-${size}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                              <input
+                                type="checkbox"
+                                checked={editForm.availableSizes.includes(`w-${size}`)}
+                                onChange={(e) => {
+                                  const newSizes = e.target.checked
+                                    ? [...editForm.availableSizes, `w-${size}`]
+                                    : editForm.availableSizes.filter(s => s !== `w-${size}`);
+                                  setEditForm({ ...editForm, availableSizes: newSizes });
+                                }}
+                                style={{ cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>W-{size}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', display: 'block' }}>Men's Sizes:</label>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                          {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                            <div key={`m-${size}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                              <input
+                                type="checkbox"
+                                checked={editForm.availableSizes.includes(`m-${size}`)}
+                                onChange={(e) => {
+                                  const newSizes = e.target.checked
+                                    ? [...editForm.availableSizes, `m-${size}`]
+                                    : editForm.availableSizes.filter(s => s !== `m-${size}`);
+                                  setEditForm({ ...editForm, availableSizes: newSizes });
+                                }}
+                                style={{ cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>M-{size}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                  ) : (
+                    // Show 5 unisex boxes when no gender
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                      {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                        <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <input
+                            type="checkbox"
+                            checked={editForm.availableSizes.includes(size)}
+                            onChange={(e) => {
+                              const newSizes = e.target.checked
+                                ? [...editForm.availableSizes, size]
+                                : editForm.availableSizes.filter(s => s !== size);
+                              setEditForm({ ...editForm, availableSizes: newSizes });
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>{size}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -969,23 +1020,74 @@ const TeamGear = () => {
                   <span>Has size options</span>
                 </label>
                 {addForm.hasSize && (
-                  <div style={{ display: 'flex', gap: '16px', marginTop: '8px', flexWrap: 'wrap' }}>
-                    {['xs', 's', 'm', 'l', 'xl'].map(size => (
-                      <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                        <input
-                          type="checkbox"
-                          checked={addForm.availableSizes.includes(size)}
-                          onChange={(e) => {
-                            const newSizes = e.target.checked
-                              ? [...addForm.availableSizes, size]
-                              : addForm.availableSizes.filter(s => s !== size);
-                            setAddForm({ ...addForm, availableSizes: newSizes });
-                          }}
-                          style={{ cursor: 'pointer' }}
-                        />
-                        <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>{size}</span>
+                  <div style={{ marginTop: '8px' }}>
+                    {addForm.hasGender ? (
+                      // Show 10 boxes: 5 women's, then 5 men's
+                      <div>
+                        <div style={{ marginBottom: '12px' }}>
+                          <label style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', display: 'block' }}>Women's Sizes:</label>
+                          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                            {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                              <div key={`w-${size}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={addForm.availableSizes.includes(`w-${size}`)}
+                                  onChange={(e) => {
+                                    const newSizes = e.target.checked
+                                      ? [...addForm.availableSizes, `w-${size}`]
+                                      : addForm.availableSizes.filter(s => s !== `w-${size}`);
+                                    setAddForm({ ...addForm, availableSizes: newSizes });
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>W-{size}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', display: 'block' }}>Men's Sizes:</label>
+                          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                            {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                              <div key={`m-${size}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={addForm.availableSizes.includes(`m-${size}`)}
+                                  onChange={(e) => {
+                                    const newSizes = e.target.checked
+                                      ? [...addForm.availableSizes, `m-${size}`]
+                                      : addForm.availableSizes.filter(s => s !== `m-${size}`);
+                                    setAddForm({ ...addForm, availableSizes: newSizes });
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>M-{size}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    ))}
+                    ) : (
+                      // Show 5 unisex boxes when no gender
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                        {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                          <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <input
+                              type="checkbox"
+                              checked={addForm.availableSizes.includes(size)}
+                              onChange={(e) => {
+                                const newSizes = e.target.checked
+                                  ? [...addForm.availableSizes, size]
+                                  : addForm.availableSizes.filter(s => s !== size);
+                                setAddForm({ ...addForm, availableSizes: newSizes });
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>{size}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
