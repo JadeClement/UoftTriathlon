@@ -799,9 +799,9 @@ const TeamGear = () => {
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
               />
             </div>
-            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <label style={{ fontWeight: 600 }}>Options</label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start' }}>
+              <label style={{ fontWeight: 600, marginBottom: '4px' }}>Options</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 <input
                   type="checkbox"
                   checked={editForm.hasGender}
@@ -809,7 +809,7 @@ const TeamGear = () => {
                 />
                 <span>Has Men's/Women's fit options</span>
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 <input
                   type="checkbox"
                   checked={editForm.hasSize}
@@ -928,9 +928,9 @@ const TeamGear = () => {
                   placeholder="Enter description"
                 />
               </div>
-              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <label style={{ fontWeight: 600 }}>Options</label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start' }}>
+                <label style={{ fontWeight: 600, marginBottom: '4px' }}>Options</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   <input
                     type="checkbox"
                     checked={addForm.hasGender}
@@ -938,7 +938,7 @@ const TeamGear = () => {
                   />
                   <span>Has Men's/Women's fit options</span>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   <input
                     type="checkbox"
                     checked={addForm.hasSize}
