@@ -236,15 +236,49 @@ const WorkoutDetail = () => {
   // Check if workout has started (date + time is in the past)
   const isWorkoutStarted = () => {
     try {
-      if (!workout || !workout.workout_date || !workout.workout_time) return false;
+      if (!workout || !workout.workout_date || !workout.workout_time) {
+        console.log('🔍 isWorkoutStarted: Missing workout data', { 
+          hasWorkout: !!workout, 
+          workout_date: workout?.workout_date, 
+          workout_time: workout?.workout_time 
+        });
+        return false;
+      }
+      
+      // Extract just the date part if workout_date is an ISO string
+      let dateStr = workout.workout_date;
+      if (typeof dateStr === 'string' && dateStr.includes('T')) {
+        dateStr = dateStr.split('T')[0];
+      }
       
       // Use combineDateTime to get the workout datetime in EST/EDT
-      const workoutDateTime = combineDateTime(workout.workout_date, workout.workout_time);
-      if (!workoutDateTime) return false;
+      const workoutDateTime = combineDateTime(dateStr, workout.workout_time);
+      if (!workoutDateTime) {
+        console.log('🔍 isWorkoutStarted: Failed to create workout datetime', { 
+          dateStr, 
+          workout_time: workout.workout_time 
+        });
+        return false;
+      }
       
       // Compare workout datetime to current time
       const now = new Date();
-      return workoutDateTime < now;
+      const hasStarted = workoutDateTime < now;
+      
+      console.log('🔍 isWorkoutStarted check:', {
+        workout_date: workout.workout_date,
+        dateStr,
+        workout_time: workout.workout_time,
+        workoutDateTimeISO: workoutDateTime.toISOString(),
+        workoutDateTimeLocal: workoutDateTime.toString(),
+        nowISO: now.toISOString(),
+        nowLocal: now.toString(),
+        diffMs: workoutDateTime - now,
+        diffHours: (workoutDateTime - now) / (1000 * 60 * 60),
+        hasStarted
+      });
+      
+      return hasStarted;
     } catch (error) {
       console.error('Error checking if workout started:', error);
       return false;
