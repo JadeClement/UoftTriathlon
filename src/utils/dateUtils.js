@@ -91,18 +91,33 @@ export function combineDateTime(dateInput, timeStr) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
       const parts = dateInput.split('-').map(Number);
       year = parts[0];
-      month = parts[1];
+      month = parts[1];  // Month is 1-12 (not 0-11)
       day = parts[2];
+      console.log('🕐 Parsed YYYY-MM-DD:', { dateInput, year, month, day });
+    } else if (dateInput.includes('T')) {
+      // ISO string format - extract date part
+      const datePart = dateInput.split('T')[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+        const parts = datePart.split('-').map(Number);
+        year = parts[0];
+        month = parts[1];
+        day = parts[2];
+        console.log('🕐 Parsed ISO string date part:', { dateInput, datePart, year, month, day });
+      } else {
+        console.warn('⚠️ combineDateTime: Invalid ISO date format', { dateInput, datePart });
+        return null;
+      }
     } else {
-      // Try parsing as Date first
+      // Try parsing as Date first (fallback)
       const date = parseDate(dateInput);
       if (!date) {
         console.warn('⚠️ combineDateTime: Invalid date format', { dateInput });
         return null;
       }
       year = date.getFullYear();
-      month = date.getMonth() + 1;
+      month = date.getMonth() + 1;  // getMonth() returns 0-11, so add 1
       day = date.getDate();
+      console.log('🕐 Parsed via parseDate():', { dateInput, year, month, day });
     }
   } else {
     console.warn('⚠️ combineDateTime: Invalid date input type', { dateInput });
