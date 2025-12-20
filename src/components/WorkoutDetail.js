@@ -2009,19 +2009,37 @@ const WorkoutDetail = () => {
           console.log('🔍 Cancel modal calculation:', {
             workout_date: workout.workout_date,
             workout_time: workout.workout_time,
+            workout_date_type: typeof workout.workout_date,
             workout: workout
           });
           
-          const workoutDateTime = workout.workout_date && workout.workout_time 
-            ? combineDateTime(workout.workout_date, workout.workout_time)
+          // Extract just the date part if workout_date is an ISO string
+          let dateStr = workout.workout_date;
+          if (typeof dateStr === 'string' && dateStr.includes('T')) {
+            dateStr = dateStr.split('T')[0];
+            console.log('🔍 Extracted date from ISO string:', { original: workout.workout_date, extracted: dateStr });
+          }
+          
+          const workoutDateTime = dateStr && workout.workout_time 
+            ? combineDateTime(dateStr, workout.workout_time)
             : null;
           
-          console.log('🔍 Workout datetime result:', { workoutDateTime });
+          console.log('🔍 Workout datetime result:', { 
+            workoutDateTime,
+            workoutDateTimeISO: workoutDateTime?.toISOString(),
+            workoutDateTimeLocal: workoutDateTime?.toString()
+          });
           
           const hoursUntil = workoutDateTime ? getHoursUntil(workoutDateTime) : null;
           const within12Hours = workoutDateTime ? isWithinHours(workoutDateTime, 12) : false;
           
-          console.log('🔍 Final calculation:', { hoursUntil, within12Hours });
+          console.log('🔍 Final calculation:', { 
+            hoursUntil, 
+            within12Hours,
+            nowISO: new Date().toISOString(),
+            nowLocal: new Date().toString(),
+            workoutIsInPast: hoursUntil !== null && hoursUntil <= 0
+          });
           
           return (
             <div className="modal-overlay">
