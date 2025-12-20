@@ -64,67 +64,98 @@ export function parseTime(timeStr) {
  * Combine a date and time into a single Date object
  * IMPORTANT: Workouts are scheduled in EST/EDT (America/Toronto timezone)
  * This function interprets the date/time as EST/EDT, not the user's local timezone
- * @param {string|Date} dateInput - Date string or Date object
+ * @param {string|Date} dateInput - Date string or Date object (YYYY-MM-DD format)
  * @param {string} timeStr - Time string in HH:MM:SS format
  * @returns {Date|null} - Combined Date object or null if invalid
  */
 export function combineDateTime(dateInput, timeStr) {
-  console.log('🕐 combineDateTime called:', { dateInput, timeStr });
+  console.log('🕐 combineDateTime called:', { dateInput, timeStr, type: typeof dateInput });
   
-  const date = parseDate(dateInput);
   const time = parseTime(timeStr);
   
-  console.log('🕐 Parsed values:', { date, time, dateIsValid: date instanceof Date && !isNaN(date.getTime()) });
-  
-  if (!date || !time) {
-    console.warn('⚠️ combineDateTime: Invalid date or time', { date, time });
+  if (!time) {
+    console.warn('⚠️ combineDateTime: Invalid time', { timeStr });
     return null;
   }
   
-  // Workouts are scheduled in EST/EDT (America/Toronto)
-  // We need to create a date string that represents the workout time in EST/EDT
-  // Format: YYYY-MM-DDTHH:mm:ss
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(time.hours).padStart(2, '0');
-  const minutes = String(time.minutes).padStart(2, '0');
-  const seconds = String(time.seconds).padStart(2, '0');
+  // Parse the date string directly - don't use parseDate() as it creates local dates
+  let year, month, day;
   
-  // Create ISO string with EST offset (UTC-5) or EDT offset (UTC-4)
-  // We'll use a date string and parse it, accounting for EST/EDT
-  // EST = UTC-5, EDT = UTC-4 (roughly March-November)
+  if (dateInput instanceof Date) {
+    // If it's already a Date, extract components
+    year = dateInput.getFullYear();
+    month = dateInput.getMonth() + 1;
+    day = dateInput.getDate();
+  } else if (typeof dateInput === 'string') {
+    // Parse YYYY-MM-DD format directly
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+      const parts = dateInput.split('-').map(Number);
+      year = parts[0];
+      month = parts[1];
+      day = parts[2];
+    } else {
+      // Try parsing as Date first
+      const date = parseDate(dateInput);
+      if (!date) {
+        console.warn('⚠️ combineDateTime: Invalid date format', { dateInput });
+        return null;
+      }
+      year = date.getFullYear();
+      month = date.getMonth() + 1;
+      day = date.getDate();
+    }
+  } else {
+    console.warn('⚠️ combineDateTime: Invalid date input type', { dateInput });
+    return null;
+  }
   
-  // Simple approach: Create date string and parse as if it's in EST
-  // Then adjust for the offset difference
-  const dateTimeStr = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  // Create ISO date string: YYYY-MM-DDTHH:mm:ss
+  const dateTimeStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}:${String(time.seconds).padStart(2, '0')}`;
   
-  // Parse as EST (UTC-5) - we'll use a fixed offset for now
-  // Note: This doesn't account for DST, but it's close enough for the 12-hour check
-  // EST is UTC-5, so we add 5 hours to convert EST to UTC
-  const estDate = new Date(dateTimeStr + '-05:00');
-  
-  // If the date is during EDT period (roughly March-November), use UTC-4 instead
-  // Check if date is in EDT period (second Sunday in March to first Sunday in November)
-  const monthNum = date.getMonth() + 1; // 1-12
-  const dayNum = date.getDate();
+  // Determine if we're in EDT (Daylight Saving Time) or EST
+  // EDT: Second Sunday in March to first Sunday in November (roughly)
+  // For December, we're definitely in EST (UTC-5)
+  const monthNum = month;
+  const dayNum = day;
   
   // Rough EDT check: March 10 - November 3 (approximate)
-  // More accurate would be to check actual DST dates, but this is close enough
+  // December is always EST
   const isEDT = (monthNum > 3 && monthNum < 11) || 
                 (monthNum === 3 && dayNum >= 10) || 
                 (monthNum === 11 && dayNum <= 3);
   
-  const result = isEDT ? new Date(dateTimeStr + '-04:00') : estDate;
+  // Create date with explicit timezone offset
+  // EST = UTC-5, EDT = UTC-4
+  const offset = isEDT ? '-04:00' : '-05:00';
+  const result = new Date(dateTimeStr + offset);
+  
+  // Verify the date is valid
+  if (isNaN(result.getTime())) {
+    console.error('❌ combineDateTime: Invalid date created', {
+      dateTimeStr,
+      offset,
+      result
+    });
+    return null;
+  }
+  
+  const now = new Date();
+  const diffMs = result - now;
+  const diffHours = diffMs / (1000 * 60 * 60);
   
   console.log('🕐 Combined datetime:', {
+    input: { dateInput, timeStr },
+    parsed: { year, month, day, hours: time.hours, minutes: time.minutes },
     dateTimeStr,
     isEDT,
-    result: result.toISOString(),
+    offset,
+    resultISO: result.toISOString(),
     resultLocal: result.toString(),
-    hours: time.hours,
-    minutes: time.minutes,
-    estOffset: isEDT ? '-04:00' : '-05:00'
+    nowISO: now.toISOString(),
+    nowLocal: now.toString(),
+    diffMs,
+    diffHours: diffHours.toFixed(2),
+    diffHoursRounded: Math.round(diffHours * 10) / 10
   });
   
   return result;
