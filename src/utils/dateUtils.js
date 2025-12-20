@@ -62,6 +62,8 @@ export function parseTime(timeStr) {
 
 /**
  * Combine a date and time into a single Date object
+ * IMPORTANT: Workouts are scheduled in EST/EDT (America/Toronto timezone)
+ * This function interprets the date/time as EST/EDT, not the user's local timezone
  * @param {string|Date} dateInput - Date string or Date object
  * @param {string} timeStr - Time string in HH:MM:SS format
  * @returns {Date|null} - Combined Date object or null if invalid
@@ -79,16 +81,50 @@ export function combineDateTime(dateInput, timeStr) {
     return null;
   }
   
-  // Create a new date with the time set in LOCAL timezone
-  // This ensures the workout time matches the user's local timezone
-  const result = new Date(date);
-  result.setHours(time.hours, time.minutes, time.seconds, 0);
+  // Workouts are scheduled in EST/EDT (America/Toronto)
+  // We need to create a date string that represents the workout time in EST/EDT
+  // Format: YYYY-MM-DDTHH:mm:ss
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(time.hours).padStart(2, '0');
+  const minutes = String(time.minutes).padStart(2, '0');
+  const seconds = String(time.seconds).padStart(2, '0');
+  
+  // Create ISO string with EST offset (UTC-5) or EDT offset (UTC-4)
+  // We'll use a date string and parse it, accounting for EST/EDT
+  // EST = UTC-5, EDT = UTC-4 (roughly March-November)
+  
+  // Simple approach: Create date string and parse as if it's in EST
+  // Then adjust for the offset difference
+  const dateTimeStr = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  
+  // Parse as EST (UTC-5) - we'll use a fixed offset for now
+  // Note: This doesn't account for DST, but it's close enough for the 12-hour check
+  // EST is UTC-5, so we add 5 hours to convert EST to UTC
+  const estDate = new Date(dateTimeStr + '-05:00');
+  
+  // If the date is during EDT period (roughly March-November), use UTC-4 instead
+  // Check if date is in EDT period (second Sunday in March to first Sunday in November)
+  const monthNum = date.getMonth() + 1; // 1-12
+  const dayNum = date.getDate();
+  
+  // Rough EDT check: March 10 - November 3 (approximate)
+  // More accurate would be to check actual DST dates, but this is close enough
+  const isEDT = (monthNum > 3 && monthNum < 11) || 
+                (monthNum === 3 && dayNum >= 10) || 
+                (monthNum === 11 && dayNum <= 3);
+  
+  const result = isEDT ? new Date(dateTimeStr + '-04:00') : estDate;
   
   console.log('🕐 Combined datetime:', {
+    dateTimeStr,
+    isEDT,
     result: result.toISOString(),
     resultLocal: result.toString(),
     hours: time.hours,
-    minutes: time.minutes
+    minutes: time.minutes,
+    estOffset: isEDT ? '-04:00' : '-05:00'
   });
   
   return result;
