@@ -233,6 +233,24 @@ const WorkoutDetail = () => {
     }
   };
 
+  // Check if workout has started (date + time is in the past)
+  const isWorkoutStarted = () => {
+    try {
+      if (!workout || !workout.workout_date || !workout.workout_time) return false;
+      
+      // Use combineDateTime to get the workout datetime in EST/EDT
+      const workoutDateTime = combineDateTime(workout.workout_date, workout.workout_time);
+      if (!workoutDateTime) return false;
+      
+      // Compare workout datetime to current time
+      const now = new Date();
+      return workoutDateTime < now;
+    } catch (error) {
+      console.error('Error checking if workout started:', error);
+      return false;
+    }
+  };
+
   // Helpers for waitlist position display
   const getWaitlistPosition = () => {
     const idx = waitlist.findIndex(w => w.user_id === currentUser.id);
@@ -1084,21 +1102,19 @@ const WorkoutDetail = () => {
           )}
 
           {/* Only show signup/waitlist buttons for non-swim workouts */}
-          {!isSwimWorkout && (
+          {!isSwimWorkout && !isWorkoutStarted() && (
             <div className="workout-actions">
               <div className="button-group">
-                {!isWorkoutArchived() && (
-                  <button 
-                    onClick={handleSignUp}
-                    className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
-                    disabled={workout.capacity && signups.length >= workout.capacity && !isSignedUp}
-                  >
-                    {isSignedUp ? '✓ Signed Up' : (workout.capacity && signups.length >= workout.capacity) ? 'Full' : 'Sign Up'}
-                  </button>
-                )}
+                <button 
+                  onClick={handleSignUp}
+                  className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
+                  disabled={workout.capacity && signups.length >= workout.capacity && !isSignedUp}
+                >
+                  {isSignedUp ? '✓ Signed Up' : (workout.capacity && signups.length >= workout.capacity) ? 'Full' : 'Sign Up'}
+                </button>
                 
                 {/* Cancel button for signed-up users */}
-                {isSignedUp && !isWorkoutArchived() && (
+                {isSignedUp && (
                   <button 
                     onClick={handleCancelClick}
                     className="cancel-btn"
@@ -1108,7 +1124,7 @@ const WorkoutDetail = () => {
                 )}
                 
                 {/* Waitlist button for full workouts */}
-                {workout.capacity && signups.length >= workout.capacity && !isSignedUp && !isWorkoutArchived() && (
+                {workout.capacity && signups.length >= workout.capacity && !isSignedUp && (
                   <button 
                     onClick={isOnWaitlist ? handleWaitlistLeave : handleWaitlistJoin}
                     className={`waitlist-btn ${isOnWaitlist ? 'on-waitlist' : ''}`}
@@ -1118,7 +1134,7 @@ const WorkoutDetail = () => {
                 )}
 
                 {/* Position label when on waitlist */}
-                {workout.capacity && signups.length >= workout.capacity && isOnWaitlist && !isWorkoutArchived() && (
+                {workout.capacity && signups.length >= workout.capacity && isOnWaitlist && (
                   <span className="waitlist-position">
                     {`You're ${formatOrdinal(getWaitlistPosition())} on the waitlist`}
                   </span>
