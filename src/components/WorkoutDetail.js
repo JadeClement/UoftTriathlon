@@ -1022,6 +1022,41 @@ const WorkoutDetail = () => {
             </div>
           )}
 
+          {/* Edit/Delete actions for workout author or exec/admin - bottom left of first card */}
+          {(() => {
+            const canEdit =
+              currentUser.id === workout.user_id ||
+              currentUser.role === 'exec' ||
+              currentUser.role === 'administrator';
+            return canEdit;
+          })() && !editMode && (
+            <div className="workout-actions-admin-bottom-left">
+              <button
+                className="edit-btn"
+                onClick={() => {
+                  console.log('🔍 Edit button clicked, workout:', workout);
+                  if (workout) {
+                    startEdit(workout);
+                    setEditMode(true);
+                    console.log('✅ Edit mode activated, editForm should be:', editForm);
+                  } else {
+                    console.error('❌ Workout is null or undefined');
+                  }
+                }}
+                disabled={editMode}
+              >
+                ✏️ Edit
+              </button>
+              <button
+                className="delete-btn"
+                onClick={handleDeleteWorkout}
+                disabled={editMode}
+              >
+                🗑️ Delete
+              </button>
+            </div>
+          )}
+
           {editMode ? (
             <div className="workout-edit-form">
               <div className="form-group">
@@ -1644,41 +1679,6 @@ const WorkoutDetail = () => {
             </>
           )}
         </div>
-
-        {/* Edit/Delete actions for workout author or exec/admin - bottom right */}
-        {(() => {
-          const canEdit =
-            currentUser.id === workout.user_id ||
-            currentUser.role === 'exec' ||
-            currentUser.role === 'administrator';
-          return canEdit;
-        })() && (
-          <div className="workout-actions-admin-bottom">
-            <button
-              className="edit-btn"
-              onClick={() => {
-                console.log('🔍 Edit button clicked, workout:', workout);
-                if (workout) {
-                  startEdit(workout);
-                  setEditMode(true);
-                  console.log('✅ Edit mode activated, editForm should be:', editForm);
-                } else {
-                  console.error('❌ Workout is null or undefined');
-                }
-              }}
-              disabled={editMode}
-            >
-              ✏️ Edit
-            </button>
-            <button
-              className="delete-btn"
-              onClick={handleDeleteWorkout}
-              disabled={editMode}
-            >
-              🗑️ Delete
-            </button>
-          </div>
-        )}
 
         <div className="comments-section">
           <h2>Comments ({comments.length})</h2>
