@@ -3101,13 +3101,13 @@ const Admin = () => {
         <div className="modal-overlay">
           <div className="modal attendance-modal">
             <div className="modal-header">
-              <h2>Attendance Details: {attendanceDetails.workout.title}</h2>
               <button 
                 className="close-btn"
                 onClick={() => setShowAttendanceModal(false)}
               >
                 ×
               </button>
+              <h2>Attendance Details: {attendanceDetails.workout.title}</h2>
             </div>
             
             <div className="attendance-details-content">

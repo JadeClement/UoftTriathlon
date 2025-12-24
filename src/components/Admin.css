@@ -1063,7 +1063,7 @@
 .workout-title {
   font-weight: 600;
   color: #1f2937;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
 }
 
 .workout-type-badge {
@@ -1237,10 +1237,12 @@
 
 .modal-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 1rem;
   padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+  position: relative;
 }
 
 .close-btn {
