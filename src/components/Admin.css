@@ -1237,10 +1237,10 @@
 
 .modal-header {
   display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem 1.5rem 1.5rem;
   border-bottom: 1px solid #e5e7eb;
   position: relative;
 }
@@ -1252,6 +1252,8 @@
   cursor: pointer;
   color: #6b7280;
   padding: 0.25rem;
+  align-self: flex-start;
+  margin-top: 0;
 }
 
 .close-btn:hover {
