@@ -85,6 +85,21 @@ const Admin = () => {
     }, 3000);
   };
 
+  // Format term name for display (e.g., "Fall 25" or "Fall/Winter 25-26")
+  const formatTermName = (term) => {
+    const termName = term.term.charAt(0).toUpperCase() + term.term.slice(1);
+    const startDate = new Date(term.start_date);
+    const endDate = new Date(term.end_date);
+    const startYear = startDate.getFullYear() % 100; // Get last 2 digits
+    const endYear = endDate.getFullYear() % 100;
+    
+    if (startYear === endYear) {
+      return `${termName} ${startYear}`;
+    } else {
+      return `${termName} ${startYear}-${endYear}`;
+    }
+  };
+
   // Rich text editor functions
   const insertText = (text, wrapper = '') => {
     const textarea = document.getElementById('email-body-textarea');
@@ -3018,7 +3033,7 @@ const Admin = () => {
                   <option value="">No term assigned</option>
                   {terms.map(term => (
                     <option key={term.id} value={term.id}>
-                      {term.term.charAt(0).toUpperCase() + term.term.slice(1).replace('/', '/')} ({new Date(term.start_date).toLocaleDateString()} - {new Date(term.end_date).toLocaleDateString()})
+                      {formatTermName(term)}
                     </option>
                   ))}
                 </select>
