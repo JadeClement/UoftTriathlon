@@ -1469,7 +1469,7 @@ const Forum = () => {
                 className={`filter-btn ${workoutFilter === 'bike' ? 'active' : ''}`}
                 onClick={() => setWorkoutFilter('bike')}
               >
-                🚴‍♂️ Bike (Indoor/Outdoor/Brick)
+                🚴‍♂️ Bike
               </button>
               <button 
                 className={`filter-btn ${workoutFilter === 'swim' ? 'active' : ''}`}
