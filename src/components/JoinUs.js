@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './JoinUs.css';
 
 const JoinUs = () => {
+  const [isSticky, setIsSticky] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const nav = document.querySelector('.section-navigation');
+      if (nav) {
+        const rect = nav.getBoundingClientRect();
+        setIsSticky(rect.top <= 70); // 70px is navbar height
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="join-us-container">
       <div className="container">
         <h1 className="section-title">Join Us!</h1>
         
-        <div className="section-navigation">
+        <div className={`section-navigation ${isSticky ? 'sticky' : ''}`}>
           <a href="#goal" className="nav-link">Goal</a>
           <a href="#who-can-join" className="nav-link">Who Can Join</a>
           <a href="#how-to-join" className="nav-link">How to Join</a>

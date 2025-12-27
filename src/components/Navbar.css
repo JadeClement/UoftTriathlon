@@ -20,13 +20,13 @@
   overflow-wrap: break-word;
   hyphens: auto;
   height: 28px;
-  display: flex;
+  display: none; /* Hidden by default */
   align-items: center;
   justify-content: center;
 }
 
 .site-banner.active {
-  display: flex;
+  display: flex; /* Only show when active */
 }
 
 /* Rotating banner container and items */

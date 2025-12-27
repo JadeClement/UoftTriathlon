@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getFieldsForSport } from '../config/sportFields';
+import { formatSignupTimeForDisplay, formatSignupDateForDisplay } from '../utils/dateUtils';
 import './Admin.css';
 
 const Admin = () => {
@@ -2615,7 +2616,7 @@ const Admin = () => {
                               <span>{workout.submitted_by}</span>
                               {workout.last_attendance_submitted && (
                                 <div className="submitted-time">
-                                  {new Date(workout.last_attendance_submitted).toLocaleString()}
+                                  {formatSignupTimeForDisplay(workout.last_attendance_submitted)}
                                 </div>
                               )}
                             </div>
@@ -3194,7 +3195,7 @@ const Admin = () => {
                           </div>
                         </div>
                         <div className="signup-time">
-                          {new Date(signup.signup_time).toLocaleString()}
+                          {formatSignupTimeForDisplay(signup.signup_time)}
                         </div>
                       </div>
                     ))}

@@ -19,7 +19,7 @@
   font-weight: 700;
 }
 
-/* Section Navigation */
+/* Section Navigation - Sticky */
 .section-navigation {
   display: flex;
   justify-content: center;
@@ -30,6 +30,15 @@
   border-radius: 12px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   flex-wrap: wrap;
+  position: sticky;
+  top: 70px; /* Below navbar */
+  z-index: 100;
+  transition: box-shadow 0.3s ease;
+}
+
+/* Add shadow when sticky */
+.section-navigation.sticky {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .nav-link {
@@ -69,7 +78,7 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
   text-align: center;
-  scroll-margin-top: 80px; /* Account for fixed navbar */
+  scroll-margin-top: 200px; /* Account for navbar (70px) + sticky nav (~60px) + extra space to show title */
 }
 
 .goal-title {
@@ -94,7 +103,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
-  scroll-margin-top: 80px; /* Account for fixed navbar */
+  scroll-margin-top: 200px; /* Account for navbar (70px) + sticky nav (~60px) + extra space to show title */
 }
 
 .membership-info p {
@@ -165,7 +174,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
-  scroll-margin-top: 80px; /* Account for fixed navbar */
+  scroll-margin-top: 180px; /* Account for navbar (70px) + sticky nav (~60px) + extra space to show title */
 }
 
 .charter-notice {
@@ -242,7 +251,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
-  scroll-margin-top: 80px; /* Account for fixed navbar */
+  scroll-margin-top: 220px; /* Account for navbar (70px) + sticky nav (~60px) + extra space to show title */
 }
 
 .step-container {

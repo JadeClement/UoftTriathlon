@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
+import { useForumPosts, useOnlineStatus } from '../hooks/useOfflineData';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
+import PullToRefresh from './PullToRefresh';
+import { PostSkeleton } from './LoadingSkeleton';
+import { hapticImpact } from '../utils/haptics';
 import './Forum.css';
 
 const Forum = () => {
@@ -13,10 +17,22 @@ const Forum = () => {
   const [allLoadedWorkouts, setAllLoadedWorkouts] = useState([]); // Store all loaded workouts from backend
   const [workoutsFullyLoaded, setWorkoutsFullyLoaded] = useState(false); // Track if we've loaded all workouts
   const [lastWorkoutFilter, setLastWorkoutFilter] = useState('all'); // Track last filter to detect changes
-  const [eventPosts, setEventPosts] = useState([]);
   const [newWorkout, setNewWorkout] = useState('');
   const [newEvent, setNewEvent] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // Offline data hooks
+  const isOnline = useOnlineStatus();
+  const { 
+    posts: eventPostsFromCache, 
+    loading: eventsLoadingFromCache, 
+    fromCache: eventsFromCache,
+    isOffline: eventsOffline,
+    refresh: refreshEvents
+  } = useForumPosts({ type: 'event' });
+  
+  // Use cached events if available, otherwise use state
+  const [eventPosts, setEventPosts] = useState([]);
   const [showWorkoutForm, setShowWorkoutForm] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [workoutFilter, setWorkoutFilter] = useState('all');
@@ -63,7 +79,6 @@ const Forum = () => {
   const [promotedWorkout, setPromotedWorkout] = useState(null);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [workoutsLoading, setWorkoutsLoading] = useState(false);
-  const [eventsLoading, setEventsLoading] = useState(false);
   const [termExpired, setTermExpired] = useState(false);
   const [termExpiredMessage, setTermExpiredMessage] = useState('');
   
@@ -234,6 +249,13 @@ const Forum = () => {
     }
     // If no tab param or invalid value, default to 'workouts' (existing behavior)
   }, []);
+
+  // Sync event posts from cache hook to state (must be before any early returns)
+  useEffect(() => {
+    if (eventPostsFromCache && eventPostsFromCache.length > 0) {
+      setEventPosts(eventPostsFromCache);
+    }
+  }, [eventPostsFromCache]);
 
   const loadForumPosts = async () => {
     try {
@@ -461,45 +483,16 @@ const Forum = () => {
         
       // Do not load per-workout signups/waitlists here; fetch on demand in detail view
 
-      // Load event posts only when Events tab is active to speed up initial load
-      if (activeTab === 'events') {
-        setEventsLoading(true);
-        const eventResponse = await fetch(`${API_BASE_URL}/forum/posts?type=event`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (eventResponse.status === 403) {
-          const errorData = await eventResponse.json();
-          if (errorData.error === 'term_expired') {
-            setTermExpired(true);
-            setTermExpiredMessage(errorData.message || 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.');
-            return;
-          }
-        }
-
-        if (eventResponse.ok) {
-          const eventData = await eventResponse.json();
-          console.log('🔍 Event data received:', eventData);
-          
-          // Ensure we have valid posts data
-          const posts = eventData.posts || eventData || [];
-          console.log('🔍 Event posts to set:', posts);
-          
-          // Filter out any invalid posts
-          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
-          console.log('🔍 Valid event posts:', validPosts);
-          
-          setEventPosts(validPosts);
-        }
+      // Event posts are now loaded via useForumPosts hook (offline-first)
+      // Only manually refresh if needed
+      if (activeTab === 'events' && isOnline) {
+        refreshEvents();
       }
     } catch (error) {
       console.error('Error loading forum posts:', error);
     } finally {
       setLoading(false);
       setWorkoutsLoading(false);
-      setEventsLoading(false);
     }
   };
 
@@ -654,6 +647,12 @@ const Forum = () => {
   };
 
   const handleWorkoutSignUp = async (workoutId) => {
+    // Check if offline - workout signups require online connection
+    if (!navigator.onLine) {
+      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -942,6 +941,12 @@ const Forum = () => {
     e.preventDefault();
     if (!workoutForm.title.trim() || !workoutForm.date || !workoutForm.time || !workoutForm.content.trim()) return;
 
+    // Check if offline - forum posts require online connection
+    if (!navigator.onLine) {
+      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+      return;
+    }
+
     // Allow both past and future dates for workouts (practices can be added retroactively)
 
     try {
@@ -1008,6 +1013,12 @@ const Forum = () => {
     e.preventDefault();
     if (!eventForm.title.trim() || !eventForm.date || !eventForm.content.trim()) return;
 
+    // Check if offline - forum posts require online connection
+    if (!navigator.onLine) {
+      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+      return;
+    }
+
     // Check if the selected date is in the future
     const selectedDate = new Date(eventForm.date);
     const today = new Date();
@@ -1042,6 +1053,8 @@ const Forum = () => {
       if (response.ok) {
         const newPostData = await response.json();
         setEventPosts([newPostData.post, ...eventPosts]);
+        // Refresh events from cache to sync
+        refreshEvents();
         setEventForm({
           title: '',
           date: '',
@@ -1273,7 +1286,18 @@ const Forum = () => {
   };
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="forum-container">
+        <div className="container">
+          <h1 className="section-title">Team Forum</h1>
+          <div className="posts-list">
+            <PostSkeleton />
+            <PostSkeleton />
+            <PostSkeleton />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!currentUser) {
@@ -1329,14 +1353,32 @@ const Forum = () => {
     );
   }
 
+  const handleRefresh = async () => {
+    hapticImpact();
+    if (activeTab === 'events') {
+      await refreshEvents();
+    } else {
+      await loadForumPosts();
+    }
+  };
+
   return (
-    <div className="forum-container">
-      <div className="container">
-        <h1 className="section-title">Team Forum</h1>
-        <p className="section-subtitle">Connect with your teammates and discuss training, races, and more!</p>
-        
-        {/* Forum Tabs */}
-        <div className="forum-tabs">
+    <PullToRefresh onRefresh={handleRefresh} disabled={!isOnline}>
+      <div className="forum-container">
+        <div className="container">
+          <h1 className="section-title">Team Forum</h1>
+          <p className="section-subtitle">Connect with your teammates and discuss training, races, and more!</p>
+          
+          {/* Offline Indicator */}
+          {!isOnline && (
+            <div className="offline-indicator">
+              <span className="offline-icon">📴</span>
+              <span className="offline-text">You're offline. Showing cached data.</span>
+            </div>
+          )}
+          
+          {/* Forum Tabs */}
+          <div className="forum-tabs">
           <button 
             className={`tab-button ${activeTab === 'workouts' ? 'active' : ''}`}
             onClick={() => setActiveTab('workouts')}
@@ -1356,14 +1398,21 @@ const Forum = () => {
           <div className="workouts-section">
             <div className="section-header">
               <h2>Workout Posts</h2>
-              {(isExec(currentUser) || isCoach(currentUser)) && (
-                <button 
-                  className="new-post-btn"
-                  onClick={() => setShowWorkoutForm(true)}
-                >
-                  + New Workout
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {!isOnline && (
+                  <span className="offline-badge" title="You're offline">
+                    📴 Offline
+                  </span>
+                )}
+                {(isExec(currentUser) || isCoach(currentUser)) && (
+                  <button 
+                    className="new-post-btn"
+                    onClick={() => setShowWorkoutForm(true)}
+                  >
+                    + New Workout
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Time Filters (row 1) */}
@@ -1694,18 +1743,31 @@ const Forum = () => {
           <div className="events-section">
             <div className="section-header">
               <h2>Event Posts</h2>
-              {isExec(currentUser) && (
-                <button 
-                  className="new-post-btn"
-                  onClick={() => setShowEventForm(true)}
-                >
-                  + New Event
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {/* Offline/Cache Indicator */}
+                {eventsFromCache && (
+                  <span className="cache-indicator" title="Showing cached data">
+                    📦 Cached
+                  </span>
+                )}
+                {eventsOffline && (
+                  <span className="offline-badge" title="You're offline">
+                    📴 Offline
+                  </span>
+                )}
+                {isMember(currentUser) && (
+                  <button 
+                    className="new-post-btn"
+                    onClick={() => setShowEventForm(true)}
+                  >
+                    + New Event
+                  </button>
+                )}
+              </div>
             </div>
 
             {eventPosts.length === 0 ? (
-              <p className="no-posts">{eventsLoading ? 'Events loading...' : 'No event posts yet.'}</p>
+              <p className="no-posts">{eventsLoadingFromCache ? 'Events loading...' : 'No event posts yet.'}</p>
             ) : (
               <div className="posts-list">
                 {eventPosts.map(post => (
@@ -2048,6 +2110,7 @@ const Forum = () => {
         )}
       </div>
     </div>
+    </PullToRefresh>
   );
 };
 

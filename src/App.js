@@ -20,6 +20,7 @@ import TeamGear from './components/TeamGear';
 import Footer from './components/Footer';
 import ResetPassword from './components/ResetPassword';
 import Logout from './components/Logout';
+import MobileNav from './components/MobileNav';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
@@ -164,6 +165,7 @@ function AppContent() {
         </Routes>
       </main>
       <Footer />
+      <MobileNav />
     </>
   );
 }

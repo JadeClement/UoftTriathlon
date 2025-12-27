@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
+import { formatSignupDateForDisplay } from '../utils/dateUtils';
 import './RaceDetail.css';
 
 const RaceDetail = () => {
@@ -245,7 +246,7 @@ const RaceDetail = () => {
                       <div className="signup-name">{signup.user_name}</div>
                       <div className="signup-time">
                         📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null'
-                          ? new Date(signup.signup_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(signup.signup_time)
                           : 'Recently'
                         }
                       </div>

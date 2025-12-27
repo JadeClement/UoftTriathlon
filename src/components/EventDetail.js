@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
+import { formatSignupDateForDisplay } from '../utils/dateUtils';
 import './EventDetail.css';
 
 const EventDetail = () => {
@@ -434,7 +435,7 @@ const EventDetail = () => {
                       </div>
                       <span className="rsvp-date">
                         {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
-                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(rsvp.rsvp_time)
                           : 'Recently'
                         }
                       </span>
@@ -473,7 +474,7 @@ const EventDetail = () => {
                       </div>
                       <span className="rsvp-date">
                         {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
-                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(rsvp.rsvp_time)
                           : 'Recently'
                         }
                       </span>
@@ -512,7 +513,7 @@ const EventDetail = () => {
                       </div>
                       <span className="rsvp-date">
                         {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
-                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(rsvp.rsvp_time)
                           : 'Recently'
                         }
                       </span>

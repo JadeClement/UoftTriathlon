@@ -120,15 +120,30 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // Check if offline - login requires internet connection
+      if (!navigator.onLine) {
+        setErrorAndScroll("You're currently offline. Login requires an internet connection. Please check your connection and try again.");
+        setLoading(false);
+        return;
+      }
+
       if (isLogin) {
         console.log('🔐 Login: Starting login process for:', email);
         if (!email || !password) {
           setErrorAndScroll('Email and password are required');
+          setLoading(false);
           return;
         }
         const user = await login(email, password);
         console.log('🔐 Login: Login successful, user:', user);
       } else {
+          // Check if offline - signup requires internet connection
+        if (!navigator.onLine) {
+          setErrorAndScroll("You're currently offline. Creating an account requires an internet connection. Please check your connection and try again.");
+          setLoading(false);
+          return;
+        }
+
         // Validate passwords match for signup
         if (password !== confirmPassword) {
           setErrorAndScroll("Passwords do not match. Please ensure both password fields are identical.");
@@ -137,6 +152,7 @@ const Login = () => {
         }
         if (!name || !email || !password || !phoneNumber) {
           setErrorAndScroll('All fields are required');
+          setLoading(false);
           return;
         }
         
@@ -195,6 +211,12 @@ const Login = () => {
       return;
     }
 
+    // Check if offline - password reset requires internet connection
+    if (!navigator.onLine) {
+      setErrorAndScroll("You're currently offline. Password reset requires an internet connection. Please check your connection and try again.");
+      return;
+    }
+
     console.log('🔑 Submitting forgot password request for email:', forgotPasswordEmail);
     setForgotPasswordLoading(true);
     setError('');
@@ -247,10 +269,32 @@ const Login = () => {
     setError('');
   };
 
+  // Check if offline
+  const isOffline = !navigator.onLine;
+
   return (
     <div className="login-container">
       <div className="login-card">
         <h2>{isLogin ? 'Sign In' : 'Create Account'}</h2>
+        
+        {/* Offline Notice */}
+        {isOffline && (
+          <div className="offline-notice" style={{
+            background: '#fef3c7',
+            border: '1px solid #fbbf24',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1rem',
+            color: '#92400e'
+          }}>
+            <p style={{ margin: 0, fontWeight: 500 }}>
+              📴 <strong>You're offline</strong>
+            </p>
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '14px' }}>
+              Login requires an internet connection. If you're already logged in, you can use the app offline.
+            </p>
+          </div>
+        )}
         
         {error && (
           <div className="error-message">

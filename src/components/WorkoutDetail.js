@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
+import { useWorkout, useOnlineStatus } from '../hooks/useOfflineData';
 import { linkifyText } from '../utils/linkUtils';
-import { combineDateTime, getHoursUntil, isWithinHours } from '../utils/dateUtils';
+import { combineDateTime, getHoursUntil, isWithinHours, formatSignupDateForDisplay, formatSignupTimeOnlyForDisplay } from '../utils/dateUtils';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
 import { getFieldsForSport } from '../config/sportFields';
 import './WorkoutDetail.css';
@@ -12,6 +13,20 @@ const WorkoutDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser, isMember } = useAuth();
+  
+  // Offline data hooks
+  const isOnline = useOnlineStatus();
+  const {
+    workout: cachedWorkout,
+    signups: cachedSignups,
+    waitlist: cachedWaitlist,
+    loading: workoutLoading,
+    fromCache: workoutFromCache,
+    isOffline: workoutOffline,
+    refresh: refreshWorkout
+  } = useWorkout(id);
+  
+  // Use cached data if available, otherwise use state
   const [workout, setWorkout] = useState(null);
   const [signups, setSignups] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
@@ -214,10 +229,11 @@ const WorkoutDetail = () => {
 
   const isWorkoutArchived = () => {
     try {
-      if (!workout || !workout.workout_date) return false;
+      const workoutToCheck = displayWorkout || workout;
+      if (!workoutToCheck || !workoutToCheck.workout_date) return false;
       
       // Parse the workout date and get just the date part (YYYY-MM-DD)
-      const workoutDate = new Date(workout.workout_date);
+      const workoutDate = new Date(workoutToCheck.workout_date);
       if (isNaN(workoutDate.getTime())) return false;
       
       // Get today's date
@@ -236,27 +252,28 @@ const WorkoutDetail = () => {
   // Check if workout has started (date + time is in the past)
   const isWorkoutStarted = () => {
     try {
-      if (!workout || !workout.workout_date || !workout.workout_time) {
+      const workoutToCheck = displayWorkout || workout;
+      if (!workoutToCheck || !workoutToCheck.workout_date || !workoutToCheck.workout_time) {
         console.log('🔍 isWorkoutStarted: Missing workout data', { 
-          hasWorkout: !!workout, 
-          workout_date: workout?.workout_date, 
-          workout_time: workout?.workout_time 
+          hasWorkout: !!workoutToCheck, 
+          workout_date: workoutToCheck?.workout_date, 
+          workout_time: workoutToCheck?.workout_time 
         });
         return false;
       }
       
       // Extract just the date part if workout_date is an ISO string
-      let dateStr = workout.workout_date;
+      let dateStr = workoutToCheck.workout_date;
       if (typeof dateStr === 'string' && dateStr.includes('T')) {
         dateStr = dateStr.split('T')[0];
       }
       
       // Use combineDateTime to get the workout datetime in EST/EDT
-      const workoutDateTime = combineDateTime(dateStr, workout.workout_time);
+      const workoutDateTime = combineDateTime(dateStr, workoutToCheck.workout_time);
       if (!workoutDateTime) {
         console.log('🔍 isWorkoutStarted: Failed to create workout datetime', { 
           dateStr, 
-          workout_time: workout.workout_time 
+          workout_time: workoutToCheck.workout_time 
         });
         return false;
       }
@@ -266,9 +283,9 @@ const WorkoutDetail = () => {
       const hasStarted = workoutDateTime < now;
       
       console.log('🔍 isWorkoutStarted check:', {
-        workout_date: workout.workout_date,
+        workout_date: workoutToCheck.workout_date,
         dateStr,
-        workout_time: workout.workout_time,
+        workout_time: workoutToCheck.workout_time,
         workoutDateTimeISO: workoutDateTime.toISOString(),
         workoutDateTimeLocal: workoutDateTime.toString(),
         nowISO: now.toISOString(),
@@ -287,7 +304,8 @@ const WorkoutDetail = () => {
 
   // Helpers for waitlist position display
   const getWaitlistPosition = () => {
-    const idx = waitlist.findIndex(w => w.user_id === currentUser.id);
+    const waitlistToCheck = displayWaitlist.length > 0 ? displayWaitlist : waitlist;
+    const idx = waitlistToCheck.findIndex(w => w.user_id === currentUser.id);
     return idx === -1 ? null : idx + 1;
   };
 
@@ -296,6 +314,29 @@ const WorkoutDetail = () => {
     const s = ["th","st","nd","rd"], v = n % 100;
     return n + (s[(v-20)%10] || s[v] || s[0]);
   };
+
+  // Sync cached workout data to state
+  useEffect(() => {
+    if (cachedWorkout) {
+      setWorkout(cachedWorkout);
+    }
+    if (cachedSignups && cachedSignups.length > 0) {
+      setSignups(cachedSignups);
+      // Check if current user is signed up
+      const userSignup = cachedSignups.find(s => s.user_id === currentUser?.id);
+      setIsSignedUp(!!userSignup);
+    }
+    if (cachedWaitlist && cachedWaitlist.length > 0) {
+      setWaitlist(cachedWaitlist);
+      // Check if current user is on waitlist
+      const userWaitlist = cachedWaitlist.find(w => w.user_id === currentUser?.id);
+      setIsOnWaitlist(!!userWaitlist);
+    }
+    // Update loading state based on workout hook
+    if (!workoutLoading) {
+      setLoading(false);
+    }
+  }, [cachedWorkout, cachedSignups, cachedWaitlist, workoutLoading, currentUser]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -308,13 +349,17 @@ const WorkoutDetail = () => {
       return;
     }
     
-    loadWorkoutDetails();
-  }, [currentUser, navigate, isMember, id, loadWorkoutDetails]);
+    // Only load additional data (attendance, comments, test events) if we have workout data
+    if (cachedWorkout || workout) {
+      loadWorkoutDetails();
+    }
+  }, [currentUser, navigate, isMember, id, cachedWorkout, workout]);
 
   // Listen for profile updates to refresh profile pictures
   useEffect(() => {
     const handleProfileUpdate = (event) => {
       console.log('🔄 Profile updated event received, refreshing workout details...');
+      refreshWorkout();
       loadWorkoutDetails();
     };
 
@@ -323,7 +368,7 @@ const WorkoutDetail = () => {
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, [loadWorkoutDetails]);
+  }, [refreshWorkout, loadWorkoutDetails]);
 
   const loadWorkoutDetails_legacy = async () => {
     try {
@@ -460,6 +505,12 @@ const WorkoutDetail = () => {
   };
 
   const handleSignUp = async () => {
+      // Check if offline - workout signups require online connection
+      if (!navigator.onLine) {
+        showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+        return;
+      }
+
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -633,6 +684,12 @@ const WorkoutDetail = () => {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
         console.error('No authentication token found');
+        return;
+      }
+
+      // Check if offline - workout cancellations require online connection
+      if (!navigator.onLine) {
+        showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
         return;
       }
 
@@ -946,7 +1003,8 @@ const WorkoutDetail = () => {
 
   const openTestEventModal = () => {
     // Pre-fill form with workout info
-    const workoutDate = workout.workout_date ? workout.workout_date.split('T')[0] : '';
+    const workoutToCheck = displayWorkout || workout;
+    const workoutDate = workoutToCheck.workout_date ? workoutToCheck.workout_date.split('T')[0] : '';
     const sportMap = {
       'swim': 'swim',
       'spin': 'bike',
@@ -954,24 +1012,29 @@ const WorkoutDetail = () => {
       'brick': 'bike',
       'run': 'run'
     };
-    const mappedSport = sportMap[workout.workout_type] || 'run';
+    const mappedSport = sportMap[workoutToCheck.workout_type] || 'run';
     
     setTestEventForm({
-      title: workout.title || '',
+      title: workoutToCheck.title || '',
       sport: mappedSport,
       date: workoutDate,
-      workout: workout.content || ''
+      workout: workoutToCheck.content || ''
     });
     setShowTestEventModal(true);
   };
 
-  if (loading) {
+  if (loading || workoutLoading) {
     return <div className="loading">Loading workout details...</div>;
   }
 
-  if (!workout) {
+  if (!workout && !cachedWorkout) {
     return <div className="error">Workout not found</div>;
   }
+
+  // Use cached workout if state workout is not available
+  const displayWorkout = workout || cachedWorkout;
+  const displaySignups = signups.length > 0 ? signups : (cachedSignups || []);
+  const displayWaitlist = waitlist.length > 0 ? waitlist : (cachedWaitlist || []);
 
   return (
     <div className="workout-detail-container">
@@ -979,17 +1042,37 @@ const WorkoutDetail = () => {
         <button className="back-btn" onClick={() => navigate('/forum')}>
           ← Back to Forum
         </button>
+        
+        {/* Offline Indicator */}
+        {!isOnline && (
+          <div className="offline-indicator">
+            <span className="offline-icon">📴</span>
+            <span className="offline-text">You're offline. Showing cached data.</span>
+          </div>
+        )}
 
         <div className="workout-detail-card">
           <div className="workout-header">
             <div className="workout-title-section">
-              <h1 className="workout-title">{workout.title}</h1>
+              <h1 className="workout-title">
+                {displayWorkout.title}
+                {!isOnline && (
+                  <span className="offline-badge" style={{ marginLeft: '0.75rem' }} title="You're offline">
+                    📴 Offline
+                  </span>
+                )}
+                {workoutFromCache && isOnline && (
+                  <span className="cache-indicator" style={{ marginLeft: '0.75rem' }} title="Showing cached data">
+                    📦 Cached
+                  </span>
+                )}
+              </h1>
             </div>
             <div className="workout-author">
               <div className="author-info">
-                                    {workout.authorProfilePictureUrl ? (
+                                    {displayWorkout.authorProfilePictureUrl ? (
                       <img 
-                        src={`${API_BASE_URL}${workout.authorProfilePictureUrl}`} 
+                        src={`${API_BASE_URL}${displayWorkout.authorProfilePictureUrl}`} 
                         alt="Profile" 
                         className="author-avatar"
                         onError={(e) => {
@@ -1003,19 +1086,19 @@ const WorkoutDetail = () => {
                         className="author-avatar"
                       />
                     )}
-                <span className="author-name">Posted by {workout.author_name}</span>
+                <span className="author-name">Posted by {displayWorkout.author_name}</span>
               </div>
             </div>
           </div>
 
-          {workout.workout_type && (
+          {displayWorkout.workout_type && (
             <div className="workout-meta">
-              <span className="workout-type-badge">{workout.workout_type}</span>
-              {workout.workout_date && (
+              <span className="workout-type-badge">{displayWorkout.workout_type}</span>
+              {displayWorkout.workout_date && (
                 <span className="workout-date">
-                  📅 {(() => { const b = workout.workout_date.split('T')[0]; const [y,m,d] = b.split('-').map(Number); return new Date(Date.UTC(y,m-1,d)).toLocaleDateString(undefined,{ timeZone: 'UTC' }); })()}
-                  {workout.workout_time && (
-                    <span className="workout-time"> • 🕐 {workout.workout_time}</span>
+                  📅 {(() => { const b = displayWorkout.workout_date.split('T')[0]; const [y,m,d] = b.split('-').map(Number); return new Date(Date.UTC(y,m-1,d)).toLocaleDateString(undefined,{ timeZone: 'UTC' }); })()}
+                  {displayWorkout.workout_time && (
+                    <span className="workout-time"> • 🕐 {displayWorkout.workout_time}</span>
                   )}
                 </span>
               )}
@@ -1025,7 +1108,7 @@ const WorkoutDetail = () => {
           {/* Edit/Delete actions for workout author or exec/admin - bottom left of first card */}
           {(() => {
             const canEdit =
-              currentUser.id === workout.user_id ||
+              currentUser.id === displayWorkout.user_id ||
               currentUser.role === 'exec' ||
               currentUser.role === 'administrator';
             return canEdit;
@@ -1034,9 +1117,9 @@ const WorkoutDetail = () => {
               <button
                 className="edit-btn"
                 onClick={() => {
-                  console.log('🔍 Edit button clicked, workout:', workout);
-                  if (workout) {
-                    startEdit(workout);
+                  console.log('🔍 Edit button clicked, workout:', displayWorkout);
+                  if (displayWorkout) {
+                    startEdit(displayWorkout);
                     setEditMode(true);
                     console.log('✅ Edit mode activated, editForm should be:', editForm);
                   } else {
@@ -1140,7 +1223,7 @@ const WorkoutDetail = () => {
                 <button 
                   className="btn btn-primary" 
                                       onClick={async () => {
-                      const result = await saveWorkout(workout.id, loadWorkoutDetails);
+                      const result = await saveWorkout(displayWorkout.id, loadWorkoutDetails);
                       if (result.success) {
                         setEditMode(false);
                         showSuccess('Workout updated successfully!');
@@ -1166,7 +1249,7 @@ const WorkoutDetail = () => {
             </div>
           ) : (
             <div className="workout-content">
-              {linkifyText(workout.content)}
+              {linkifyText(displayWorkout.content)}
             </div>
           )}
 
@@ -1177,9 +1260,9 @@ const WorkoutDetail = () => {
                 <button 
                   onClick={handleSignUp}
                   className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
-                  disabled={workout.capacity && signups.length >= workout.capacity && !isSignedUp}
+                  disabled={displayWorkout.capacity && displaySignups.length >= displayWorkout.capacity && !isSignedUp}
                 >
-                  {isSignedUp ? '✓ Signed Up' : (workout.capacity && signups.length >= workout.capacity) ? 'Full' : 'Sign Up'}
+                  {isSignedUp ? '✓ Signed Up' : (displayWorkout.capacity && displaySignups.length >= displayWorkout.capacity) ? 'Full' : 'Sign Up'}
                 </button>
                 
                 {/* Cancel button for signed-up users */}
@@ -1193,7 +1276,7 @@ const WorkoutDetail = () => {
                 )}
                 
                 {/* Waitlist button for full workouts */}
-                {workout.capacity && signups.length >= workout.capacity && !isSignedUp && (
+                {displayWorkout.capacity && displaySignups.length >= displayWorkout.capacity && !isSignedUp && (
                   <button 
                     onClick={isOnWaitlist ? handleWaitlistLeave : handleWaitlistJoin}
                     className={`waitlist-btn ${isOnWaitlist ? 'on-waitlist' : ''}`}
@@ -1203,7 +1286,7 @@ const WorkoutDetail = () => {
                 )}
 
                 {/* Position label when on waitlist */}
-                {workout.capacity && signups.length >= workout.capacity && isOnWaitlist && (
+                {displayWorkout.capacity && displaySignups.length >= displayWorkout.capacity && isOnWaitlist && (
                   <span className="waitlist-position">
                     {`You're ${formatOrdinal(getWaitlistPosition())} on the waitlist`}
                   </span>
@@ -1219,7 +1302,7 @@ const WorkoutDetail = () => {
             <h2>
               {isSwimWorkout && currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') 
                 ? `Swim Attendance (${swimMembers.length})` 
-                : `Who's Coming (${signups.length}${workout.capacity ? `/${workout.capacity}` : ''})`
+                : `Who's Coming (${displaySignups.length}${displayWorkout.capacity ? `/${displayWorkout.capacity}` : ''})`
               }
             </h2>
             
@@ -1340,12 +1423,12 @@ const WorkoutDetail = () => {
             )
           ) : (
             /* Regular signups display for non-swim workouts */
-            signups.length === 0 ? (
+            displaySignups.length === 0 ? (
               <p className="no-signups">No one has signed up yet. Be the first!</p>
             ) : (
               <>
                 <div className="signups-list">
-                  {signups.map(signup => (
+                  {displaySignups.map(signup => (
                     <div key={signup.id} className="signup-item">
                       {/* Attendance checkbox for coaches, executives, and administrators */}
                       {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
@@ -1395,11 +1478,11 @@ const WorkoutDetail = () => {
                       </div>
                       <span className="signup-date">
                         📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
-                          ? new Date(signup.signup_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(signup.signup_time)
                           : 'Recently'
                         }
                         <span className="signup-time"> • 🕐 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
-                          ? new Date(signup.signup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                          ? formatSignupTimeOnlyForDisplay(signup.signup_time)
                           : 'Recently'
                         }</span>
                       </span>
@@ -1408,10 +1491,10 @@ const WorkoutDetail = () => {
                 </div>
                 
                 {/* Submit attendance button for coaches, executives and administrators */}
-                {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && signups.length > 0 && (
+                {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && displaySignups.length > 0 && (
                   <div className="attendance-submit">
                     <div className="attendance-debug">
-                      <small>📊 {signups.length} signups • {Object.keys(attendance).length} attendance records</small>
+                      <small>📊 {displaySignups.length} signups • {Object.keys(attendance).length} attendance records</small>
                     </div>
                     {attendanceSaved && !editingAttendance ? (
                       <div className="attendance-actions">
@@ -1456,11 +1539,11 @@ const WorkoutDetail = () => {
         )}
 
         {/* Waitlist section - only show for non-swim workouts */}
-        {!isSwimWorkout && workout.capacity && waitlist.length > 0 && (
+        {!isSwimWorkout && displayWorkout.capacity && displayWaitlist.length > 0 && (
           <div className="waitlist-section">
-            <h2>Waitlist ({waitlist.length})</h2>
+            <h2>Waitlist ({displayWaitlist.length})</h2>
             <div className="waitlist-list">
-              {waitlist.map(waitlistItem => (
+              {displayWaitlist.map(waitlistItem => (
                 <div key={waitlistItem.id} className="waitlist-item">
                   <div className="waitlist-user-info">
                     {waitlistItem.userProfilePictureUrl ? (
@@ -2004,7 +2087,7 @@ const WorkoutDetail = () => {
         )}
 
         {/* Cancel Confirmation Modal */}
-        {showCancelModal && workout && (() => {
+        {showCancelModal && displayWorkout && (() => {
           // Calculate hours until workout
           console.log('🔍 Cancel modal calculation:', {
             workout_date: workout.workout_date,
