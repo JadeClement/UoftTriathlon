@@ -81,6 +81,7 @@ const Forum = () => {
   const [workoutsLoading, setWorkoutsLoading] = useState(false);
   const [termExpired, setTermExpired] = useState(false);
   const [termExpiredMessage, setTermExpiredMessage] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   
   // Reload when time filter or past page changes
   useEffect(() => {
@@ -1404,85 +1405,102 @@ const Forum = () => {
                     📴 Offline
                   </span>
                 )}
+                <button 
+                  className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
+                  onClick={() => setShowFilters(!showFilters)}
+                  aria-label="Toggle filters"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="3" y1="5" x2="17" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="6" cy="5" r="1.5" fill="currentColor"/>
+                    <line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="14" cy="10" r="1.5" fill="currentColor"/>
+                    <line x1="3" y1="15" x2="17" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="6" cy="15" r="1.5" fill="currentColor"/>
+                  </svg>
+                </button>
                 {(isExec(currentUser) || isCoach(currentUser)) && (
                   <button 
                     className="new-post-btn"
                     onClick={() => setShowWorkoutForm(true)}
                   >
-                    + New Workout
+                    +<span className="btn-text"> New Workout</span>
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Time Filters (row 1) */}
-            <div className="workout-filters" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button 
-                  className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
-                  onClick={() => { setTimeFilter('upcoming'); setPastPage(1); }}
-                >
-                  ⏳ Upcoming
-                </button>
-                <button 
-                  className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
-                  onClick={() => { setTimeFilter('past'); setPastPage(1); }}
-                >
-                  🗂 Past
-                </button>
+            {/* Filters Container */}
+            <div className={`filters-container ${showFilters ? 'filters-visible' : ''}`}>
+              {/* Time Filters (row 1) */}
+              <div className="workout-filters" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button 
+                    className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
+                    onClick={() => { setTimeFilter('upcoming'); setPastPage(1); }}
+                  >
+                    ⏳ Upcoming
+                  </button>
+                  <button 
+                    className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
+                    onClick={() => { setTimeFilter('past'); setPastPage(1); }}
+                  >
+                    🗂 Past
+                  </button>
+                </div>
+
+                {(() => {
+                  const pagination = getPaginationInfo();
+                  if (!pagination) return null;
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalPosts} workouts)</span>
+                      <button 
+                        className="filter-btn"
+                        onClick={() => setPastPage(p => Math.max(1, p - 1))}
+                        disabled={pagination.currentPage <= 1}
+                      >
+                        Previous
+                      </button>
+                      <button 
+                        className="filter-btn"
+                        onClick={() => setPastPage(p => Math.min(pagination.totalPages, p + 1))}
+                        disabled={pagination.currentPage >= pagination.totalPages}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {(() => {
-                const pagination = getPaginationInfo();
-                if (!pagination) return null;
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalPosts} workouts)</span>
-                    <button 
-                      className="filter-btn"
-                      onClick={() => setPastPage(p => Math.max(1, p - 1))}
-                      disabled={pagination.currentPage <= 1}
-                    >
-                      Previous
-                    </button>
-                    <button 
-                      className="filter-btn"
-                      onClick={() => setPastPage(p => Math.min(pagination.totalPages, p + 1))}
-                      disabled={pagination.currentPage >= pagination.totalPages}
-                    >
-                      Next
-                    </button>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Type Filters (row 2) */}
-            <div className="workout-filters">
-              <button 
-                className={`filter-btn ${workoutFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setWorkoutFilter('all')}
-              >
-                🏁 All Types
-              </button>
-              <button 
-                className={`filter-btn ${workoutFilter === 'bike' ? 'active' : ''}`}
-                onClick={() => setWorkoutFilter('bike')}
-              >
-                🚴‍♂️ Bike
-              </button>
-              <button 
-                className={`filter-btn ${workoutFilter === 'swim' ? 'active' : ''}`}
-                onClick={() => setWorkoutFilter('swim')}
-              >
-                🏊‍♂️ Swim
-              </button>
-              <button 
-                className={`filter-btn ${workoutFilter === 'run' ? 'active' : ''}`}
-                onClick={() => setWorkoutFilter('run')}
-              >
-                🏃‍♀️ Run
-              </button>
+              {/* Type Filters (row 2) */}
+              <div className="workout-filters">
+                <button 
+                  className={`filter-btn ${workoutFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setWorkoutFilter('all')}
+                >
+                  🏁 All Types
+                </button>
+                <button 
+                  className={`filter-btn ${workoutFilter === 'bike' ? 'active' : ''}`}
+                  onClick={() => setWorkoutFilter('bike')}
+                >
+                  🚴‍♂️ Bike
+                </button>
+                <button 
+                  className={`filter-btn ${workoutFilter === 'swim' ? 'active' : ''}`}
+                  onClick={() => setWorkoutFilter('swim')}
+                >
+                  🏊‍♂️ Swim
+                </button>
+                <button 
+                  className={`filter-btn ${workoutFilter === 'run' ? 'active' : ''}`}
+                  onClick={() => setWorkoutFilter('run')}
+                >
+                  🏃‍♀️ Run
+                </button>
+              </div>
             </div>
 
             {(() => {

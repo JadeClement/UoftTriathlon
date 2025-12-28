@@ -336,6 +336,94 @@
   background: #1E3A8A;
 }
 
+/* Filter Toggle Button */
+.filter-toggle-btn {
+  padding: 0.75rem 1.5rem;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.filter-toggle-btn:hover {
+  background: #545b62;
+}
+
+.filter-toggle-btn.active {
+  background: #4169E1;
+}
+
+.filter-toggle-btn.active:hover {
+  background: #1E3A8A;
+}
+
+/* Filters Container */
+.filters-container {
+  margin-bottom: 2rem;
+}
+
+/* Mobile: Hide filters by default, show filter toggle as icon */
+@media (max-width: 768px) {
+  .filter-toggle-btn {
+    padding: 0.75rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+  }
+
+  .filter-toggle-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .filters-container {
+    display: none;
+  }
+
+  .filters-container.filters-visible {
+    display: block;
+  }
+
+  .new-post-btn {
+    padding: 0.75rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .new-post-btn .btn-text {
+    display: none;
+  }
+}
+
+/* Desktop: Always show filters, hide toggle button */
+@media (min-width: 769px) {
+  .filter-toggle-btn {
+    display: none;
+  }
+
+  .filters-container {
+    display: block;
+  }
+}
+
 /* Post Types */
 .post-type {
   background: #e0e7ff;
