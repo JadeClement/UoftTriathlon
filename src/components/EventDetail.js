@@ -316,14 +316,14 @@ const EventDetail = () => {
                         onClick={() => setEditMode(true)}
                         disabled={saving}
                       >
-                        ✏️ Edit
+                        ✏️<span className="btn-text"> Edit</span>
                       </button>
                       <button 
                         className="delete-btn"
                         onClick={handleDeleteEvent}
                         disabled={saving}
                       >
-                        🗑️ Delete
+                        🗑️<span className="btn-text"> Delete</span>
                       </button>
                     </>
                   ) : (

@@ -1226,6 +1226,25 @@
   cursor: not-allowed;
 }
 
+/* Mobile: Show only emoji icons for edit/delete buttons */
+@media (max-width: 768px) {
+  .edit-btn, .delete-btn {
+    padding: 0.5rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
+
+  .edit-btn .btn-text,
+  .delete-btn .btn-text {
+    display: none;
+  }
+}
+
 /* Edit Form */
 .workout-edit-form {
   background: #f8fafc;

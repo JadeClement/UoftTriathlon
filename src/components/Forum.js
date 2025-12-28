@@ -1552,7 +1552,7 @@ const Forum = () => {
                             }}
                             disabled={editingWorkout === post.id}
                           >
-                            ✏️ Edit
+                            ✏️<span className="btn-text"> Edit</span>
                           </button>
                           <button 
                             className="delete-btn"
@@ -1562,7 +1562,7 @@ const Forum = () => {
                             }}
                             disabled={editingWorkout === post.id}
                           >
-                            🗑️ Delete
+                            🗑️<span className="btn-text"> Delete</span>
                           </button>
                         </div>
                       )}
@@ -1863,14 +1863,14 @@ const Forum = () => {
                                 onClick={(e) => { e.stopPropagation(); startEventEdit(post); }}
                                 disabled={editingEvent === post.id}
                               >
-                                ✏️ Edit
+                                ✏️<span className="btn-text"> Edit</span>
                               </button>
                               <button 
                                 className="delete-btn"
                                 onClick={(e) => { e.stopPropagation(); handleDeleteEvent(post.id); }}
                                 disabled={editingEvent === post.id}
                               >
-                                🗑️ Delete
+                                🗑️<span className="btn-text"> Delete</span>
                               </button>
                             </div>
                           )}

@@ -1128,14 +1128,14 @@ const WorkoutDetail = () => {
                 }}
                 disabled={editMode}
               >
-                ✏️ Edit
+                ✏️<span className="btn-text"> Edit</span>
               </button>
               <button
                 className="delete-btn"
                 onClick={handleDeleteWorkout}
                 disabled={editMode}
               >
-                🗑️ Delete
+                🗑️<span className="btn-text"> Delete</span>
               </button>
             </div>
           )}
@@ -1584,11 +1584,10 @@ const WorkoutDetail = () => {
               {/* Show "Create Test Event" button for coaches/admins only if no test event exists */}
               {!testEvent && currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator') && (
                 <button 
-                  className="btn btn-primary" 
+                  className="new-post-btn" 
                   onClick={openTestEventModal}
-                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
                 >
-                  + Create Test Event
+                  +<span className="btn-text"> Create Test Event</span>
                 </button>
               )}
               {/* Show \"Add Test Result\" button if test event exists and user is a member/coach/admin */}
