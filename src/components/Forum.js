@@ -1778,7 +1778,7 @@ const Forum = () => {
                     className="new-post-btn"
                     onClick={() => setShowEventForm(true)}
                   >
-                    + New Event
+                    +<span className="btn-text"> New Event</span>
                   </button>
                 )}
               </div>
