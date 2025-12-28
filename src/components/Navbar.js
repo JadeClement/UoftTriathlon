@@ -41,6 +41,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
   const profileRef = useRef(null);
+  const profileMobileRef = useRef(null);
   const moreRef = useRef(null);
   
   // Listen for profile updates to refresh the navbar profile image
@@ -202,17 +203,24 @@ const Navbar = () => {
   // Handle clicks outside profile and more dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
+      const clickedInsideProfile = 
+        (profileRef.current && profileRef.current.contains(event.target)) ||
+        (profileMobileRef.current && profileMobileRef.current.contains(event.target));
+      
+      if (!clickedInsideProfile) {
         setIsProfileOpen(false);
       }
+      
       if (moreRef.current && !moreRef.current.contains(event.target)) {
         setIsMoreOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, []);
 
@@ -420,6 +428,65 @@ const Navbar = () => {
             </Link>
           )}
         </div>
+        
+        {/* Profile dropdown visible on mobile (outside navbar-menu) */}
+        {currentUser && (
+          <div className="profile-dropdown-mobile" ref={profileMobileRef}>
+            <div 
+              className="profile-picture-nav"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+            >
+              {profileImageUrl ? (
+                <img 
+                  src={profileImageUrl} 
+                  alt="Profile" 
+                  onError={(e) => {
+                    console.log('❌ Navbar profile image failed to load, falling back to default');
+                    e.target.src = '/images/default_profile.png';
+                  }}
+                />
+              ) : (
+                <img 
+                  src="/images/default_profile.png" 
+                  alt="Profile" 
+                />
+              )}
+            </div>
+            
+            {isProfileOpen && (
+              <div className="profile-menu">
+                <Link 
+                  to="/profile" 
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                  }}
+                >
+                  Profile
+                </Link>
+                {currentUser && (isAdmin(currentUser) || isExec(currentUser)) && (
+                  <Link
+                    to="/admin"
+                    className="profile-menu-item"
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                    }}
+                  >
+                    Admin
+                  </Link>
+                )}
+                <button 
+                  className="profile-menu-item logout-btn"
+                  onClick={() => {
+                    logout();
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         
         <div className="navbar-toggle" onClick={toggleMenu}>
           <span className={`bar ${isOpen ? 'active' : ''}`}></span>

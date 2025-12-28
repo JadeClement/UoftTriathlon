@@ -7,8 +7,7 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: white;
-  border-top: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #1E3A8A, #1E40AF);
   padding: 0.5rem 0;
   z-index: 1000;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
@@ -26,23 +25,24 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #6b7280;
+  color: rgba(255, 255, 255, 0.7);
   font-size: 0.75rem;
   font-weight: 500;
   transition: all 0.2s ease;
   min-width: 60px;
   min-height: 60px; /* Ensure touch target is at least 44x44px */
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
 .mobile-nav-item:active {
   transform: scale(0.95);
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
 }
 
 .mobile-nav-item.active {
-  color: #1E40AF;
+  color: white;
 }
 
 .mobile-nav-item.active .mobile-nav-icon {
@@ -58,6 +58,61 @@
 .mobile-nav-label {
   font-size: 0.7rem;
   line-height: 1;
+}
+
+/* More Menu Container */
+.mobile-nav-more-container {
+  position: relative;
+}
+
+.mobile-nav-more-menu {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem 0;
+  min-width: 120px;
+  z-index: 1001;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobile-nav-more-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-more-item:hover,
+.mobile-nav-more-item:active {
+  background: #f3f4f6;
+}
+
+.mobile-nav-more-item.active {
+  color: #1E40AF;
+  background: #eff6ff;
 }
 
 /* Hide on desktop */

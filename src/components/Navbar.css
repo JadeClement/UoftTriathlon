@@ -197,54 +197,72 @@
     top: 0; /* Will be adjusted by marginTop when banner is active */
   }
   
+  /* Hide the full menu on mobile - navigation is in bottom nav */
   .navbar-menu {
-    position: fixed !important;
-    left: -100% !important;
-    top: calc(60px + var(--banner-offset, 0px)) !important; /* Adjusted for mobile navbar and banner */
-    flex-direction: column !important;
-    background: linear-gradient(135deg, #1E3A8A, #1E40AF) !important;
-    width: 100% !important;
-    text-align: center !important;
-    transition: 0.3s !important;
-    box-shadow: 0 10px 27px rgba(0, 0, 0, 0.05) !important;
-    padding: 2rem 0 !important;
-    gap: 1rem !important;
-    height: calc(100vh - 138px) !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+    display: none !important;
   }
 
-  .navbar-menu.active {
-    left: 0 !important;
-  }
-
+  /* Hide hamburger menu on mobile */
   .navbar-toggle {
-    display: flex;
+    display: none !important;
   }
 
-  .navbar-link {
-    padding: 1rem 2rem;
+  /* Hide profile dropdown inside navbar-menu on mobile */
+  .navbar-menu .profile-dropdown {
+    display: none;
+  }
+
+  /* Show mobile profile dropdown (outside navbar-menu) */
+  .profile-dropdown-mobile {
+    display: flex !important;
+    align-items: center;
+    position: relative;
+  }
+  
+  .profile-dropdown-mobile .profile-picture-nav {
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* Position profile menu below on mobile */
+  .profile-dropdown-mobile .profile-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 0.5rem 0;
+    min-width: 120px;
+    z-index: 1001;
+  }
+
+  .profile-dropdown-mobile .profile-menu-item {
+    display: block;
     width: 100%;
-    border-radius: 0;
-    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
   }
 
-  .navbar-link:hover {
-    background: rgba(255, 255, 255, 0.1);
+  .profile-dropdown-mobile .profile-menu-item:hover,
+  .profile-dropdown-mobile .profile-menu-item:active {
+    background: #f3f4f6;
   }
-  
-  /* Move profile picture to top on mobile */
-  .profile-dropdown {
-    order: -1;
-    margin-bottom: 1rem;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  
-  .profile-picture-nav {
-    width: 60px;
-    height: 60px;
-    border: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Hide mobile profile dropdown on desktop */
+@media (min-width: 769px) {
+  .profile-dropdown-mobile {
+    display: none !important;
   }
 }
 

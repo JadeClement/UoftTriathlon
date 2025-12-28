@@ -3,7 +3,7 @@
  * Provides bottom navigation for mobile devices
  */
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { hapticSelection } from '../utils/haptics';
@@ -13,9 +13,12 @@ const MobileNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, isMember } = useAuth();
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const moreMenuRef = useRef(null);
 
   const handleNavClick = (path) => {
     hapticSelection();
+    setIsMoreOpen(false);
     navigate(path);
   };
 
@@ -23,24 +26,57 @@ const MobileNav = () => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
+  // Check if any "More" menu item is active
+  const isMoreActive = () => {
+    return isActive('/faq') || isActive('/resources') || isActive('/team-gear') || isActive('/races');
+  };
+
+  // Close more menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setIsMoreOpen(false);
+      }
+    };
+
+    if (isMoreOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isMoreOpen]);
+
   // Don't show on login/signup pages
   if (!currentUser || location.pathname === '/login' || location.pathname === '/signup') {
     return null;
   }
 
   return (
-    <nav className="mobile-nav" role="navigation" aria-label="Main navigation">
-      <button
-        className={`mobile-nav-item ${isActive('/') ? 'active' : ''}`}
-        onClick={() => handleNavClick('/')}
-        aria-label="Home"
-      >
-        <span className="mobile-nav-icon">🏠</span>
-        <span className="mobile-nav-label">Home</span>
-      </button>
+    <>
+      <nav className="mobile-nav" role="navigation" aria-label="Main navigation">
+        <button
+          className={`mobile-nav-item ${isActive('/') ? 'active' : ''}`}
+          onClick={() => handleNavClick('/')}
+          aria-label="Home"
+        >
+          <span className="mobile-nav-icon">🏠</span>
+          <span className="mobile-nav-label">Home</span>
+        </button>
 
-      {isMember(currentUser) && (
-        <>
+        <button
+          className={`mobile-nav-item ${isActive('/join-us') ? 'active' : ''}`}
+          onClick={() => handleNavClick('/join-us')}
+          aria-label="Join Us"
+        >
+          <span className="mobile-nav-icon">👋</span>
+          <span className="mobile-nav-label">Join Us</span>
+        </button>
+
+        {isMember(currentUser) && (
           <button
             className={`mobile-nav-item ${isActive('/forum') ? 'active' : ''}`}
             onClick={() => handleNavClick('/forum')}
@@ -49,36 +85,65 @@ const MobileNav = () => {
             <span className="mobile-nav-icon">💬</span>
             <span className="mobile-nav-label">Forum</span>
           </button>
+        )}
 
+        <button
+          className={`mobile-nav-item ${isActive('/coaches-exec') ? 'active' : ''}`}
+          onClick={() => handleNavClick('/coaches-exec')}
+          aria-label="Team"
+        >
+          <span className="mobile-nav-icon">👥</span>
+          <span className="mobile-nav-label">Team</span>
+        </button>
+
+        <div className="mobile-nav-more-container" ref={moreMenuRef}>
           <button
-            className={`mobile-nav-item ${isActive('/schedule') ? 'active' : ''}`}
-            onClick={() => handleNavClick('/schedule')}
-            aria-label="Schedule"
+            className={`mobile-nav-item mobile-nav-more ${isMoreActive() ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              hapticSelection();
+              setIsMoreOpen(!isMoreOpen);
+            }}
+            aria-label="More"
+            aria-expanded={isMoreOpen}
           >
-            <span className="mobile-nav-icon">📅</span>
-            <span className="mobile-nav-label">Schedule</span>
+            <span className="mobile-nav-icon">⋯</span>
+            <span className="mobile-nav-label">More</span>
           </button>
 
-          <button
-            className={`mobile-nav-item ${isActive('/races') ? 'active' : ''}`}
-            onClick={() => handleNavClick('/races')}
-            aria-label="Races"
-          >
-            <span className="mobile-nav-icon">🏃</span>
-            <span className="mobile-nav-label">Races</span>
-          </button>
-        </>
-      )}
-
-      <button
-        className={`mobile-nav-item ${isActive('/profile') ? 'active' : ''}`}
-        onClick={() => handleNavClick('/profile')}
-        aria-label="Profile"
-      >
-        <span className="mobile-nav-icon">👤</span>
-        <span className="mobile-nav-label">Profile</span>
-      </button>
-    </nav>
+          {isMoreOpen && (
+            <div className="mobile-nav-more-menu">
+              <button
+                className={`mobile-nav-more-item ${isActive('/faq') ? 'active' : ''}`}
+                onClick={() => handleNavClick('/faq')}
+              >
+                FAQ
+              </button>
+              <button
+                className={`mobile-nav-more-item ${isActive('/resources') ? 'active' : ''}`}
+                onClick={() => handleNavClick('/resources')}
+              >
+                Resources
+              </button>
+              <button
+                className={`mobile-nav-more-item ${isActive('/team-gear') ? 'active' : ''}`}
+                onClick={() => handleNavClick('/team-gear')}
+              >
+                Gear
+              </button>
+              {isMember(currentUser) && (
+                <button
+                  className={`mobile-nav-more-item ${isActive('/races') ? 'active' : ''}`}
+                  onClick={() => handleNavClick('/races')}
+                >
+                  Races
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </nav>
+    </>
   );
 };
 
