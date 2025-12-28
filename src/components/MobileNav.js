@@ -15,6 +15,12 @@ const MobileNav = () => {
   const { currentUser, isMember } = useAuth();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const moreMenuRef = useRef(null);
+  
+  // Detect if we're in Capacitor - check multiple ways
+  const isCapacitor = window.Capacitor || 
+                      window.location.protocol === 'capacitor:' ||
+                      window.location.href.includes('capacitor://') ||
+                      (typeof window !== 'undefined' && window.navigator && window.navigator.standalone);
 
   const handleNavClick = (path) => {
     hapticSelection();
@@ -50,14 +56,26 @@ const MobileNav = () => {
     };
   }, [isMoreOpen]);
 
-  // Don't show on login/signup pages
-  if (!currentUser || location.pathname === '/login' || location.pathname === '/signup') {
+  // Always show nav, except on login/signup pages
+  if (location.pathname === '/login' || location.pathname === '/signup') {
+    return null;
+  }
+
+  // Always show on mobile screens (width <= 768px) or in Capacitor
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const shouldShow = isMobile || isCapacitor;
+  
+  if (!shouldShow) {
     return null;
   }
 
   return (
     <>
-      <nav className="mobile-nav" role="navigation" aria-label="Main navigation">
+      <nav 
+        className={`mobile-nav ${isCapacitor ? 'capacitor-nav' : ''} mobile-nav-visible`}
+        role="navigation" 
+        aria-label="Main navigation"
+      >
         <button
           className={`mobile-nav-item ${isActive('/') ? 'active' : ''}`}
           onClick={() => handleNavClick('/')}
@@ -76,16 +94,15 @@ const MobileNav = () => {
           <span className="mobile-nav-label">Join Us</span>
         </button>
 
-        {isMember(currentUser) && (
-          <button
-            className={`mobile-nav-item ${isActive('/forum') ? 'active' : ''}`}
-            onClick={() => handleNavClick('/forum')}
-            aria-label="Forum"
-          >
-            <span className="mobile-nav-icon">💬</span>
-            <span className="mobile-nav-label">Forum</span>
-          </button>
-        )}
+        {/* Show Forum to everyone - non-members will see a message */}
+        <button
+          className={`mobile-nav-item ${isActive('/forum') ? 'active' : ''}`}
+          onClick={() => handleNavClick('/forum')}
+          aria-label="Forum"
+        >
+          <span className="mobile-nav-icon">💬</span>
+          <span className="mobile-nav-label">Forum</span>
+        </button>
 
         <button
           className={`mobile-nav-item ${isActive('/coaches-exec') ? 'active' : ''}`}
@@ -95,6 +112,27 @@ const MobileNav = () => {
           <span className="mobile-nav-icon">👥</span>
           <span className="mobile-nav-label">Team</span>
         </button>
+
+        {/* Login/Profile button - shows Login if not logged in, Profile if logged in */}
+        {currentUser ? (
+          <button
+            className={`mobile-nav-item ${isActive('/profile') ? 'active' : ''}`}
+            onClick={() => handleNavClick('/profile')}
+            aria-label="Profile"
+          >
+            <span className="mobile-nav-icon">👤</span>
+            <span className="mobile-nav-label">Profile</span>
+          </button>
+        ) : (
+          <button
+            className={`mobile-nav-item ${isActive('/login') ? 'active' : ''}`}
+            onClick={() => handleNavClick('/login')}
+            aria-label="Login"
+          >
+            <span className="mobile-nav-icon">🔐</span>
+            <span className="mobile-nav-label">Login</span>
+          </button>
+        )}
 
         <div className="mobile-nav-more-container" ref={moreMenuRef}>
           <button
@@ -131,14 +169,13 @@ const MobileNav = () => {
               >
                 Gear
               </button>
-              {isMember(currentUser) && (
-                <button
-                  className={`mobile-nav-more-item ${isActive('/races') ? 'active' : ''}`}
-                  onClick={() => handleNavClick('/races')}
-                >
-                  Races
-                </button>
-              )}
+              {/* Show Races to everyone - non-members will see appropriate message */}
+              <button
+                className={`mobile-nav-more-item ${isActive('/races') ? 'active' : ''}`}
+                onClick={() => handleNavClick('/races')}
+              >
+                Races
+              </button>
             </div>
           )}
         </div>

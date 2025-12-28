@@ -4,6 +4,7 @@ const { authenticateToken, requireMember, requireAdmin, requireExec, requireCoac
 const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
 const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -197,9 +198,35 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
       WHERE fp.id = $1
     `, [result.rows[0].id]);
     
+    const post = fullPostResult.rows[0];
+    
+    // Send notifications based on post type (non-blocking)
+    setImmediate(async () => {
+      try {
+        if (type === 'workout' && workoutType) {
+          await notificationService.notifyWorkoutPosted(workoutType, {
+            id: post.id,
+            title: post.title || 'Workout',
+            workoutDate: post.workout_date,
+            workoutTime: post.workout_time,
+            content: post.content
+          });
+        } else if (type === 'event') {
+          await notificationService.notifyEventPosted({
+            id: post.id,
+            title: post.title || 'Event',
+            eventDate: post.event_date,
+            content: post.content
+          });
+        }
+      } catch (error) {
+        console.error('Error sending notifications:', error);
+      }
+    });
+    
     res.status(201).json({ 
       message: 'Post created successfully',
-      post: fullPostResult.rows[0]
+      post: post
     });
   } catch (error) {
     console.error('Create post error:', error);
@@ -513,13 +540,20 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           // Notifications are best-effort after commit
           setImmediate(async () => {
             try {
-              await emailService.sendWaitlistPromotion(
-                w.email,
-                w.user_name,
-                workoutDetailsForEmail.title || 'Workout',
-                workoutDetailsForEmail.workout_date,
-                workoutDetailsForEmail.workout_time,
-                id
+              // Use notification service which checks preferences
+              await notificationService.notifyWaitlistPromotion(
+                {
+                  id: w.user_id,
+                  email: w.email,
+                  phone: w.phone_number || null,
+                  name: w.user_name
+                },
+                {
+                  id: id,
+                  title: workoutDetailsForEmail.title || 'Workout',
+                  workoutDate: workoutDetailsForEmail.workout_date,
+                  workoutTime: workoutDetailsForEmail.workout_time
+                }
               );
             } catch (e) {
               console.log('Waitlist promotion notification error:', e.message);
@@ -1120,9 +1154,28 @@ router.post('/workouts', authenticateToken, requireMember, async (req, res) => {
       WHERE fp.id = $1
     `, [postId]);
 
+    const post = postResult.rows[0];
+
+    // Send notifications for workout post (non-blocking)
+    setImmediate(async () => {
+      try {
+        if (workoutType) {
+          await notificationService.notifyWorkoutPosted(workoutType, {
+            id: post.id,
+            title: post.title,
+            workoutDate: post.workout_date,
+            workoutTime: post.workout_time,
+            content: post.content
+          });
+        }
+      } catch (error) {
+        console.error('Error sending workout notifications:', error);
+      }
+    });
+
     res.status(201).json({
       message: 'Workout post created successfully',
-      post: postResult.rows[0]
+      post: post
     });
   } catch (error) {
     console.error('Create workout post error:', error);

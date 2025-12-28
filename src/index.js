@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import './utils/enableScrolling'; // Force enable scrolling on iOS
 import App from './App';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -11,8 +12,8 @@ root.render(
 );
 
 // Register service worker for PWA capabilities
-// Enable in both development and production for testing
-if ('serviceWorker' in navigator) {
+// Only enable in production to avoid development errors
+if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/service-worker.js', {
@@ -38,6 +39,8 @@ if ('serviceWorker' in navigator) {
               console.log('🔄 New service worker available');
               
               // Optionally show update notification to user
+              // Note: Service worker update confirmation - keeping as is for now
+              // Could be replaced with a custom modal if needed
               if (window.confirm('A new version is available. Reload to update?')) {
                 newWorker.postMessage({ type: 'SKIP_WAITING' });
                 window.location.reload();
@@ -57,6 +60,20 @@ if ('serviceWorker' in navigator) {
         console.error('❌ Error details:', error.message);
       });
   });
+} else if (process.env.NODE_ENV === 'development') {
+  // Unregister any existing service workers in development
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (let registration of registrations) {
+        registration.unregister().then((unregistered) => {
+          if (unregistered) {
+            console.log('🧹 Unregistered service worker for development');
+          }
+        });
+      }
+    });
+    console.log('⚠️ Service Worker disabled in development mode');
+  }
 } else {
   console.log('⚠️ Service Worker not supported in this browser');
 }

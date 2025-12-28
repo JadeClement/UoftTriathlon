@@ -12,20 +12,31 @@ body {
   color: #333;
   margin: 0;
   padding-top: var(--navbar-height, 70px);
+  overflow-x: hidden; /* Prevent horizontal scroll */
+  overflow-y: auto; /* Allow vertical scroll */
+  touch-action: pan-y; /* Allow vertical panning (scrolling) */
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px)); /* Use taller navbar on mobile, account for safe area */
+  }
 }
 
 .App {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Don't set overflow here - let body handle scrolling */
 }
 
 main {
-  flex: 1;
+  flex: 1 0 auto; /* Allow main to grow beyond viewport */
   padding-top: 0; /* no extra padding needed */
   background: transparent; /* Ensure no background overlay */
   position: relative; /* Normal positioning */
   z-index: 1; /* Normal stacking */
+  /* Don't set overflow here - let body handle scrolling */
 }
 
 .container {

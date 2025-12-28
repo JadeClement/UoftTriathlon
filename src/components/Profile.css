@@ -463,3 +463,159 @@
   font-weight: 600;
 }
 
+/* New Post Button (reused from Forum/WorkoutDetail) */
+.new-post-btn {
+  padding: 0.75rem 1.5rem;
+  background: #4169E1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.new-post-btn:hover {
+  background: #1E3A8A;
+}
+
+@media (max-width: 768px) {
+  .new-post-btn {
+    padding: 0.75rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .new-post-btn .btn-text {
+    display: none;
+  }
+}
+
+/* Notification Preferences */
+.notification-preferences-header {
+  margin-bottom: 1rem;
+}
+
+.notification-preferences {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.notification-toggle-icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  color: #6b7280;
+  transform: rotate(0deg);
+}
+
+.notification-toggle-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.notification-pref-row {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.notification-pref-row:last-child {
+  border-bottom: none;
+}
+
+.notification-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: #374151;
+  user-select: none;
+  padding: 0.5rem 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.notification-checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  cursor: pointer;
+  accent-color: #4169E1;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.notification-checkbox-label span {
+  cursor: pointer;
+}
+
+.notification-checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.notification-checkbox-label span {
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .notification-preferences {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+  }
+  
+  .notification-preferences.expanded {
+    max-height: 1000px;
+    opacity: 1;
+    margin-top: 1.5rem;
+  }
+  
+  .notification-pref-row {
+    gap: 1.5rem;
+  }
+  
+  /* On mobile, allow wrapping but try to keep workout types on one line if space allows */
+  .notification-pref-row:first-child {
+    flex-wrap: wrap;
+  }
+  
+  /* Other rows stack vertically on very small screens */
+  @media (max-width: 480px) {
+    .notification-pref-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  }
+}
+
+/* Desktop: Always show preferences */
+@media (min-width: 769px) {
+  .notification-preferences {
+    max-height: none !important;
+    opacity: 1 !important;
+    margin-top: 1.5rem;
+  }
+  
+  .notification-preferences-header {
+    cursor: default;
+  }
+  
+  .notification-toggle-icon {
+    display: none;
+  }
+}
+

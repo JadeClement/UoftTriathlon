@@ -306,5 +306,109 @@ router.post('/mark-role-notification-read', authenticateToken, requireMember, as
   }
 });
 
+// Get notification preferences
+router.get('/notification-preferences', authenticateToken, allowOwnProfile(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const result = await pool.query(`
+      SELECT 
+        spin_brick_workouts,
+        swim_workouts,
+        run_workouts,
+        events,
+        forum_replies,
+        waitlist_promotions
+      FROM notification_preferences
+      WHERE user_id = $1
+    `, [userId]);
+    
+    if (result.rows.length === 0) {
+      // Return default preferences if none exist
+      return res.json({
+        preferences: {
+          spin_brick_workouts: false,
+          swim_workouts: false,
+          run_workouts: false,
+          events: false,
+          forum_replies: false,
+          waitlist_promotions: false
+        }
+      });
+    }
+    
+    res.json({ preferences: result.rows[0] });
+  } catch (error) {
+    console.error('Get notification preferences error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update notification preferences
+router.put('/notification-preferences', authenticateToken, allowOwnProfile(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { preferences } = req.body;
+    
+    if (!preferences) {
+      return res.status(400).json({ error: 'Preferences are required' });
+    }
+    
+    // Check if preferences exist
+    const checkResult = await pool.query(`
+      SELECT user_id FROM notification_preferences WHERE user_id = $1
+    `, [userId]);
+    
+    if (checkResult.rows.length === 0) {
+      // Insert new preferences
+      await pool.query(`
+        INSERT INTO notification_preferences (
+          user_id,
+          spin_brick_workouts,
+          swim_workouts,
+          run_workouts,
+          events,
+          forum_replies,
+          waitlist_promotions
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [
+        userId,
+        preferences.spin_brick_workouts || false,
+        preferences.swim_workouts || false,
+        preferences.run_workouts || false,
+        preferences.events || false,
+        preferences.forum_replies || false,
+        preferences.waitlist_promotions || false
+      ]);
+    } else {
+      // Update existing preferences
+      await pool.query(`
+        UPDATE notification_preferences
+        SET
+          spin_brick_workouts = $2,
+          swim_workouts = $3,
+          run_workouts = $4,
+          events = $5,
+          forum_replies = $6,
+          waitlist_promotions = $7
+        WHERE user_id = $1
+      `, [
+        userId,
+        preferences.spin_brick_workouts || false,
+        preferences.swim_workouts || false,
+        preferences.run_workouts || false,
+        preferences.events || false,
+        preferences.forum_replies || false,
+        preferences.waitlist_promotions || false
+      ]);
+    }
+    
+    res.json({ message: 'Notification preferences updated successfully' });
+  } catch (error) {
+    console.error('Update notification preferences error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
 

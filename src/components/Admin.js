@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getFieldsForSport } from '../config/sportFields';
-import { formatSignupTimeForDisplay, formatSignupDateForDisplay } from '../utils/dateUtils';
+import { formatSignupTimeForDisplay } from '../utils/dateUtils';
+import { showError, showSuccess } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
 import './Admin.css';
 
 const Admin = () => {
@@ -209,6 +211,12 @@ const Admin = () => {
     gender: 'mens' // Add gender field
   });
   const [gearItems, setGearItems] = useState([]);
+  const [removeBannerConfirm, setRemoveBannerConfirm] = useState({ isOpen: false });
+  const [deleteOrderConfirm, setDeleteOrderConfirm] = useState({ isOpen: false, orderId: null });
+  const [archiveOrdersConfirm, setArchiveOrdersConfirm] = useState({ isOpen: false, count: 0 });
+  const [unarchiveOrdersConfirm, setUnarchiveOrdersConfirm] = useState({ isOpen: false, count: 0 });
+  const [deleteTestEventConfirm, setDeleteTestEventConfirm] = useState({ isOpen: false, eventId: null });
+  const [deleteUserConfirm, setDeleteUserConfirm] = useState({ isOpen: false, userId: null });
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -401,9 +409,11 @@ const Admin = () => {
       return;
     }
 
-    if (!window.confirm('Remove the current pop up message?')) {
-      return;
-    }
+    setRemoveBannerConfirm({ isOpen: true });
+  };
+
+  const confirmRemoveBanner = async () => {
+    setRemoveBannerConfirm({ isOpen: false });
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -696,20 +706,27 @@ const Admin = () => {
       await loadOrders();
       setShowOrderModal(false);
     } catch (e) {
-      alert(`Failed to Save Order: ${e.message}`);
+      showError(`Failed to Save Order: ${e.message}`);
     }
   };
 
   const deleteOrder = async (id) => {
-    if (!window.confirm('Delete this order?')) return;
+    setDeleteOrderConfirm({ isOpen: true, orderId: id });
+  };
+
+  const confirmDeleteOrder = async () => {
+    const { orderId } = deleteOrderConfirm;
+    setDeleteOrderConfirm({ isOpen: false, orderId: null });
+    
+    if (!orderId) return;
     try {
       const token = localStorage.getItem('triathlonToken');
-      const res = await fetch(`${API_BASE_URL}/merch-orders/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/merch-orders/${orderId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
 
       if (!res.ok) throw new Error('Failed to delete order');
       await loadOrders();
     } catch (e) {
-      alert(`Failed to Delete Order: ${e.message}`);
+      showError(`Failed to Delete Order: ${e.message}`);
     }
   };
 
@@ -733,11 +750,24 @@ const Admin = () => {
 
   const archiveSelectedOrders = async () => {
     if (selectedOrders.size === 0) {
-      alert('Please select at least one order to archive');
+      showError('Please select at least one order to archive');
       return;
     }
+    setArchiveOrdersConfirm({ isOpen: true, count: selectedOrders.size });
+  };
 
-    if (!window.confirm(`Archive ${selectedOrders.size} selected order(s)?`)) return;
+  const confirmArchiveOrders = async () => {
+    const count = archiveOrdersConfirm.count;
+    setArchiveOrdersConfirm({ isOpen: false, count: 0 });
+    
+    const selectedOrders = new Set(Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(cb => parseInt(cb.value))
+      .filter(id => !isNaN(id)));
+    
+    if (selectedOrders.size === 0) {
+      showError('Please select at least one order to archive');
+      return;
+    }
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -756,20 +786,33 @@ const Admin = () => {
       }
 
       const data = await res.json();
-      alert(data.message || `${selectedOrders.size} order(s) archived successfully`);
+      showSuccess(data.message || `${selectedOrders.size} order(s) archived successfully`);
       await loadOrders();
     } catch (e) {
-      alert(`Failed to Archive Orders: ${e.message}`);
+      showError(`Failed to Archive Orders: ${e.message}`);
     }
   };
 
   const unarchiveSelectedOrders = async () => {
     if (selectedOrders.size === 0) {
-      alert('Please select at least one order to unarchive');
+      showError('Please select at least one order to unarchive');
       return;
     }
+    setUnarchiveOrdersConfirm({ isOpen: true, count: selectedOrders.size });
+  };
 
-    if (!window.confirm(`Unarchive ${selectedOrders.size} selected order(s)?`)) return;
+  const confirmUnarchiveOrders = async () => {
+    const count = unarchiveOrdersConfirm.count;
+    setUnarchiveOrdersConfirm({ isOpen: false, count: 0 });
+    
+    const selectedOrders = new Set(Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(cb => parseInt(cb.value))
+      .filter(id => !isNaN(id)));
+    
+    if (selectedOrders.size === 0) {
+      showError('Please select at least one order to unarchive');
+      return;
+    }
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -788,10 +831,10 @@ const Admin = () => {
       }
 
       const data = await res.json();
-      alert(data.message || `${selectedOrders.size} order(s) unarchived successfully`);
+      showSuccess(data.message || `${selectedOrders.size} order(s) unarchived successfully`);
       await loadOrders();
     } catch (e) {
-      alert(`Failed to Unarchive Orders: ${e.message}`);
+      showError(`Failed to Unarchive Orders: ${e.message}`);
     }
   };
 
@@ -922,15 +965,20 @@ const Admin = () => {
   const deleteTestEvent = async () => {
     if (!testEventForm.id) return;
 
-    const confirmMessage = `Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`;
+    setDeleteTestEventConfirm({ isOpen: true, eventId: testEventForm.id });
+  };
+
+  const confirmDeleteTestEvent = async () => {
+    const { eventId } = deleteTestEventConfirm;
+    setDeleteTestEventConfirm({ isOpen: false, eventId: null });
     
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
+    if (!eventId) return;
+    
+    const confirmMessage = `Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`;
 
     try {
       const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/test-events/${testEventForm.id}`, {
+      const response = await fetch(`${API_BASE_URL}/test-events/${eventId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1155,7 +1203,7 @@ const Admin = () => {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err.message || 'Failed to export merch orders');
+      showError(err.message || 'Failed to export merch orders');
     }
   };
 
@@ -1168,7 +1216,7 @@ const Admin = () => {
 
   const handleApprovalSubmit = async () => {
     if (!approvingMember) {
-      alert('Please select a member to approve.');
+      showError('Please select a member to approve.');
       return;
     }
 
@@ -1206,12 +1254,18 @@ const Admin = () => {
 
 
   const removeMember = async (memberId) => {
-    const confirmed = window.confirm('⚠️ WARNING: This will PERMANENTLY DELETE this user and all their data!\n\nThis action cannot be undone. Are you sure you want to continue?');
-    if (!confirmed) return;
+    setDeleteUserConfirm({ isOpen: true, userId: memberId });
+  };
+
+  const confirmDeleteUser = async () => {
+    const { userId } = deleteUserConfirm;
+    setDeleteUserConfirm({ isOpen: false, userId: null });
+    
+    if (!userId) return;
 
     try {
       const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/admin/members/${memberId}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/members/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1225,11 +1279,11 @@ const Admin = () => {
       } else {
         console.error('Failed to delete user');
         const err = await response.json().catch(() => ({}));
-        alert(`Failed to delete user${err.error ? `: ${err.error}` : ''}`);
+        showError(`Failed to delete user${err.error ? `: ${err.error}` : ''}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(`Error deleting user: ${error.message}`);
+      showError(`Error deleting user: ${error.message}`);
     }
   };
 
@@ -1373,11 +1427,11 @@ const Admin = () => {
       } else {
         const errorData = await response.json();
         console.error('❌ Failed to update member:', errorData);
-        alert(`Failed to update member: ${errorData.error || 'Unknown error'}`);
+        showError(`Failed to update member: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('❌ Error updating member:', error);
-      alert(`Error updating member: ${error.message}`);
+      showError(`Error updating member: ${error.message}`);
     }
   };
 
@@ -1648,7 +1702,6 @@ const Admin = () => {
                     });
 
                     // Calculate pagination
-                    const totalPages = Math.ceil(filteredMembers.length / membersPerPage);
                     const startIndex = (currentPage - 1) * membersPerPage;
                     const endIndex = startIndex + membersPerPage;
                     const currentMembers = filteredMembers.slice(startIndex, endIndex);
@@ -3812,6 +3865,72 @@ const Admin = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={removeBannerConfirm.isOpen}
+        onConfirm={confirmRemoveBanner}
+        onCancel={() => setRemoveBannerConfirm({ isOpen: false })}
+        title="Remove Banner"
+        message="Remove the current pop up message?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        confirmDanger={false}
+      />
+
+      <ConfirmModal
+        isOpen={deleteOrderConfirm.isOpen}
+        onConfirm={confirmDeleteOrder}
+        onCancel={() => setDeleteOrderConfirm({ isOpen: false, orderId: null })}
+        title="Delete Order"
+        message="Delete this order?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
+
+      <ConfirmModal
+        isOpen={archiveOrdersConfirm.isOpen}
+        onConfirm={confirmArchiveOrders}
+        onCancel={() => setArchiveOrdersConfirm({ isOpen: false, count: 0 })}
+        title="Archive Orders"
+        message={`Archive ${archiveOrdersConfirm.count} selected order(s)?`}
+        confirmText="Archive"
+        cancelText="Cancel"
+        confirmDanger={false}
+      />
+
+      <ConfirmModal
+        isOpen={unarchiveOrdersConfirm.isOpen}
+        onConfirm={confirmUnarchiveOrders}
+        onCancel={() => setUnarchiveOrdersConfirm({ isOpen: false, count: 0 })}
+        title="Unarchive Orders"
+        message={`Unarchive ${unarchiveOrdersConfirm.count} selected order(s)?`}
+        confirmText="Unarchive"
+        cancelText="Cancel"
+        confirmDanger={false}
+      />
+
+      <ConfirmModal
+        isOpen={deleteTestEventConfirm.isOpen}
+        onConfirm={confirmDeleteTestEvent}
+        onCancel={() => setDeleteTestEventConfirm({ isOpen: false, eventId: null })}
+        title="Delete Test Event"
+        message={`Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
+
+      <ConfirmModal
+        isOpen={deleteUserConfirm.isOpen}
+        onConfirm={confirmDeleteUser}
+        onCancel={() => setDeleteUserConfirm({ isOpen: false, userId: null })}
+        title="Delete User"
+        message="⚠️ WARNING: This will PERMANENTLY DELETE this user and all their data! This action cannot be undone. Are you sure you want to continue?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 :root {
   --navbar-height: 70px;
+  --navbar-height-mobile: 100px; /* Taller on mobile to accommodate buttons below status bar */
   --banner-offset: 0px;
 }
 
@@ -194,7 +195,54 @@
 
 @media (max-width: 768px) {
   .navbar {
-    top: 0; /* Will be adjusted by marginTop when banner is active */
+    top: 0 !important; /* Ensure it's at the very top */
+    left: 0 !important;
+    right: 0 !important;
+    height: calc(var(--navbar-height-mobile) + env(safe-area-inset-top, 0px)); /* Account for safe area */
+    min-height: calc(var(--navbar-height-mobile) + env(safe-area-inset-top, 0px));
+    padding: 0 !important;
+    position: fixed !important; /* Keep it fixed at top */
+    background: linear-gradient(135deg, #1E3A8A, #1E40AF) !important; /* Ensure blue background extends fully */
+    margin-top: 0 !important; /* Override any inline styles that might add space */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .navbar-container {
+    position: absolute !important;
+    top: env(safe-area-inset-top, 0px) !important; /* Position below status bar */
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 1rem !important; /* Horizontal padding only */
+    height: var(--navbar-height-mobile) !important; /* Fixed height, not including safe area */
+    min-height: var(--navbar-height-mobile) !important;
+    box-sizing: border-box;
+    display: block !important; /* Remove flex display - use absolute positioning instead */
+  }
+  
+  /* Hide the title text on mobile */
+  .logo-text {
+    display: none !important;
+  }
+  
+  /* Logo absolutely positioned on LEFT, near bottom of navbar content area (below status bar) */
+  .navbar-logo {
+    position: absolute !important;
+    left: 1rem !important;
+    bottom: 0.75rem !important; /* Position near bottom of navbar content area */
+    top: auto !important;
+    transform: none !important;
+    display: flex !important;
+    align-items: center;
+    z-index: 10;
+    margin: 0 !important;
+  }
+  
+  .navbar-icon {
+    width: 32px;
+    height: 32px;
   }
   
   /* Hide the full menu on mobile - navigation is in bottom nav */
@@ -212,17 +260,43 @@
     display: none;
   }
 
-  /* Show mobile profile dropdown (outside navbar-menu) */
+  /* Profile absolutely positioned on RIGHT, near bottom of navbar content area (below status bar) */
   .profile-dropdown-mobile {
+    position: absolute !important;
+    right: 1rem !important;
+    bottom: 0.75rem !important; /* Position near bottom of navbar content area */
+    top: auto !important;
+    transform: none !important;
     display: flex !important;
     align-items: center;
-    position: relative;
+    z-index: 10;
+    margin: 0 !important;
   }
   
   .profile-dropdown-mobile .profile-picture-nav {
-    width: 40px;
-    height: 40px;
+    width: 44px; /* Larger for better touch target */
+    height: 44px;
     border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  
+  /* If user is not logged in, show login button on right */
+  .navbar-container > a[href="/login"] {
+    position: absolute !important;
+    right: 1rem !important;
+    bottom: 0.75rem !important; /* Position near bottom of navbar content area */
+    top: auto !important;
+    transform: none !important;
+    display: flex !important;
+    align-items: center;
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    font-weight: 500;
+    min-height: 44px;
+    z-index: 10;
   }
 
   /* Position profile menu below on mobile */
@@ -251,6 +325,9 @@
     border: none;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    min-height: 44px; /* Ensure good touch target */
+    display: flex;
+    align-items: center;
   }
 
   .profile-dropdown-mobile .profile-menu-item:hover,

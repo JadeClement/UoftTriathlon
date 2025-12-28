@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import { useForumPosts, useOnlineStatus } from '../hooks/useOfflineData';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
 import PullToRefresh from './PullToRefresh';
 import { PostSkeleton } from './LoadingSkeleton';
 import { hapticImpact } from '../utils/haptics';
@@ -82,6 +83,8 @@ const Forum = () => {
   const [termExpired, setTermExpired] = useState(false);
   const [termExpiredMessage, setTermExpiredMessage] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteWorkoutConfirm, setDeleteWorkoutConfirm] = useState({ isOpen: false, postId: null });
+  const [deleteEventConfirm, setDeleteEventConfirm] = useState({ isOpen: false, postId: null });
   
   // Reload when time filter or past page changes
   useEffect(() => {
@@ -643,7 +646,7 @@ const Forum = () => {
     } catch (error) {
       console.error('Error updating event:', error);
       setSavingEvent(false);
-      alert(error.message || 'Error updating event');
+      showError(error.message || 'Error updating event');
     }
   };
 
@@ -805,11 +808,11 @@ const Forum = () => {
       } else {
         const error = await response.json();
         console.error('Error updating RSVP:', error.error);
-        alert(error.error || 'Error updating RSVP');
+        showError(error.error || 'Error updating RSVP');
       }
     } catch (error) {
       console.error('Error updating event RSVP:', error);
-      alert('Error updating RSVP');
+      showError('Error updating RSVP');
     }
   };
 
@@ -840,11 +843,11 @@ const Forum = () => {
         await loadWorkoutWaitlists(workoutPosts);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to join waitlist');
+        showError(error.error || 'Failed to join waitlist');
       }
     } catch (error) {
       console.error('Error joining waitlist:', error);
-      alert('Failed to join waitlist');
+      showError('Failed to join waitlist');
     }
   };
 
@@ -868,11 +871,11 @@ const Forum = () => {
         await loadWorkoutWaitlists(workoutPosts);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to leave waitlist');
+        showError(error.error || 'Failed to leave waitlist');
       }
     } catch (error) {
       console.error('Error leaving waitlist:', error);
-      alert('Failed to leave waitlist');
+      showError('Failed to leave waitlist');
     }
   };
 
@@ -906,11 +909,11 @@ const Forum = () => {
         setWorkoutToCancel(null);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to cancel signup');
+        showError(error.error || 'Failed to cancel signup');
       }
     } catch (error) {
       console.error('Error canceling signup:', error);
-      alert('Failed to cancel signup');
+      showError('Failed to cancel signup');
     }
   };
 
@@ -1026,7 +1029,7 @@ const Forum = () => {
     today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
     
     if (selectedDate <= today) {
-      alert('Please select a future date for your event.');
+      showError('Please select a future date for your event.');
       return;
     }
 
@@ -1097,9 +1100,14 @@ const Forum = () => {
   };
 
   const handleDeleteWorkout = async (postId) => {
-    if (!window.confirm('Are you sure you want to delete this workout post?')) {
-      return;
-    }
+    setDeleteWorkoutConfirm({ isOpen: true, postId: postId });
+  };
+
+  const confirmDeleteWorkout = async () => {
+    const { postId } = deleteWorkoutConfirm;
+    setDeleteWorkoutConfirm({ isOpen: false, postId: null });
+    
+    if (!postId) return;
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -1137,9 +1145,14 @@ const Forum = () => {
   };
 
   const handleDeleteEvent = async (postId) => {
-    if (!window.confirm('Are you sure you want to delete this event post?')) {
-      return;
-    }
+    setDeleteEventConfirm({ isOpen: true, postId: postId });
+  };
+
+  const confirmDeleteEvent = async () => {
+    const { postId } = deleteEventConfirm;
+    setDeleteEventConfirm({ isOpen: false, postId: null });
+    
+    if (!postId) return;
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -2127,6 +2140,28 @@ const Forum = () => {
           </div>
         )}
       </div>
+
+        <ConfirmModal
+          isOpen={deleteWorkoutConfirm.isOpen}
+          onConfirm={confirmDeleteWorkout}
+          onCancel={() => setDeleteWorkoutConfirm({ isOpen: false, postId: null })}
+          title="Delete Workout"
+          message="Are you sure you want to delete this workout post?"
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDanger={true}
+        />
+
+        <ConfirmModal
+          isOpen={deleteEventConfirm.isOpen}
+          onConfirm={confirmDeleteEvent}
+          onCancel={() => setDeleteEventConfirm({ isOpen: false, postId: null })}
+          title="Delete Event"
+          message="Are you sure you want to delete this event post?"
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDanger={true}
+        />
     </div>
     </PullToRefresh>
   );

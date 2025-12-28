@@ -5,14 +5,17 @@
   left: 0;
   right: 0;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
-  padding: 0.5rem 0;
-  z-index: 1000;
+  padding: 0.5rem 1rem; /* Added horizontal padding */
+  gap: 0.25rem; /* Space between items */
+  z-index: 10000 !important; /* Higher than navbar (1010) */
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   /* Safe area for devices with notches */
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left) + 0.5rem);
+  padding-right: max(1rem, env(safe-area-inset-right) + 0.5rem);
 }
 
 .mobile-nav-item {
@@ -21,7 +24,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.5rem; /* Reduced horizontal padding */
   background: none;
   border: none;
   cursor: pointer;
@@ -29,7 +32,8 @@
   font-size: 0.75rem;
   font-weight: 500;
   transition: all 0.2s ease;
-  min-width: 60px;
+  flex: 1; /* Allow items to grow equally */
+  min-width: 0; /* Allow flex shrinking */
   min-height: 60px; /* Ensure touch target is at least 44x44px */
   -webkit-tap-highlight-color: transparent;
   position: relative;
@@ -115,11 +119,24 @@
   background: #eff6ff;
 }
 
-/* Hide on desktop */
+/* Always show on mobile and in Capacitor */
+@media (max-width: 768px) {
+  .mobile-nav,
+  .mobile-nav.mobile-nav-visible {
+    display: flex !important;
+  }
+}
+
+/* Hide on desktop only */
 @media (min-width: 769px) {
-  .mobile-nav {
+  .mobile-nav:not(.capacitor-nav) {
     display: none;
   }
+}
+
+/* Always show in Capacitor (even on larger screens) */
+.mobile-nav.capacitor-nav {
+  display: flex !important;
 }
 
 /* Adjust main content padding to account for bottom nav */

@@ -1,18 +1,20 @@
 .home {
   margin-top: 0;
+  width: 100%;
+  /* Don't set min-height or overflow - let content determine height naturally */
 }
 
 /* Split Screen Hero Section */
 .split-hero {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
-  overflow: hidden;
+  overflow: visible; /* Allow scrolling */
 }
 
 .hero-image-section {
   width: 60%;
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Allow scrolling */
 }
 
 .hero-text-section {
@@ -185,12 +187,12 @@
 
 /* Hero Section */
 .hero {
-  height: 100vh;
+  min-height: 100vh; /* Changed from height to min-height to allow scrolling */
   background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
               url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');
   background-size: cover;
   background-position: center;
-  background-attachment: fixed;
+  background-attachment: scroll; /* Changed from fixed to allow scrolling */
   display: flex;
   align-items: center;
   position: relative;
@@ -345,16 +347,19 @@
 @media (max-width: 768px) {
   .split-hero {
     flex-direction: column;
+    min-height: auto; /* Allow natural height */
   }
   
   .hero-image-section {
     width: 100%;
-    height: 50vh;
+    min-height: 50vh;
+    height: auto;
   }
   
   .hero-text-section {
     width: 100%;
-    height: 50vh;
+    min-height: 50vh;
+    height: auto;
     padding: 2rem 1.5rem;
     display: flex;
     align-items: center;

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
+import { showSuccess, showError } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
 import './Races.css';
 
 const Races = () => {
@@ -18,6 +20,7 @@ const Races = () => {
     location: '',
     description: ''
   });
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, raceId: null });
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -52,7 +55,7 @@ const Races = () => {
     e.preventDefault();
     
     if (!addRaceForm.name || !addRaceForm.date) {
-      alert('Race name and date are required');
+      showError('Race name and date are required');
       return;
     }
 
@@ -78,17 +81,17 @@ const Races = () => {
         });
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to add race');
+        showError(errorData.error || 'Failed to add race');
       }
     } catch (error) {
       console.error('Error adding race:', error);
-      alert('Failed to add race');
+      showError('Failed to add race');
     }
   };
 
   const handleSignUp = async (raceId) => {
     if (!currentUser || !isMember(currentUser)) {
-      alert('You must be a member to sign up for races');
+      showError('You must be a member to sign up for races');
       return;
     }
 
@@ -105,11 +108,11 @@ const Races = () => {
         await loadRaces(); // Refresh to show updated signup status
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to sign up for race');
+        showError(errorData.error || 'Failed to sign up for race');
       }
     } catch (error) {
       console.error('Error signing up for race:', error);
-      alert('Failed to sign up for race');
+      showError('Failed to sign up for race');
     }
   };
 
@@ -134,18 +137,21 @@ const Races = () => {
       } else {
         const errorData = await response.json();
         console.error('❌ Failed to cancel signup:', errorData);
-        alert(errorData.error || 'Failed to cancel signup');
+        showError(errorData.error || 'Failed to cancel signup');
       }
     } catch (error) {
       console.error('❌ Error canceling signup:', error);
-      alert('Failed to cancel signup');
+      showError('Failed to cancel signup');
     }
   };
 
   const handleDeleteRace = async (raceId) => {
-    if (!window.confirm('Are you sure you want to delete this race? This action cannot be undone.')) {
-      return;
-    }
+    setDeleteConfirm({ isOpen: true, raceId });
+  };
+
+  const confirmDeleteRace = async () => {
+    const { raceId } = deleteConfirm;
+    setDeleteConfirm({ isOpen: false, raceId: null });
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -162,14 +168,14 @@ const Races = () => {
 
       if (response.ok) {
         await loadRaces();
-        alert('Race deleted successfully!');
+        showSuccess('Race deleted successfully!');
       } else {
         const error = await response.json();
         throw new Error(error.error || 'Failed to delete race');
       }
     } catch (error) {
       console.error('Error deleting race:', error);
-      alert(`Error deleting race: ${error.message}`);
+      showError(`Error deleting race: ${error.message}`);
     }
   };
 
@@ -354,7 +360,7 @@ const Races = () => {
                         className="edit-btn"
                         onClick={(e) => handleEditRace(race.id, e)}
                       >
-                        ✏️ Edit
+                        ✏️
                       </button>
                       <button 
                         className="delete-btn"
@@ -363,7 +369,7 @@ const Races = () => {
                           handleDeleteRace(race.id);
                         }}
                       >
-                        🗑️ Delete
+                        🗑️
                       </button>
                     </div>
                   )}
@@ -528,6 +534,17 @@ const Races = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onConfirm={confirmDeleteRace}
+        onCancel={() => setDeleteConfirm({ isOpen: false, raceId: null })}
+        title="Delete Race"
+        message="Are you sure you want to delete this race? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
       </div>
     </div>
   );

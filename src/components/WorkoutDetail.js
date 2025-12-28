@@ -6,6 +6,7 @@ import { useWorkout, useOnlineStatus } from '../hooks/useOfflineData';
 import { linkifyText } from '../utils/linkUtils';
 import { combineDateTime, getHoursUntil, isWithinHours, formatSignupDateForDisplay, formatSignupTimeOnlyForDisplay } from '../utils/dateUtils';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
 import { getFieldsForSport } from '../config/sportFields';
 import './WorkoutDetail.css';
 
@@ -559,11 +560,11 @@ const WorkoutDetail = () => {
         }
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error}`);
+        showError(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error updating signup:', error);
-      alert('Error updating signup');
+      showError('Error updating signup');
     }
   };
 
@@ -597,11 +598,11 @@ const WorkoutDetail = () => {
         }
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error}`);
+        showError(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error joining waitlist:', error);
-      alert('Error joining waitlist');
+      showError('Error joining waitlist');
     }
   };
 
@@ -635,11 +636,11 @@ const WorkoutDetail = () => {
         }
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error}`);
+        showError(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error leaving waitlist:', error);
-      alert('Error leaving waitlist');
+      showError('Error leaving waitlist');
     }
   };
 
@@ -649,10 +650,14 @@ const WorkoutDetail = () => {
 
 
 
+  const [deleteWorkoutConfirm, setDeleteWorkoutConfirm] = useState({ isOpen: false });
+
   const handleDeleteWorkout = async () => {
-    if (!window.confirm('Are you sure you want to delete this workout post?')) {
-      return;
-    }
+    setDeleteWorkoutConfirm({ isOpen: true });
+  };
+
+  const confirmDeleteWorkout = async () => {
+    setDeleteWorkoutConfirm({ isOpen: false });
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -675,7 +680,7 @@ const WorkoutDetail = () => {
       }
     } catch (error) {
       console.error('Error deleting workout:', error);
-      alert(`Error deleting workout: ${error.message}`);
+      showError(`Error deleting workout: ${error.message}`);
     }
   };
 
@@ -738,11 +743,11 @@ const WorkoutDetail = () => {
         setShowCancelModal(false);
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error}`);
+        showError(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error canceling signup:', error);
-      alert('Error canceling signup');
+      showError('Error canceling signup');
     }
   };
 
@@ -809,13 +814,13 @@ const WorkoutDetail = () => {
         console.error('Failed to save attendance:', errorData.error);
         // Revert optimistic update on failure
         setAttendanceSaved(false);
-        alert(`Failed to save attendance: ${errorData.error}`);
+        showError(`Failed to save attendance: ${errorData.error}`);
       }
     } catch (error) {
       console.error('Error submitting attendance:', error);
       // Revert optimistic update on failure
       setAttendanceSaved(false);
-      alert('Error submitting attendance. Please try again.');
+      showError('Error submitting attendance. Please try again.');
     } finally {
       setSubmittingAttendance(false);
     }
@@ -2156,6 +2161,17 @@ const WorkoutDetail = () => {
           );
         })()}
       </div>
+
+      <ConfirmModal
+        isOpen={deleteWorkoutConfirm.isOpen}
+        onConfirm={confirmDeleteWorkout}
+        onCancel={() => setDeleteWorkoutConfirm({ isOpen: false })}
+        title="Delete Workout"
+        message="Are you sure you want to delete this workout post?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
     </div>
   );
 };

@@ -40,7 +40,10 @@ export function requireOnline() {
  */
 export function checkOnlineBeforeRequest() {
   if (isOffline()) {
-    alert(getOfflineErrorMessage());
+    // Note: This alert is for offline detection
+    // In a real implementation, this should use a notification system
+    // For now, keeping as alert since it's a utility function
+    console.warn(getOfflineErrorMessage());
     return false;
   }
   return true;

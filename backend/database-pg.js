@@ -200,6 +200,23 @@ async function initializeDatabase() {
     `);
     console.log('✅ Login history table created');
 
+    // Create notification_preferences table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notification_preferences (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        spin_brick_workouts BOOLEAN DEFAULT FALSE,
+        swim_workouts BOOLEAN DEFAULT FALSE,
+        run_workouts BOOLEAN DEFAULT FALSE,
+        events BOOLEAN DEFAULT FALSE,
+        forum_replies BOOLEAN DEFAULT FALSE,
+        waitlist_promotions BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Notification preferences table created');
+
     // Create role_change_notifications table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS role_change_notifications (

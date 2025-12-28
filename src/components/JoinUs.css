@@ -78,7 +78,14 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
   text-align: center;
-  scroll-margin-top: 200px; /* Account for navbar (70px) + sticky nav (~60px) + extra space to show title */
+  scroll-margin-top: 200px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
+}
+
+/* Desktop: Nav is single row, less height needed */
+@media (min-width: 769px) {
+  .goal-section {
+    scroll-margin-top: 160px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
+  }
 }
 
 .goal-title {
@@ -103,7 +110,13 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
-  scroll-margin-top: 200px; /* Account for navbar (70px) + sticky nav (~60px) + extra space to show title */
+  scroll-margin-top: 200px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
+}
+
+@media (min-width: 769px) {
+  .who-can-join-section {
+    scroll-margin-top: 160px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
+  }
 }
 
 .membership-info p {
@@ -174,7 +187,13 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
-  scroll-margin-top: 180px; /* Account for navbar (70px) + sticky nav (~60px) + extra space to show title */
+  scroll-margin-top: 180px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
+}
+
+@media (min-width: 769px) {
+  .charter-section {
+    scroll-margin-top: 150px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
+  }
 }
 
 .charter-notice {
@@ -251,7 +270,13 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
-  scroll-margin-top: 220px; /* Account for navbar (70px) + sticky nav (~60px) + extra space to show title */
+  scroll-margin-top: 220px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
+}
+
+@media (min-width: 769px) {
+  .joining-instructions-section {
+    scroll-margin-top: 170px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
+  }
 }
 
 .step-container {

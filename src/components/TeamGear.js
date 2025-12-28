@@ -1,6 +1,88 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { showError, showSuccess } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
 import './TeamGear.css';
+
+// Auto-resizing text component that shrinks font until it fits
+const AutoResizeText = ({ text, className = '', style = {}, inline = false }) => {
+  const textRef = useRef(null);
+  const containerRef = useRef(null);
+  const [fontSize, setFontSize] = useState(inline ? 14 : 16);
+
+  useEffect(() => {
+    const adjustFontSize = () => {
+      if (!textRef.current || !containerRef.current) return;
+      
+      const container = containerRef.current;
+      const textElement = textRef.current;
+      const containerWidth = container.offsetWidth;
+      
+      // Start with a reasonable font size
+      let currentSize = inline ? 14 : 16;
+      textElement.style.fontSize = `${currentSize}px`;
+      
+      // Keep reducing font size until text fits
+      while (textElement.scrollWidth > containerWidth && currentSize > 10) {
+        currentSize -= 0.5;
+        textElement.style.fontSize = `${currentSize}px`;
+      }
+      
+      setFontSize(currentSize);
+    };
+
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(adjustFontSize, 10);
+    
+    // Adjust on mount and window resize
+    window.addEventListener('resize', adjustFontSize);
+    
+    // Use ResizeObserver for more accurate detection
+    const resizeObserver = new ResizeObserver(() => {
+      setTimeout(adjustFontSize, 10);
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', adjustFontSize);
+      resizeObserver.disconnect();
+    };
+  }, [text, inline]);
+
+  const containerStyle = inline ? {
+    display: 'inline',
+    ...style 
+  } : {
+    display: 'inline-block',
+    width: '100%',
+    minWidth: 0,
+    ...style 
+  };
+
+  return (
+    <span 
+      ref={containerRef}
+      style={containerStyle}
+    >
+      <span
+        ref={textRef}
+        className={className}
+        style={{
+          fontSize: `${fontSize}px`,
+          wordBreak: 'break-word',
+          overflowWrap: 'break-word',
+          display: inline ? 'inline' : 'inline-block',
+          maxWidth: inline ? 'none' : '100%'
+        }}
+      >
+        {text}
+      </span>
+    </span>
+  );
+};
 
 const TeamGear = () => {
   const { currentUser, isAdmin, getUserRole } = useAuth();
@@ -34,6 +116,7 @@ const TeamGear = () => {
   // Order confirmation modal state
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [deleteGearConfirm, setDeleteGearConfirm] = useState({ isOpen: false, itemId: null });
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderEmail, setOrderEmail] = useState('');
   const [orderEmailConfirm, setOrderEmailConfirm] = useState('');
@@ -233,7 +316,7 @@ const TeamGear = () => {
       setCurrentImages(prev => prev.filter(img => img !== imageUrl));
     } catch (e) {
       console.error('❌ [FRONTEND] Error removing image:', e);
-      alert(`Failed to remove image: ${e.message}`);
+      showError(`Failed to remove image: ${e.message}`);
     }
   };
 
@@ -254,7 +337,7 @@ const TeamGear = () => {
   // Add new gear item
   const addGearItem = async () => {
     if (!addForm.title.trim()) {
-      alert('Please enter a title');
+      showError('Please enter a title');
       return;
     }
     
@@ -285,7 +368,7 @@ const TeamGear = () => {
       setAddForm({ title: '', price: '', description: '', hasGender: false, hasSize: false, availableSizes: [] });
     } catch (e) {
       console.error('Error adding gear item:', e);
-      alert('Failed to add gear item');
+      showError('Failed to add gear item');
     } finally {
       setAdding(false);
     }
@@ -293,9 +376,14 @@ const TeamGear = () => {
 
   // Delete gear item
   const deleteGearItem = async (itemId) => {
-    if (!window.confirm('Are you sure you want to delete this gear item? This action cannot be undone.')) {
-      return;
-    }
+    setDeleteGearConfirm({ isOpen: true, itemId });
+  };
+
+  const confirmDeleteGearItem = async () => {
+    const { itemId } = deleteGearConfirm;
+    setDeleteGearConfirm({ isOpen: false, itemId: null });
+    
+    if (!itemId) return;
     
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -318,9 +406,10 @@ const TeamGear = () => {
       })));
       
       closeEditModal();
+      showSuccess('Gear item deleted successfully');
     } catch (e) {
       console.error('Error deleting gear item:', e);
-      alert('Failed to delete gear item');
+      showError('Failed to delete gear item');
     }
   };
 
@@ -378,7 +467,7 @@ const TeamGear = () => {
       closeEditModal();
     } catch (e) {
       console.error(e);
-      alert(e.message || 'Failed to save');
+      showError(e.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -388,12 +477,12 @@ const TeamGear = () => {
   const handleOrderClick = (item) => {
     // Check if user is logged in and has member role
     if (!currentUser) {
-      alert('Please log in to place an order.');
+      showError('Please log in to place an order.');
       return;
     }
     
     if (!['member', 'coach', 'exec', 'administrator'].includes(currentUser.role)) {
-      alert('You need to be a member to place orders. Please contact an administrator to upgrade your account.');
+      showError('You need to be a member to place orders. Please contact an administrator to upgrade your account.');
       return;
     }
     
@@ -1144,9 +1233,9 @@ const TeamGear = () => {
       {showOrderModal && selectedItem && (
         <div className="gear-modal-overlay" onClick={closeOrderModal}>
           <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="gear-modal-header">
+            <div className="gear-modal-header order-modal-header">
+              <button className="gear-modal-close order-modal-close" onClick={closeOrderModal}>×</button>
               <h2>Confirm Order</h2>
-              <button className="gear-modal-close" onClick={closeOrderModal}>×</button>
             </div>
             <div className="gear-modal-body">
               <div className="order-confirmation">
@@ -1154,15 +1243,17 @@ const TeamGear = () => {
                 <div className="order-item">
                   <strong>Item:</strong> {selectedItem.title}
                 </div>
-                <div className={`order-item ${orderSelections[selectedItem.id]?.size ? 'size-highlighted' : ''}`}>
-                  <strong>Size:</strong> {orderSelections[selectedItem.id]?.size ? (
-                    <span style={{ color: '#059669', fontWeight: '600' }}>
-                      {orderSelections[selectedItem.id].size.toUpperCase()}
-                    </span>
-                  ) : (
-                    <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>
-                  )}
-                </div>
+                {selectedItem.hasSize && (
+                  <div className={`order-item ${orderSelections[selectedItem.id]?.size ? 'size-highlighted' : ''}`}>
+                    <strong>Size:</strong> {orderSelections[selectedItem.id]?.size ? (
+                      <span style={{ color: '#059669', fontWeight: '600' }}>
+                        {orderSelections[selectedItem.id].size.toUpperCase()}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>
+                    )}
+                  </div>
+                )}
                 <div className="order-item">
                   <strong>Quantity:</strong> 1
                 </div>
@@ -1198,7 +1289,7 @@ const TeamGear = () => {
                   Note: Use your University of Toronto email, or the same email you used to purchase your gym membership.
                 </p>
                 <div className="order-notice">
-                  <p><strong>Important:</strong> You will receive an invoice email shortly after confirming your order.</p>
+                  <p><strong>Important:</strong> You'll receive an invoice email once all orders have been submitted.</p>
                   <p>Please check your email for payment instructions and order details.</p>
                 </div>
               </div>
@@ -1226,9 +1317,9 @@ const TeamGear = () => {
         <div className="gear-modal success-modal" onClick={(e) => e.stopPropagation()}>
           <div className="gear-modal-header success-header">
             <div style={{ flex: 1 }}></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center', flex: 1 }}>
-              <div className="success-icon">🎉</div>
-              <h2 style={{ margin: 0 }}>Order Confirmed!</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', flex: 1, minWidth: 0 }}>
+              <div className="success-icon" style={{ flexShrink: 0 }}>🎉</div>
+              <h2 style={{ margin: 0, whiteSpace: 'nowrap', fontSize: 'clamp(1.1rem, 4vw, 1.5rem)' }}>Order Confirmed!</h2>
             </div>
             <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
               <button className="gear-modal-close" onClick={closeSuccessModal}>×</button>
@@ -1256,7 +1347,11 @@ const TeamGear = () => {
                   </div>
                 )}
                 <div className="recap-item">
-                  <strong>Email:</strong> {orderSuccessData.email}
+                  <strong>Email:</strong> 
+                  <AutoResizeText 
+                    text={orderSuccessData.email} 
+                    className="email-text"
+                  />
                 </div>
                 <div className="recap-item">
                   <strong>Price:</strong> {orderSuccessData.item.price || 'Contact for pricing'}
@@ -1267,7 +1362,7 @@ const TeamGear = () => {
                 <h3>📧 What's Next?</h3>
                 <p>
                   You'll receive an invoice email once all orders have been submitted. 
-                  Please check your email ({orderSuccessData.email}) for payment instructions and order details.
+                  Please check your email for payment instructions and order details.
                 </p>
               </div>
 
@@ -1299,6 +1394,7 @@ const TeamGear = () => {
       /* Success Modal Styles */
       .success-modal {
         max-width: 500px;
+        width: 95%;
       }
 
       .success-header {
@@ -1306,7 +1402,7 @@ const TeamGear = () => {
         background: linear-gradient(135deg, #10b981, #059669);
         color: white;
         border-radius: 8px 8px 0 0;
-        padding: 20px;
+        padding: 16px 20px;
         position: relative;
       }
 
@@ -1319,10 +1415,16 @@ const TeamGear = () => {
         margin: 0;
         font-size: 1.5rem;
         font-weight: 600;
+        white-space: nowrap;
       }
 
       .success-body {
-        padding: 24px;
+        padding: 12px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        flex: 1;
+        min-height: 0;
       }
 
       .success-main-text {
@@ -1351,9 +1453,22 @@ const TeamGear = () => {
       .recap-item {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         padding: 8px 0;
         border-bottom: 1px solid #e5e7eb;
+        gap: 8px;
+      }
+      
+      .recap-item strong {
+        flex-shrink: 0;
+      }
+      
+      .recap-item .email-text {
+        text-align: right;
+        flex: 1;
+        min-width: 0;
+        word-break: break-all;
+        overflow-wrap: break-word;
       }
 
       .recap-item:last-child {
@@ -1380,6 +1495,16 @@ const TeamGear = () => {
         text-decoration: underline;
       }
     `}</style>
+      <ConfirmModal
+        isOpen={deleteGearConfirm.isOpen}
+        onConfirm={confirmDeleteGearItem}
+        onCancel={() => setDeleteGearConfirm({ isOpen: false, itemId: null })}
+        title="Delete Gear Item"
+        message="Are you sure you want to delete this gear item? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
   </div>
 );
 };

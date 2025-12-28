@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { showError } from './SimpleNotification';
 import './CoachesExec.css';
 
 const CoachesExec = () => {
@@ -25,15 +26,27 @@ const CoachesExec = () => {
     const loadTeamMembers = async () => {
       try {
         setLoading(true);
-        console.log('🔄 Loading team members from:', `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
+        const apiUrl = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`;
+        console.log('🔄 Loading team members from:', apiUrl);
         
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }).catch((networkError) => {
+          // Catch network errors (connection failed, timeout, etc.)
+          console.error('🌐 Network error:', networkError);
+          throw new Error(`Network error: ${networkError.message || 'Failed to connect to server'}`);
+        });
         
         console.log('📡 Response status:', response.status);
         console.log('📡 Response ok:', response.ok);
         
         if (!response.ok) {
-          throw new Error('Failed to fetch team members');
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error('❌ Response error:', errorText);
+          throw new Error(`Failed to fetch team members: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
@@ -67,7 +80,13 @@ const CoachesExec = () => {
         setError(null);
       } catch (error) {
         console.error('❌ Error loading team members:', error);
-        setError('Failed to load team members');
+        console.error('❌ Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+          toString: error.toString()
+        });
+        setError(`Failed to load team members: ${error.message || 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
@@ -172,7 +191,7 @@ const CoachesExec = () => {
       handleCloseEdit();
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile. Please try again.');
+      showError('Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
