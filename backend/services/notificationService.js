@@ -25,6 +25,18 @@ async function getUserDeviceTokens(userId) {
       `SELECT token, platform FROM push_device_tokens WHERE user_id = $1`,
       [userId]
     );
+    
+    // Log token details for debugging
+    result.rows.forEach((row, index) => {
+      console.log(`📱 Token ${index + 1} from database:`, {
+        platform: row.platform,
+        tokenLength: row.token ? row.token.length : 0,
+        tokenPreview: row.token ? row.token.substring(0, 32) + '...' : 'null',
+        tokenFull: row.token, // Log full token for debugging
+        isHex: row.token ? /^[0-9a-f]+$/i.test(row.token) : false
+      });
+    });
+    
     return result.rows;
   } catch (error) {
     console.error('❌ Error fetching device tokens:', error);

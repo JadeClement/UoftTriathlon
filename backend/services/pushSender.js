@@ -399,14 +399,34 @@ async function sendBulkPushNotifications(tokens, notification) {
       apnNotification.pushType = 'alert';
 
       // Clean and validate tokens
-      const iosTokenStrings = iosTokens.map(t => {
+      const iosTokenStrings = iosTokens.map((t, index) => {
+        console.log(`🔍 Processing token ${index + 1} from database:`, {
+          rawType: typeof t.token,
+          rawValue: t.token,
+          rawLength: t.token ? t.token.length : 0,
+          hasSpaces: t.token ? t.token.includes(' ') : false,
+          hasDashes: t.token ? t.token.includes('-') : false
+        });
+        
         if (!t.token || typeof t.token !== 'string') {
-          console.error('❌ Invalid token in database:', typeof t.token);
+          console.error('❌ Invalid token type in database:', typeof t.token);
           return null;
         }
-        const clean = t.token.trim().toLowerCase();
+        
+        // Remove spaces, dashes, and convert to lowercase
+        // Some systems store tokens with dashes or spaces
+        let clean = t.token.replace(/[\s-]/g, '').toLowerCase();
+        
+        console.log(`🔍 After cleaning token ${index + 1}:`, {
+          cleaned: clean,
+          length: clean.length,
+          isHex: /^[0-9a-f]+$/.test(clean),
+          isValid: clean.length === 64 && /^[0-9a-f]{64}$/.test(clean)
+        });
+        
         if (clean.length !== 64 || !/^[0-9a-f]{64}$/.test(clean)) {
-          console.error(`❌ Invalid token format: length=${clean.length}, token=${clean.substring(0, 20)}...`);
+          console.error(`❌ Invalid token format after cleaning: length=${clean.length}, token=${clean.substring(0, 20)}...`);
+          console.error(`   Original token was: ${t.token}`);
           return null;
         }
         return clean;
