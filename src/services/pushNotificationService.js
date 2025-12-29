@@ -285,8 +285,12 @@ function setupPushNotificationListeners(userId) {
 
   // Handle received push notifications (when app is in foreground)
   PushNotifications.addListener('pushNotificationReceived', (notification) => {
-    console.log('📬 Push notification received (foreground):', notification);
+    console.log('📬 ===== PUSH NOTIFICATION RECEIVED (FOREGROUND) =====');
+    console.log('📬 Full notification object:', JSON.stringify(notification, null, 2));
+    console.log('📬 Notification keys:', notification ? Object.keys(notification) : 'null');
     console.log('📬 Notification data:', notification?.data);
+    console.log('📬 Notification title:', notification?.title);
+    console.log('📬 Notification body:', notification?.body);
     
     // Store notification data for potential click handling
     if (notification?.data) {
@@ -295,6 +299,7 @@ function setupPushNotificationListeners(userId) {
     }
     
     // Show local notification when app is in foreground
+    // Pass the full notification object
     showLocalNotification(notification);
   });
 
@@ -399,12 +404,18 @@ async function showLocalNotification(notification) {
       // Ensure it's a positive integer
       notificationId = Math.abs(Math.floor(notificationId));
       
-      console.log('📬 Scheduling local notification with ID:', notificationId, 'type:', typeof notificationId);
+      // Final validation - ensure ID is a valid positive integer
+      if (!notificationId || isNaN(notificationId) || notificationId <= 0) {
+        notificationId = Math.abs(Math.floor(Date.now() % 2147483647)); // Max safe integer for iOS
+      }
       
+      console.log('📬 Final notification ID:', notificationId, 'type:', typeof notificationId, 'isValid:', !isNaN(notificationId) && notificationId > 0);
+      
+      // Build notification payload with all required fields
       const notificationPayload = {
-        id: notificationId, // Must be a number
-        title: notification.title || 'New Notification',
-        body: notification.body || '',
+        id: notificationId, // Must be a positive integer
+        title: notification.title || notification.data?.title || 'New Notification',
+        body: notification.body || notification.data?.body || '',
         sound: 'default',
         extra: notificationData // Store full data for click handling
       };
@@ -414,7 +425,19 @@ async function showLocalNotification(notification) {
         notificationPayload.attachments = [{ url: notification.data.image }];
       }
       
-      console.log('📬 Notification payload:', JSON.stringify(notificationPayload, null, 2));
+      // Validate payload before sending
+      if (!notificationPayload.id || isNaN(notificationPayload.id)) {
+        throw new Error(`Invalid notification ID: ${notificationPayload.id}`);
+      }
+      
+      console.log('📬 Notification payload before schedule:', JSON.stringify(notificationPayload, null, 2));
+      console.log('📬 Payload ID check:', {
+        hasId: 'id' in notificationPayload,
+        idValue: notificationPayload.id,
+        idType: typeof notificationPayload.id,
+        idIsNumber: typeof notificationPayload.id === 'number',
+        idIsValid: !isNaN(notificationPayload.id) && notificationPayload.id > 0
+      });
       
       const result = await LocalNotifications.schedule({
         notifications: [notificationPayload]
