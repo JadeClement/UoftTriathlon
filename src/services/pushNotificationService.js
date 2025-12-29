@@ -1,7 +1,7 @@
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { handleNotificationNavigation } from '../utils/notificationNavigation';
+import { handleNotificationNavigation, navigateTo } from '../utils/notificationNavigation';
 
 /**
  * Push Notification Service
@@ -17,6 +17,78 @@ let pushToken = null;
 let isRegistered = false;
 let listenersSetup = false;
 let currentUserId = null;
+
+// Store pending notification for when app launches from notification
+let pendingNotificationAction = null;
+
+/**
+ * Set up notification listeners immediately on module load
+ * This ensures listeners are ready even if app launches from notification
+ */
+function setupEarlyNotificationListeners() {
+  if (!isNativePlatform || listenersSetup) {
+    return;
+  }
+  
+  console.log('📱 Setting up early notification listeners (before user login)');
+  
+  // Handle push notification actions (when user taps notification)
+  // This MUST be set up early, before user login, to catch notifications that open the app
+  PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+    console.log('👆 ===== PUSH NOTIFICATION ACTION PERFORMED (EARLY) =====');
+    console.log('👆 Full notification object:', JSON.stringify(notification, null, 2));
+    
+    // Store for later processing if navigation isn't ready
+    pendingNotificationAction = notification;
+    if (typeof window !== 'undefined') {
+      window.pendingNotificationAction = notification;
+    }
+    console.log('📱 Stored pending notification action');
+    
+    // Try to handle immediately
+    try {
+      handleNotificationNavigation(notification);
+    } catch (error) {
+      console.error('❌ Error in early notification handler:', error);
+      // Will be handled when navigation is ready
+    }
+  });
+  
+  // Handle local notification clicks (for foreground notifications)
+  LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+    console.log('👆 ===== LOCAL NOTIFICATION CLICKED (EARLY) =====');
+    console.log('👆 Local notification action:', JSON.stringify(action, null, 2));
+    
+    const data = action.notification?.extra || action.notification?.data || {};
+    console.log('👆 Local notification data:', data);
+    
+    // Handle navigation immediately
+    try {
+      if (data?.type === 'workout' && data?.workoutId) {
+        const workoutId = String(data.workoutId);
+        console.log(`📍 Navigating from local notification to: /workout/${workoutId}`);
+        navigateTo(`/workout/${workoutId}`);
+      } else if (data?.type === 'event' && data?.eventId) {
+        const eventId = String(data.eventId);
+        console.log(`📍 Navigating from local notification to: /event/${eventId}`);
+        navigateTo(`/event/${eventId}`);
+      } else if (data?.type === 'race' && data?.raceId) {
+        const raceId = String(data.raceId);
+        console.log(`📍 Navigating from local notification to: /race/${raceId}`);
+        navigateTo(`/race/${raceId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error handling local notification click:', error);
+    }
+  });
+  
+  console.log('✅ Early notification listeners set up');
+}
+
+// Set up listeners immediately when module loads
+if (typeof window !== 'undefined' && isNativePlatform) {
+  setupEarlyNotificationListeners();
+}
 
 // Global handler for AppDelegate to call directly
 if (typeof window !== 'undefined') {
@@ -168,42 +240,9 @@ export async function registerForPushNotifications(userId) {
 function setupPushNotificationListeners(userId) {
   console.log(`📱 Setting up push notification listeners for user ${userId}`);
   
-  // Set up local notification click handler (for foreground notifications)
-  LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-    console.log('👆 ===== LOCAL NOTIFICATION CLICKED =====');
-    console.log('👆 Local notification action:', JSON.stringify(action, null, 2));
-    
-    const data = action.notification?.extra || action.notification?.data || {};
-    console.log('👆 Local notification data:', data);
-    
-    // Handle navigation
-    try {
-      if (data?.type === 'workout' && data?.workoutId) {
-        const workoutId = String(data.workoutId);
-        console.log(`📍 Navigating from local notification to: /workout/${workoutId}`);
-        import('../utils/notificationNavigation').then(({ navigateTo }) => {
-          navigateTo(`/workout/${workoutId}`);
-        });
-      } else if (data?.type === 'event' && data?.eventId) {
-        const eventId = String(data.eventId);
-        console.log(`📍 Navigating from local notification to: /event/${eventId}`);
-        import('../utils/notificationNavigation').then(({ navigateTo }) => {
-          navigateTo(`/event/${eventId}`);
-        });
-      } else if (data?.type === 'race' && data?.raceId) {
-        const raceId = String(data.raceId);
-        console.log(`📍 Navigating from local notification to: /race/${raceId}`);
-        import('../utils/notificationNavigation').then(({ navigateTo }) => {
-          navigateTo(`/race/${raceId}`);
-        });
-      } else {
-        console.log('📍 No navigation for local notification type:', data?.type);
-      }
-    } catch (error) {
-      console.error('❌ Error handling local notification click:', error);
-    }
-  });
-  console.log('📱 Local notification click listener added');
+  // Note: Local notification listener is set up in setupEarlyNotificationListeners()
+  // to ensure it's ready even if app launches from notification
+  console.log('📱 Local notification listener already set up in early setup');
   
   // On registration, we receive the device token
   const registrationListener = PushNotifications.addListener('registration', async (token) => {
@@ -259,27 +298,16 @@ function setupPushNotificationListeners(userId) {
     showLocalNotification(notification);
   });
 
-  // Handle push notification actions (when user taps notification)
-  PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-    console.log('👆 ===== PUSH NOTIFICATION ACTION PERFORMED =====');
-    console.log('👆 Full notification object:', JSON.stringify(notification, null, 2));
-    console.log('👆 Notification type:', typeof notification);
-    console.log('👆 Notification keys:', notification ? Object.keys(notification) : 'null');
-    
-    // Handle navigation based on notification data
-    try {
-      console.log('📍 Attempting to call handleNotificationNavigation...');
+  // Note: pushNotificationActionPerformed listener is set up in setupEarlyNotificationListeners()
+  // to ensure it's ready even if app launches from notification
+  // But we also set it up here as a backup (won't duplicate due to early setup)
+  if (!listenersSetup) {
+    PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+      console.log('👆 ===== PUSH NOTIFICATION ACTION PERFORMED (BACKUP) =====');
       handleNotificationNavigation(notification);
-      console.log('✅ handleNotificationNavigation completed successfully');
-    } catch (error) {
-      console.error('❌ Error in handleNotificationNavigation:', error);
-      console.error('❌ Error message:', error.message);
-      console.error('❌ Error stack:', error.stack);
-      console.log('📍 Falling back to old handler...');
-      // Fallback to old handler
-      handleNotificationAction(notification);
-    }
-  });
+    });
+  }
+  console.log('📱 Push notification action listener already set up in early setup');
   
   // Also check for pending notifications when app starts (in case app was opened from notification)
   // This is a fallback for when pushNotificationActionPerformed doesn't fire
@@ -350,17 +378,21 @@ async function showLocalNotification(notification) {
     if (permission.display === 'granted') {
       const notificationData = notification.data || {};
       
-      // Create notification ID from workoutId if available, for click handling
+      // Create notification ID - must be a number for Capacitor
+      // Use workoutId if available, otherwise use timestamp
+      // Convert to number to ensure it's numeric
       const notificationId = notificationData.workoutId 
-        ? `workout_${notificationData.workoutId}` 
+        ? parseInt(notificationData.workoutId) || Date.now()
         : Date.now();
+      
+      console.log('📬 Scheduling local notification with ID:', notificationId, 'type:', typeof notificationId);
       
       await LocalNotifications.schedule({
         notifications: [
           {
+            id: notificationId, // Must be a number
             title: notification.title || 'New Notification',
             body: notification.body || '',
-            id: notificationId,
             sound: 'default',
             attachments: notification.data?.image ? [{ url: notification.data.image }] : undefined,
             extra: notificationData // Store full data for click handling
@@ -368,7 +400,7 @@ async function showLocalNotification(notification) {
         ]
       });
       
-      console.log('📬 Local notification scheduled with data:', notificationData);
+      console.log('📬 Local notification scheduled successfully with data:', notificationData);
     }
   } catch (error) {
     console.error('❌ Error showing local notification:', error);
