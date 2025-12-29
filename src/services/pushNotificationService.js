@@ -372,8 +372,12 @@ async function saveDeviceTokenToBackend(userId, token) {
  */
 async function showLocalNotification(notification) {
   try {
+    console.log('📬 Attempting to show local notification for foreground push');
+    console.log('📬 Notification object:', JSON.stringify(notification, null, 2));
+    
     // Request local notification permissions
     const permission = await LocalNotifications.requestPermissions();
+    console.log('📬 Local notification permission result:', permission);
     
     if (permission.display === 'granted') {
       const notificationData = notification.data || {};
@@ -381,29 +385,73 @@ async function showLocalNotification(notification) {
       // Create notification ID - must be a number for Capacitor
       // Use workoutId if available, otherwise use timestamp
       // Convert to number to ensure it's numeric
-      const notificationId = notificationData.workoutId 
-        ? parseInt(notificationData.workoutId) || Date.now()
-        : Date.now();
+      let notificationId;
+      if (notificationData.workoutId) {
+        notificationId = parseInt(notificationData.workoutId);
+        // If workoutId is too large or invalid, use timestamp
+        if (isNaN(notificationId) || notificationId <= 0) {
+          notificationId = Date.now();
+        }
+      } else {
+        notificationId = Date.now();
+      }
+      
+      // Ensure it's a positive integer
+      notificationId = Math.abs(Math.floor(notificationId));
       
       console.log('📬 Scheduling local notification with ID:', notificationId, 'type:', typeof notificationId);
       
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            id: notificationId, // Must be a number
+      const notificationPayload = {
+        id: notificationId, // Must be a number
+        title: notification.title || 'New Notification',
+        body: notification.body || '',
+        sound: 'default',
+        extra: notificationData // Store full data for click handling
+      };
+      
+      // Only add attachments if image exists
+      if (notification.data?.image) {
+        notificationPayload.attachments = [{ url: notification.data.image }];
+      }
+      
+      console.log('📬 Notification payload:', JSON.stringify(notificationPayload, null, 2));
+      
+      const result = await LocalNotifications.schedule({
+        notifications: [notificationPayload]
+      });
+      
+      console.log('📬 Local notification scheduled successfully:', result);
+      console.log('📬 Notification data stored:', notificationData);
+    } else {
+      console.warn('⚠️ Local notification permission not granted:', permission);
+      console.warn('⚠️ Permission status:', permission.display);
+      
+      // Fallback: Try to show notification anyway (some platforms allow it)
+      try {
+        const notificationData = notification.data || {};
+        const notificationId = notificationData.workoutId 
+          ? Math.abs(Math.floor(parseInt(notificationData.workoutId))) || Date.now()
+          : Date.now();
+        
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: notificationId,
             title: notification.title || 'New Notification',
             body: notification.body || '',
             sound: 'default',
-            attachments: notification.data?.image ? [{ url: notification.data.image }] : undefined,
-            extra: notificationData // Store full data for click handling
-          }
-        ]
-      });
-      
-      console.log('📬 Local notification scheduled successfully with data:', notificationData);
+            extra: notificationData
+          }]
+        });
+        console.log('📬 Local notification scheduled despite permission warning');
+      } catch (fallbackError) {
+        console.error('❌ Fallback notification also failed:', fallbackError);
+      }
     }
   } catch (error) {
     console.error('❌ Error showing local notification:', error);
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
   }
 }
 
