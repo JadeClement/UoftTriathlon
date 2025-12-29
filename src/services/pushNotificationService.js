@@ -94,9 +94,11 @@ function setupPushNotificationListeners(userId) {
   // On registration, we receive the device token
   PushNotifications.addListener('registration', async (token) => {
     console.log('📱 Push registration success, token: ' + token.value);
+    console.log('📱 Token object:', JSON.stringify(token));
     pushToken = token.value;
     
     // Send token to backend
+    console.log(`📱 Attempting to save token for user ${userId}...`);
     await saveDeviceTokenToBackend(userId, token.value);
   });
 
@@ -135,6 +137,9 @@ async function saveDeviceTokenToBackend(userId, token) {
       return;
     }
 
+    const platform = Capacitor.getPlatform();
+    console.log(`📱 Saving device token for user ${userId}, platform: ${platform}, token length: ${token.length}`);
+
     const response = await fetch(`${API_BASE_URL}/users/push-token`, {
       method: 'POST',
       headers: {
@@ -143,14 +148,16 @@ async function saveDeviceTokenToBackend(userId, token) {
       },
       body: JSON.stringify({
         token: token,
-        platform: Capacitor.getPlatform()
+        platform: platform === 'ios' ? 'ios' : platform === 'android' ? 'android' : platform
       })
     });
 
     if (response.ok) {
-      console.log('✅ Device token saved to backend');
+      const data = await response.json();
+      console.log('✅ Device token saved to backend:', data);
     } else {
-      console.error('❌ Failed to save device token to backend:', response.status);
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('❌ Failed to save device token to backend:', response.status, errorData);
     }
   } catch (error) {
     console.error('❌ Error saving device token to backend:', error);

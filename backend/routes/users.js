@@ -410,5 +410,73 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
   }
 });
 
+// Store push notification device token
+router.post('/push-token', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { token, platform } = req.body;
+    
+    console.log(`📱 Received push token save request for user ${userId}, platform: ${platform}, token length: ${token ? token.length : 0}`);
+    
+    if (!token || !platform) {
+      console.error('❌ Missing token or platform:', { token: !!token, platform: !!platform });
+      return res.status(400).json({ error: 'Token and platform are required' });
+    }
+    
+    // Check if token already exists for this user
+    const existingToken = await pool.query(
+      `SELECT id FROM push_device_tokens WHERE user_id = $1 AND token = $2`,
+      [userId, token]
+    );
+    
+    if (existingToken.rows.length > 0) {
+      // Update timestamp
+      await pool.query(
+        `UPDATE push_device_tokens SET updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND token = $2`,
+        [userId, token]
+      );
+      console.log(`✅ Device token updated for user ${userId}`);
+      return res.json({ message: 'Device token updated successfully' });
+    }
+    
+    // Insert new token
+    await pool.query(
+      `INSERT INTO push_device_tokens (user_id, token, platform) 
+       VALUES ($1, $2, $3) 
+       ON CONFLICT (user_id, token) 
+       DO UPDATE SET updated_at = CURRENT_TIMESTAMP, platform = $3`,
+      [userId, token, platform]
+    );
+    
+    console.log(`✅ Device token saved successfully for user ${userId}, platform: ${platform}`);
+    res.json({ message: 'Device token saved successfully' });
+  } catch (error) {
+    console.error('❌ Save push token error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete push notification device token
+router.delete('/push-token', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+    
+    await pool.query(
+      `DELETE FROM push_device_tokens WHERE user_id = $1 AND token = $2`,
+      [userId, token]
+    );
+    
+    res.json({ message: 'Device token deleted successfully' });
+  } catch (error) {
+    console.error('Delete push token error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
 
