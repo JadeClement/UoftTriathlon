@@ -250,6 +250,27 @@ async function sendAPNsNotification(token, notification) {
       return false;
     }
 
+    // Validate and clean token
+    if (!token || typeof token !== 'string') {
+      console.error('❌ Invalid token type:', typeof token);
+      return false;
+    }
+    
+    // Remove any whitespace and convert to lowercase (iOS tokens are hex)
+    const cleanToken = token.trim().toLowerCase();
+    
+    // iOS device tokens should be 64 hex characters
+    if (cleanToken.length !== 64) {
+      console.error(`❌ Invalid token length: ${cleanToken.length} (expected 64). Token: ${cleanToken.substring(0, 20)}...`);
+      return false;
+    }
+    
+    // Validate it's hex
+    if (!/^[0-9a-f]{64}$/.test(cleanToken)) {
+      console.error(`❌ Token contains invalid characters (not hex). Token: ${cleanToken.substring(0, 20)}...`);
+      return false;
+    }
+
     const bundleId = (process.env.APNS_BUNDLE_ID || 'uofttri.club.app').trim();
     
     const apnNotification = new apn.Notification();
@@ -265,11 +286,12 @@ async function sendAPNsNotification(token, notification) {
 
     console.log('📱 Sending APNs notification:', {
       topic: bundleId,
-      token: token.substring(0, 20) + '...',
+      token: cleanToken.substring(0, 20) + '...',
+      tokenLength: cleanToken.length,
       title: notification.title
     });
 
-    const result = await provider.send(apnNotification, token);
+    const result = await provider.send(apnNotification, cleanToken);
     
     if (result.sent && result.sent.length > 0) {
       console.log('✅ APNs notification sent successfully to', result.sent.length, 'device(s)');
@@ -343,7 +365,26 @@ async function sendBulkPushNotifications(tokens, notification) {
       apnNotification.badge = 1;
       apnNotification.pushType = 'alert';
 
-      const iosTokenStrings = iosTokens.map(t => t.token);
+      // Clean and validate tokens
+      const iosTokenStrings = iosTokens.map(t => {
+        if (!t.token || typeof t.token !== 'string') {
+          console.error('❌ Invalid token in database:', typeof t.token);
+          return null;
+        }
+        const clean = t.token.trim().toLowerCase();
+        if (clean.length !== 64 || !/^[0-9a-f]{64}$/.test(clean)) {
+          console.error(`❌ Invalid token format: length=${clean.length}, token=${clean.substring(0, 20)}...`);
+          return null;
+        }
+        return clean;
+      }).filter(t => t !== null);
+      
+      if (iosTokenStrings.length === 0) {
+        console.error('❌ No valid iOS tokens to send to');
+        results.failed += iosTokens.length;
+        return results;
+      }
+      
       console.log(`📱 Sending APNs notification to ${iosTokenStrings.length} iOS device(s), topic: ${bundleId}`);
       
       const result = await provider.send(apnNotification, iosTokenStrings);

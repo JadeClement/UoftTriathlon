@@ -423,6 +423,22 @@ router.post('/push-token', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Token and platform are required' });
     }
     
+    // Validate token format
+    const cleanToken = token.trim();
+    if (platform === 'ios') {
+      // iOS tokens should be 64 hex characters
+      if (cleanToken.length !== 64) {
+        console.error(`❌ Invalid iOS token length: ${cleanToken.length} (expected 64)`);
+        return res.status(400).json({ error: 'Invalid iOS token format: must be 64 hex characters' });
+      }
+      if (!/^[0-9a-f]{64}$/i.test(cleanToken)) {
+        console.error(`❌ Invalid iOS token format: not hex. Token: ${cleanToken.substring(0, 20)}...`);
+        return res.status(400).json({ error: 'Invalid iOS token format: must be hexadecimal' });
+      }
+      // Use lowercase for consistency
+      token = cleanToken.toLowerCase();
+    }
+    
     // Check if token already exists for this user
     const existingToken = await pool.query(
       `SELECT id FROM push_device_tokens WHERE user_id = $1 AND token = $2`,
