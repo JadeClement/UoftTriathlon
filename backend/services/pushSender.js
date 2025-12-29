@@ -65,6 +65,16 @@ function initializeAPNs() {
     const hasKeyId = process.env.APNS_KEY_ID;
     const hasTeamId = process.env.APNS_TEAM_ID;
     
+    // Debug logging
+    console.log('📱 APNs config check:', {
+      hasKeyPath: !!hasKeyPath,
+      hasKeyBase64: !!hasKeyBase64,
+      hasKeyId: !!hasKeyId,
+      hasTeamId: !!hasTeamId,
+      keyId: hasKeyId,
+      teamId: hasTeamId
+    });
+    
     if ((hasKeyPath || hasKeyBase64) && hasKeyId && hasTeamId) {
       const apn = require('apn');
       let key;
@@ -106,7 +116,16 @@ function initializeAPNs() {
       console.log('✅ APNs initialized');
       return apnProvider;
     } else {
-      console.log('⚠️ APNs not configured. Set APNS_KEY_PATH (local) or APNS_KEY_BASE64 (production) along with APNS_KEY_ID and APNS_TEAM_ID to enable iOS push notifications.');
+      console.log('⚠️ APNs not configured. Missing:');
+      if (!hasKeyPath && !hasKeyBase64) {
+        console.log('   - APNS_KEY_PATH (local) or APNS_KEY_BASE64 (production)');
+      }
+      if (!hasKeyId) {
+        console.log('   - APNS_KEY_ID');
+      }
+      if (!hasTeamId) {
+        console.log('   - APNS_TEAM_ID');
+      }
       return null;
     }
   } catch (error) {
