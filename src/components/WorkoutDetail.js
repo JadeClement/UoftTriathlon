@@ -5,6 +5,7 @@ import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import { useWorkout, useOnlineStatus } from '../hooks/useOfflineData';
 import { linkifyText } from '../utils/linkUtils';
 import { combineDateTime, getHoursUntil, isWithinHours, formatSignupDateForDisplay, formatSignupTimeOnlyForDisplay } from '../utils/dateUtils';
+import { normalizeProfileImageUrl } from '../utils/imageUtils';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import { getFieldsForSport } from '../config/sportFields';
@@ -1253,22 +1254,28 @@ const WorkoutDetail = () => {
             </div>
             <div className="workout-author">
               <div className="author-info">
-                                    {displayWorkout.authorProfilePictureUrl ? (
-                      <img 
-                        src={`${API_BASE_URL}${displayWorkout.authorProfilePictureUrl}`} 
-                        alt="Profile" 
-                        className="author-avatar"
-                        onError={(e) => {
-                          e.target.src = '/images/default_profile.png';
-                        }}
-                      />
-                    ) : (
-                      <img 
-                        src="/images/default_profile.png" 
-                        alt="Profile" 
-                        className="author-avatar"
-                      />
-                    )}
+                {(() => {
+                  const url = normalizeProfileImageUrl(displayWorkout.authorProfilePictureUrl);
+                  return url ? (
+                    <img 
+                      src={url}
+                      alt="Profile" 
+                      className="author-avatar"
+                      loading="lazy"
+                      decoding="async"
+                      fetchpriority="low"
+                      onError={(e) => {
+                        e.target.src = '/images/default_profile.png';
+                      }}
+                    />
+                  ) : (
+                    <img 
+                      src="/images/default_profile.png" 
+                      alt="Profile" 
+                      className="author-avatar"
+                    />
+                  );
+                })()}
                 <span className="author-name">Posted by {displayWorkout.author_name}</span>
               </div>
             </div>
