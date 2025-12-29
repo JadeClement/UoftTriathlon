@@ -15,6 +15,27 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 let pushToken = null;
 let isRegistered = false;
 let listenersSetup = false;
+let currentUserId = null;
+
+// Global handler for AppDelegate to call directly
+if (typeof window !== 'undefined') {
+  window.handlePushToken = function(token) {
+    console.log('📱 ===== GLOBAL HANDLER: Received token =====');
+    console.log('📱 Token:', token);
+    pushToken = token;
+    
+    // If we have a user ID, save the token
+    if (currentUserId) {
+      console.log(`📱 Saving token for user ${currentUserId} via global handler`);
+      saveDeviceTokenToBackend(currentUserId, token);
+    } else {
+      console.log('⚠️ No user ID yet, token will be saved when user logs in');
+      // Store token to save later
+      window.pendingPushToken = token;
+    }
+  };
+  console.log('📱 Global handlePushToken function registered');
+}
 
 /**
  * Request push notification permissions
@@ -60,6 +81,18 @@ export async function registerForPushNotifications(userId) {
     return false;
   }
 
+  // Store user ID for global handler
+  currentUserId = userId;
+  
+  // Check if there's a pending token from AppDelegate injection
+  if (typeof window !== 'undefined' && window.pendingPushToken) {
+    console.log('📱 Found pending token, saving now...');
+    const pendingToken = window.pendingPushToken;
+    delete window.pendingPushToken;
+    pushToken = pendingToken;
+    await saveDeviceTokenToBackend(userId, pendingToken);
+  }
+
   if (isRegistered) {
     console.log('📱 Already registered for push notifications');
     return true;
@@ -82,6 +115,41 @@ export async function registerForPushNotifications(userId) {
     console.log('📱 Calling PushNotifications.register()...');
     await PushNotifications.register();
     console.log('📱 PushNotifications.register() completed, waiting for token...');
+    
+    // Try to get token directly (in case it was already registered)
+    try {
+      // Some Capacitor versions expose a method to check registration state
+      // This is a fallback if the event doesn't fire
+      console.log('📱 Checking if token is already available...');
+    } catch (e) {
+      // Ignore - not all versions support this
+    }
+
+    // Wait and check if token arrived (iOS can take time)
+    setTimeout(() => {
+      if (!pushToken) {
+        console.log('⚠️ No token received after 5 seconds');
+        console.log('⚠️ Token was received at native level but not forwarded to JS');
+        console.log('⚠️ This might be a Capacitor plugin bridge issue');
+        console.log('⚠️ Trying to manually check for stored token...');
+        
+        // Try to manually trigger by calling register again (might re-emit token)
+        PushNotifications.register().catch(err => {
+          console.log('⚠️ Re-register attempt:', err);
+        });
+      } else {
+        console.log('✅ Token received:', pushToken.substring(0, 20) + '...');
+      }
+    }, 5000);
+    
+    // Check again after 10 seconds
+    setTimeout(() => {
+      if (!pushToken) {
+        console.log('⚠️ Still no token after 10 seconds');
+        console.log('⚠️ Native token was received but Capacitor plugin bridge may not be working');
+        console.log('⚠️ Check Xcode console for: "Token forwarded to Capacitor via NotificationCenter"');
+      }
+    }, 10000);
 
     isRegistered = true;
     console.log('✅ Registered for push notifications');
@@ -100,21 +168,43 @@ function setupPushNotificationListeners(userId) {
   console.log(`📱 Setting up push notification listeners for user ${userId}`);
   
   // On registration, we receive the device token
-  PushNotifications.addListener('registration', async (token) => {
+  const registrationListener = PushNotifications.addListener('registration', async (token) => {
+    console.log('📱 ===== PUSH REGISTRATION EVENT FIRED =====');
     console.log('📱 Push registration success, token: ' + token.value);
     console.log('📱 Token object:', JSON.stringify(token));
+    console.log('📱 Token type:', typeof token);
+    console.log('📱 Token.value:', token.value);
     pushToken = token.value;
     
     // Send token to backend
     console.log(`📱 Attempting to save token for user ${userId}...`);
     await saveDeviceTokenToBackend(userId, token.value);
   });
+  console.log('📱 Registration listener added:', registrationListener);
+  
+  // Fallback: Listen for custom event from AppDelegate JavaScript injection
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pushNotificationRegistration', (event) => {
+      console.log('📱 ===== FALLBACK: Received token via custom event =====');
+      const tokenValue = event.detail?.value;
+      if (tokenValue) {
+        console.log('📱 Fallback token received:', tokenValue);
+        pushToken = tokenValue;
+        saveDeviceTokenToBackend(userId, tokenValue);
+      }
+    });
+    console.log('📱 Fallback custom event listener added');
+  }
 
   // Handle registration errors
-  PushNotifications.addListener('registrationError', (error) => {
+  const errorListener = PushNotifications.addListener('registrationError', (error) => {
+    console.error('❌ ===== PUSH REGISTRATION ERROR =====');
     console.error('❌ Error on push registration:', error);
     console.error('❌ Registration error details:', JSON.stringify(error));
+    console.error('❌ Error type:', typeof error);
+    console.error('❌ Error keys:', Object.keys(error || {}));
   });
+  console.log('📱 Error listener added:', errorListener);
 
   // Handle received push notifications (when app is in foreground)
   PushNotifications.addListener('pushNotificationReceived', (notification) => {
@@ -206,25 +296,46 @@ async function showLocalNotification(notification) {
  * @param {Object} notification - Notification action object
  */
 function handleNotificationAction(notification) {
-  // This will be handled by the app router
-  // For now, just log - can be extended to navigate to specific screens
-  const data = notification.notification.data;
+  console.log('👆 Handling notification action:', notification);
   
-  if (data?.type === 'workout') {
-    // Navigate to workout detail
-    window.location.href = `/workouts/${data.workoutId}`;
-  } else if (data?.type === 'event') {
+  // Extract data from notification
+  // The structure varies: notification.notification.data or notification.data
+  const data = notification.notification?.data || notification.data || {};
+  
+  console.log('📍 Notification data:', data);
+  
+  if (data?.type === 'workout' && data?.workoutId) {
+    // Navigate to workout detail page
+    const workoutId = data.workoutId;
+    console.log(`📍 Navigating to workout: /workout/${workoutId}`);
+    
+    // Use window.location for deep linking (works when app is closed/backgrounded)
+    // React Router will handle it when the app loads
+    if (window.location) {
+      window.location.href = `/workout/${workoutId}`;
+    }
+  } else if (data?.type === 'event' && data?.eventId) {
     // Navigate to event detail
-    window.location.href = `/events/${data.eventId}`;
-  } else if (data?.type === 'forum') {
-    // Navigate to forum post
-    window.location.href = `/forum/${data.postId}`;
-  } else if (data?.type === 'race') {
+    console.log(`📍 Navigating to event: /event/${data.eventId}`);
+    if (window.location) {
+      window.location.href = `/event/${data.eventId}`;
+    }
+  } else if (data?.type === 'forum' && data?.postId) {
+    // Navigate to forum post (could navigate to forum and scroll to post)
+    console.log(`📍 Navigating to forum post: /forum`);
+    if (window.location) {
+      window.location.href = `/forum`;
+      // TODO: Could add hash or query param to scroll to specific post
+    }
+  } else if (data?.type === 'race' && data?.raceId) {
     // Navigate to race detail
-    window.location.href = `/races/${data.raceId}`;
+    console.log(`📍 Navigating to race: /race/${data.raceId}`);
+    if (window.location) {
+      window.location.href = `/race/${data.raceId}`;
+    }
+  } else {
+    console.log('📍 No navigation action for notification type:', data?.type);
   }
-  
-  console.log('📍 Would navigate to:', data);
 }
 
 /**
