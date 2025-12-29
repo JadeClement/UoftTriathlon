@@ -117,9 +117,13 @@ export function handleNotificationNavigation(notification) {
     }
     
     // Handle forum navigation
+    // Forum replies on workout posts should navigate to the workout detail page
     if (data?.type === 'forum' && data?.postId) {
-      console.log(`📍 Navigating to forum post: /forum`);
-      navigateTo(`/forum`);
+      // Check if this is a workout post by trying to navigate to workout detail
+      // The postId for workout forum replies is the workout post ID
+      const postId = String(data.postId);
+      console.log(`📍 Navigating to forum post (workout): /workout/${postId}`);
+      navigateTo(`/workout/${postId}`);
       return;
     }
     
