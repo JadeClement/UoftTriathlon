@@ -379,6 +379,10 @@ const WorkoutDetail = () => {
     }
   }, [cachedWorkout, cachedSignups, cachedWaitlist, workoutLoading, currentUser]);
 
+  // Track if we've loaded workout details to prevent infinite loops
+  const hasLoadedRef = useRef(false);
+  const lastWorkoutIdRef = useRef(null);
+  
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');
@@ -390,11 +394,18 @@ const WorkoutDetail = () => {
       return;
     }
     
-    // Only load additional data (attendance, comments, test events) if we have workout data
-    if (cachedWorkout || workout) {
+    // Only load if workout ID changed or we haven't loaded yet
+    const workoutIdChanged = lastWorkoutIdRef.current !== id;
+    const hasWorkoutData = cachedWorkout || workout;
+    const shouldLoad = workoutIdChanged || (!hasLoadedRef.current && hasWorkoutData);
+    
+    if (shouldLoad && hasWorkoutData) {
+      console.log('🔄 Loading workout details (ID changed or first load)');
+      hasLoadedRef.current = true;
+      lastWorkoutIdRef.current = id;
       loadWorkoutDetails();
     }
-  }, [currentUser, navigate, isMember, id, cachedWorkout, workout]);
+  }, [currentUser, navigate, isMember, id, cachedWorkout, loadWorkoutDetails]); // Removed 'workout' from deps to prevent infinite loop
 
   // Listen for profile updates to refresh profile pictures
   useEffect(() => {
