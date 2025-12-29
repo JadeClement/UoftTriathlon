@@ -166,6 +166,23 @@ function AppContent() {
         navigate(notificationPath);
       }, 500);
     }
+    
+    // Check for stored notification data (when app opens from notification click)
+    if (typeof window !== 'undefined' && window.lastReceivedNotification) {
+      console.log('📍 Found stored notification data on app start:', window.lastReceivedNotification);
+      const notificationData = window.lastReceivedNotification;
+      
+      // Small delay to ensure everything is loaded
+      setTimeout(() => {
+        if (notificationData?.type === 'workout' && notificationData?.workoutId) {
+          const workoutId = String(notificationData.workoutId);
+          console.log(`📍 Navigating to workout from stored notification: /workout/${workoutId}`);
+          navigate(`/workout/${workoutId}`);
+          // Clear after use
+          delete window.lastReceivedNotification;
+        }
+      }, 1000);
+    }
   }, [navigate, location.pathname]);
   
   return (

@@ -168,6 +168,43 @@ export async function registerForPushNotifications(userId) {
 function setupPushNotificationListeners(userId) {
   console.log(`📱 Setting up push notification listeners for user ${userId}`);
   
+  // Set up local notification click handler (for foreground notifications)
+  LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+    console.log('👆 ===== LOCAL NOTIFICATION CLICKED =====');
+    console.log('👆 Local notification action:', JSON.stringify(action, null, 2));
+    
+    const data = action.notification?.extra || action.notification?.data || {};
+    console.log('👆 Local notification data:', data);
+    
+    // Handle navigation
+    try {
+      if (data?.type === 'workout' && data?.workoutId) {
+        const workoutId = String(data.workoutId);
+        console.log(`📍 Navigating from local notification to: /workout/${workoutId}`);
+        import('../utils/notificationNavigation').then(({ navigateTo }) => {
+          navigateTo(`/workout/${workoutId}`);
+        });
+      } else if (data?.type === 'event' && data?.eventId) {
+        const eventId = String(data.eventId);
+        console.log(`📍 Navigating from local notification to: /event/${eventId}`);
+        import('../utils/notificationNavigation').then(({ navigateTo }) => {
+          navigateTo(`/event/${eventId}`);
+        });
+      } else if (data?.type === 'race' && data?.raceId) {
+        const raceId = String(data.raceId);
+        console.log(`📍 Navigating from local notification to: /race/${raceId}`);
+        import('../utils/notificationNavigation').then(({ navigateTo }) => {
+          navigateTo(`/race/${raceId}`);
+        });
+      } else {
+        console.log('📍 No navigation for local notification type:', data?.type);
+      }
+    } catch (error) {
+      console.error('❌ Error handling local notification click:', error);
+    }
+  });
+  console.log('📱 Local notification click listener added');
+  
   // On registration, we receive the device token
   const registrationListener = PushNotifications.addListener('registration', async (token) => {
     console.log('📱 ===== PUSH REGISTRATION EVENT FIRED =====');
@@ -209,7 +246,14 @@ function setupPushNotificationListeners(userId) {
 
   // Handle received push notifications (when app is in foreground)
   PushNotifications.addListener('pushNotificationReceived', (notification) => {
-    console.log('📬 Push notification received:', notification);
+    console.log('📬 Push notification received (foreground):', notification);
+    console.log('📬 Notification data:', notification?.data);
+    
+    // Store notification data for potential click handling
+    if (notification?.data) {
+      window.lastReceivedNotification = notification.data;
+      console.log('📬 Stored notification data for click handling');
+    }
     
     // Show local notification when app is in foreground
     showLocalNotification(notification);
@@ -304,18 +348,27 @@ async function showLocalNotification(notification) {
     const permission = await LocalNotifications.requestPermissions();
     
     if (permission.display === 'granted') {
+      const notificationData = notification.data || {};
+      
+      // Create notification ID from workoutId if available, for click handling
+      const notificationId = notificationData.workoutId 
+        ? `workout_${notificationData.workoutId}` 
+        : Date.now();
+      
       await LocalNotifications.schedule({
         notifications: [
           {
             title: notification.title || 'New Notification',
             body: notification.body || '',
-            id: Date.now(),
+            id: notificationId,
             sound: 'default',
             attachments: notification.data?.image ? [{ url: notification.data.image }] : undefined,
-            extra: notification.data
+            extra: notificationData // Store full data for click handling
           }
         ]
       });
+      
+      console.log('📬 Local notification scheduled with data:', notificationData);
     }
   } catch (error) {
     console.error('❌ Error showing local notification:', error);
