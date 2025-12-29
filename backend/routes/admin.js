@@ -2,6 +2,7 @@ const express = require('express');
 const { pool } = require('../database-pg');
 const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('../middleware/auth');
 const ExcelJS = require('exceljs');
+const notificationService = require('../services/notificationService');
 
 // Function to convert markdown-like formatting to HTML
 const formatText = (text) => {
@@ -1383,6 +1384,44 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
   } catch (error) {
     console.error('Get workout attendance details error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test push notification endpoint
+router.post('/test-push-notification', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, title, body } = req.body;
+    
+    // If userId not provided, use the current user
+    const targetUserId = userId || req.user.userId;
+    
+    // Default test notification
+    const notification = {
+      title: title || 'Test Push Notification',
+      body: body || 'This is a test push notification from the UofT Triathlon app!',
+      data: { type: 'test', timestamp: new Date().toISOString() }
+    };
+    
+    console.log(`🧪 Testing push notification for user ${targetUserId}:`, notification);
+    
+    const success = await notificationService.sendPushNotificationToUser(targetUserId, notification);
+    
+    if (success) {
+      res.json({ 
+        success: true, 
+        message: 'Push notification sent successfully',
+        notification 
+      });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Failed to send push notification. Check that user has registered device tokens and APNs/FCM is configured.',
+        notification 
+      });
+    }
+  } catch (error) {
+    console.error('Test push notification error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
