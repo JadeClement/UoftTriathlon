@@ -331,21 +331,42 @@ async function sendBulkPushNotifications(tokens, notification) {
     const apn = require('apn');
     const provider = initializeAPNs();
     if (provider) {
+      const bundleId = (process.env.APNS_BUNDLE_ID || 'uofttri.club.app').trim();
       const apnNotification = new apn.Notification();
       apnNotification.alert = {
         title: notification.title,
         body: notification.body
       };
-      apnNotification.topic = process.env.APNS_BUNDLE_ID || 'uofttri.club.app';
+      apnNotification.topic = bundleId;
       apnNotification.payload = notification.data || {};
       apnNotification.sound = 'default';
       apnNotification.badge = 1;
+      apnNotification.pushType = 'alert';
 
       const iosTokenStrings = iosTokens.map(t => t.token);
+      console.log(`📱 Sending APNs notification to ${iosTokenStrings.length} iOS device(s), topic: ${bundleId}`);
+      
       const result = await provider.send(apnNotification, iosTokenStrings);
       
-      if (result.sent) results.sent += result.sent.length;
-      if (result.failed) results.failed += result.failed.length;
+      if (result.sent && result.sent.length > 0) {
+        console.log(`✅ APNs: Successfully sent to ${result.sent.length} device(s)`);
+        results.sent += result.sent.length;
+      }
+      
+      if (result.failed && result.failed.length > 0) {
+        console.error(`❌ APNs: Failed to send to ${result.failed.length} device(s)`);
+        result.failed.forEach((failure, index) => {
+          console.error(`❌ APNs Failure ${index + 1}:`, {
+            device: failure.device ? failure.device.substring(0, 20) + '...' : 'unknown',
+            error: failure.error,
+            status: failure.status,
+            response: failure.response
+          });
+        });
+        results.failed += result.failed.length;
+      }
+    } else {
+      console.log('⚠️ APNs provider not initialized, skipping iOS notifications');
     }
   }
 
