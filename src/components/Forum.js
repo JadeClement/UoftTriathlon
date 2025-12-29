@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
@@ -2033,7 +2034,7 @@ const Forum = () => {
         )}
 
         {/* Workout Creation Modal */}
-        {showWorkoutForm && (
+        {showWorkoutForm && createPortal(
           <div 
             className="modal-overlay"
             style={{
@@ -2049,7 +2050,8 @@ const Forum = () => {
               justifyContent: 'center',
               margin: 0,
               padding: '1rem',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              zIndex: 9999
             }}
           >
             <div className="modal">
@@ -2139,7 +2141,8 @@ const Forum = () => {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Event Creation Modal */}

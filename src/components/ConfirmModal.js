@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import './ConfirmModal.css';
 
 const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText = 'Confirm', cancelText = 'Cancel', confirmDanger = false }) => {
@@ -38,7 +39,8 @@ const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText
 
   if (!isOpen) return null;
 
-  return (
+  // Render modal directly to document.body using Portal to avoid parent container constraints
+  const modalContent = (
     <div 
       className="confirm-modal-overlay" 
       onClick={onCancel}
@@ -55,7 +57,8 @@ const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText
         justifyContent: 'center',
         margin: 0,
         padding: '1rem',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        zIndex: 9999
       }}
     >
       <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
@@ -78,6 +81,8 @@ const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default ConfirmModal;
