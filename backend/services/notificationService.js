@@ -2,6 +2,7 @@ require('dotenv').config();
 const { pool } = require('../database-pg');
 const emailService = require('./emailService');
 const { sendWaitlistPromotionNotification } = require('./smsService');
+const { sendPushNotification, sendBulkPushNotifications } = require('./pushSender');
 
 /**
  * Notification Service
@@ -9,10 +10,58 @@ const { sendWaitlistPromotionNotification } = require('./smsService');
  * This service handles checking user notification preferences and sending notifications
  * when events occur (workouts posted, events posted, forum replies, waitlist promotions).
  * 
- * Currently, push notifications are not implemented (Phase 1.4 or 2.3).
- * For now, we check preferences and send email/SMS where applicable.
- * Push notifications will be added later when Web Push API or native push is set up.
+ * Push notifications are implemented using native push (FCM for Android, APNs for iOS).
+ * FCM/APNs configuration is required for push notifications to work.
  */
+
+/**
+ * Get device tokens for a user
+ * @param {number} userId - User ID
+ * @returns {Promise<Array>} Array of device tokens with platform info
+ */
+async function getUserDeviceTokens(userId) {
+  try {
+    const result = await pool.query(
+      `SELECT token, platform FROM push_device_tokens WHERE user_id = $1`,
+      [userId]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('❌ Error fetching device tokens:', error);
+    return [];
+  }
+}
+
+/**
+ * Send push notification to a user
+ * @param {number} userId - User ID
+ * @param {Object} notification - { title, body, data }
+ * @returns {Promise<boolean>} True if sent successfully to at least one device
+ */
+async function sendPushNotificationToUser(userId, notification) {
+  try {
+    // Get user's device tokens
+    const tokens = await getUserDeviceTokens(userId);
+    
+    if (tokens.length === 0) {
+      console.log(`📱 No device tokens found for user ${userId}`);
+      return false;
+    }
+
+    console.log(`📱 Sending push notification to user ${userId} with ${tokens.length} device(s):`, notification);
+
+    // Send notifications to all user's devices
+    const results = await sendBulkPushNotifications(tokens, notification);
+    
+    console.log(`📱 Push notification results for user ${userId}:`, results);
+    
+    // Return true if at least one notification was sent successfully
+    return results.sent > 0;
+  } catch (error) {
+    console.error('❌ Error sending push notification:', error);
+    return false;
+  }
+}
 
 /**
  * Get notification preferences for a user
@@ -93,7 +142,7 @@ async function getUsersWithPreference(preferenceType) {
     }
 
     const result = await pool.query(
-      `SELECT u.id, u.email, u.name, u.phone
+      `SELECT u.id, u.email, u.name, u.phone_number
       FROM users u
       INNER JOIN notification_preferences np ON u.id = np.user_id
       WHERE np.${columnName} = true
@@ -133,20 +182,13 @@ async function notifyWorkoutPosted(workoutType, workoutData) {
     
     console.log(`📢 Notifying ${users.length} users about new ${workoutType} workout: ${workoutData.title}`);
 
-    // TODO: When push notifications are implemented (Phase 1.4 or 2.3), send push notifications here
-    // For now, we just log that notifications would be sent
-    // When ready, uncomment and implement:
-    // for (const user of users) {
-    //   await sendPushNotification(user.id, {
-    //     title: `New ${workoutType} Workout: ${workoutData.title}`,
-    //     body: workoutData.content?.substring(0, 100) || '',
-    //     data: { type: 'workout', workoutId: workoutData.id }
-    //   });
-    // }
-
-    // For now, log the notifications that would be sent
-    if (users.length > 0) {
-      console.log(`📢 Would send ${users.length} push notifications for ${workoutType} workout (push notifications not yet implemented)`);
+    // Send push notifications to users
+    for (const user of users) {
+      await sendPushNotificationToUser(user.id, {
+        title: `New ${workoutType} Workout: ${workoutData.title}`,
+        body: workoutData.content?.substring(0, 100) || '',
+        data: { type: 'workout', workoutId: workoutData.id }
+      });
     }
   } catch (error) {
     console.error('❌ Error sending workout post notifications:', error);
@@ -163,10 +205,13 @@ async function notifyEventPosted(eventData) {
     
     console.log(`📢 Notifying ${users.length} users about new event: ${eventData.title}`);
 
-    // TODO: When push notifications are implemented, send push notifications here
-    // For now, we just log that notifications would be sent
-    if (users.length > 0) {
-      console.log(`📢 Would send ${users.length} push notifications for event (push notifications not yet implemented)`);
+    // Send push notifications to users
+    for (const user of users) {
+      await sendPushNotificationToUser(user.id, {
+        title: `New Event: ${eventData.title}`,
+        body: eventData.content?.substring(0, 100) || '',
+        data: { type: 'event', eventId: eventData.id }
+      });
     }
   } catch (error) {
     console.error('❌ Error sending event post notifications:', error);
@@ -197,9 +242,12 @@ async function notifyForumReply(userId, replyData) {
 
     console.log(`📢 Notifying user ${userId} about forum reply on post: ${replyData.postTitle}`);
 
-    // TODO: When push notifications are implemented, send push notification here
-    // For now, we just log that a notification would be sent
-    console.log(`📢 Would send push notification for forum reply (push notifications not yet implemented)`);
+    // Send push notification
+    await sendPushNotificationToUser(userId, {
+      title: `New reply on: ${replyData.postTitle}`,
+      body: replyData.replyContent?.substring(0, 100) || '',
+      data: { type: 'forum', postId: replyData.postId }
+    });
 
     // Optional: Send email notification for forum replies
     // Uncomment if you want email notifications for forum replies:
@@ -241,8 +289,12 @@ async function notifyWaitlistPromotion(userData, workoutData) {
       workoutData.workoutTime
     );
 
-    // TODO: When push notifications are implemented, also send push notification here
-    console.log(`📢 Would also send push notification for waitlist promotion (push notifications not yet implemented)`);
+    // Send push notification
+    await sendPushNotificationToUser(userData.id, {
+      title: `You're in! ${workoutData.title}`,
+      body: `You've been promoted from the waitlist for this workout.`,
+      data: { type: 'workout', workoutId: workoutData.id }
+    });
   } catch (error) {
     console.error('❌ Error sending waitlist promotion notification:', error);
   }
@@ -251,6 +303,8 @@ async function notifyWaitlistPromotion(userData, workoutData) {
 module.exports = {
   getUserNotificationPreferences,
   getUsersWithPreference,
+  getUserDeviceTokens,
+  sendPushNotificationToUser,
   notifyWorkoutPosted,
   notifyEventPosted,
   notifyForumReply,
