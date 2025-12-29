@@ -36,3 +36,30 @@ SMTP_USER=your_smtp_username
 SMTP_PASS=your_smtp_password_or_app_password
 SMTP_SECURE=false
 SMTP_FROM="UofT Triathlon Club" <info@uoft-tri.club>
+
+# Push Notifications Configuration
+# For Android (FCM) - Use ONE of the following options:
+
+# Option 1: FCM Service Account (Recommended - more secure)
+# Download service account JSON from Firebase Console > Project Settings > Service Accounts
+FCM_SERVICE_ACCOUNT_PATH=./config/firebase-service-account.json
+
+# Option 2: FCM Server Key (Legacy - simpler but less secure)
+# Get from Firebase Console > Project Settings > Cloud Messaging > Server Key
+# FCM_SERVER_KEY=your_fcm_server_key_here
+
+# For iOS (APNs) - Required for iOS push notifications
+# Create APNs Auth Key in Apple Developer Portal: https://developer.apple.com/account/resources/authkeys/list
+# Download the .p8 file and note the Key ID and Team ID
+
+# For LOCAL DEVELOPMENT: Use file path
+APNS_KEY_PATH=./config/AuthKey_XXXXXXXXXX.p8
+
+# For PRODUCTION (Vercel): Use base64 encoded key (convert with: base64 -i AuthKey_XXX.p8 | tr -d '\n')
+# APNS_KEY_BASE64=LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t...
+
+# Required for both local and production:
+APNS_KEY_ID=your_apns_key_id  # e.g., 9PKQNJ3X73
+APNS_TEAM_ID=your_apple_team_id  # Your Apple Team ID (found in Apple Developer Portal)
+APNS_BUNDLE_ID=uofttri.club.app
+APNS_PRODUCTION=false  # Set to true for production/App Store builds, false for development/testing

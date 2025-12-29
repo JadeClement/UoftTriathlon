@@ -59,18 +59,40 @@ function initializeAPNs() {
 
   try {
     // Check if APNs is configured
-    if (process.env.APNS_KEY_PATH && process.env.APNS_KEY_ID && process.env.APNS_TEAM_ID) {
+    // Support both file path (local) and base64 encoded key (production/Vercel)
+    const hasKeyPath = process.env.APNS_KEY_PATH;
+    const hasKeyBase64 = process.env.APNS_KEY_BASE64;
+    const hasKeyId = process.env.APNS_KEY_ID;
+    const hasTeamId = process.env.APNS_TEAM_ID;
+    
+    if ((hasKeyPath || hasKeyBase64) && hasKeyId && hasTeamId) {
       const apn = require('apn');
-      const fs = require('fs');
+      let key;
       
-      // Read the key file
-      const keyPath = process.env.APNS_KEY_PATH;
-      if (!fs.existsSync(keyPath)) {
-        console.error('❌ APNs key file not found:', keyPath);
+      // Method 1: Read from base64 encoded environment variable (for Vercel/production)
+      if (hasKeyBase64) {
+        try {
+          key = Buffer.from(process.env.APNS_KEY_BASE64, 'base64');
+          console.log('📱 APNs: Using key from APNS_KEY_BASE64 environment variable');
+        } catch (error) {
+          console.error('❌ Error decoding APNS_KEY_BASE64:', error);
+          return null;
+        }
+      }
+      // Method 2: Read from file path (for local development)
+      else if (hasKeyPath) {
+        const fs = require('fs');
+        const keyPath = process.env.APNS_KEY_PATH;
+        if (!fs.existsSync(keyPath)) {
+          console.error('❌ APNs key file not found:', keyPath);
+          return null;
+        }
+        key = fs.readFileSync(keyPath);
+        console.log('📱 APNs: Using key from file:', keyPath);
+      } else {
+        console.log('⚠️ APNs not configured. Set APNS_KEY_PATH (local) or APNS_KEY_BASE64 (production) along with APNS_KEY_ID and APNS_TEAM_ID.');
         return null;
       }
-
-      const key = fs.readFileSync(keyPath);
       
       apnProvider = new apn.Provider({
         token: {
@@ -84,7 +106,7 @@ function initializeAPNs() {
       console.log('✅ APNs initialized');
       return apnProvider;
     } else {
-      console.log('⚠️ APNs not configured. Set APNS_KEY_PATH, APNS_KEY_ID, and APNS_TEAM_ID to enable iOS push notifications.');
+      console.log('⚠️ APNs not configured. Set APNS_KEY_PATH (local) or APNS_KEY_BASE64 (production) along with APNS_KEY_ID and APNS_TEAM_ID to enable iOS push notifications.');
       return null;
     }
   } catch (error) {
