@@ -10,6 +10,10 @@
   justify-content: center;
   z-index: 2000;
   animation: fadeIn 0.2s ease;
+  /* Ensure modal is positioned relative to viewport, not document */
+  transform: translateZ(0);
+  /* Prevent scrolling of background content */
+  overflow: hidden;
 }
 
 @keyframes fadeIn {
