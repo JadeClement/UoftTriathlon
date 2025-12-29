@@ -14,6 +14,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 
 let pushToken = null;
 let isRegistered = false;
+let listenersSetup = false;
 
 /**
  * Request push notification permissions
@@ -71,11 +72,16 @@ export async function registerForPushNotifications(userId) {
       return false;
     }
 
-    // Register for push notifications
-    await PushNotifications.register();
+    // Set up event listeners BEFORE registering (to catch immediate token)
+    if (!listenersSetup) {
+      setupPushNotificationListeners(userId);
+      listenersSetup = true;
+    }
 
-    // Set up event listeners
-    setupPushNotificationListeners(userId);
+    // Register for push notifications
+    console.log('📱 Calling PushNotifications.register()...');
+    await PushNotifications.register();
+    console.log('📱 PushNotifications.register() completed, waiting for token...');
 
     isRegistered = true;
     console.log('✅ Registered for push notifications');
@@ -91,6 +97,8 @@ export async function registerForPushNotifications(userId) {
  * @param {string} userId - Current user ID
  */
 function setupPushNotificationListeners(userId) {
+  console.log(`📱 Setting up push notification listeners for user ${userId}`);
+  
   // On registration, we receive the device token
   PushNotifications.addListener('registration', async (token) => {
     console.log('📱 Push registration success, token: ' + token.value);
@@ -105,6 +113,7 @@ function setupPushNotificationListeners(userId) {
   // Handle registration errors
   PushNotifications.addListener('registrationError', (error) => {
     console.error('❌ Error on push registration:', error);
+    console.error('❌ Registration error details:', JSON.stringify(error));
   });
 
   // Handle received push notifications (when app is in foreground)
