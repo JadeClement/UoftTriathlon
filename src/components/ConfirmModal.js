@@ -6,22 +6,31 @@ const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText
   useEffect(() => {
     if (isOpen) {
       // Save current scroll position
-      const scrollY = window.scrollY;
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
       
-      // Simple approach: just prevent overflow
-      // The modal overlay is position: fixed so it will always be in viewport
+      // Lock body scroll - use a simpler approach that doesn't interfere with modal positioning
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+      
+      // Prevent scrolling
       document.body.style.overflow = 'hidden';
-      // Prevent scroll on touch devices
       document.body.style.position = 'fixed';
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
       
       return () => {
-        // Restore scroll position when modal closes
-        document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
+        // Restore original styles
+        document.body.style.overflow = originalOverflow;
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.left = '';
+        document.body.style.right = '';
+        // Restore scroll position
         window.scrollTo(0, scrollY);
       };
     }
@@ -30,7 +39,20 @@ const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText
   if (!isOpen) return null;
 
   return (
-    <div className="confirm-modal-overlay" onClick={onCancel}>
+    <div 
+      className="confirm-modal-overlay" 
+      onClick={onCancel}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
       <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
         {title && <h2 className="confirm-modal-title">{title}</h2>}
         <p className="confirm-modal-message">{message}</p>

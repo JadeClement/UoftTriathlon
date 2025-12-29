@@ -68,17 +68,31 @@ const Forum = () => {
   useEffect(() => {
     if (showWorkoutForm) {
       // Save current scroll position
-      const scrollY = window.scrollY;
-      // Lock body scroll
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+      
+      // Lock body scroll - use a simpler approach that doesn't interfere with modal positioning
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+      
+      // Prevent scrolling
+      document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
       
       return () => {
-        // Restore scroll position when modal closes
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
+        // Restore original styles
+        document.body.style.overflow = originalOverflow;
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.left = '';
+        document.body.style.right = '';
+        // Restore scroll position
         window.scrollTo(0, scrollY);
       };
     }
@@ -2020,7 +2034,19 @@ const Forum = () => {
 
         {/* Workout Creation Modal */}
         {showWorkoutForm && (
-          <div className="modal-overlay">
+          <div 
+            className="modal-overlay"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
             <div className="modal">
               <h2>Create New Workout Post</h2>
               <form onSubmit={handleSubmitWorkout}>
