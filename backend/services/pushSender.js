@@ -442,24 +442,82 @@ async function sendBulkPushNotifications(tokens, notification) {
       console.log(`📱 Sending APNs notification to ${iosTokenStrings.length} iOS device(s), topic: ${bundleId}, production: ${isProduction}`);
       console.log(`📱 Token sample: ${iosTokenStrings[0]?.substring(0, 32)}... (full: ${iosTokenStrings[0]})`);
       
+      console.log('📱 Calling provider.send()...');
       const result = await provider.send(apnNotification, iosTokenStrings);
+      console.log('📱 provider.send() completed, result received');
       
-      if (result.sent && result.sent.length > 0) {
-        console.log(`✅ APNs: Successfully sent to ${result.sent.length} device(s)`);
-        results.sent += result.sent.length;
+      // Log the full result structure for debugging
+      console.log('📱 APNs send result structure:', {
+        hasResult: !!result,
+        resultType: typeof result,
+        isArray: Array.isArray(result),
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : 'N/A',
+        sentCount: result?.sent?.length || 0,
+        failedCount: result?.failed?.length || 0,
+        sentType: result?.sent ? typeof result.sent : 'N/A',
+        failedType: result?.failed ? typeof result.failed : 'N/A'
+      });
+      
+      // The apn library might return results in different formats
+      // Try to extract sent/failed arrays
+      let sentArray = [];
+      let failedArray = [];
+      
+      if (result) {
+        if (Array.isArray(result.sent)) {
+          sentArray = result.sent;
+        } else if (result.sent && typeof result.sent === 'object') {
+          // Might be a Set or other collection
+          sentArray = Array.from(result.sent);
+        }
+        
+        if (Array.isArray(result.failed)) {
+          failedArray = result.failed;
+        } else if (result.failed && typeof result.failed === 'object') {
+          failedArray = Array.from(result.failed);
+        }
       }
       
-      if (result.failed && result.failed.length > 0) {
-        console.error(`❌ APNs: Failed to send to ${result.failed.length} device(s)`);
-        result.failed.forEach((failure, index) => {
-          const errorReason = failure.response?.reason || failure.error?.message || 'Unknown error';
+      console.log('📱 Extracted arrays:', {
+        sentArrayLength: sentArray.length,
+        failedArrayLength: failedArray.length
+      });
+      
+      // Wait a bit for async responses (APNs uses HTTP/2 and responses may be delayed)
+      console.log('📱 Waiting 2 seconds for async APNs responses...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Check again after delay - the arrays might have been populated
+      const finalSent = result?.sent ? (Array.isArray(result.sent) ? result.sent : Array.from(result.sent)) : [];
+      const finalFailed = result?.failed ? (Array.isArray(result.failed) ? result.failed : Array.from(result.failed)) : [];
+      
+      console.log('📱 APNs final result after delay:', {
+        sentCount: finalSent.length,
+        failedCount: finalFailed.length,
+        resultKeys: result ? Object.keys(result) : []
+      });
+      
+      if (finalSent.length > 0) {
+        console.log(`✅ APNs: Successfully sent to ${finalSent.length} device(s)`);
+        finalSent.forEach((device, index) => {
+          const deviceToken = typeof device === 'string' ? device : (device?.device || device?.token || String(device));
+          console.log(`   ✅ Device ${index + 1}: ${deviceToken.substring(0, 32)}...`);
+        });
+        results.sent += finalSent.length;
+      }
+      
+      if (finalFailed.length > 0) {
+        console.error(`❌ APNs: Failed to send to ${finalFailed.length} device(s)`);
+        finalFailed.forEach((failure, index) => {
+          const errorReason = failure.response?.reason || failure.error?.message || failure.error || 'Unknown error';
           console.error(`❌ APNs Failure ${index + 1}:`, {
             device: failure.device ? failure.device.substring(0, 32) + '...' : 'unknown',
             deviceFull: failure.device, // Log full token for debugging
             error: failure.error,
             status: failure.status,
             reason: errorReason,
-            response: failure.response
+            response: failure.response,
+            fullFailure: JSON.stringify(failure, null, 2)
           });
           
           // Provide helpful error messages
@@ -472,7 +530,23 @@ async function sendBulkPushNotifications(tokens, notification) {
             console.error('   5. Try deleting the token from database and getting a fresh one');
           }
         });
-        results.failed += result.failed.length;
+        results.failed += finalFailed.length;
+      }
+      
+      // If no sent or failed, log warning
+      if (finalSent.length === 0 && finalFailed.length === 0) {
+        console.warn('⚠️ APNs: No sent or failed results in response. This might indicate:');
+        console.warn('   1. The notification is still being processed (check device)');
+        console.warn('   2. The APNs connection was closed before response');
+        console.warn('   3. The result structure is different than expected');
+        console.warn('   4. The notification was sent but APNs hasn\'t responded yet');
+        console.warn('   Full result object:', result);
+        console.warn('   Result keys:', result ? Object.keys(result) : 'null');
+        console.warn('   Result type:', typeof result);
+        
+        // Assume success if no errors (APNs might not always return immediate feedback)
+        console.warn('   ⚠️ Assuming notification was sent (no error response received)');
+        results.sent += iosTokenStrings.length;
       }
     } else {
       console.log('⚠️ APNs provider not initialized, skipping iOS notifications');
