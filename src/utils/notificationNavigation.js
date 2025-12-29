@@ -67,14 +67,40 @@ export function getPendingNavigation() {
  * @param {Object} notification - Notification action object
  */
 export function handleNotificationNavigation(notification) {
-  console.log('👆 handleNotificationNavigation called:', notification);
+  console.log('👆 handleNotificationNavigation called');
+  console.log('👆 Full notification object:', JSON.stringify(notification, null, 2));
+  console.log('👆 Notification keys:', notification ? Object.keys(notification) : 'null');
   
   try {
     // Extract data from notification
-    // The structure varies: notification.notification.data or notification.data
-    const data = notification.notification?.data || notification.data || {};
+    // The structure varies: 
+    // - notification.notification.data (when app is open)
+    // - notification.data (when app is opened from notification)
+    // - notification.notification?.data (nested structure)
+    let data = {};
     
-    console.log('📍 Notification data:', data);
+    if (notification?.notification?.data) {
+      data = notification.notification.data;
+      console.log('📍 Found data in notification.notification.data');
+    } else if (notification?.data) {
+      data = notification.data;
+      console.log('📍 Found data in notification.data');
+    } else if (notification?.notification) {
+      // Sometimes the entire notification object is the data
+      data = notification.notification;
+      console.log('📍 Using notification.notification as data');
+    } else {
+      // Try to extract from payload
+      data = notification?.payload || notification || {};
+      console.log('📍 Using notification.payload or notification as data');
+    }
+    
+    console.log('📍 Extracted notification data:', JSON.stringify(data, null, 2));
+    console.log('📍 Data type:', data?.type);
+    console.log('📍 Data workoutId:', data?.workoutId);
+    console.log('📍 Data eventId:', data?.eventId);
+    console.log('📍 Data postId:', data?.postId);
+    console.log('📍 Data raceId:', data?.raceId);
     
     if (data?.type === 'workout' && data?.workoutId) {
       const workoutId = data.workoutId;
@@ -90,10 +116,12 @@ export function handleNotificationNavigation(notification) {
       console.log(`📍 Navigating to race: /race/${data.raceId}`);
       navigateTo(`/race/${data.raceId}`);
     } else {
-      console.log('📍 No navigation action for notification type:', data?.type);
+      console.warn('📍 No navigation action for notification. Data:', data);
+      console.warn('📍 Available keys in data:', Object.keys(data));
     }
   } catch (error) {
     console.error('❌ Error handling notification navigation:', error);
+    console.error('❌ Error stack:', error.stack);
   }
 }
 

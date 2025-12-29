@@ -217,17 +217,37 @@ function setupPushNotificationListeners(userId) {
 
   // Handle push notification actions (when user taps notification)
   PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-    console.log('👆 Push notification action performed:', notification);
+    console.log('👆 ===== PUSH NOTIFICATION ACTION PERFORMED =====');
+    console.log('👆 Full notification object:', JSON.stringify(notification, null, 2));
+    console.log('👆 Notification type:', typeof notification);
+    console.log('👆 Notification keys:', notification ? Object.keys(notification) : 'null');
     
     // Handle navigation based on notification data
     try {
       handleNotificationNavigation(notification);
     } catch (error) {
       console.error('❌ Error handling notification action:', error);
+      console.error('❌ Error stack:', error.stack);
       // Fallback to old handler
       handleNotificationAction(notification);
     }
   });
+  
+  // Also check for pending notifications when app starts (in case app was opened from notification)
+  // This is a fallback for when pushNotificationActionPerformed doesn't fire
+  if (typeof window !== 'undefined' && window.Capacitor) {
+    // Check if there's a pending notification in Capacitor's state
+    PushNotifications.getDeliveredNotifications().then((notifications) => {
+      if (notifications && notifications.notifications && notifications.notifications.length > 0) {
+        console.log('📬 Found delivered notifications on app start:', notifications.notifications.length);
+        // The most recent notification might be the one that opened the app
+        const latestNotification = notifications.notifications[notifications.notifications.length - 1];
+        console.log('📬 Latest notification:', latestNotification);
+      }
+    }).catch(err => {
+      console.log('📬 Could not check delivered notifications:', err);
+    });
+  }
 }
 
 /**

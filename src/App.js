@@ -154,7 +154,17 @@ function AppContent() {
       // Small delay to ensure app is fully loaded
       setTimeout(() => {
         navigate(pendingPath);
-      }, 100);
+      }, 500);
+    }
+    
+    // Also check URL parameters in case notification opened app with deep link
+    const urlParams = new URLSearchParams(window.location.search);
+    const notificationPath = urlParams.get('notification_path');
+    if (notificationPath && notificationPath !== location.pathname) {
+      console.log(`📍 Found notification_path in URL: ${notificationPath}`);
+      setTimeout(() => {
+        navigate(notificationPath);
+      }, 500);
     }
   }, [navigate, location.pathname]);
   
