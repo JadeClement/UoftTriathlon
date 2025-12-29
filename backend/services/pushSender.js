@@ -53,8 +53,16 @@ function initializeFCM() {
  * Initialize Apple Push Notification service (APNs) for iOS
  */
 function initializeAPNs() {
+  // Check if provider needs to be re-initialized (e.g., if production setting changed)
+  const currentProduction = process.env.APNS_PRODUCTION === 'true';
+  if (apnProvider && apnProvider._production === currentProduction) {
+    return apnProvider; // Already initialized with correct settings
+  }
+  
+  // Reset provider if settings changed
   if (apnProvider) {
-    return apnProvider; // Already initialized
+    console.log('🔄 APNs provider settings changed, re-initializing...');
+    apnProvider = null;
   }
 
   try {
@@ -136,7 +144,22 @@ function initializeAPNs() {
         production: isProduction
       });
       
-      console.log('✅ APNs initialized');
+      // Store production setting for comparison
+      apnProvider._production = isProduction;
+      
+      console.log('✅ APNs initialized with settings:', {
+        production: isProduction,
+        bundleId: bundleId,
+        keyId: keyId,
+        teamId: teamId
+      });
+      
+      // Verify the provider was created correctly
+      if (!apnProvider) {
+        console.error('❌ Failed to create APNs provider');
+        return null;
+      }
+      
       return apnProvider;
     } else {
       console.log('⚠️ APNs not configured. Missing:');
@@ -409,12 +432,25 @@ async function sendBulkPushNotifications(tokens, notification) {
       if (result.failed && result.failed.length > 0) {
         console.error(`❌ APNs: Failed to send to ${result.failed.length} device(s)`);
         result.failed.forEach((failure, index) => {
+          const errorReason = failure.response?.reason || failure.error?.message || 'Unknown error';
           console.error(`❌ APNs Failure ${index + 1}:`, {
-            device: failure.device ? failure.device.substring(0, 20) + '...' : 'unknown',
+            device: failure.device ? failure.device.substring(0, 32) + '...' : 'unknown',
+            deviceFull: failure.device, // Log full token for debugging
             error: failure.error,
             status: failure.status,
+            reason: errorReason,
             response: failure.response
           });
+          
+          // Provide helpful error messages
+          if (errorReason === 'BadDeviceToken') {
+            console.error('💡 BadDeviceToken troubleshooting:');
+            console.error('   1. Verify APNS_PRODUCTION matches your build type (false for Xcode, true for App Store)');
+            console.error('   2. Check that the APNs key has "Apple Push Notifications service (APNs)" enabled in Apple Developer Portal');
+            console.error('   3. Verify the bundle ID (uofttri.club.app) is registered for push notifications');
+            console.error('   4. Ensure the device token is from the same app/bundle ID');
+            console.error('   5. Try deleting the token from database and getting a fresh one');
+          }
         });
         results.failed += result.failed.length;
       }
