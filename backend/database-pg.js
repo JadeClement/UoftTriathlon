@@ -96,6 +96,18 @@ async function initializeDatabase() {
     `);
     console.log('✅ Forum posts table created');
 
+    // Create forum_comments table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS forum_comments (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER REFERENCES forum_posts(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Forum comments table created');
+
     // Create workout_signups table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS workout_signups (

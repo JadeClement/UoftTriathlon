@@ -244,8 +244,24 @@ const WorkoutDetail = () => {
         setIsOnWaitlist(!!userWaitlist);
       }
 
-      // Load comments (will be implemented with real backend data)
-      setComments([]);
+      // Load comments
+      try {
+        const commentsResponse = await fetch(`${API_BASE_URL}/forum/posts/${id}/comments`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json();
+          setComments(commentsData.comments || []);
+        } else {
+          setComments([]);
+        }
+      } catch (error) {
+        console.error('Error loading comments:', error);
+        setComments([]);
+      }
 
       // Load test event for this workout
       const testEventResponse = await fetch(`${API_BASE_URL}/test-events/by-workout/${id}`, {
@@ -545,8 +561,24 @@ const WorkoutDetail = () => {
         setIsOnWaitlist(!!userWaitlist);
       }
 
-      // Load comments (will be implemented with real backend data)
-      setComments([]);
+      // Load comments
+      try {
+        const commentsResponse = await fetch(`${API_BASE_URL}/forum/posts/${id}/comments`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json();
+          setComments(commentsData.comments || []);
+        } else {
+          setComments([]);
+        }
+      } catch (error) {
+        console.error('Error loading comments:', error);
+        setComments([]);
+      }
 
 
       setLoading(false);
@@ -898,17 +930,30 @@ const WorkoutDetail = () => {
         return;
       }
 
-      const newCommentObj = {
-        id: Date.now(),
-        user_name: currentUser.name,
-        content: newComment.trim(),
-        created_at: new Date().toISOString()
-      };
+      const response = await fetch(`${API_BASE_URL}/forum/posts/${id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: newComment.trim()
+        })
+      });
 
-      setComments([...comments, newCommentObj]);
-      setNewComment('');
+      if (response.ok) {
+        const data = await response.json();
+        // Add the new comment to the list
+        setComments([...comments, data.comment]);
+        setNewComment('');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to post comment' }));
+        console.error('Error posting comment:', errorData);
+        showError(errorData.error || 'Failed to post comment');
+      }
     } catch (error) {
       console.error('Error adding comment:', error);
+      showError('Failed to post comment. Please try again.');
     }
   };
 

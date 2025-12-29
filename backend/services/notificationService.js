@@ -275,6 +275,62 @@ async function notifyForumReply(userId, replyData) {
 }
 
 /**
+ * Notify all users signed up for a workout about a new forum reply
+ * Only notifies users who have forum_replies preference enabled
+ * @param {number} postId - Forum post ID (workout post)
+ * @param {Object} replyData - { postTitle, replyAuthor, replyContent }
+ */
+async function notifyWorkoutReplyToSignups(postId, replyData) {
+  try {
+    // Get all users signed up for this workout
+    const signupsResult = await pool.query(
+      `SELECT DISTINCT ws.user_id 
+       FROM workout_signups ws
+       WHERE ws.post_id = $1`,
+      [postId]
+    );
+
+    if (signupsResult.rows.length === 0) {
+      console.log(`📢 No users signed up for workout ${postId}, skipping reply notifications`);
+      return;
+    }
+
+    const signedUpUserIds = signupsResult.rows.map(row => row.user_id);
+    console.log(`📢 Found ${signedUpUserIds.length} users signed up for workout ${postId}`);
+
+    // Get users who have forum_replies preference enabled
+    const usersWithPreference = await pool.query(
+      `SELECT u.id, u.email, u.name
+       FROM users u
+       INNER JOIN notification_preferences np ON u.id = np.user_id
+       WHERE u.id = ANY($1::int[])
+       AND np.forum_replies = true
+       AND u.role IN ('member', 'coach', 'exec', 'administrator')`,
+      [signedUpUserIds]
+    );
+
+    if (usersWithPreference.rows.length === 0) {
+      console.log(`📢 No users with forum_replies preference enabled for workout ${postId}`);
+      return;
+    }
+
+    console.log(`📢 Notifying ${usersWithPreference.rows.length} users about forum reply on workout ${postId}: ${replyData.postTitle}`);
+
+    // Send notifications to each user (non-blocking)
+    const notificationPromises = usersWithPreference.rows.map(user => 
+      notifyForumReply(user.id, replyData).catch(error => {
+        console.error(`❌ Error notifying user ${user.id} about forum reply:`, error);
+      })
+    );
+
+    await Promise.all(notificationPromises);
+    console.log(`✅ Forum reply notifications sent to ${usersWithPreference.rows.length} users`);
+  } catch (error) {
+    console.error('❌ Error notifying workout signups about forum reply:', error);
+  }
+}
+
+/**
  * Send waitlist promotion notification (already has email/SMS, but we should check preferences)
  * @param {Object} userData - { id, email, phone, name }
  * @param {Object} workoutData - { id, title, workoutDate, workoutTime }
@@ -320,6 +376,7 @@ module.exports = {
   notifyWorkoutPosted,
   notifyEventPosted,
   notifyForumReply,
+  notifyWorkoutReplyToSignups,
   notifyWaitlistPromotion
 };
 

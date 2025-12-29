@@ -1183,4 +1183,104 @@ router.post('/workouts', authenticateToken, requireMember, async (req, res) => {
   }
 });
 
+// Create comment/reply on a forum post
+router.post('/posts/:id/comments', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+
+    // Verify the post exists
+    const postResult = await pool.query(
+      `SELECT id, title, type FROM forum_posts WHERE id = $1 AND is_deleted = false`,
+      [id]
+    );
+
+    if (postResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const post = postResult.rows[0];
+
+    // Insert the comment
+    const commentResult = await pool.query(
+      `INSERT INTO forum_comments (post_id, user_id, content, created_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+       RETURNING id, post_id, user_id, content, created_at`,
+      [id, userId, content.trim()]
+    );
+
+    const comment = commentResult.rows[0];
+
+    // Get comment with user info
+    const fullCommentResult = await pool.query(`
+      SELECT 
+        fc.id, fc.post_id, fc.content, fc.created_at,
+        u.id as user_id, u.name as user_name, u.profile_picture_url as "userProfilePictureUrl"
+      FROM forum_comments fc
+      JOIN users u ON fc.user_id = u.id
+      WHERE fc.id = $1
+    `, [comment.id]);
+
+    const fullComment = fullCommentResult.rows[0];
+
+    // Send notifications if this is a workout post (non-blocking)
+    if (post.type === 'workout') {
+      setImmediate(async () => {
+        try {
+          // Get the author name for the notification
+          const authorResult = await pool.query(
+            'SELECT name FROM users WHERE id = $1',
+            [userId]
+          );
+          const authorName = authorResult.rows.length > 0 ? authorResult.rows[0].name : 'Someone';
+
+          await notificationService.notifyWorkoutReplyToSignups(post.id, {
+            postId: post.id,
+            postTitle: post.title || 'Workout',
+            replyAuthor: authorName,
+            replyContent: content.trim()
+          });
+        } catch (error) {
+          console.error('Error sending workout reply notifications:', error);
+        }
+      });
+    }
+
+    res.status(201).json({
+      message: 'Comment created successfully',
+      comment: fullComment
+    });
+  } catch (error) {
+    console.error('Create comment error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get comments for a forum post
+router.get('/posts/:id/comments', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const commentsResult = await pool.query(`
+      SELECT 
+        fc.id, fc.post_id, fc.content, fc.created_at,
+        u.id as user_id, u.name as user_name, u.profile_picture_url as "userProfilePictureUrl"
+      FROM forum_comments fc
+      JOIN users u ON fc.user_id = u.id
+      WHERE fc.post_id = $1
+      ORDER BY fc.created_at ASC
+    `, [id]);
+
+    res.json({ comments: commentsResult.rows || [] });
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
