@@ -34,6 +34,13 @@
   top: 70px; /* Below navbar */
   z-index: 100;
   transition: box-shadow 0.3s ease;
+  /* Force hardware acceleration for better performance in WebView */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: box-shadow;
+  /* Ensure sticky works in iOS WebView */
+  -webkit-position: sticky;
+  position: -webkit-sticky;
 }
 
 /* Add shadow when sticky */
@@ -68,6 +75,17 @@
   font-size: 1.6rem;
   margin-bottom: 1rem;
   font-weight: 600;
+  position: sticky;
+  top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px) + 80px); /* Below navbar + sticky nav */
+  z-index: 50;
+  background: white;
+  padding: 1rem 0;
+  margin-top: -1rem;
+  margin-bottom: 1rem;
+  /* Force hardware acceleration */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
 }
 
 /* Goal Section */
@@ -86,6 +104,11 @@
   .goal-section {
     scroll-margin-top: 160px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
   }
+  
+  .goal-title,
+  .section-subtitle {
+    top: calc(var(--navbar-height, 70px) + 80px); /* Desktop navbar height */
+  }
 }
 
 .goal-title {
@@ -93,6 +116,17 @@
   font-size: 1.8rem;
   margin-bottom: 1rem;
   font-weight: 600;
+  position: sticky;
+  top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px) + 80px); /* Below navbar + sticky nav */
+  z-index: 50;
+  background: white;
+  padding: 1rem 0;
+  margin-top: -1rem;
+  margin-bottom: 1rem;
+  /* Force hardware acceleration */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
 }
 
 .goal-text {
@@ -111,6 +145,8 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
   scroll-margin-top: 200px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
+  position: relative;
+  overflow: visible; /* Allow sticky titles to work */
 }
 
 @media (min-width: 769px) {
@@ -187,6 +223,8 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
+  position: relative;
+  overflow: visible; /* Allow sticky titles to work */
   scroll-margin-top: 180px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
 }
 
@@ -271,6 +309,8 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
   scroll-margin-top: 220px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
+  position: relative;
+  overflow: visible; /* Allow sticky titles to work */
 }
 
 @media (min-width: 769px) {

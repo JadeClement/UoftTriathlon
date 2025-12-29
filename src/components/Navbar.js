@@ -430,63 +430,74 @@ const Navbar = () => {
         </div>
         
         {/* Profile dropdown visible on mobile (outside navbar-menu) */}
-        {currentUser && (
-          <div className="profile-dropdown-mobile" ref={profileMobileRef}>
-            <div 
-              className="profile-picture-nav"
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-            >
-              {profileImageUrl ? (
-                <img 
-                  src={profileImageUrl} 
-                  alt="Profile" 
-                  onError={(e) => {
-                    console.log('❌ Navbar profile image failed to load, falling back to default');
-                    e.target.src = '/images/default_profile.png';
-                  }}
-                />
-              ) : (
-                <img 
-                  src="/images/default_profile.png" 
-                  alt="Profile" 
-                />
-              )}
-            </div>
-            
-            {isProfileOpen && (
-              <div className="profile-menu">
-                <Link 
-                  to="/profile" 
-                  className="profile-menu-item"
-                  onClick={() => {
-                    setIsProfileOpen(false);
-                  }}
-                >
-                  Profile
-                </Link>
-                {currentUser && (isAdmin(currentUser) || isExec(currentUser)) && (
-                  <Link
-                    to="/admin"
+        <div className="profile-dropdown-mobile" ref={profileMobileRef}>
+          {currentUser ? (
+            <>
+              <div 
+                className="profile-picture-nav"
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+              >
+                {profileImageUrl ? (
+                  <img 
+                    src={profileImageUrl} 
+                    alt="Profile" 
+                    onError={(e) => {
+                      console.log('❌ Navbar profile image failed to load, falling back to default');
+                      e.target.src = '/images/default_profile.png';
+                    }}
+                  />
+                ) : (
+                  <img 
+                    src="/images/default_profile.png" 
+                    alt="Profile" 
+                  />
+                )}
+              </div>
+              
+              {isProfileOpen && (
+                <div className="profile-menu">
+                  <Link 
+                    to="/profile" 
                     className="profile-menu-item"
                     onClick={() => {
                       setIsProfileOpen(false);
                     }}
                   >
-                    Admin
+                    Profile
                   </Link>
-                )}
-                <button 
-                  className="profile-menu-item logout-btn"
-                  onClick={() => {
-                    logout();
-                  }}
-                >
-                  Logout
-                </button>
+                  {currentUser && (isAdmin(currentUser) || isExec(currentUser)) && (
+                    <Link
+                      to="/admin"
+                      className="profile-menu-item"
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                      }}
+                    >
+                      Admin
+                    </Link>
+                  )}
+                  <button 
+                    className="profile-menu-item logout-btn"
+                    onClick={() => {
+                      logout();
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div 
+              className="profile-picture-nav"
+              onClick={() => navigate('/login')}
+            >
+              <div className="profile-picture-placeholder-nav">
+                {/* Empty placeholder - just shows the border */}
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
         
         <div className="navbar-toggle" onClick={toggleMenu}>
           <span className={`bar ${isOpen ? 'active' : ''}`}></span>

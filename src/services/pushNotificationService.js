@@ -1,6 +1,7 @@
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { handleNotificationNavigation } from '../utils/notificationNavigation';
 
 /**
  * Push Notification Service
@@ -219,7 +220,13 @@ function setupPushNotificationListeners(userId) {
     console.log('👆 Push notification action performed:', notification);
     
     // Handle navigation based on notification data
-    handleNotificationAction(notification);
+    try {
+      handleNotificationNavigation(notification);
+    } catch (error) {
+      console.error('❌ Error handling notification action:', error);
+      // Fallback to old handler
+      handleNotificationAction(notification);
+    }
   });
 }
 
@@ -293,48 +300,30 @@ async function showLocalNotification(notification) {
 
 /**
  * Handle notification action (when user taps notification)
- * @param {Object} notification - Notification action object
+ * @deprecated Use handleNotificationNavigation from notificationNavigation.js instead
+ * Kept as fallback for error handling
  */
 function handleNotificationAction(notification) {
-  console.log('👆 Handling notification action:', notification);
+  console.log('👆 Fallback handleNotificationAction called:', notification);
   
-  // Extract data from notification
-  // The structure varies: notification.notification.data or notification.data
-  const data = notification.notification?.data || notification.data || {};
-  
-  console.log('📍 Notification data:', data);
-  
-  if (data?.type === 'workout' && data?.workoutId) {
-    // Navigate to workout detail page
-    const workoutId = data.workoutId;
-    console.log(`📍 Navigating to workout: /workout/${workoutId}`);
+  try {
+    // Try the new navigation helper first
+    handleNotificationNavigation(notification);
+  } catch (error) {
+    console.error('❌ Error in notification navigation, using fallback:', error);
     
-    // Use window.location for deep linking (works when app is closed/backgrounded)
-    // React Router will handle it when the app loads
-    if (window.location) {
-      window.location.href = `/workout/${workoutId}`;
-    }
-  } else if (data?.type === 'event' && data?.eventId) {
-    // Navigate to event detail
-    console.log(`📍 Navigating to event: /event/${data.eventId}`);
-    if (window.location) {
+    // Fallback to window.location
+    const data = notification.notification?.data || notification.data || {};
+    
+    if (data?.type === 'workout' && data?.workoutId) {
+      window.location.href = `/workout/${data.workoutId}`;
+    } else if (data?.type === 'event' && data?.eventId) {
       window.location.href = `/event/${data.eventId}`;
-    }
-  } else if (data?.type === 'forum' && data?.postId) {
-    // Navigate to forum post (could navigate to forum and scroll to post)
-    console.log(`📍 Navigating to forum post: /forum`);
-    if (window.location) {
+    } else if (data?.type === 'forum' && data?.postId) {
       window.location.href = `/forum`;
-      // TODO: Could add hash or query param to scroll to specific post
-    }
-  } else if (data?.type === 'race' && data?.raceId) {
-    // Navigate to race detail
-    console.log(`📍 Navigating to race: /race/${data.raceId}`);
-    if (window.location) {
+    } else if (data?.type === 'race' && data?.raceId) {
       window.location.href = `/race/${data.raceId}`;
     }
-  } else {
-    console.log('📍 No navigation action for notification type:', data?.type);
   }
 }
 

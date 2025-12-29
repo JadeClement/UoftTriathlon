@@ -21,6 +21,13 @@ npm-debug.log*
 *.sqlite
 *.sqlite3
 
+# Push notification credentials (sensitive)
+config/firebase-service-account.json
+config/AuthKey_*.p8
+config/*.p8
+firebase-service-account.json
+AuthKey_*.p8
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { installFetchInterceptor } from '../utils/installFetchInterceptor';
+import { registerForPushNotifications, unregisterFromPushNotifications } from '../services/pushNotificationService';
 
 const AuthContext = createContext();
 
@@ -47,6 +48,11 @@ export const AuthProvider = ({ children }) => {
           if (isValid) {
             console.log('✅ Token is valid, setting current user');
             setCurrentUser(parsedUser);
+            
+            // Register for push notifications (if on native platform)
+            registerForPushNotifications(parsedUser.id).catch(error => {
+              console.error('❌ Error registering for push notifications:', error);
+            });
           } else {
             console.warn('⚠️ Token is invalid, clearing auth data');
             handleTokenExpired('Token expired or invalid');
@@ -75,6 +81,12 @@ export const AuthProvider = ({ children }) => {
   // Handle token expiration/invalidation
   const handleTokenExpired = (reason = 'session_expired') => {
     console.log('🔒 Handling token expiration:', reason);
+    
+    // Unregister from push notifications on logout
+    unregisterFromPushNotifications().catch(error => {
+      console.error('❌ Error unregistering from push notifications:', error);
+    });
+    
     localStorage.removeItem('triathlonUser');
     localStorage.removeItem('triathlonToken');
     setCurrentUser(null);
@@ -130,6 +142,12 @@ export const AuthProvider = ({ children }) => {
       console.log('💾 User and token stored in localStorage');
       
       setCurrentUser(normalizedUser);
+      
+      // Register for push notifications (if on native platform)
+      registerForPushNotifications(normalizedUser.id).catch(error => {
+        console.error('❌ Error registering for push notifications:', error);
+      });
+      
       return normalizedUser;
     } catch (error) {
       console.error('Signup error:', error);
@@ -198,6 +216,11 @@ export const AuthProvider = ({ children }) => {
       
       setCurrentUser(normalizedUser);
       console.log('👤 Current user state set to:', normalizedUser);
+      
+      // Register for push notifications (if on native platform)
+      registerForPushNotifications(normalizedUser.id).catch(error => {
+        console.error('❌ Error registering for push notifications:', error);
+      });
       
       return normalizedUser;
     } catch (error) {

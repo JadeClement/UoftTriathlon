@@ -63,15 +63,28 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
 } else if (process.env.NODE_ENV === 'development') {
   // Unregister any existing service workers in development
   if ('serviceWorker' in navigator) {
+    // Immediately unregister all service workers
     navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (let registration of registrations) {
-        registration.unregister().then((unregistered) => {
-          if (unregistered) {
-            console.log('🧹 Unregistered service worker for development');
-          }
+      if (registrations.length > 0) {
+        console.log(`🧹 Unregistering ${registrations.length} service worker(s) for development`);
+        Promise.all(registrations.map(reg => reg.unregister())).then(() => {
+          console.log('✅ All service workers unregistered');
         });
       }
     });
+    
+    // Also unregister the current controller if it exists
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+    }
+    
+    // Prevent any new registrations by overriding the register method
+    const originalRegister = navigator.serviceWorker.register;
+    navigator.serviceWorker.register = function() {
+      console.log('🚫 Service worker registration blocked in development mode');
+      return Promise.reject(new Error('Service worker disabled in development'));
+    };
+    
     console.log('⚠️ Service Worker disabled in development mode');
   }
 } else {

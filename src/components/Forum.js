@@ -1380,8 +1380,10 @@ const Forum = () => {
     <PullToRefresh onRefresh={handleRefresh} disabled={!isOnline}>
       <div className="forum-container">
         <div className="container">
-          <h1 className="section-title">Team Forum</h1>
-          <p className="section-subtitle">Connect with your teammates and discuss training, races, and more!</p>
+          <div style={{ marginBottom: '1rem' }}>
+            <h1 className="section-title" style={{ marginBottom: '-1rem', marginTop: '0', lineHeight: '1', paddingBottom: '0', display: 'block' }}>Team Forum</h1>
+            <p className="section-subtitle" style={{ marginTop: '2rem', marginBottom: '0', lineHeight: '1.2', paddingTop: '0', display: 'block' }}>Connect with your teammates and discuss training, races, and more!</p>
+          </div>
           
           {/* Offline Indicator */}
           {!isOnline && (

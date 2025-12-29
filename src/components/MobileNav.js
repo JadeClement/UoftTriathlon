@@ -113,27 +113,6 @@ const MobileNav = () => {
           <span className="mobile-nav-label">Team</span>
         </button>
 
-        {/* Login/Profile button - shows Login if not logged in, Profile if logged in */}
-        {currentUser ? (
-          <button
-            className={`mobile-nav-item ${isActive('/profile') ? 'active' : ''}`}
-            onClick={() => handleNavClick('/profile')}
-            aria-label="Profile"
-          >
-            <span className="mobile-nav-icon">👤</span>
-            <span className="mobile-nav-label">Profile</span>
-          </button>
-        ) : (
-          <button
-            className={`mobile-nav-item ${isActive('/login') ? 'active' : ''}`}
-            onClick={() => handleNavClick('/login')}
-            aria-label="Login"
-          >
-            <span className="mobile-nav-icon">🔐</span>
-            <span className="mobile-nav-label">Login</span>
-          </button>
-        )}
-
         <div className="mobile-nav-more-container" ref={moreMenuRef}>
           <button
             className={`mobile-nav-item mobile-nav-more ${isMoreActive() ? 'active' : ''}`}

@@ -1,20 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './JoinUs.css';
 
 const JoinUs = () => {
   const [isSticky, setIsSticky] = useState(false);
+  const navRef = useRef(null);
+  const navInitialTopRef = useRef(null);
+  const titleRefs = useRef({});
 
   useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    // Store initial position
+    if (navInitialTopRef.current === null) {
+      navInitialTopRef.current = nav.offsetTop;
+    }
+
+
     const handleScroll = () => {
-      const nav = document.querySelector('.section-navigation');
-      if (nav) {
-        const rect = nav.getBoundingClientRect();
-        setIsSticky(rect.top <= 70); // 70px is navbar height
-      }
+      if (!nav) return;
+      
+      // Account for mobile navbar height
+      const navbarHeight = window.innerWidth <= 768 ? 100 : 70;
+      
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY;
+      const shouldBeSticky = scrollY >= navInitialTopRef.current - navbarHeight;
+      
+      setIsSticky(shouldBeSticky);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Use multiple event types for better iOS WebView support
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('touchmove', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Use requestAnimationFrame for smoother updates
+    let rafId = null;
+    const rafHandleScroll = () => {
+      handleScroll();
+      rafId = requestAnimationFrame(rafHandleScroll);
+    };
+    rafId = requestAnimationFrame(rafHandleScroll);
+    
+    // Initial check
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('touchmove', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return (
@@ -22,7 +58,7 @@ const JoinUs = () => {
       <div className="container">
         <h1 className="section-title">Join Us!</h1>
         
-        <div className={`section-navigation ${isSticky ? 'sticky' : ''}`}>
+        <div ref={navRef} className={`section-navigation ${isSticky ? 'sticky' : ''}`}>
           <a href="#goal" className="nav-link">Goal</a>
           <a href="#who-can-join" className="nav-link">Who Can Join</a>
           <a href="#how-to-join" className="nav-link">How to Join</a>

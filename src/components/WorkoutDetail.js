@@ -34,6 +34,7 @@ const WorkoutDetail = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isSignedUp, setIsSignedUp] = useState(false);
   const [isOnWaitlist, setIsOnWaitlist] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -84,11 +85,28 @@ const WorkoutDetail = () => {
   // Define loader before effects to avoid temporal dead zone
   const loadWorkoutDetails = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
-        console.error('No authentication token found');
+        const errorMsg = 'No authentication token found. Please log in.';
+        console.error(errorMsg);
+        setError(errorMsg);
+        setLoading(false);
         return;
       }
+
+      // Validate workout ID
+      if (!id || isNaN(parseInt(id))) {
+        const errorMsg = 'Invalid workout ID';
+        console.error(errorMsg);
+        setError(errorMsg);
+        setLoading(false);
+        return;
+      }
+
+      console.log(`🔍 Loading workout details for ID: ${id}`);
 
       // Load workout details
       const workoutResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}`, {
@@ -100,9 +118,15 @@ const WorkoutDetail = () => {
       if (workoutResponse.ok) {
         const workoutData = await workoutResponse.json();
         console.log('🔍 Workout details loaded:', workoutData);
+        
+        if (!workoutData.workout) {
+          throw new Error('Workout data not found in response');
+        }
+        
         setWorkout(workoutData.workout);
         setSignups(workoutData.signups || []);
         setWaitlist(workoutData.waitlist || []);
+        setError(null);
         
         // Check if this is a swim workout and user is exec/admin
         const isSwim = workoutData.workout?.workout_type === 'swim';
@@ -111,24 +135,39 @@ const WorkoutDetail = () => {
         
         // Load swim members if this is a swim workout and user is exec/admin
         if (isSwim && isExec) {
-          const swimMembersResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance-members`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
+          try {
+            const swimMembersResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance-members`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (swimMembersResponse.ok) {
+              const swimMembersData = await swimMembersResponse.json();
+              console.log('🏊‍♂️ Swim members loaded:', swimMembersData);
+              setSwimMembers(swimMembersData.members || []);
+            } else {
+              console.error('❌ Failed to load swim members:', swimMembersResponse.status);
             }
-          });
-          
-          if (swimMembersResponse.ok) {
-            const swimMembersData = await swimMembersResponse.json();
-            console.log('🏊‍♂️ Swim members loaded:', swimMembersData);
-            setSwimMembers(swimMembersData.members || []);
-          } else {
-            console.error('❌ Failed to load swim members:', swimMembersResponse.status);
+          } catch (swimError) {
+            console.error('❌ Error loading swim members:', swimError);
+            // Don't fail the whole page if swim members fail to load
           }
         }
       } else {
-        console.error('❌ Failed to load workout details:', workoutResponse.status, workoutResponse.statusText);
-        const errorData = await workoutResponse.json().catch(() => ({}));
-        console.error('❌ Error details:', errorData);
+        const errorText = await workoutResponse.text().catch(() => 'Unknown error');
+        let errorMsg = `Failed to load workout: ${workoutResponse.status}`;
+        
+        if (workoutResponse.status === 404) {
+          errorMsg = 'Workout not found. It may have been deleted.';
+        } else if (workoutResponse.status === 401) {
+          errorMsg = 'Authentication required. Please log in.';
+        } else if (workoutResponse.status === 403) {
+          errorMsg = 'You do not have permission to view this workout.';
+        }
+        
+        console.error('❌ Failed to load workout details:', workoutResponse.status, workoutResponse.statusText, errorText);
+        setError(errorMsg);
       }
 
       // Check if attendance has already been submitted
@@ -223,7 +262,8 @@ const WorkoutDetail = () => {
 
       setLoading(false);
     } catch (error) {
-      console.error('Error loading workout details:', error);
+      console.error('❌ Error loading workout details:', error);
+      setError(error.message || 'Failed to load workout details. Please try again.');
       setLoading(false);
     }
   }, [API_BASE_URL, id, currentUser]);
@@ -1029,11 +1069,93 @@ const WorkoutDetail = () => {
   };
 
   if (loading || workoutLoading) {
-    return <div className="loading">Loading workout details...</div>;
+    return (
+      <div className="workout-detail-container">
+        <div className="container">
+          <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>
+            Loading workout details...
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  if (!workout && !cachedWorkout) {
-    return <div className="error">Workout not found</div>;
+  // Show error if there's an error and no cached data
+  if (error && !cachedWorkout) {
+    return (
+      <div className="workout-detail-container">
+        <div className="container">
+          <button className="back-btn" onClick={() => navigate('/forum')}>
+            ← Back to Forum
+          </button>
+          <div className="error" style={{ 
+            padding: '2rem', 
+            textAlign: 'center',
+            backgroundColor: '#fee',
+            border: '1px solid #fcc',
+            borderRadius: '4px',
+            margin: '2rem 0'
+          }}>
+            <h2>Error Loading Workout</h2>
+            <p>{error}</p>
+            <button 
+              onClick={() => {
+                setError(null);
+                loadWorkoutDetails();
+              }}
+              style={{
+                marginTop: '1rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!workout && !cachedWorkout && !error) {
+    return (
+      <div className="workout-detail-container">
+        <div className="container">
+          <button className="back-btn" onClick={() => navigate('/forum')}>
+            ← Back to Forum
+          </button>
+          <div className="error" style={{ 
+            padding: '2rem', 
+            textAlign: 'center',
+            backgroundColor: '#fee',
+            border: '1px solid #fcc',
+            borderRadius: '4px',
+            margin: '2rem 0'
+          }}>
+            <h2>Workout Not Found</h2>
+            <p>The workout you're looking for doesn't exist or has been deleted.</p>
+            <button 
+              onClick={() => navigate('/forum')}
+              style={{
+                marginTop: '1rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Go to Forum
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Use cached workout if state workout is not available

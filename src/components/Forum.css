@@ -1,8 +1,22 @@
 .forum-container {
   margin-top: 0;
-  padding: 2rem 0;
+  padding: 1rem 0 2rem 0;
   background: #f8f9fa;
   min-height: calc(100vh - 70px);
+}
+
+.forum-container .container .section-title {
+  margin-bottom: -1rem !important;
+  margin-top: 0 !important;
+  line-height: 1 !important;
+  padding-bottom: 0 !important;
+}
+
+.forum-container .container .section-subtitle {
+  margin-top: 2rem !important;
+  margin-bottom: 0 !important;
+  line-height: 1.2 !important;
+  padding-top: 0 !important;
 }
 
 .create-post {
@@ -662,12 +676,14 @@
   background: #dc2626;
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.1rem;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 .workout-signup-section .cancel-btn:hover {

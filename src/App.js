@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
@@ -26,6 +26,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
 import SimpleNotification from './components/SimpleNotification';
+import { setNavigationFunction, getPendingNavigation } from './utils/notificationNavigation';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -139,6 +140,23 @@ const CharterPrompt = () => {
 
 function AppContent() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Set up navigation function for notification handling
+  useEffect(() => {
+    setNavigationFunction(navigate);
+    
+    // Check for pending navigation from notification
+    const pendingPath = getPendingNavigation();
+    if (pendingPath && pendingPath !== location.pathname) {
+      console.log(`📍 Executing pending navigation to: ${pendingPath}`);
+      // Small delay to ensure app is fully loaded
+      setTimeout(() => {
+        navigate(pendingPath);
+      }, 100);
+    }
+  }, [navigate, location.pathname]);
   
   return (
     <>
