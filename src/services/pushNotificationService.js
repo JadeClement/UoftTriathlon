@@ -224,10 +224,14 @@ function setupPushNotificationListeners(userId) {
     
     // Handle navigation based on notification data
     try {
+      console.log('📍 Attempting to call handleNotificationNavigation...');
       handleNotificationNavigation(notification);
+      console.log('✅ handleNotificationNavigation completed successfully');
     } catch (error) {
-      console.error('❌ Error handling notification action:', error);
+      console.error('❌ Error in handleNotificationNavigation:', error);
+      console.error('❌ Error message:', error.message);
       console.error('❌ Error stack:', error.stack);
+      console.log('📍 Falling back to old handler...');
       // Fallback to old handler
       handleNotificationAction(notification);
     }
