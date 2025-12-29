@@ -230,6 +230,33 @@ async function initializeDatabase() {
     `);
     console.log('✅ Role change notifications table created');
 
+    // Create push_device_tokens table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_device_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL,
+        platform VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, token)
+      )
+    `);
+    console.log('✅ Push device tokens table created');
+    
+    // Create index on user_id for faster lookups
+    try {
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_push_device_tokens_user_id 
+        ON push_device_tokens(user_id)
+      `);
+      console.log('✅ Index on push_device_tokens.user_id created');
+    } catch (error) {
+      if (error.code !== '42P07') { // Index already exists
+        console.error('❌ Error creating index on push_device_tokens:', error.message);
+      }
+    }
+
     // Create post_likes table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS post_likes (
