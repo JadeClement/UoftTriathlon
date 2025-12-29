@@ -52,16 +52,31 @@ const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText
         bottom: 0,
         width: '100vw',
         height: '100vh',
+        minWidth: '100vw',
+        minHeight: '100vh',
+        maxWidth: '100vw',
+        maxHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         margin: 0,
         padding: '1rem',
         boxSizing: 'border-box',
-        zIndex: 9999
+        zIndex: 99999,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        overflow: 'hidden'
       }}
     >
-      <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+      <div 
+        className="confirm-modal" 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          margin: 'auto',
+          maxHeight: 'calc(100vh - 2rem)',
+          overflowY: 'auto'
+        }}
+      >
         {title && <h2 className="confirm-modal-title">{title}</h2>}
         <p className="confirm-modal-message">{message}</p>
         <div className="confirm-modal-actions">

@@ -2045,13 +2045,19 @@ const Forum = () => {
               bottom: 0,
               width: '100vw',
               height: '100vh',
+              minWidth: '100vw',
+              minHeight: '100vh',
+              maxWidth: '100vw',
+              maxHeight: '100vh',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: 0,
               padding: '1rem',
               boxSizing: 'border-box',
-              zIndex: 9999
+              zIndex: 99999,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              overflow: 'hidden'
             }}
           >
             <div className="modal">
