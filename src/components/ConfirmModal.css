@@ -1,24 +1,22 @@
 .confirm-modal-overlay {
   position: fixed;
-  inset: 0;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
   animation: fadeIn 0.2s ease;
-  /* Ensure modal is positioned relative to viewport, not document */
   /* Prevent any scrolling on the overlay itself */
   overflow: hidden;
   /* Ensure modal is always visible with padding */
   padding: 1rem;
-  /* Force hardware acceleration */
-  transform: translateZ(0);
-  will-change: opacity;
+  box-sizing: border-box;
 }
 
 @keyframes fadeIn {
@@ -41,11 +39,13 @@
   /* Ensure modal is always visible and scrollable if needed */
   margin: 0;
   max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem); /* Use dynamic viewport height for mobile */
   overflow-y: auto;
   /* Ensure modal stays in viewport */
   position: relative;
   /* Prevent modal from being pushed off screen */
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 @keyframes slideUp {

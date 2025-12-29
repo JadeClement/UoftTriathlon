@@ -2042,9 +2042,14 @@ const Forum = () => {
               left: 0,
               right: 0,
               bottom: 0,
+              width: '100vw',
+              height: '100vh',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              margin: 0,
+              padding: '1rem',
+              boxSizing: 'border-box'
             }}
           >
             <div className="modal">

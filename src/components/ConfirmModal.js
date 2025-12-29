@@ -48,9 +48,14 @@ const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText
         left: 0,
         right: 0,
         bottom: 0,
+        width: '100vw',
+        height: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        margin: 0,
+        padding: '1rem',
+        boxSizing: 'border-box'
       }}
     >
       <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
