@@ -12,8 +12,10 @@
   animation: fadeIn 0.2s ease;
   /* Ensure modal is positioned relative to viewport, not document */
   transform: translateZ(0);
-  /* Prevent scrolling of background content */
-  overflow: hidden;
+  /* Allow scrolling within modal if needed, but body scroll is locked */
+  overflow-y: auto;
+  /* Ensure modal is always visible */
+  padding: 1rem;
 }
 
 @keyframes fadeIn {
@@ -33,6 +35,10 @@
   max-width: 400px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: slideUp 0.2s ease;
+  /* Ensure modal is always visible and scrollable if needed */
+  margin: auto;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 @keyframes slideUp {

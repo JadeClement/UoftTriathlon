@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import './ConfirmModal.css';
 
 const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText = 'Confirm', cancelText = 'Cancel', confirmDanger = false }) => {
@@ -7,13 +7,18 @@ const ConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, confirmText
     if (isOpen) {
       // Save current scroll position
       const scrollY = window.scrollY;
-      // Lock body scroll
+      
+      // Simple approach: just prevent overflow
+      // The modal overlay is position: fixed so it will always be in viewport
+      document.body.style.overflow = 'hidden';
+      // Prevent scroll on touch devices
       document.body.style.position = 'fixed';
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
       
       return () => {
         // Restore scroll position when modal closes
+        document.body.style.overflow = '';
         document.body.style.position = '';
         document.body.style.top = '';
         document.body.style.width = '';
