@@ -108,14 +108,23 @@ function initializeAPNs() {
       const keyId = (process.env.APNS_KEY_ID || '').trim();
       const teamId = (process.env.APNS_TEAM_ID || '').trim();
       const bundleId = (process.env.APNS_BUNDLE_ID || 'uofttri.club.app').trim();
-      const isProduction = process.env.APNS_PRODUCTION === 'true' || process.env.NODE_ENV === 'production';
+      
+      // IMPORTANT: For development/testing, explicitly set APNS_PRODUCTION=false
+      // Development builds from Xcode generate tokens for the development APNs gateway
+      // Production builds (App Store/TestFlight) generate tokens for the production APNs gateway
+      // These are NOT interchangeable - using the wrong gateway causes BadDeviceToken errors
+      const isProduction = process.env.APNS_PRODUCTION === 'true';
+      const nodeEnv = process.env.NODE_ENV;
       
       console.log('📱 APNs provider config:', {
         keyId: keyId,
         teamId: teamId,
         bundleId: bundleId,
         production: isProduction,
-        keyLength: key.length
+        nodeEnv: nodeEnv,
+        apnsProductionEnv: process.env.APNS_PRODUCTION,
+        keyLength: key.length,
+        note: isProduction ? 'Using PRODUCTION APNs gateway (for App Store/TestFlight builds)' : 'Using DEVELOPMENT APNs gateway (for Xcode builds)'
       });
       
       apnProvider = new apn.Provider({
@@ -286,8 +295,9 @@ async function sendAPNsNotification(token, notification) {
 
     console.log('📱 Sending APNs notification:', {
       topic: bundleId,
-      token: cleanToken.substring(0, 20) + '...',
+      token: cleanToken.substring(0, 32) + '...',
       tokenLength: cleanToken.length,
+      tokenFull: cleanToken, // Log full token for debugging
       title: notification.title
     });
 
@@ -385,7 +395,9 @@ async function sendBulkPushNotifications(tokens, notification) {
         return results;
       }
       
-      console.log(`📱 Sending APNs notification to ${iosTokenStrings.length} iOS device(s), topic: ${bundleId}`);
+      const isProduction = process.env.APNS_PRODUCTION === 'true';
+      console.log(`📱 Sending APNs notification to ${iosTokenStrings.length} iOS device(s), topic: ${bundleId}, production: ${isProduction}`);
+      console.log(`📱 Token sample: ${iosTokenStrings[0]?.substring(0, 32)}... (full: ${iosTokenStrings[0]})`);
       
       const result = await provider.send(apnNotification, iosTokenStrings);
       

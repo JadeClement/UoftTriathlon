@@ -62,4 +62,11 @@ APNS_KEY_PATH=./config/AuthKey_XXXXXXXXXX.p8
 APNS_KEY_ID=your_apns_key_id  # e.g., 9PKQNJ3X73
 APNS_TEAM_ID=your_apple_team_id  # Your Apple Team ID (found in Apple Developer Portal)
 APNS_BUNDLE_ID=uofttri.club.app
-APNS_PRODUCTION=false  # Set to true for production/App Store builds, false for development/testing
+# CRITICAL: APNs Production vs Development
+# Development builds from Xcode generate tokens for the DEVELOPMENT APNs gateway
+# Production builds (App Store/TestFlight) generate tokens for the PRODUCTION APNs gateway
+# These are NOT interchangeable - using the wrong gateway causes BadDeviceToken errors
+# 
+# For testing with Xcode builds: APNS_PRODUCTION=false
+# For App Store/TestFlight builds: APNS_PRODUCTION=true
+APNS_PRODUCTION=false
