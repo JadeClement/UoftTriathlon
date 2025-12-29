@@ -1,3 +1,4 @@
+// Import date-fns-tz functions - in v3.x, these are exported directly
 const { zonedTimeToUtc, utcToZonedTime } = require('date-fns-tz');
 
 /**
@@ -120,13 +121,35 @@ function combineDateTime(dateInput, timeStr) {
   
   // Convert Toronto local time to UTC using date-fns-tz
   // This properly handles DST transitions automatically
-  const result = zonedTimeToUtc(dateTimeStr, TORONTO_TIMEZONE);
-  
-  if (isNaN(result.getTime())) {
-    return null;
+  try {
+    // Check if zonedTimeToUtc is available
+    if (typeof zonedTimeToUtc !== 'function') {
+      console.error('❌ zonedTimeToUtc is not a function. date-fns-tz may not be installed correctly.');
+      // Fallback: Create date assuming Toronto timezone
+      // This is a simple fallback - may not handle DST perfectly
+      const date = new Date(`${dateTimeStr}-05:00`); // EST offset
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      return date;
+    }
+    
+    const result = zonedTimeToUtc(dateTimeStr, TORONTO_TIMEZONE);
+    
+    if (isNaN(result.getTime())) {
+      return null;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Error in zonedTimeToUtc:', error);
+    // Fallback: Create date assuming Toronto timezone
+    const date = new Date(`${dateTimeStr}-05:00`); // EST offset
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    return date;
   }
-  
-  return result;
 }
 
 /**

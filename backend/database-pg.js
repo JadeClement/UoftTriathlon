@@ -25,7 +25,11 @@ const pool = new Pool(
       }
 );
 
-// Test the connection
+// Test the connection (only set up listeners once)
+// Remove any existing listeners to prevent MaxListenersExceededWarning
+pool.removeAllListeners('connect');
+pool.removeAllListeners('error');
+
 pool.on('connect', () => {
   console.log('✅ Connected to PostgreSQL database');
 });
@@ -33,6 +37,9 @@ pool.on('connect', () => {
 pool.on('error', (err) => {
   console.error('❌ PostgreSQL connection error:', err);
 });
+
+// Set max listeners to prevent warning if we need to add more listeners elsewhere
+pool.setMaxListeners(20);
 
 // Initialize database tables
 async function initializeDatabase() {
