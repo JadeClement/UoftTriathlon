@@ -377,57 +377,132 @@ async function saveDeviceTokenToBackend(userId, token) {
  */
 async function showLocalNotification(notification) {
   try {
+    console.log('📬 ===== SHOW LOCAL NOTIFICATION START =====');
     console.log('📬 Attempting to show local notification for foreground push');
     console.log('📬 Notification object:', JSON.stringify(notification, null, 2));
+    console.log('📬 Notification type:', typeof notification);
+    console.log('📬 Notification keys:', notification ? Object.keys(notification) : 'null');
     
     // Request local notification permissions
+    console.log('📬 Requesting local notification permissions...');
     const permission = await LocalNotifications.requestPermissions();
-    console.log('📬 Local notification permission result:', permission);
+    console.log('📬 Local notification permission result:', JSON.stringify(permission, null, 2));
     
     if (permission.display === 'granted') {
-      const notificationData = notification.data || {};
+      console.log('📬 Permission granted, preparing notification...');
+      
+      // Extract notification data - handle different notification structures
+      let notificationData = {};
+      if (notification?.data) {
+        notificationData = notification.data;
+        console.log('📬 Found data in notification.data');
+      } else if (notification?.notification?.data) {
+        notificationData = notification.notification.data;
+        console.log('📬 Found data in notification.notification.data');
+      } else {
+        notificationData = notification || {};
+        console.log('📬 Using notification object as data');
+      }
+      
+      console.log('📬 Extracted notification data:', JSON.stringify(notificationData, null, 2));
       
       // Create notification ID - must be a number for Capacitor
       // Use workoutId if available, otherwise use timestamp
-      // Convert to number to ensure it's numeric
+      // CRITICAL: ID must be a positive integer between 1 and 2147483647
       let notificationId;
-      if (notificationData.workoutId) {
-        notificationId = parseInt(notificationData.workoutId);
-        // If workoutId is too large or invalid, use timestamp
-        if (isNaN(notificationId) || notificationId <= 0) {
-          notificationId = Date.now();
-        }
-      } else {
-        notificationId = Date.now();
-      }
       
-      // Ensure it's a positive integer
-      notificationId = Math.abs(Math.floor(notificationId));
+      try {
+        if (notificationData.workoutId) {
+          const parsedId = parseInt(String(notificationData.workoutId), 10);
+          console.log('📬 Parsed workoutId:', parsedId, 'from:', notificationData.workoutId);
+          
+          // Validate: must be positive integer within iOS limits
+          if (!isNaN(parsedId) && parsedId > 0 && parsedId <= 2147483647) {
+            notificationId = parsedId;
+            console.log('📬 ✅ Using workoutId as notification ID:', notificationId);
+          } else {
+            console.log('📬 ⚠️ workoutId out of range, using timestamp');
+            notificationId = Math.abs(Math.floor(Date.now() % 2147483647));
+          }
+        } else {
+          notificationId = Math.abs(Math.floor(Date.now() % 2147483647));
+          console.log('📬 No workoutId found, using timestamp:', notificationId);
+        }
+      } catch (error) {
+        console.error('❌ Error parsing notification ID:', error);
+        notificationId = Math.abs(Math.floor(Date.now() % 2147483647));
+      }
       
       // Final validation - ensure ID is a valid positive integer
-      if (!notificationId || isNaN(notificationId) || notificationId <= 0) {
-        notificationId = Math.abs(Math.floor(Date.now() % 2147483647)); // Max safe integer for iOS
+      notificationId = Math.abs(Math.floor(Number(notificationId)));
+      if (!notificationId || isNaN(notificationId) || notificationId <= 0 || notificationId > 2147483647) {
+        console.error('❌ ID validation failed, forcing fallback');
+        notificationId = Math.abs(Math.floor(Date.now() % 2147483647));
       }
       
-      console.log('📬 Final notification ID:', notificationId, 'type:', typeof notificationId, 'isValid:', !isNaN(notificationId) && notificationId > 0);
+      // Ensure it's an integer (not a float)
+      notificationId = Math.floor(Number(notificationId));
+      
+      console.log('📬 ✅ Final notification ID:', notificationId);
+      console.log('📬 ✅ ID type:', typeof notificationId);
+      console.log('📬 ✅ ID is integer:', Number.isInteger(notificationId));
+      console.log('📬 ✅ ID is valid:', !isNaN(notificationId) && notificationId > 0 && notificationId <= 2147483647);
       
       // Build notification payload with all required fields
+      // Extract title and body from the push notification to match exactly
+      // iOS push notifications structure: data.aps.alert.title and data.aps.alert.body
+      let notificationTitle = notification?.title;
+      let notificationBody = notification?.body;
+      
+      // Check various possible locations for title/body
+      // iOS typically puts them in: notification.data.aps.alert.title/body
+      if (!notificationTitle) {
+        notificationTitle = notification?.data?.aps?.alert?.title ||
+                          notificationData?.aps?.alert?.title ||
+                          notificationData?.title || 
+                          notification?.data?.title || 
+                          notification?.aps?.alert?.title ||
+                          'New Notification';
+      }
+      
+      if (!notificationBody) {
+        notificationBody = notification?.data?.aps?.alert?.body ||
+                          notificationData?.aps?.alert?.body ||
+                          notificationData?.body || 
+                          notification?.data?.body || 
+                          notification?.aps?.alert?.body ||
+                          '';
+      }
+      
+      console.log('📬 Extracted title:', notificationTitle);
+      console.log('📬 Extracted body:', notificationBody);
+      
       const notificationPayload = {
-        id: notificationId, // Must be a positive integer
-        title: notification.title || notification.data?.title || 'New Notification',
-        body: notification.body || notification.data?.body || '',
+        id: Number(notificationId), // Explicitly convert to number
+        title: String(notificationTitle),
+        body: String(notificationBody),
         sound: 'default',
         extra: notificationData // Store full data for click handling
       };
       
       // Only add attachments if image exists
-      if (notification.data?.image) {
-        notificationPayload.attachments = [{ url: notification.data.image }];
+      if (notification?.data?.image || notificationData?.image) {
+        notificationPayload.attachments = [{ url: String(notification?.data?.image || notificationData?.image) }];
       }
       
-      // Validate payload before sending
-      if (!notificationPayload.id || isNaN(notificationPayload.id)) {
-        throw new Error(`Invalid notification ID: ${notificationPayload.id}`);
+      // Final validation before sending
+      if (!notificationPayload.id || isNaN(notificationPayload.id) || notificationPayload.id <= 0) {
+        const error = new Error(`Invalid notification ID: ${notificationPayload.id} (type: ${typeof notificationPayload.id})`);
+        console.error('❌', error);
+        throw error;
+      }
+      
+      // CRITICAL: Ensure ID is definitely set and is a valid number
+      // This is a last-ditch check before sending to native
+      if (!notificationPayload.id || typeof notificationPayload.id !== 'number' || !Number.isInteger(notificationPayload.id) || notificationPayload.id <= 0) {
+        console.error('❌ CRITICAL: Notification ID is invalid, forcing fallback');
+        notificationPayload.id = Math.abs(Math.floor(Date.now() % 2147483647));
+        console.log('❌ Forced notification ID to:', notificationPayload.id);
       }
       
       console.log('📬 Notification payload before schedule:', JSON.stringify(notificationPayload, null, 2));
@@ -436,15 +511,84 @@ async function showLocalNotification(notification) {
         idValue: notificationPayload.id,
         idType: typeof notificationPayload.id,
         idIsNumber: typeof notificationPayload.id === 'number',
-        idIsValid: !isNaN(notificationPayload.id) && notificationPayload.id > 0
+        idIsInteger: Number.isInteger(notificationPayload.id),
+        idIsValid: !isNaN(notificationPayload.id) && notificationPayload.id > 0 && notificationPayload.id <= 2147483647,
+        idStringified: JSON.stringify(notificationPayload.id)
       });
       
-      const result = await LocalNotifications.schedule({
-        notifications: [notificationPayload]
+      // Create a fresh, minimal object to ensure no hidden properties or getters
+      // CRITICAL: ID must be a plain number, not an object or getter
+      const notificationIdFinal = Math.floor(Number(notificationPayload.id));
+      
+      console.log('📬 Creating clean payload with ID:', notificationIdFinal);
+      console.log('📬 ID validation before clean payload:', {
+        original: notificationPayload.id,
+        final: notificationIdFinal,
+        type: typeof notificationIdFinal,
+        isInteger: Number.isInteger(notificationIdFinal),
+        isValid: !isNaN(notificationIdFinal) && notificationIdFinal > 0
       });
       
-      console.log('📬 Local notification scheduled successfully:', result);
-      console.log('📬 Notification data stored:', notificationData);
+      // Build minimal payload - only required fields
+      const cleanPayload = {
+        id: notificationIdFinal, // Direct assignment, no conversion
+        title: String(notificationTitle || 'New Notification'),
+        body: String(notificationBody || ''),
+        sound: 'default'
+      };
+      
+      // Only add extra if we have data (some platforms don't like empty objects)
+      if (notificationData && Object.keys(notificationData).length > 0) {
+        cleanPayload.extra = notificationData;
+      }
+      
+      if (notificationPayload.attachments) {
+        cleanPayload.attachments = notificationPayload.attachments;
+      }
+      
+      // Final validation of clean payload
+      if (!cleanPayload.id || typeof cleanPayload.id !== 'number' || !Number.isInteger(cleanPayload.id) || cleanPayload.id <= 0) {
+        console.error('❌ CRITICAL: Clean payload ID is invalid!', cleanPayload.id);
+        cleanPayload.id = Math.abs(Math.floor(Date.now() % 2147483647));
+        console.error('❌ Forced ID to:', cleanPayload.id);
+      }
+      
+      console.log('📬 ✅ Clean notification payload:', JSON.stringify(cleanPayload, null, 2));
+      console.log('📬 ✅ Clean payload ID check:', {
+        hasId: 'id' in cleanPayload,
+        idValue: cleanPayload.id,
+        idType: typeof cleanPayload.id,
+        idIsNumber: typeof cleanPayload.id === 'number',
+        idIsInteger: Number.isInteger(cleanPayload.id),
+        idStringified: String(cleanPayload.id)
+      });
+      
+      console.log('📬 Calling LocalNotifications.schedule with:', JSON.stringify({ notifications: [cleanPayload] }, null, 2));
+      
+      // Double-check ID one more time right before calling
+      if (!cleanPayload.id || typeof cleanPayload.id !== 'number') {
+        console.error('❌ CRITICAL ERROR: ID is missing or wrong type right before schedule!');
+        console.error('❌ Payload:', cleanPayload);
+        throw new Error(`Invalid notification ID before schedule: ${cleanPayload.id} (type: ${typeof cleanPayload.id})`);
+      }
+      
+      try {
+        const result = await LocalNotifications.schedule({
+          notifications: [cleanPayload]
+        });
+        
+        console.log('📬 ✅ Local notification scheduled successfully:', JSON.stringify(result, null, 2));
+        console.log('📬 Notification data stored:', notificationData);
+        console.log('📬 ===== SHOW LOCAL NOTIFICATION SUCCESS =====');
+      } catch (scheduleError) {
+        console.error('❌ ERROR in LocalNotifications.schedule call:');
+        console.error('❌ Error:', scheduleError);
+        console.error('❌ Error message:', scheduleError?.message);
+        console.error('❌ Error stack:', scheduleError?.stack);
+        console.error('❌ Payload that failed:', JSON.stringify(cleanPayload, null, 2));
+        console.error('❌ Payload ID:', cleanPayload.id, 'type:', typeof cleanPayload.id);
+        throw scheduleError; // Re-throw to be caught by outer try-catch
+      }
     } else {
       console.warn('⚠️ Local notification permission not granted:', permission);
       console.warn('⚠️ Permission status:', permission.display);

@@ -183,6 +183,33 @@ function AppContent() {
         }
       }, 1000);
     }
+    
+    // Check for pending notification action (when app launches from notification)
+    // This is set by setupEarlyNotificationListeners before user login
+    setTimeout(() => {
+      if (window.pendingNotificationAction) {
+        console.log('📍 Found pending notification action on app start');
+        const notification = window.pendingNotificationAction;
+        delete window.pendingNotificationAction;
+        
+        // Try to navigate
+        const data = notification?.notification?.data || notification?.data || {};
+        console.log('📍 Pending notification data:', data);
+        if (data?.type === 'workout' && data?.workoutId) {
+          const workoutId = String(data.workoutId);
+          console.log(`📍 Navigating to workout from pending notification: /workout/${workoutId}`);
+          navigate(`/workout/${workoutId}`);
+        } else if (data?.type === 'event' && data?.eventId) {
+          const eventId = String(data.eventId);
+          console.log(`📍 Navigating to event from pending notification: /event/${eventId}`);
+          navigate(`/event/${eventId}`);
+        } else if (data?.type === 'race' && data?.raceId) {
+          const raceId = String(data.raceId);
+          console.log(`📍 Navigating to race from pending notification: /race/${raceId}`);
+          navigate(`/race/${raceId}`);
+        }
+      }
+    }, 1500);
   }, [navigate, location.pathname]);
   
   return (
