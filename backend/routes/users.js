@@ -423,8 +423,8 @@ router.post('/push-token', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Token and platform are required' });
     }
     
-    // Validate token format
-    const cleanToken = token.trim();
+    // Validate and clean token format
+    let cleanToken = token.trim();
     if (platform === 'ios') {
       // iOS tokens should be 64 hex characters
       if (cleanToken.length !== 64) {
@@ -436,20 +436,20 @@ router.post('/push-token', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: 'Invalid iOS token format: must be hexadecimal' });
       }
       // Use lowercase for consistency
-      token = cleanToken.toLowerCase();
+      cleanToken = cleanToken.toLowerCase();
     }
     
     // Check if token already exists for this user
     const existingToken = await pool.query(
       `SELECT id FROM push_device_tokens WHERE user_id = $1 AND token = $2`,
-      [userId, token]
+      [userId, cleanToken]
     );
     
     if (existingToken.rows.length > 0) {
       // Update timestamp
       await pool.query(
         `UPDATE push_device_tokens SET updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND token = $2`,
-        [userId, token]
+        [userId, cleanToken]
       );
       console.log(`✅ Device token updated for user ${userId}`);
       return res.json({ message: 'Device token updated successfully' });
@@ -461,7 +461,7 @@ router.post('/push-token', authenticateToken, async (req, res) => {
        VALUES ($1, $2, $3) 
        ON CONFLICT (user_id, token) 
        DO UPDATE SET updated_at = CURRENT_TIMESTAMP, platform = $3`,
-      [userId, token, platform]
+      [userId, cleanToken, platform]
     );
     
     console.log(`✅ Device token saved successfully for user ${userId}, platform: ${platform}`);
