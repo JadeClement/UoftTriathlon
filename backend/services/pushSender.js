@@ -11,6 +11,15 @@ let fcmAdmin = null;
 let apnProvider = null;
 
 /**
+ * Get the app icon URL for push notifications
+ * @returns {string} Full URL to the app icon
+ */
+function getAppIconUrl() {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://uoft-tri.club';
+  return `${frontendUrl}/images/icon.png`;
+}
+
+/**
  * Initialize Firebase Cloud Messaging (FCM) for Android
  */
 function initializeFCM() {
@@ -196,10 +205,12 @@ async function sendFCMNotification(token, notification) {
 
     // Use FCM Admin SDK (recommended)
     if (fcm && typeof fcm.messaging === 'function') {
+      const iconUrl = notification.image || getAppIconUrl();
       const message = {
         notification: {
           title: notification.title,
-          body: notification.body
+          body: notification.body,
+          image: iconUrl
         },
         data: Object.keys(notification.data || {}).reduce((acc, key) => {
           acc[key] = String(notification.data[key]); // FCM data must be strings
@@ -216,11 +227,13 @@ async function sendFCMNotification(token, notification) {
     else if (fcm.legacy) {
       const https = require('https');
       
+      const iconUrl = notification.image || getAppIconUrl();
       const message = {
         to: token,
         notification: {
           title: notification.title,
-          body: notification.body
+          body: notification.body,
+          image: iconUrl
         },
         data: notification.data || {}
       };
@@ -304,6 +317,7 @@ async function sendAPNsNotification(token, notification) {
     }
 
     const bundleId = (process.env.APNS_BUNDLE_ID || 'uofttri.club.app').trim();
+    const iconUrl = notification.image || getAppIconUrl();
     
     const apnNotification = new apn.Notification();
     apnNotification.alert = {
@@ -311,7 +325,11 @@ async function sendAPNsNotification(token, notification) {
       body: notification.body
     };
     apnNotification.topic = bundleId;
-    apnNotification.payload = notification.data || {};
+    // Include image URL in payload data for iOS 15+ rich notifications
+    apnNotification.payload = {
+      ...(notification.data || {}),
+      image: iconUrl
+    };
     apnNotification.sound = 'default';
     apnNotification.badge = 1;
     apnNotification.pushType = 'alert';
@@ -387,13 +405,18 @@ async function sendBulkPushNotifications(tokens, notification) {
     const provider = initializeAPNs();
     if (provider) {
       const bundleId = (process.env.APNS_BUNDLE_ID || 'uofttri.club.app').trim();
+      const iconUrl = notification.image || getAppIconUrl();
       const apnNotification = new apn.Notification();
       apnNotification.alert = {
         title: notification.title,
         body: notification.body
       };
       apnNotification.topic = bundleId;
-      apnNotification.payload = notification.data || {};
+      // Include image URL in payload data for iOS 15+ rich notifications
+      apnNotification.payload = {
+        ...(notification.data || {}),
+        image: iconUrl
+      };
       apnNotification.sound = 'default';
       apnNotification.badge = 1;
       apnNotification.pushType = 'alert';
