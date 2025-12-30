@@ -796,7 +796,7 @@ router.get('/events/:id', authenticateToken, requireMember, async (req, res) => 
     const eventResult = await pool.query(`
       SELECT 
         fp.id, fp.title, fp.content, fp.event_date, fp.created_at,
-        u.name as author_name, u.role as author_role
+        u.name as author_name, u.role as author_role, u.profile_picture_url as "authorProfilePictureUrl"
       FROM forum_posts fp
       JOIN users u ON fp.user_id = u.id
       WHERE fp.id = $1 AND fp.type = 'event' AND fp.is_deleted = false

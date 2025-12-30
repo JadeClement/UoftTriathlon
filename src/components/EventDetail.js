@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
 import { formatSignupDateForDisplay } from '../utils/dateUtils';
+import { normalizeProfileImageUrl } from '../utils/imageUtils';
 import { showError, showSuccess } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './EventDetail.css';
@@ -293,13 +294,15 @@ const EventDetail = () => {
             <div className="event-author">
               <div className="author-info">
                 {(() => {
-                  const { normalizeProfileImageUrl } = require('../utils/imageUtils');
                   const url = normalizeProfileImageUrl(event.authorProfilePictureUrl);
                   return url ? (
                     <img 
                       src={url}
                       alt="Profile" 
                       className="author-avatar"
+                      loading="lazy"
+                      decoding="async"
+                      fetchpriority="low"
                       onError={(e) => {
                         e.target.src = '/images/default_profile.png';
                       }}
