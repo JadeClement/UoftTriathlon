@@ -1714,6 +1714,7 @@ const Admin = () => {
                         <td>
                           <span className={`sport-badge ${member.sport || 'triathlon'}`}>
                             {member.sport === 'run_only' ? 'Run Only' : 
+                             member.sport === 'swim_only' ? 'Swim Only' : 
                              member.sport === 'duathlon' ? 'Duathlon' : 
                              member.sport === 'triathlon' ? 'Triathlon' : 
                              'Triathlon'}
