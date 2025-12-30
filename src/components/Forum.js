@@ -173,6 +173,8 @@ const Forum = () => {
       switch (sport) {
         case 'run_only':
           return workoutType === 'run';
+        case 'swim_only':
+          return workoutType === 'swim';
         case 'duathlon':
           return ['run', 'outdoor-ride', 'brick', 'spin'].includes(workoutType);
         case 'triathlon':
@@ -206,6 +208,11 @@ const Forum = () => {
       case 'run_only':
         return [
           { value: 'run', label: 'Run' },
+          { value: 'other', label: 'Other' }
+        ];
+      case 'swim_only':
+        return [
+          { value: 'swim', label: 'Swim' },
           { value: 'other', label: 'Other' }
         ];
       case 'duathlon':

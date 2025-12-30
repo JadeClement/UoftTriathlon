@@ -3074,6 +3074,7 @@ const Admin = () => {
                   <option value="triathlon">Triathlon</option>
                   <option value="duathlon">Duathlon</option>
                   <option value="run_only">Run Only</option>
+                  <option value="swim_only">Swim Only</option>
                 </select>
                 <small>Determines which workout types the member can see and create</small>
               </div>
