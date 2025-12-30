@@ -314,8 +314,8 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
 
     if (sport !== undefined) {
       // Validate sport
-      if (!['triathlon', 'duathlon', 'run_only'].includes(sport)) {
-        return res.status(400).json({ error: 'Invalid sport. Must be triathlon, duathlon, or run_only' });
+      if (!['triathlon', 'duathlon', 'run_only', 'swim_only'].includes(sport)) {
+        return res.status(400).json({ error: 'Invalid sport. Must be triathlon, duathlon, run_only, or swim_only' });
       }
       paramCount++;
       updates.push(`sport = $${paramCount}`);

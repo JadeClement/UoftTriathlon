@@ -70,7 +70,7 @@ async function initializeDatabase() {
         profile_picture_url VARCHAR(500),
         phone_number VARCHAR(50),
         absences INTEGER DEFAULT 0,
-        sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only')),
+        sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only', 'swim_only')),
         term_id INTEGER REFERENCES terms(id),
         charter_accepted BOOLEAN DEFAULT FALSE,
         charter_accepted_at TIMESTAMP,
@@ -469,7 +469,7 @@ async function initializeDatabase() {
     try {
       await pool.query(`
         ALTER TABLE users
-        ADD COLUMN sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only'))
+        ADD COLUMN sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only', 'swim_only'))
       `);
       console.log('✅ sport column added to users table');
     } catch (error) {
@@ -627,6 +627,39 @@ async function initializeDatabase() {
       console.log('✅ Updated role CHECK constraint to remove "leader" role');
     } catch (error) {
       console.error('❌ Error updating role CHECK constraint:', error.message);
+    }
+
+    // Migration to update CHECK constraint to add 'swim_only' sport option
+    try {
+      // Drop the old constraint (the constraint name might be auto-generated)
+      await pool.query(`
+        ALTER TABLE users
+        DROP CONSTRAINT IF EXISTS users_sport_check
+      `);
+      // Also try the auto-generated constraint name pattern
+      await pool.query(`
+        DO $$
+        DECLARE
+          constraint_name text;
+        BEGIN
+          SELECT conname INTO constraint_name
+          FROM pg_constraint
+          WHERE conrelid = 'users'::regclass
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) LIKE '%sport%';
+          
+          IF constraint_name IS NOT NULL THEN
+            EXECUTE format('ALTER TABLE users DROP CONSTRAINT IF EXISTS %I', constraint_name);
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        ALTER TABLE users
+        ADD CONSTRAINT users_sport_check CHECK(sport IN ('triathlon', 'duathlon', 'run_only', 'swim_only'))
+      `);
+      console.log('✅ Updated sport CHECK constraint to include "swim_only"');
+    } catch (error) {
+      console.error('❌ Error updating sport CHECK constraint:', error.message);
     }
 
     console.log('✅ PostgreSQL database initialization completed');
