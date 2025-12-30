@@ -119,6 +119,7 @@ const WorkoutDetail = () => {
       if (workoutResponse.ok) {
         const workoutData = await workoutResponse.json();
         console.log('🔍 Workout details loaded:', workoutData);
+        console.log('🖼️ Author profile picture URL:', workoutData.workout?.authorProfilePictureUrl);
         
         if (!workoutData.workout) {
           throw new Error('Workout data not found in response');
@@ -1255,7 +1256,9 @@ const WorkoutDetail = () => {
             <div className="workout-author">
               <div className="author-info">
                 {(() => {
+                  console.log('🖼️ Display workout authorProfilePictureUrl:', displayWorkout.authorProfilePictureUrl);
                   const url = normalizeProfileImageUrl(displayWorkout.authorProfilePictureUrl);
+                  console.log('🖼️ Normalized URL:', url);
                   return url ? (
                     <img 
                       src={url}
