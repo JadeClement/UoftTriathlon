@@ -14,6 +14,7 @@ const MobileNav = () => {
   const location = useLocation();
   const { currentUser, isMember } = useAuth();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const moreMenuRef = useRef(null);
   
   // Detect if we're in Capacitor - check multiple ways
@@ -21,6 +22,20 @@ const MobileNav = () => {
                       window.location.protocol === 'capacitor:' ||
                       window.location.href.includes('capacitor://') ||
                       (typeof window !== 'undefined' && window.navigator && window.navigator.standalone);
+  
+  // Check and update mobile status on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
+    };
+    
+    checkMobile(); // Initial check
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   const handleNavClick = (path) => {
     hapticSelection();
@@ -61,8 +76,7 @@ const MobileNav = () => {
     return null;
   }
 
-  // Always show on mobile screens (width <= 768px) or in Capacitor
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  // Only show on mobile screens (width <= 768px) or in Capacitor
   const shouldShow = isMobile || isCapacitor;
   
   if (!shouldShow) {
