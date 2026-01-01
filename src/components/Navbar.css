@@ -372,6 +372,7 @@
   width: 85%;
   height: 85%;
   object-fit: contain;
+  transform: translateY(2px);
 }
 
 .profile-picture-placeholder-nav {
