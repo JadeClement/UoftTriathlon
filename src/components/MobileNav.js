@@ -14,7 +14,10 @@ const MobileNav = () => {
   const location = useLocation();
   const { currentUser, isMember } = useAuth();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  // Initialize with correct value immediately to avoid showing on desktop
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' && window.innerWidth <= 768;
+  });
   const moreMenuRef = useRef(null);
   
   // Detect if we're in Capacitor - check multiple ways
@@ -23,13 +26,12 @@ const MobileNav = () => {
                       window.location.href.includes('capacitor://') ||
                       (typeof window !== 'undefined' && window.navigator && window.navigator.standalone);
   
-  // Check and update mobile status on mount and resize
+  // Update mobile status on resize
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
     };
     
-    checkMobile(); // Initial check
     window.addEventListener('resize', checkMobile);
     
     return () => {
