@@ -56,8 +56,8 @@ const MobileNav = () => {
     };
   }, [isMoreOpen]);
 
-  // Always show nav, except on login/signup pages
-  if (location.pathname === '/login' || location.pathname === '/signup') {
+  // Always show nav, except on login page (signup page should show nav)
+  if (location.pathname === '/login') {
     return null;
   }
 
