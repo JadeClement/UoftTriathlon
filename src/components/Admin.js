@@ -805,14 +805,13 @@ const Admin = () => {
     const count = unarchiveOrdersConfirm.count;
     setUnarchiveOrdersConfirm({ isOpen: false, count: 0 });
     
-    const selectedOrders = new Set(Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
-      .map(cb => parseInt(cb.value))
-      .filter(id => !isNaN(id)));
-    
+    // Use the state instead of reading from DOM
     if (selectedOrders.size === 0) {
       showError('Please select at least one order to unarchive');
       return;
     }
+
+    const orderIds = Array.from(selectedOrders);
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -822,7 +821,7 @@ const Admin = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ orderIds: Array.from(selectedOrders) })
+        body: JSON.stringify({ orderIds })
       });
 
       if (!res.ok) {
@@ -831,7 +830,8 @@ const Admin = () => {
       }
 
       const data = await res.json();
-      showSuccess(data.message || `${selectedOrders.size} order(s) unarchived successfully`);
+      showSuccess(data.message || `${orderIds.length} order(s) unarchived successfully`);
+      setSelectedOrders(new Set()); // Clear selection after unarchiving
       await loadOrders();
     } catch (e) {
       showError(`Failed to Unarchive Orders: ${e.message}`);
