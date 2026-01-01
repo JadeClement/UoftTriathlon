@@ -419,13 +419,18 @@ const Navbar = () => {
               )}
             </div>
           ) : (
-            <Link 
-              to="/login" 
-              className={`navbar-link ${isActive('/login') ? 'active' : ''}`}
-              onClick={closeMenu}
-            >
-              Login
-            </Link>
+            <div className="profile-dropdown" ref={profileRef}>
+              <Link 
+                to="/login"
+                className="profile-picture-nav"
+                onClick={closeMenu}
+              >
+                <img 
+                  src="/images/default_profile.png" 
+                  alt="Profile" 
+                />
+              </Link>
+            </div>
           )}
         </div>
         
@@ -492,9 +497,10 @@ const Navbar = () => {
               className="profile-picture-nav"
               onClick={() => navigate('/login')}
             >
-              <div className="profile-picture-placeholder-nav">
-                {/* Empty placeholder - just shows the border */}
-              </div>
+              <img 
+                src="/images/default_profile.png" 
+                alt="Profile" 
+              />
             </div>
           )}
         </div>
