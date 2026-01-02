@@ -294,8 +294,15 @@
     display: none !important;
   }
   
-  /* Hide any profile dropdown that's not profile-dropdown-mobile on mobile */
+  /* Hide ALL profile-dropdown elements on mobile (only profile-dropdown-mobile should show) */
   .profile-dropdown:not(.profile-dropdown-mobile) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
+  /* Ensure profile button never appears on the left (inside logo area) */
+  .navbar-logo .profile-dropdown,
+  .navbar-logo .profile-picture-nav {
     display: none !important;
   }
 

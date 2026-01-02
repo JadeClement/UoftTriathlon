@@ -725,6 +725,8 @@ const Navbar = () => {
             </Link>
           </div>
         )}
+          </>
+        )}
         
         {/* Profile dropdown visible on mobile (outside navbar-menu) - hide on iOS apps and desktop */}
         {isMobile && !isNativeApp && (
