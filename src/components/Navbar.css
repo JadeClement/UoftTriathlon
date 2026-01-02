@@ -94,12 +94,13 @@
   display: flex;
   align-items: center;
   min-height: 50px;
-  gap: 3rem; /* Add space between logo and nav menu */
+  justify-content: space-between; /* Push logo to left, menu to right */
 }
 
 /* Logo stays on the left */
 .navbar-logo {
   flex-shrink: 0; /* Don't shrink the logo */
+  margin-right: auto; /* Push logo to the left edge */
 }
 
 /* Nav menu grows to fill space, pushing profile to the right */
@@ -158,7 +159,7 @@
   flex-wrap: nowrap; /* Prevent wrapping */
   overflow: hidden; /* Hide items that overflow instead of pushing buttons off */
   min-width: 0; /* Allow flex container to shrink below content size */
-  flex: 1; /* Take up remaining space between logo and profile */
+  margin-left: auto; /* Push menu to the right edge */
   justify-content: flex-end; /* Align nav items and profile to the right */
 }
 
