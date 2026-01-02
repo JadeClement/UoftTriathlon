@@ -593,6 +593,7 @@ const Navbar = () => {
               </div>
             )}
           </div>
+        </div>
         )}
           
           {/* Profile dropdown - always show on iOS apps */}
