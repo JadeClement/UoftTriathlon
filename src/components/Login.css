@@ -297,3 +297,12 @@
     font-size: 1.75rem;
   }
 }
+
+/* Reduce spacing on Capacitor apps (iOS/Android) */
+.login-container.capacitor {
+  padding: 1rem 20px;
+  min-height: auto;
+  align-items: flex-start;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
