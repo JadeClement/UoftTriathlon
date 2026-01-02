@@ -294,16 +294,20 @@
     display: none !important;
   }
   
-  /* Hide ALL profile-dropdown elements on mobile (only profile-dropdown-mobile should show) */
+  /* Hide regular profile-dropdown on mobile browsers (only profile-dropdown-mobile should show) */
   .profile-dropdown:not(.profile-dropdown-mobile) {
     display: none !important;
-    visibility: hidden !important;
   }
   
   /* Ensure profile button never appears on the left (inside logo area) */
   .navbar-logo .profile-dropdown,
   .navbar-logo .profile-picture-nav {
     display: none !important;
+  }
+  
+  /* Show profile-dropdown-mobile on mobile browsers */
+  .profile-dropdown-mobile {
+    display: flex !important;
   }
 
   /* Profile absolutely positioned on RIGHT, near bottom of navbar content area (below status bar) */
