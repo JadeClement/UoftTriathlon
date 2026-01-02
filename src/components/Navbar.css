@@ -154,6 +154,7 @@
   border-radius: 5px;
   transition: all 0.3s ease;
   position: relative;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 .navbar-link:hover {
@@ -250,7 +251,12 @@
     display: none !important;
   }
 
-  /* Hide hamburger menu on mobile */
+  /* Show hamburger menu on mobile */
+  .navbar-hamburger {
+    display: flex !important;
+  }
+
+  /* Hide old navbar toggle on mobile */
   .navbar-toggle {
     display: none !important;
   }
@@ -495,6 +501,76 @@
 
 .more-item:hover {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Hamburger menu for mobile */
+.navbar-hamburger {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  gap: 4px;
+  position: absolute;
+  left: 1rem;
+  bottom: 0.75rem;
+  z-index: 10;
+}
+
+.hamburger-bar {
+  width: 25px;
+  height: 3px;
+  background: white;
+  transition: 0.3s;
+  border-radius: 2px;
+}
+
+.hamburger-bar.active:nth-child(1) {
+  transform: rotate(-45deg) translate(-5px, 6px);
+}
+
+.hamburger-bar.active:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-bar.active:nth-child(3) {
+  transform: rotate(45deg) translate(-5px, -6px);
+}
+
+.hamburger-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #1E3A8A, #1E40AF);
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  margin-top: 0.5rem;
+  overflow: hidden;
+  z-index: 1001;
+  animation: slideDown 0.2s ease-out;
+}
+
+.hamburger-item {
+  display: block;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.hamburger-item:hover,
+.hamburger-item:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.hamburger-item.active {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Login Popup Modal */

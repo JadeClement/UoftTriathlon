@@ -31,18 +31,46 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [banner, setBanner] = useState({ enabled: false, items: [], rotationIntervalMs: 6000 });
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [isBannerHovered, setIsBannerHovered] = useState(false);
   const [popupModal, setPopupModal] = useState({ enabled: false, message: '', popupId: null });
   const [showPopupModal, setShowPopupModal] = useState(false);
+  const [itemsInMore, setItemsInMore] = useState(new Set()); // Track which items are in More dropdown
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const navigate = useNavigate();
   const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
   const profileRef = useRef(null);
   const profileMobileRef = useRef(null);
   const moreRef = useRef(null);
+  const logoRef = useRef(null);
+  const navbarContainerRef = useRef(null);
+  const navbarMenuRef = useRef(null);
+  
+  // Refs for each nav item to measure widths
+  const navItemRefs = useRef({});
+  
+  // Define nav items in order (left to right)
+  // Move order (right to left into More): Races → Coaches & Exec → Schedule → Join Us → Admin → Forum
+  const getNavItems = () => {
+    const items = [
+      { key: 'home', path: '/', label: 'Home', alwaysVisible: true, ref: 'home' },
+      { key: 'forum', path: '/forum', label: 'Forum', condition: () => currentUser, ref: 'forum' },
+      { key: 'joinUs', path: '/join-us', label: 'Join Us', ref: 'joinUs' },
+      { key: 'schedule', path: '/schedule', label: 'Schedule', ref: 'schedule' },
+      { key: 'coachesExec', path: '/coaches-exec', label: 'Coaches & Exec', ref: 'coachesExec' },
+      { key: 'races', path: '/races', label: 'Races', condition: () => currentUser && isMember(currentUser), ref: 'races' },
+      { key: 'admin', path: '/admin', label: 'Admin', condition: () => currentUser && (isAdmin(currentUser) || isExec(currentUser)), ref: 'admin' },
+    ];
+    
+    // Filter by conditions
+    return items.filter(item => !item.condition || item.condition());
+  };
+  
+  // Move order (right to left): Races → Coaches & Exec → Schedule → Join Us → Admin → Forum
+  const moveOrder = ['races', 'coachesExec', 'schedule', 'joinUs', 'admin', 'forum'];
   
   // Listen for profile updates to refresh the navbar profile image
   useEffect(() => {
@@ -159,6 +187,89 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, [banner.enabled, banner.items, banner.rotationIntervalMs, isBannerHovered]);
 
+  // Responsive navbar: calculate which items fit and move overflow to More dropdown
+  useEffect(() => {
+    const calculateResponsiveLayout = () => {
+      // Only run on desktop (not mobile)
+      if (window.innerWidth <= 768) {
+        return;
+      }
+      
+      const container = navbarContainerRef.current;
+      const menu = navbarMenuRef.current;
+      const logo = logoRef.current;
+      const profile = profileRef.current;
+      const moreButton = moreRef.current;
+      
+      if (!container || !menu || !logo || !profile || !moreButton) {
+        return;
+      }
+      
+      const containerWidth = container.offsetWidth;
+      const logoWidth = logo.offsetWidth;
+      const profileWidth = profile.offsetWidth;
+      const moreButtonWidth = moreButton.offsetWidth;
+      
+      // Calculate available space for nav items
+      // Account for padding (20px on each side = 40px total) and gaps between items
+      const containerPadding = 40; // 20px on each side
+      const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
+      const availableWidth = containerWidth - logoWidth - profileWidth - moreButtonWidth - containerPadding;
+      
+      const navItems = getNavItems();
+      let totalWidth = 0;
+      const itemWidths = {};
+      
+      // Measure each visible item's width
+      navItems.forEach(item => {
+        if (item.alwaysVisible || !itemsInMore.has(item.key)) {
+          const ref = navItemRefs.current[item.ref];
+          if (ref) {
+            const width = ref.offsetWidth;
+            itemWidths[item.key] = width;
+            totalWidth += width + gapBetweenItems;
+          }
+        }
+      });
+      
+      // If items overflow, move them to More dropdown (starting from rightmost)
+      const newItemsInMore = new Set(itemsInMore);
+      let currentWidth = totalWidth;
+      
+      // Try moving items from right to left until they fit
+      for (const key of moveOrder) {
+        const item = navItems.find(i => i.key === key);
+        if (!item || item.alwaysVisible) continue;
+        
+        if (currentWidth > availableWidth && !newItemsInMore.has(key)) {
+          newItemsInMore.add(key);
+          currentWidth -= (itemWidths[key] || 0) + gapBetweenItems;
+        } else if (currentWidth <= availableWidth && newItemsInMore.has(key)) {
+          // Try moving back if space is available
+          const testWidth = currentWidth + (itemWidths[key] || 0) + gapBetweenItems;
+          if (testWidth <= availableWidth) {
+            newItemsInMore.delete(key);
+            currentWidth = testWidth;
+          }
+        }
+      }
+      
+      setItemsInMore(newItemsInMore);
+    };
+    
+    // Calculate on mount and resize
+    calculateResponsiveLayout();
+    window.addEventListener('resize', calculateResponsiveLayout);
+    
+    // Recalculate when user/auth state changes (affects which items are visible)
+    const timeoutId = setTimeout(calculateResponsiveLayout, 100);
+    
+    return () => {
+      window.removeEventListener('resize', calculateResponsiveLayout);
+      clearTimeout(timeoutId);
+    };
+  }, [currentUser, isMember, isAdmin, isExec, itemsInMore]);
+
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
@@ -190,6 +301,7 @@ const Navbar = () => {
   const closeMenu = () => {
     setIsOpen(false);
     setIsMoreOpen(false);
+    setIsHamburgerOpen(false);
   };
 
   const closeProfileMenu = () => {
@@ -214,6 +326,15 @@ const Navbar = () => {
       if (moreRef.current && !moreRef.current.contains(event.target)) {
         setIsMoreOpen(false);
       }
+      
+      // Close hamburger menu when clicking outside
+      const hamburgerButton = document.querySelector('.navbar-hamburger');
+      const hamburgerMenu = document.querySelector('.hamburger-menu');
+      if (hamburgerButton && hamburgerMenu && 
+          !hamburgerButton.contains(event.target) && 
+          !hamburgerMenu.contains(event.target)) {
+        setIsHamburgerOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -223,6 +344,11 @@ const Navbar = () => {
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, []);
+
+  const navItems = getNavItems();
+  const itemsInMoreArray = Array.from(itemsInMore);
+  const itemsInMoreMenu = navItems.filter(item => itemsInMoreArray.includes(item.key));
+  const itemsInMainNav = navItems.filter(item => !itemsInMoreArray.includes(item.key));
 
   return (
     <>
@@ -267,55 +393,65 @@ const Navbar = () => {
       </div>
     )}
     <nav className="navbar" style={{ marginTop: banner.enabled && (banner.items?.length > 0) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
-      <div className="navbar-container">
-        <Link to="/" className="navbar-logo" onClick={closeMenu}>
+      <div className="navbar-container" ref={navbarContainerRef}>
+        <Link to="/" className="navbar-logo" onClick={closeMenu} ref={logoRef}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
           <span className="logo-text">UofT Triathlon</span>
         </Link>
         
-        <div className={`navbar-menu ${isOpen ? 'active' : ''}`}>
-          <Link 
-            to="/" 
-            className={`navbar-link ${isActive('/') ? 'active' : ''}`}
-            onClick={closeMenu}
+        {/* Hamburger menu for mobile */}
+        {window.innerWidth <= 768 && (
+          <button 
+            className="navbar-hamburger"
+            onClick={() => setIsHamburgerOpen(!isHamburgerOpen)}
+            aria-label="Menu"
           >
-            Home
-          </Link>
-          <Link 
-            to="/join-us" 
-            className={`navbar-link ${isActive('/join-us') ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Join Us
-          </Link>
-
-          <Link 
-            to="/schedule" 
-            className={`navbar-link ${isActive('/schedule') ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Schedule
-          </Link>
-
-          <Link
-            to="/coaches-exec"
-            className={`navbar-link ${isActive('/coaches-exec') ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Coaches & Exec
-          </Link>
-
-          {currentUser && isMember(currentUser) && (
-            <Link 
-              to="/races" 
-              className={`navbar-link ${isActive('/races') ? 'active' : ''}`}
+            <span className={`hamburger-bar ${isHamburgerOpen ? 'active' : ''}`}></span>
+            <span className={`hamburger-bar ${isHamburgerOpen ? 'active' : ''}`}></span>
+            <span className={`hamburger-bar ${isHamburgerOpen ? 'active' : ''}`}></span>
+          </button>
+        )}
+        
+        {/* Hamburger menu dropdown for mobile */}
+        {window.innerWidth <= 768 && isHamburgerOpen && (
+          <div className="hamburger-menu">
+            {navItems.map(item => (
+              <Link
+                key={item.key}
+                to={item.path}
+                className={`hamburger-item ${isActive(item.path) ? 'active' : ''}`}
+                onClick={closeMenu}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link to="/faq" className={`hamburger-item ${isActive('/faq') ? 'active' : ''}`} onClick={closeMenu}>
+              FAQ
+            </Link>
+            <Link to="/resources" className={`hamburger-item ${isActive('/resources') ? 'active' : ''}`} onClick={closeMenu}>
+              Resources
+            </Link>
+            <Link to="/team-gear" className={`hamburger-item ${isActive('/team-gear') ? 'active' : ''}`} onClick={closeMenu}>
+              Team Gear
+            </Link>
+          </div>
+        )}
+        
+        <div className={`navbar-menu ${isOpen ? 'active' : ''}`} ref={navbarMenuRef}>
+          {/* Main nav items */}
+          {itemsInMainNav.map(item => (
+            <Link
+              key={item.key}
+              to={item.path}
+              ref={el => { if (el) navItemRefs.current[item.ref] = el; }}
+              className={`navbar-link ${isActive(item.path) ? 'active' : ''}`}
               onClick={closeMenu}
             >
-              Races
+              {item.label}
             </Link>
-          )}
+          ))}
 
-          {/* More dropdown for extra pages */}
+          {/* More dropdown */}
           <div className="navbar-link more-dropdown" ref={moreRef}>
             <button 
               className={`navbar-link as-button ${isMoreOpen ? 'active' : ''}`}
@@ -325,23 +461,35 @@ const Navbar = () => {
             </button>
             {isMoreOpen && (
               <div className="more-menu">
+                {/* Items moved from main nav */}
+                {itemsInMoreMenu.map(item => (
+                  <Link
+                    key={item.key}
+                    to={item.path}
+                    className={`more-item ${isActive(item.path) ? 'active' : ''}`}
+                    onClick={closeMenu}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                {/* Always in More dropdown */}
                 <Link 
                   to="/faq" 
-                  className="more-item"
+                  className={`more-item ${isActive('/faq') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
                   FAQ
                 </Link>
                 <Link 
                   to="/resources" 
-                  className="more-item"
+                  className={`more-item ${isActive('/resources') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
                   Resources
                 </Link>
                 <Link 
                   to="/team-gear" 
-                  className="more-item"
+                  className={`more-item ${isActive('/team-gear') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
                   Team Gear
@@ -349,29 +497,8 @@ const Navbar = () => {
               </div>
             )}
           </div>
-
           
-          
-          {currentUser && (
-            <Link 
-              to="/forum" 
-              className={`navbar-link ${isActive('/forum') ? 'active' : ''}`}
-              onClick={closeMenu}
-            >
-              Forum
-            </Link>
-          )}
-          
-          {currentUser && (isAdmin(currentUser) || isExec(currentUser)) && (
-            <Link
-              to="/admin"
-              className={`navbar-link ${isActive('/admin') ? 'active' : ''}`}
-              onClick={closeMenu}
-            >
-              Admin
-            </Link>
-          )}
-          
+          {/* Profile dropdown */}
           {currentUser ? (
             <div className="profile-dropdown" ref={profileRef}>
               <div 
