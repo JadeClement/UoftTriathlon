@@ -593,12 +593,80 @@ const Navbar = () => {
               </div>
             )}
           </div>
+          
+          {/* Profile dropdown - inside navbar-menu on desktop, on the far right */}
+          {!isMobile && (
+            <>
+              {currentUser ? (
+                <div className="profile-dropdown" ref={profileRef}>
+                  <div 
+                    className="profile-picture-nav"
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  >
+                    {profileImageUrl ? (
+                      <img 
+                        src={profileImageUrl} 
+                        alt="Profile" 
+                        onError={(e) => {
+                          console.log('❌ Navbar profile image failed to load, falling back to default');
+                          e.target.src = '/images/default_profile.png';
+                        }}
+                      />
+                    ) : (
+                      <img 
+                        src="/images/default_profile.png" 
+                        alt="Profile" 
+                      />
+                    )}
+                  </div>
+                  
+                  {isProfileOpen && (
+                    <div className="profile-menu">
+                      <Link 
+                        to="/profile" 
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          closeMenu();
+                        }}
+                      >
+                        Profile
+                      </Link>
+                      <button 
+                        className="profile-menu-item logout-btn"
+                        onClick={() => {
+                          logout();
+                        }}
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="profile-dropdown" ref={profileRef}>
+                  <Link 
+                    to="/login"
+                    className="profile-picture-nav"
+                    onClick={closeMenu}
+                  >
+                    <img 
+                      src="/images/default_profile.png" 
+                      alt="Profile" 
+                    />
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
         </div>
         )}
           
-        {/* Profile dropdown - always show in top nav bar on the right */}
-        {currentUser ? (
-          <div className="profile-dropdown" ref={profileRef}>
+        {/* Profile dropdown - always show in top nav bar on the right (outside navbar-menu for iOS apps) */}
+        {isNativeApp && (
+          <>
+            {currentUser ? (
+              <div className="profile-dropdown" ref={profileRef}>
             <div 
               className="profile-picture-nav"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
