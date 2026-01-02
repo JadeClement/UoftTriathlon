@@ -153,12 +153,6 @@
   position: relative; /* Allow dropdowns to position relative to this */
 }
 
-/* Hide overflow on nav items container, but allow dropdowns to show */
-.navbar-menu > .navbar-link:not(.more-dropdown) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Ensure More button and Profile button never shrink and stay visible */
 .more-dropdown,
 .navbar-menu .profile-dropdown {
