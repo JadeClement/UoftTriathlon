@@ -358,7 +358,7 @@
   
   .split-hero {
     margin-top: 0;
-    padding-top: 0;
+    padding-top: calc(70px + 70vh); /* Reserve space for fixed image section */
     position: relative;
   }
   
@@ -381,7 +381,7 @@
   }
   
   .hero-text-section {
-    margin-top: 70vh; /* Start below the fixed image section (image is 70vh tall) */
+    margin-top: 0; /* Start below the reserved space */
     position: relative;
     z-index: 1;
   }
@@ -413,7 +413,7 @@
     min-height: auto;
     position: relative;
     margin-top: 0;
-    padding-top: 0;
+    padding-top: calc(70px + 70vh); /* Reserve space for fixed image section */
   }
   
   .hero-image-section {
@@ -474,7 +474,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 70vh; /* Start below the fixed image section (image is 70vh tall) */
+    margin-top: 0; /* Start below the reserved space */
     margin-bottom: 0;
     position: relative;
     z-index: 1;
