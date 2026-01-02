@@ -151,6 +151,7 @@
   margin-left: auto; /* Push menu to the right edge */
   justify-content: flex-end; /* Align nav items and profile to the right */
   position: relative; /* Allow dropdowns to position relative to this */
+  overflow: visible; /* Allow profile to always be visible, don't clip it */
 }
 
 /* Ensure More button and Profile button never shrink and stay visible */
@@ -290,7 +291,12 @@
 
   /* Hide profile dropdown inside navbar-menu on mobile */
   .navbar-menu .profile-dropdown {
-    display: none;
+    display: none !important;
+  }
+  
+  /* Hide any profile dropdown that's not profile-dropdown-mobile on mobile */
+  .profile-dropdown:not(.profile-dropdown-mobile) {
+    display: none !important;
   }
 
   /* Profile absolutely positioned on RIGHT, near bottom of navbar content area (below status bar) */
