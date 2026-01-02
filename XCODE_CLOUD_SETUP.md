@@ -33,13 +33,14 @@ You need to configure the Xcode Cloud workflow properly. Here's how:
 4. **Add Build Script (Important for Capacitor):**
    - In the workflow settings, go to **Build** → **Environment**
    - Under **Pre-actions** or **Pre-build scripts**, add:
-     ```bash
-     cd $CI_WORKSPACE
-     npm ci
-     npm run build
-     npx cap sync ios
-     ```
-   - OR use the provided script: `ios/ci_scripts/ci_pre_xcodebuild.sh`
+     - **Script Path**: `.github/xcode-cloud/ci_pre_xcodebuild.sh`
+     - OR manually add:
+       ```bash
+       cd $CI_WORKSPACE
+       npm ci
+       npm run build
+       npx cap sync ios
+       ```
 
 ### Step 2: Verify Repository Structure
 
@@ -76,7 +77,7 @@ If you want to continue with Xcode Cloud, here's the proper configuration:
    ```
    (or your Xcode version)
 
-2. **`ios/ci_scripts/ci_pre_xcodebuild.sh`** (pre-build script):
+2. **`.github/xcode-cloud/ci_pre_xcodebuild.sh`** (pre-build script):
    ```bash
    #!/bin/sh
    set -e
@@ -85,6 +86,7 @@ If you want to continue with Xcode Cloud, here's the proper configuration:
    npm run build
    npx cap sync ios
    ```
+   This script is already committed to the repository.
 
 ### Workflow Settings
 
@@ -93,7 +95,7 @@ In Xcode Cloud workflow configuration:
 - **Branch**: `main` (or your production branch)
 - **Product**: App
 - **Project Path**: `ios/App/App.xcodeproj`
-- **Pre-build script**: Point to `ios/ci_scripts/ci_pre_xcodebuild.sh`
+- **Pre-build script**: `.github/xcode-cloud/ci_pre_xcodebuild.sh` (already in repository)
 
 ## Troubleshooting
 
