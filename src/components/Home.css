@@ -359,6 +359,23 @@
     margin-top: 0;
     padding-top: 0;
   }
+  
+  .hero-image-section {
+    margin-top: -70px; /* Negative margin to pull image up to navbar */
+    padding-top: 70px; /* Push content down to account for navbar */
+  }
+  
+  .hero-image-section .slideshow-container {
+    position: absolute;
+    top: 70px; /* Start below navbar */
+    left: 0;
+    width: 100%;
+    height: calc(100% - 70px); /* Account for navbar space */
+  }
+  
+  .hero-text-section {
+    margin-top: -8vh; /* Reduce overlap so red box doesn't block photo */
+  }
 }
 
 @media (max-width: 1024px) and (min-width: 769px) {
