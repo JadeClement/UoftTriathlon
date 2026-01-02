@@ -272,9 +272,12 @@ const Login = () => {
 
   // Check if offline
   const isOffline = !navigator.onLine;
+  
+  // Check if in Capacitor app for styling
+  const isNativeApp = Capacitor.isNativePlatform();
 
   return (
-    <div className="login-container">
+    <div className={`login-container ${isNativeApp ? 'capacitor' : ''}`}>
       <div className="login-card">
         <h2>{isLogin ? 'Sign In' : 'Create Account'}</h2>
         
