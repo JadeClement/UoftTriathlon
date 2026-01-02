@@ -73,11 +73,6 @@ const MobileNav = () => {
     };
   }, [isMoreOpen]);
 
-  // Always show nav, except on login page (signup page should show nav)
-  if (location.pathname === '/login') {
-    return null;
-  }
-
   // Only show on mobile screens (width <= 768px) or in Capacitor
   const shouldShow = isMobile || isCapacitor;
   
