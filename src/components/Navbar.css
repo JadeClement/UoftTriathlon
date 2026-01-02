@@ -89,7 +89,7 @@
 
 .navbar-container {
   width: 100%; /* Full width */
-  padding: 0; /* No padding - stick to edges */
+  padding: 0 5px; /* Small padding on left and right edges */
   display: flex;
   align-items: center;
   min-height: 50px;
