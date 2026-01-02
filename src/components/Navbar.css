@@ -525,7 +525,7 @@
   padding: 0.5rem;
   gap: 4px;
   position: absolute;
-  left: 1rem;
+  right: calc(1rem + 44px + 0.5rem); /* Position to left of profile image (1rem margin + 44px profile + 0.5rem gap) */
   bottom: 0.75rem;
   z-index: 10;
 }
