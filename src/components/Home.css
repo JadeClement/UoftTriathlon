@@ -362,15 +362,14 @@
   
   .hero-image-section {
     margin-top: -70px; /* Negative margin to pull image up to navbar */
-    padding-top: 70px; /* Push content down to account for navbar */
   }
   
   .hero-image-section .slideshow-container {
     position: absolute;
-    top: 70px; /* Start below navbar */
+    top: 0; /* Start at the top of the section */
     left: 0;
     width: 100%;
-    height: calc(100% - 70px); /* Account for navbar space */
+    height: 100%; /* Full height */
   }
   
   .hero-text-section {
@@ -416,7 +415,6 @@
     margin: 0;
     padding: 0;
     margin-top: -70px; /* Negative margin to pull image up to navbar */
-    padding-top: 70px; /* Push content down to account for navbar */
     /* Remove any white background */
     background-color: #000;
   }
@@ -424,10 +422,10 @@
   /* Show the slideshow at these sizes */
   .hero-image-section .slideshow-container {
     position: absolute;
-    top: 70px; /* Start below navbar */
+    top: 0; /* Start at the top of the section */
     left: 0;
     width: 100%;
-    height: calc(100% - 70px); /* Account for navbar space */
+    height: 100%; /* Full height */
   }
   
   .hero-image-section .slideshow {
