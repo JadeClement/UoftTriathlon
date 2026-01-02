@@ -374,7 +374,7 @@
   }
   
   .hero-text-section {
-    margin-top: -8vh; /* Reduce overlap so red box doesn't block photo */
+    margin-top: 0; /* No overlap - start below the image section */
   }
 }
 
