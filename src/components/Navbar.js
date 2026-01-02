@@ -232,7 +232,8 @@ const Navbar = () => {
         try {
           const containerWidth = container.offsetWidth;
           const logoWidth = logo.offsetWidth;
-          const profileWidth = profile.offsetWidth;
+          // Ensure profile button is always measured - use a minimum width if measurement fails
+          const profileWidth = Math.max(profile.offsetWidth || 0, 50); // Minimum 50px for profile button
           const moreButtonWidth = moreButton.offsetWidth;
           
           // Calculate available space for nav items
@@ -240,9 +241,9 @@ const Navbar = () => {
           const containerPadding = 40; // 20px on each side
           const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
           // Reserve space for profile button + More button + gaps + safety margin
-          // Profile button must always be visible, so be conservative
-          const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 2) + 20; // Extra 20px safety margin
-          const availableWidth = containerWidth - logoWidth - reservedSpace - containerPadding;
+          // Profile button must always be visible, so be conservative with extra margin
+          const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 2) + 40; // Extra 40px safety margin
+          const availableWidth = Math.max(0, containerWidth - logoWidth - reservedSpace - containerPadding);
           
           const navItems = getNavItems();
           const itemWidths = {};
