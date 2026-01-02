@@ -92,10 +92,20 @@
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   min-height: 50px;
   gap: 3rem; /* Add space between logo and nav menu */
+}
+
+/* Logo stays on the left */
+.navbar-logo {
+  flex-shrink: 0; /* Don't shrink the logo */
+}
+
+/* Nav menu grows to fill space, pushing profile to the right */
+.navbar-menu {
+  flex: 1; /* Take up remaining space */
+  justify-content: flex-start; /* Align items to the left of the menu */
 }
 
 .navbar-logo {
