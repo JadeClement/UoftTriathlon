@@ -1,13 +1,13 @@
 .home {
   margin-top: 0;
-  padding-top: 70px; /* Account for fixed navbar height */
+  padding-top: 0; /* No padding - navbar is fixed and content starts below it */
   width: 100%;
   /* Don't set min-height or overflow - let content determine height naturally */
 }
 
 /* Split Screen Hero Section */
 .split-hero {
-  min-height: calc(100vh - 70px); /* Account for navbar height */
+  min-height: 100vh;
   display: flex;
   overflow: visible; /* Allow scrolling */
   margin-top: 0;
