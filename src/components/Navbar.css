@@ -199,13 +199,19 @@
     top: 0 !important; /* Ensure it's at the very top */
     left: 0 !important;
     right: 0 !important;
-    height: calc(var(--navbar-height-mobile) + env(safe-area-inset-top, 0px)); /* Account for safe area */
-    min-height: calc(var(--navbar-height-mobile) + env(safe-area-inset-top, 0px));
+    height: calc(var(--navbar-height) + env(safe-area-inset-top, 0px)); /* Default to desktop height for browsers */
+    min-height: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
     padding: 0 !important;
     position: fixed !important; /* Keep it fixed at top */
     background: linear-gradient(135deg, #1E3A8A, #1E40AF) !important; /* Ensure blue background extends fully */
     margin-top: 0 !important; /* Override any inline styles that might add space */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Capacitor apps keep the taller mobile height */
+  .navbar.capacitor-navbar {
+    height: calc(var(--navbar-height-mobile) + env(safe-area-inset-top, 0px)) !important;
+    min-height: calc(var(--navbar-height-mobile) + env(safe-area-inset-top, 0px)) !important;
   }
   
   .navbar-container {
@@ -217,10 +223,16 @@
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 1rem !important; /* Horizontal padding only */
-    height: var(--navbar-height-mobile) !important; /* Fixed height, not including safe area */
-    min-height: var(--navbar-height-mobile) !important;
+    height: var(--navbar-height) !important; /* Default to desktop height for browsers */
+    min-height: var(--navbar-height) !important;
     box-sizing: border-box;
     display: block !important; /* Remove flex display - use absolute positioning instead */
+  }
+  
+  /* Capacitor apps keep the taller mobile container height */
+  .navbar.capacitor-navbar .navbar-container {
+    height: var(--navbar-height-mobile) !important;
+    min-height: var(--navbar-height-mobile) !important;
   }
   
   /* Hide the title text on mobile */

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Capacitor } from '@capacitor/core';
 import './Navbar.css';
 // Simple linkifier for the banner message: escapes HTML, then converts URLs to <a>
 function escapeHtml(input) {
@@ -360,6 +361,9 @@ const Navbar = () => {
   const itemsInMoreArray = Array.from(itemsInMore);
   const itemsInMoreMenu = navItems.filter(item => itemsInMoreArray.includes(item.key));
   const itemsInMainNav = navItems.filter(item => !itemsInMoreArray.includes(item.key));
+  
+  // Check if in Capacitor app
+  const isNativeApp = Capacitor.isNativePlatform();
 
   return (
     <>
@@ -403,7 +407,7 @@ const Navbar = () => {
         </div>
       </div>
     )}
-    <nav className="navbar" style={{ marginTop: banner.enabled && (banner.items?.length > 0) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
+    <nav className={`navbar ${isNativeApp ? 'capacitor-navbar' : ''}`} style={{ marginTop: banner.enabled && (banner.items?.length > 0) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
       <div className="navbar-container" ref={navbarContainerRef}>
         <Link to="/" className="navbar-logo" onClick={closeMenu} ref={logoRef}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
