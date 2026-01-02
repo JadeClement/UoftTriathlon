@@ -148,10 +148,16 @@
   gap: 2rem;
   align-items: center;
   flex-wrap: nowrap; /* Prevent wrapping */
-  overflow: hidden; /* Hide items that overflow instead of pushing buttons off */
   min-width: 0; /* Allow flex container to shrink below content size */
   margin-left: auto; /* Push menu to the right edge */
   justify-content: flex-end; /* Align nav items and profile to the right */
+  position: relative; /* Allow dropdowns to position relative to this */
+}
+
+/* Hide overflow on nav items container, but allow dropdowns to show */
+.navbar-menu > .navbar-link:not(.more-dropdown) {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Ensure More button and Profile button never shrink and stay visible */
@@ -483,6 +489,7 @@
 /* More dropdown styled like profile dropdown */
 .more-dropdown {
   position: relative;
+  overflow: visible; /* Allow dropdown to show outside */
 }
 
 .navbar-link.as-button {
