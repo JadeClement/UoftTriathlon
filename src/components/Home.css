@@ -398,6 +398,7 @@
     overflow: hidden;
     margin: 0;
     padding: 0;
+    margin-top: -70px; /* Negative margin to pull image up to navbar */
     /* Remove any white background */
     background-color: #000;
   }
