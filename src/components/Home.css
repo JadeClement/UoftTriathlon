@@ -367,28 +367,37 @@
   .hero-image-section {
     width: 100%;
     min-height: 40vh; /* Ensure image section has minimum height */
-    height: auto;
-    display: block !important;
+    height: 40vh; /* Set explicit height so slideshow can calculate */
+    display: block;
   }
   
   .hero-image-section .slideshow-container {
-    display: block !important;
-    height: 100%;
+    display: block;
+    width: 100%;
+    height: 100%; /* 100% of parent's 40vh */
+    min-height: 40vh;
   }
   
   .hero-image-section .slideshow {
-    display: block !important;
+    display: block;
+    width: 100%;
     height: 100%;
+    min-height: 40vh;
   }
   
+  /* Keep slides as absolute positioned for slideshow to work */
   .hero-image-section .slide {
-    display: block !important;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    min-height: 40vh;
   }
   
   .hero-image-section .slide img {
-    display: block !important;
+    display: block;
     width: 100%;
     height: 100%;
+    min-height: 40vh;
     object-fit: cover;
   }
   
