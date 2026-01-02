@@ -348,6 +348,19 @@
 }
 
 /* Responsive Design */
+@media (max-width: 750px) and (min-width: 467px) {
+  /* Ensure content starts below fixed navbar at these widths */
+  .home {
+    margin-top: 0;
+    padding-top: 70px; /* Account for fixed navbar height */
+  }
+  
+  .split-hero {
+    margin-top: 0;
+    padding-top: 0;
+  }
+}
+
 @media (max-width: 1024px) and (min-width: 769px) {
   /* Tablet/medium sizes - ensure image stays visible */
   .hero-image-section {
@@ -365,7 +378,7 @@
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
     margin-top: 0;
-    padding-top: 0; /* No extra padding on mobile - navbar handles spacing */
+    padding-top: 70px; /* Account for fixed navbar height */
   }
   
   .split-hero {
