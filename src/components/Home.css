@@ -1,13 +1,13 @@
 .home {
   margin-top: 0;
-  padding-top: 0;
+  padding-top: 70px; /* Account for fixed navbar height */
   width: 100%;
   /* Don't set min-height or overflow - let content determine height naturally */
 }
 
 /* Split Screen Hero Section */
 .split-hero {
-  min-height: 100vh;
+  min-height: calc(100vh - 70px); /* Account for navbar height */
   display: flex;
   overflow: visible; /* Allow scrolling */
   margin-top: 0;
@@ -365,7 +365,7 @@
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
     margin-top: 0;
-    padding-top: 0;
+    padding-top: 70px; /* Account for fixed navbar height */
   }
   
   .split-hero {
