@@ -88,9 +88,8 @@
 }
 
 .navbar-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 10px; /* Reduced from 20px to bring items closer to edges */
+  width: 100%; /* Full width */
+  padding: 0; /* No padding - stick to edges */
   display: flex;
   align-items: center;
   min-height: 50px;
