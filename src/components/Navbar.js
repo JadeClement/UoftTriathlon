@@ -200,10 +200,18 @@ const Navbar = () => {
   }, []);
 
   // Responsive navbar: calculate which items fit and move overflow to More dropdown
+  const isCalculatingRef = useRef(false);
+  
   useEffect(() => {
     const calculateResponsiveLayout = () => {
+      // Prevent re-entrancy
+      if (isCalculatingRef.current) {
+        return;
+      }
+      
       // Only run on desktop (not mobile)
       if (isMobile) {
+        setItemsInMore(new Set()); // Clear items in More on mobile
         return;
       }
       
@@ -217,70 +225,95 @@ const Navbar = () => {
         return;
       }
       
-      const containerWidth = container.offsetWidth;
-      const logoWidth = logo.offsetWidth;
-      const profileWidth = profile.offsetWidth;
-      const moreButtonWidth = moreButton.offsetWidth;
+      isCalculatingRef.current = true;
       
-      // Calculate available space for nav items
-      // Account for padding (20px on each side = 40px total) and gaps between items
-      const containerPadding = 40; // 20px on each side
-      const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
-      const availableWidth = containerWidth - logoWidth - profileWidth - moreButtonWidth - containerPadding;
-      
-      const navItems = getNavItems();
-      let totalWidth = 0;
-      const itemWidths = {};
-      
-      // Measure each visible item's width
-      navItems.forEach(item => {
-        if (item.alwaysVisible || !itemsInMore.has(item.key)) {
-          const ref = navItemRefs.current[item.ref];
-          if (ref) {
-            const width = ref.offsetWidth;
-            itemWidths[item.key] = width;
-            totalWidth += width + gapBetweenItems;
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        try {
+          const containerWidth = container.offsetWidth;
+          const logoWidth = logo.offsetWidth;
+          const profileWidth = profile.offsetWidth;
+          const moreButtonWidth = moreButton.offsetWidth;
+          
+          // Calculate available space for nav items
+          // Account for padding (20px on each side = 40px total) and gaps between items
+          const containerPadding = 40; // 20px on each side
+          const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
+          const availableWidth = containerWidth - logoWidth - profileWidth - moreButtonWidth - containerPadding;
+          
+          const navItems = getNavItems();
+          const itemWidths = {};
+          
+          // Measure ALL items' widths (even those currently in More) to get accurate measurements
+          navItems.forEach(item => {
+            const ref = navItemRefs.current[item.ref];
+            if (ref) {
+              // Temporarily show the item to measure it accurately
+              const wasHidden = ref.style.display === 'none';
+              if (wasHidden) {
+                ref.style.display = '';
+              }
+              const width = ref.offsetWidth;
+              itemWidths[item.key] = width;
+              if (wasHidden) {
+                ref.style.display = 'none';
+              }
+            }
+          });
+          
+          // Calculate which items should be visible
+          const newItemsInMore = new Set();
+          let currentWidth = 0;
+          
+          // Start with all items visible, then move to More if needed
+          for (const item of navItems) {
+            if (item.alwaysVisible) {
+              currentWidth += (itemWidths[item.key] || 0) + gapBetweenItems;
+              continue;
+            }
+            
+            const itemWidth = (itemWidths[item.key] || 0) + gapBetweenItems;
+            const wouldFit = currentWidth + itemWidth <= availableWidth;
+            
+            if (wouldFit) {
+              currentWidth += itemWidth;
+            } else {
+              // This item doesn't fit, move it to More
+              newItemsInMore.add(item.key);
+            }
           }
+          
+          // Only update state if it actually changed
+          const currentSet = itemsInMore;
+          const setsEqual = currentSet.size === newItemsInMore.size && 
+                           Array.from(currentSet).every(key => newItemsInMore.has(key));
+          
+          if (!setsEqual) {
+            setItemsInMore(newItemsInMore);
+          }
+        } finally {
+          isCalculatingRef.current = false;
         }
       });
-      
-      // If items overflow, move them to More dropdown (starting from rightmost)
-      const newItemsInMore = new Set(itemsInMore);
-      let currentWidth = totalWidth;
-      
-      // Try moving items from right to left until they fit
-      for (const key of moveOrder) {
-        const item = navItems.find(i => i.key === key);
-        if (!item || item.alwaysVisible) continue;
-        
-        if (currentWidth > availableWidth && !newItemsInMore.has(key)) {
-          newItemsInMore.add(key);
-          currentWidth -= (itemWidths[key] || 0) + gapBetweenItems;
-        } else if (currentWidth <= availableWidth && newItemsInMore.has(key)) {
-          // Try moving back if space is available
-          const testWidth = currentWidth + (itemWidths[key] || 0) + gapBetweenItems;
-          if (testWidth <= availableWidth) {
-            newItemsInMore.delete(key);
-            currentWidth = testWidth;
-          }
-        }
-      }
-      
-      setItemsInMore(newItemsInMore);
+    };
+    
+    // Debounce resize events
+    let resizeTimeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(calculateResponsiveLayout, 150);
     };
     
     // Calculate on mount and resize
-    calculateResponsiveLayout();
-    window.addEventListener('resize', calculateResponsiveLayout);
-    
-    // Recalculate when user/auth state changes (affects which items are visible)
     const timeoutId = setTimeout(calculateResponsiveLayout, 100);
+    window.addEventListener('resize', handleResize);
     
     return () => {
-      window.removeEventListener('resize', calculateResponsiveLayout);
+      window.removeEventListener('resize', handleResize);
       clearTimeout(timeoutId);
+      clearTimeout(resizeTimeout);
     };
-  }, [currentUser, isMember, isAdmin, isExec, itemsInMore, isMobile]);
+  }, [currentUser, isMember, isAdmin, isExec, isMobile]); // Removed itemsInMore from dependencies
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
