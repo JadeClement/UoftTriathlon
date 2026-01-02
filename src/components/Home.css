@@ -394,14 +394,14 @@
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
     margin-top: 0;
-    padding-top: 70px; /* Account for fixed navbar height */
+    padding-top: 0; /* No padding - we'll position hero-image-section directly */
   }
   
   .split-hero {
     flex-direction: column;
     min-height: auto;
     position: relative;
-    margin-top: 0;
+    margin-top: 70px; /* Start below navbar */
     padding-top: 0;
   }
   
@@ -414,7 +414,7 @@
     overflow: hidden;
     margin: 0;
     padding: 0;
-    margin-top: -70px; /* Negative margin to pull image up to navbar */
+    margin-top: -70px; /* Pull back up to navbar */
     /* Remove any white background */
     background-color: #000;
   }
