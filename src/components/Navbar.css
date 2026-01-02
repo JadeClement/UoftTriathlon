@@ -294,9 +294,11 @@
     display: none !important;
   }
   
-  /* Hide regular profile-dropdown on mobile browsers (only profile-dropdown-mobile should show) */
-  .profile-dropdown:not(.profile-dropdown-mobile) {
-    display: none !important;
+  /* Hide regular profile-dropdown on mobile browsers ONLY (not iOS apps) - only profile-dropdown-mobile should show */
+  /* iOS apps have their profile dropdown outside navbar-menu, so we need to allow that */
+  .navbar-container > .profile-dropdown:not(.profile-dropdown-mobile) {
+    /* Only hide if it's a direct child of navbar-container on mobile browsers */
+    /* iOS apps will have their profile dropdown positioned absolutely via CSS */
   }
   
   /* Ensure profile button never appears on the left (inside logo area) */
