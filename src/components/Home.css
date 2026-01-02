@@ -358,7 +358,7 @@
   
   .split-hero {
     margin-top: 0;
-    padding-top: calc(70px + 70vh); /* Reserve space for fixed image section */
+    padding-top: 70vh; /* Reserve space for fixed image section (70vh height) */
     position: relative;
   }
   
@@ -413,7 +413,7 @@
     min-height: auto;
     position: relative;
     margin-top: 0;
-    padding-top: calc(70px + 70vh); /* Reserve space for fixed image section */
+    padding-top: 70vh; /* Reserve space for fixed image section (70vh height) */
   }
   
   .hero-image-section {
