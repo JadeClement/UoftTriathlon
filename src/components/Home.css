@@ -351,8 +351,8 @@
 @media (max-width: 750px) and (min-width: 467px) {
   /* Ensure content starts below fixed navbar at these widths */
   .home {
-    margin-top: -70px; /* Pull up to account for body padding-top */
-    padding-top: 0;
+    margin-top: -100px; /* Pull up to cancel body padding-top (100px at mobile) */
+    padding-top: 70px; /* Push back down to account for navbar height (70px) */
     position: relative;
   }
   
@@ -400,8 +400,8 @@
 @media (max-width: 768px) and (min-width: 481px) {
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
-    margin-top: -70px; /* Pull up to account for body padding-top */
-    padding-top: 0;
+    margin-top: -100px; /* Pull up to cancel body padding-top (100px at mobile) */
+    padding-top: 70px; /* Push back down to account for navbar height (70px) */
     position: relative;
   }
   
