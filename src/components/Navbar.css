@@ -95,6 +95,7 @@
   justify-content: space-between;
   align-items: center;
   min-height: 50px;
+  gap: 3rem; /* Add space between logo and nav menu */
 }
 
 .navbar-logo {
