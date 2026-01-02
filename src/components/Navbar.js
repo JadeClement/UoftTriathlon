@@ -238,8 +238,8 @@ const Navbar = () => {
           const moreButtonWidth = Math.max(moreButton.offsetWidth || 0, 60); // Minimum 60px for More button
           
           // Calculate available space for nav items
-          // Account for padding (5px on each side = 10px total)
-          const containerPadding = 10; // 5px on each side
+          // Account for padding (15px on each side = 30px total)
+          const containerPadding = 30; // 15px on each side
           const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
           const gapBetweenLogoAndNav = 48; // 3rem gap between logo and nav menu (from CSS)
           // Reserve space for profile button + More button + gaps + safety margin
