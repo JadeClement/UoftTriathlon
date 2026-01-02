@@ -101,15 +101,6 @@
 .navbar-logo {
   flex-shrink: 0; /* Don't shrink the logo */
   margin-right: auto; /* Push logo to the left edge */
-}
-
-/* Nav menu grows to fill space, pushing profile to the right */
-.navbar-menu {
-  flex: 1; /* Take up remaining space */
-  justify-content: flex-start; /* Align items to the left of the menu */
-}
-
-.navbar-logo {
   text-decoration: none;
   display: flex;
   align-items: center;
