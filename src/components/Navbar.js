@@ -234,7 +234,8 @@ const Navbar = () => {
           const logoWidth = logo.offsetWidth;
           // Ensure profile button is always measured - use a minimum width if measurement fails
           const profileWidth = Math.max(profile.offsetWidth || 0, 50); // Minimum 50px for profile button
-          const moreButtonWidth = moreButton.offsetWidth;
+          // More button should always be visible, use minimum width if not measured yet
+          const moreButtonWidth = Math.max(moreButton.offsetWidth || 0, 60); // Minimum 60px for More button
           
           // Calculate available space for nav items
           // Account for padding (20px on each side = 40px total) and gaps between items
@@ -288,12 +289,20 @@ const Navbar = () => {
             }
           }
           
+          console.log('📊 Navbar items calculation:', {
+            availableWidth,
+            currentWidth,
+            itemsInMore: Array.from(newItemsInMore),
+            itemWidths
+          });
+          
           // Only update state if it actually changed
           const currentSet = itemsInMore;
           const setsEqual = currentSet.size === newItemsInMore.size && 
                            Array.from(currentSet).every(key => newItemsInMore.has(key));
           
           if (!setsEqual) {
+            console.log('🔄 Updating itemsInMore:', Array.from(newItemsInMore));
             setItemsInMore(newItemsInMore);
           }
         } finally {
