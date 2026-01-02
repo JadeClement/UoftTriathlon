@@ -369,14 +369,17 @@
 }
 
 .profile-picture-nav img {
+  width: 95%;
+  height: 95%;
+  object-fit: cover;
+}
+
+/* Default profile picture should be smaller and moved down */
+.profile-picture-nav img[src="/images/default_profile.png"],
+.profile-picture-nav img[src*="default_profile.png"] {
   width: 85%;
   height: 85%;
   object-fit: contain;
-}
-
-/* Only move down the default profile picture, not user profile pictures */
-.profile-picture-nav img[src="/images/default_profile.png"],
-.profile-picture-nav img[src*="default_profile.png"] {
   transform: translateY(4px);
 }
 
