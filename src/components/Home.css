@@ -344,6 +344,17 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) and (min-width: 769px) {
+  /* Tablet/medium sizes - ensure image stays visible */
+  .hero-image-section {
+    min-width: 300px; /* Ensure image section never gets too narrow */
+  }
+  
+  .hero-text-section {
+    min-width: 250px; /* Ensure text section has minimum width */
+  }
+}
+
 @media (max-width: 768px) {
   .split-hero {
     flex-direction: column;
