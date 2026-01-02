@@ -662,8 +662,9 @@ const Navbar = () => {
           </>
         )}
         
-        {/* Profile dropdown visible on mobile (outside navbar-menu) */}
-        <div className="profile-dropdown-mobile" ref={profileMobileRef}>
+        {/* Profile dropdown visible on mobile (outside navbar-menu) - hide on iOS apps */}
+        {isMobile && !isNativeApp && (
+          <div className="profile-dropdown-mobile" ref={profileMobileRef}>
           {currentUser ? (
             <>
               <div 
