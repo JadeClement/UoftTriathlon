@@ -14,30 +14,15 @@ const MobileNav = () => {
   const location = useLocation();
   const { currentUser, isMember } = useAuth();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  // Initialize with correct value immediately to avoid showing on desktop
-  const [isMobile, setIsMobile] = useState(() => {
-    return typeof window !== 'undefined' && window.innerWidth <= 768;
-  });
   const moreMenuRef = useRef(null);
   
-  // Detect if we're in Capacitor - check multiple ways
-  const isCapacitor = window.Capacitor || 
-                      window.location.protocol === 'capacitor:' ||
-                      window.location.href.includes('capacitor://') ||
-                      (typeof window !== 'undefined' && window.navigator && window.navigator.standalone);
-  
-  // Update mobile status on resize
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
-    };
-    
-    window.addEventListener('resize', checkMobile);
-    
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-    };
-  }, []);
+  // Detect if we're in Capacitor (iOS/Android app) - check multiple ways
+  const isCapacitor = typeof window !== 'undefined' && (
+    window.Capacitor || 
+    window.location.protocol === 'capacitor:' ||
+    window.location.href.includes('capacitor://') ||
+    (window.navigator && window.navigator.standalone)
+  );
 
   const handleNavClick = (path) => {
     hapticSelection();
@@ -73,10 +58,8 @@ const MobileNav = () => {
     };
   }, [isMoreOpen]);
 
-  // Only show on mobile screens (width <= 768px) or in Capacitor
-  const shouldShow = isMobile || isCapacitor;
-  
-  if (!shouldShow) {
+  // Only show in Capacitor apps (iOS/Android), not in browsers
+  if (!isCapacitor) {
     return null;
   }
 
