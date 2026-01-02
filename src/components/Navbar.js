@@ -662,8 +662,8 @@ const Navbar = () => {
         </div>
         )}
           
-        {/* Profile dropdown - always show in top nav bar on the right (outside navbar-menu for iOS apps) */}
-        {isNativeApp && (
+        {/* Profile dropdown - always show in top nav bar on the right (outside navbar-menu for iOS apps only) */}
+        {isNativeApp && !isMobile && (
           <>
             {currentUser ? (
               <div className="profile-dropdown" ref={profileRef}>
