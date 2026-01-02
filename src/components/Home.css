@@ -1,5 +1,6 @@
 .home {
   margin-top: 0;
+  padding-top: 0;
   width: 100%;
   /* Don't set min-height or overflow - let content determine height naturally */
 }
@@ -9,6 +10,8 @@
   min-height: 100vh;
   display: flex;
   overflow: visible; /* Allow scrolling */
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .hero-image-section {
@@ -360,24 +363,35 @@
 
 @media (max-width: 768px) and (min-width: 481px) {
   /* Medium mobile sizes - stack vertically but ensure image is visible */
+  .home {
+    margin-top: 0;
+    padding-top: 0;
+  }
+  
   .split-hero {
     flex-direction: column;
     min-height: auto;
     position: relative;
+    margin-top: 0;
+    padding-top: 0;
   }
   
   .hero-image-section {
     width: 100%;
-    min-height: 60vh;
-    height: 60vh;
+    min-height: 70vh;
+    height: 70vh;
     display: block;
     position: relative;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
     /* Use background image as fallback - show first team photo */
     background-image: url('/images/team-photo1.jpeg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    /* Remove any white background */
+    background-color: transparent;
   }
   
   /* Hide the slideshow at these sizes and use background image instead */
@@ -393,8 +407,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Overlap with image section to eliminate white space */
-    margin-top: -10vh;
+    /* Overlap with image section more aggressively to eliminate white space */
+    margin-top: -15vh;
+    margin-bottom: 0;
     position: relative;
     z-index: 1;
     /* Add subtle shadow to separate from image */
