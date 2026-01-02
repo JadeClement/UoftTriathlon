@@ -32,6 +32,7 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [banner, setBanner] = useState({ enabled: false, items: [], rotationIntervalMs: 6000 });
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
@@ -187,11 +188,21 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, [banner.enabled, banner.items, banner.rotationIntervalMs, isBannerHovered]);
 
+  // Track mobile state
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Responsive navbar: calculate which items fit and move overflow to More dropdown
   useEffect(() => {
     const calculateResponsiveLayout = () => {
       // Only run on desktop (not mobile)
-      if (window.innerWidth <= 768) {
+      if (isMobile) {
         return;
       }
       
@@ -268,7 +279,7 @@ const Navbar = () => {
       window.removeEventListener('resize', calculateResponsiveLayout);
       clearTimeout(timeoutId);
     };
-  }, [currentUser, isMember, isAdmin, isExec, itemsInMore]);
+  }, [currentUser, isMember, isAdmin, isExec, itemsInMore, isMobile]);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -400,7 +411,7 @@ const Navbar = () => {
         </Link>
         
         {/* Hamburger menu for mobile */}
-        {window.innerWidth <= 768 && (
+        {isMobile && (
           <button 
             className="navbar-hamburger"
             onClick={() => setIsHamburgerOpen(!isHamburgerOpen)}
@@ -413,7 +424,7 @@ const Navbar = () => {
         )}
         
         {/* Hamburger menu dropdown for mobile */}
-        {window.innerWidth <= 768 && isHamburgerOpen && (
+        {isMobile && isHamburgerOpen && (
           <div className="hamburger-menu">
             {navItems.map(item => (
               <Link
