@@ -474,7 +474,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 0; /* Start below the image section */
+    margin-top: 70vh; /* Start below the fixed image section (image is 70vh tall) */
     margin-bottom: 0;
     position: relative;
     z-index: 1;
