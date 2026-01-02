@@ -385,18 +385,44 @@
     overflow: hidden;
     margin: 0;
     padding: 0;
-    /* Use background image as fallback - show first team photo */
-    background-image: url('/images/team-photo1.jpeg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
     /* Remove any white background */
-    background-color: transparent;
+    background-color: #000;
   }
   
-  /* Hide the slideshow at these sizes and use background image instead */
+  /* Show the slideshow at these sizes */
   .hero-image-section .slideshow-container {
-    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .hero-image-section .slideshow {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .hero-image-section .slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+  }
+  
+  .hero-image-section .slide.active {
+    opacity: 1;
+    z-index: 1;
+  }
+  
+  .hero-image-section .slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   
   .hero-text-section {
