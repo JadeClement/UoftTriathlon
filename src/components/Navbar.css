@@ -159,7 +159,7 @@
   overflow: hidden; /* Hide items that overflow instead of pushing buttons off */
   min-width: 0; /* Allow flex container to shrink below content size */
   flex: 1; /* Take up remaining space between logo and profile */
-  justify-content: flex-start; /* Align items to the left of the menu */
+  justify-content: flex-end; /* Align nav items and profile to the right */
 }
 
 /* Ensure More button and Profile button never shrink and stay visible */
@@ -390,7 +390,6 @@
   position: relative;
   display: flex;
   align-items: center;
-  margin-left: auto; /* Push profile to the right side of navbar-menu */
   flex-shrink: 0; /* Don't shrink the profile button */
 }
 
