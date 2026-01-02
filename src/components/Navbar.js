@@ -729,7 +729,8 @@ const Navbar = () => {
               />
             </div>
           )}
-        </div>
+          </div>
+        )}
         
         <div className="navbar-toggle" onClick={toggleMenu}>
           <span className={`bar ${isOpen ? 'active' : ''}`}></span>

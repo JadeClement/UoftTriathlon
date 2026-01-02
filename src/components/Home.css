@@ -444,6 +444,11 @@
 }
 
 @media (max-width: 768px) {
+  .home {
+    margin-top: 0;
+    padding-top: 0; /* No extra padding on mobile - navbar handles spacing */
+  }
+  
   .split-hero {
     flex-direction: column;
     min-height: auto; /* Allow natural height */
