@@ -230,71 +230,105 @@ const Navbar = () => {
       // Use requestAnimationFrame to ensure DOM is updated
       requestAnimationFrame(() => {
         try {
-          const containerWidth = container.offsetWidth;
-          const logoWidth = logo.offsetWidth;
-          // Ensure profile button is always measured - use a minimum width if measurement fails
-          const profileWidth = Math.max(profile.offsetWidth || 0, 50); // Minimum 50px for profile button
-          const moreButtonWidth = moreButton.offsetWidth;
+          // NEW STRATEGY: Measure actual rendered positions
+          // Profile button has margin-left: auto, so it stays on the right
+          // We check if nav items actually overlap with the profile button
           
-          // Calculate available space for nav items
-          // Account for padding (20px on each side = 40px total) and gaps between items
-          const containerPadding = 40; // 20px on each side
-          const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
-          const gapBetweenLogoAndNav = 48; // 3rem gap between logo and nav menu (from CSS)
-          // Reserve space for profile button + More button + gaps + safety margin
-          // Profile button must always be visible, so be very conservative with extra margin
-          const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 3) + 80; // Extra 80px safety margin (very conservative)
-          const availableWidth = Math.max(0, containerWidth - logoWidth - gapBetweenLogoAndNav - reservedSpace - containerPadding);
+          const profileRect = profile.getBoundingClientRect();
+          const profileLeft = profileRect.left;
+          const minGap = 32; // 2rem minimum gap between nav and profile
           
+          // Get all nav items
           const navItems = getNavItems();
-          const itemWidths = {};
+          const visibleItems = navItems.filter(item => !itemsInMore.has(item.key));
           
-          // Measure ALL items' widths (even those currently in More) to get accurate measurements
-          navItems.forEach(item => {
+          // Find the rightmost visible nav item (excluding More button and profile)
+          let rightmostNavItemRight = 0;
+          visibleItems.forEach(item => {
             const ref = navItemRefs.current[item.ref];
-            if (ref) {
-              // Temporarily show the item to measure it accurately
-              const wasHidden = ref.style.display === 'none';
-              if (wasHidden) {
-                ref.style.display = '';
-              }
-              const width = ref.offsetWidth;
-              itemWidths[item.key] = width;
-              if (wasHidden) {
-                ref.style.display = 'none';
+            if (ref && ref !== moreButton && ref !== profile) {
+              const rect = ref.getBoundingClientRect();
+              const itemRight = rect.right;
+              if (itemRight > rightmostNavItemRight) {
+                rightmostNavItemRight = itemRight;
               }
             }
           });
           
-          // Calculate which items should be visible
-          const newItemsInMore = new Set();
-          let currentWidth = 0;
+          // Get More button position
+          const moreButtonRect = moreButton.getBoundingClientRect();
+          const moreButtonRight = moreButtonRect.right;
           
-          // Start with all items visible, then move to More if needed
-          for (const item of navItems) {
-            if (item.alwaysVisible) {
-              currentWidth += (itemWidths[item.key] || 0) + gapBetweenItems;
-              continue;
+          // Check if nav items overlap with profile button
+          const maxNavRight = Math.max(rightmostNavItemRight, moreButtonRight);
+          const overlap = (maxNavRight + minGap) > profileLeft;
+          
+          const newItemsInMore = new Set(itemsInMore);
+          const moveOrder = ['Races', 'Coaches & Exec', 'Schedule', 'Join Us', 'Admin', 'Forum'];
+          
+          if (overlap && visibleItems.length > 0) {
+            // Move items to More until no overlap
+            for (const itemKey of moveOrder) {
+              const item = navItems.find(i => i.key === itemKey);
+              if (item && !newItemsInMore.has(item.key) && !item.alwaysVisible) {
+                newItemsInMore.add(item.key);
+                // After moving one item, we'll check again on next render
+                // This iterative approach ensures we don't move too many at once
+                break;
+              }
             }
-            
-            const itemWidth = (itemWidths[item.key] || 0) + gapBetweenItems;
-            const wouldFit = currentWidth + itemWidth <= availableWidth;
-            
-            if (wouldFit) {
-              currentWidth += itemWidth;
-            } else {
-              // This item doesn't fit, move it to More
-              newItemsInMore.add(item.key);
+          } else if (!overlap && newItemsInMore.size > 0) {
+            // Try moving items back from More (reverse order)
+            const reverseOrder = ['Forum', 'Admin', 'Join Us', 'Schedule', 'Coaches & Exec', 'Races'];
+            for (const itemKey of reverseOrder) {
+              const item = navItems.find(i => i.key === itemKey);
+              if (item && newItemsInMore.has(item.key) && !item.alwaysVisible) {
+                // Temporarily show to test
+                const tempRef = navItemRefs.current[item.ref];
+                if (tempRef) {
+                  const wasHidden = tempRef.style.display === 'none';
+                  if (wasHidden) {
+                    tempRef.style.display = '';
+                    // Measure after showing
+                    requestAnimationFrame(() => {
+                      const testVisible = navItems.filter(i => 
+                        i.key === item.key || !newItemsInMore.has(i.key)
+                      );
+                      let testRightmost = 0;
+                      testVisible.forEach(testItem => {
+                        const testRef = navItemRefs.current[testItem.ref];
+                        if (testRef && testRef !== moreButton && testRef !== profile) {
+                          const testRect = testRef.getBoundingClientRect();
+                          if (testRect.right > testRightmost) {
+                            testRightmost = testRect.right;
+                          }
+                        }
+                      });
+                      const testMoreRight = moreButton.getBoundingClientRect().right;
+                      const testMaxRight = Math.max(testRightmost, testMoreRight);
+                      
+                      if ((testMaxRight + minGap) <= profileLeft) {
+                        newItemsInMore.delete(item.key);
+                        setItemsInMore(new Set(newItemsInMore));
+                      } else {
+                        tempRef.style.display = 'none';
+                      }
+                    });
+                    break; // Only test one at a time
+                  }
+                }
+              }
             }
           }
           
-          // Only update state if it actually changed
-          const currentSet = itemsInMore;
-          const setsEqual = currentSet.size === newItemsInMore.size && 
-                           Array.from(currentSet).every(key => newItemsInMore.has(key));
-          
-          if (!setsEqual) {
-            setItemsInMore(newItemsInMore);
+          // Update state if changed (for overlap case)
+          if (overlap) {
+            const currentSet = itemsInMore;
+            const setsEqual = currentSet.size === newItemsInMore.size && 
+                             Array.from(currentSet).every(key => newItemsInMore.has(key));
+            if (!setsEqual) {
+              setItemsInMore(newItemsInMore);
+            }
           }
         } finally {
           isCalculatingRef.current = false;
