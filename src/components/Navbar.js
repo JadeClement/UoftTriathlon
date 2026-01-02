@@ -248,6 +248,9 @@ const Navbar = () => {
           const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 3) + 100; // Extra 100px safety margin (very conservative)
           const availableWidth = Math.max(0, containerWidth - logoWidth - gapBetweenLogoAndNav - reservedSpace - containerPadding);
           
+          // Get nav items first (needed for logging and calculation)
+          const navItems = getNavItems();
+          
           // Debug logging
           console.log('📐 Navbar calculation:', {
             containerWidth,
@@ -258,8 +261,6 @@ const Navbar = () => {
             availableWidth,
             navItemsCount: navItems.length
           });
-          
-          const navItems = getNavItems();
           const itemWidths = {};
           
           // Measure ALL items' widths (even those currently in More) to get accurate measurements

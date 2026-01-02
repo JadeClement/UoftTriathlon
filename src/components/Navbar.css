@@ -145,6 +145,13 @@
   display: flex;
   gap: 2rem;
   align-items: center;
+  flex-wrap: nowrap; /* Prevent wrapping */
+}
+
+/* Ensure More button and Profile button never shrink */
+.more-dropdown,
+.navbar-menu .profile-dropdown {
+  flex-shrink: 0;
 }
 
 .navbar-link {
