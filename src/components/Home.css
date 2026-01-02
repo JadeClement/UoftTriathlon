@@ -352,16 +352,16 @@
   /* Ensure content starts below fixed navbar at these widths */
   .home {
     margin-top: 0;
-    padding-top: 70px; /* Account for fixed navbar height */
+    padding-top: 0; /* No padding - we'll position hero-image-section directly */
   }
   
   .split-hero {
-    margin-top: 0;
+    margin-top: 70px; /* Start below navbar */
     padding-top: 0;
   }
   
   .hero-image-section {
-    margin-top: -70px; /* Negative margin to pull image up to navbar */
+    margin-top: -70px; /* Pull back up to navbar */
   }
   
   .hero-image-section .slideshow-container {
