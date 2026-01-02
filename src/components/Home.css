@@ -363,12 +363,13 @@
   .split-hero {
     flex-direction: column;
     min-height: auto;
+    position: relative;
   }
   
   .hero-image-section {
     width: 100%;
-    min-height: 50vh;
-    height: 50vh;
+    min-height: 60vh;
+    height: 60vh;
     display: block;
     position: relative;
     overflow: hidden;
@@ -386,12 +387,18 @@
   
   .hero-text-section {
     width: 100%;
-    min-height: 50vh;
+    min-height: auto;
     height: auto;
     padding: 2rem 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    /* Overlap with image section to eliminate white space */
+    margin-top: -10vh;
+    position: relative;
+    z-index: 1;
+    /* Add subtle shadow to separate from image */
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   }
 }
 
