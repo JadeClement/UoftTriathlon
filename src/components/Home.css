@@ -381,7 +381,7 @@
   }
   
   .hero-text-section {
-    margin-top: calc(70px + 70vh); /* Start below the fixed image section */
+    margin-top: 70vh; /* Start below the fixed image section (image is 70vh tall) */
     position: relative;
     z-index: 1;
   }
