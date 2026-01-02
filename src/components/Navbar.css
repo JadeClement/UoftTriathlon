@@ -274,6 +274,26 @@
     height: 32px;
   }
   
+  /* Profile dropdown for iOS apps - absolutely positioned on RIGHT */
+  .navbar-container > .profile-dropdown {
+    position: absolute !important;
+    right: 1rem !important;
+    bottom: 0.75rem !important;
+    top: auto !important;
+    transform: none !important;
+    display: flex !important;
+    align-items: center;
+    z-index: 10;
+    margin: 0 !important;
+  }
+  
+  .navbar-container > .profile-dropdown .profile-picture-nav {
+    width: 44px;
+    height: 44px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+  }
+  
   /* Hide the full menu on mobile - navigation is in bottom nav */
   .navbar-menu {
     display: none !important;
@@ -294,12 +314,9 @@
     display: none !important;
   }
   
-  /* Hide regular profile-dropdown on mobile browsers ONLY (not iOS apps) - only profile-dropdown-mobile should show */
-  /* iOS apps have their profile dropdown outside navbar-menu, so we need to allow that */
-  .navbar-container > .profile-dropdown:not(.profile-dropdown-mobile) {
-    /* Only hide if it's a direct child of navbar-container on mobile browsers */
-    /* iOS apps will have their profile dropdown positioned absolutely via CSS */
-  }
+  /* Hide regular profile-dropdown on mobile browsers (not iOS apps) - only profile-dropdown-mobile should show */
+  /* iOS apps have their profile dropdown as direct child of navbar-container, which is positioned above */
+  /* Mobile browsers use profile-dropdown-mobile */
   
   /* Ensure profile button never appears on the left (inside logo area) */
   .navbar-logo .profile-dropdown,
