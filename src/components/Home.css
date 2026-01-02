@@ -351,7 +351,7 @@
 @media (max-width: 750px) and (min-width: 467px) {
   /* Ensure content starts below fixed navbar at these widths */
   .home {
-    margin-top: 0;
+    margin-top: -70px; /* Pull up to account for body padding-top */
     padding-top: 0;
     position: relative;
   }
@@ -363,13 +363,11 @@
   }
   
   .hero-image-section {
-    position: absolute;
-    top: 70px; /* Start directly below navbar */
-    left: 0;
+    position: relative;
+    margin-top: 0;
     width: 100%;
     min-height: 70vh;
     height: 70vh;
-    z-index: 0;
   }
   
   .hero-image-section .slideshow-container {
@@ -381,9 +379,8 @@
   }
   
   .hero-text-section {
-    margin-top: calc(70px + 70vh); /* Start below the image section */
+    margin-top: 0; /* Start below the image section */
     position: relative;
-    z-index: 1;
   }
 }
 
@@ -403,7 +400,7 @@
 @media (max-width: 768px) and (min-width: 481px) {
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
-    margin-top: 0;
+    margin-top: -70px; /* Pull up to account for body padding-top */
     padding-top: 0;
     position: relative;
   }
@@ -417,15 +414,13 @@
   }
   
   .hero-image-section {
-    position: absolute;
-    top: 70px; /* Start directly below navbar */
-    left: 0;
+    position: relative;
+    margin-top: 0;
     width: 100%;
     min-height: 70vh;
     height: 70vh;
     display: block;
     overflow: hidden;
-    z-index: 0;
     /* Remove any white background */
     background-color: #000;
   }
@@ -474,7 +469,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: calc(70px + 70vh); /* Start below the image section */
+    margin-top: 0; /* Start below the image section */
     margin-bottom: 0;
     position: relative;
     z-index: 1;
