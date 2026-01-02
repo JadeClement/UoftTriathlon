@@ -241,12 +241,12 @@ const Navbar = () => {
           // Account for padding (15px on each side = 30px total)
           const containerPadding = 30; // 15px on each side
           const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
-          const gapBetweenLogoAndNav = 48; // 3rem gap between logo and nav menu (from CSS)
+          // No gap between logo and nav menu since we use space-between
           // Reserve space for profile button + More button + gaps + safety margin
           // Profile button must always be visible, so be conservative with extra margin
           // More button should always be visible too
-          const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 2) + 80; // Extra 80px safety margin (balanced)
-          const availableWidth = Math.max(0, containerWidth - logoWidth - gapBetweenLogoAndNav - reservedSpace - containerPadding);
+          const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 2) + 100; // Extra 100px safety margin to ensure profile never gets pushed off
+          const availableWidth = Math.max(0, containerWidth - logoWidth - reservedSpace - containerPadding);
           
           // Get nav items first (needed for logging and calculation)
           const navItems = getNavItems();
@@ -493,8 +493,8 @@ const Navbar = () => {
           <span className="logo-text">UofT Triathlon</span>
         </Link>
         
-        {/* Hamburger menu for mobile */}
-        {isMobile && (
+        {/* Hamburger menu for mobile - hide on iOS apps */}
+        {isMobile && !isNativeApp && (
           <button 
             className="navbar-hamburger"
             onClick={() => setIsHamburgerOpen(!isHamburgerOpen)}
@@ -506,8 +506,8 @@ const Navbar = () => {
           </button>
         )}
         
-        {/* Hamburger menu dropdown for mobile */}
-        {isMobile && isHamburgerOpen && (
+        {/* Hamburger menu dropdown for mobile - hide on iOS apps */}
+        {isMobile && !isNativeApp && isHamburgerOpen && (
           <div className="hamburger-menu">
             {navItems.map(item => (
               <Link
@@ -531,6 +531,8 @@ const Navbar = () => {
           </div>
         )}
         
+        {/* Hide navbar menu on iOS apps - everything is in bottom nav */}
+        {!isNativeApp && (
         <div className={`navbar-menu ${isOpen ? 'active' : ''}`} ref={navbarMenuRef}>
           {/* Main nav items */}
           {itemsInMainNav.map(item => (
@@ -591,8 +593,9 @@ const Navbar = () => {
               </div>
             )}
           </div>
+        )}
           
-          {/* Profile dropdown */}
+          {/* Profile dropdown - always show on iOS apps */}
           {currentUser ? (
             <div className="profile-dropdown" ref={profileRef}>
               <div 

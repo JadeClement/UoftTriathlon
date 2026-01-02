@@ -13,7 +13,7 @@ import './MobileNav.css';
 const MobileNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, isMember } = useAuth();
+  const { currentUser, isMember, isAdmin, isExec } = useAuth();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const moreMenuRef = useRef(null);
   
@@ -33,7 +33,7 @@ const MobileNav = () => {
 
   // Check if any "More" menu item is active
   const isMoreActive = () => {
-    return isActive('/faq') || isActive('/resources') || isActive('/team-gear') || isActive('/races');
+    return isActive('/faq') || isActive('/resources') || isActive('/team-gear') || isActive('/races') || isActive('/admin');
   };
 
   // Close more menu when clicking outside
@@ -146,6 +146,15 @@ const MobileNav = () => {
               >
                 Races
               </button>
+              {/* Show Admin to execs and admins */}
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button
+                  className={`mobile-nav-more-item ${isActive('/admin') ? 'active' : ''}`}
+                  onClick={() => handleNavClick('/admin')}
+                >
+                  Admin
+                </button>
+              )}
             </div>
           )}
         </div>
