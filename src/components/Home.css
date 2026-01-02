@@ -351,8 +351,8 @@
 @media (max-width: 750px) and (min-width: 467px) {
   /* Ensure content starts below fixed navbar at these widths */
   .home {
-    margin-top: -100px; /* Pull up to cancel body padding-top (100px at mobile) */
-    padding-top: 70px; /* Push back down to account for navbar height (70px) */
+    margin-top: 0;
+    padding-top: 0;
     position: relative;
   }
   
@@ -363,11 +363,13 @@
   }
   
   .hero-image-section {
-    position: relative;
-    margin-top: 0;
+    position: fixed;
+    top: 70px; /* Position directly below navbar */
+    left: 0;
     width: 100%;
     min-height: 70vh;
     height: 70vh;
+    z-index: 0;
   }
   
   .hero-image-section .slideshow-container {
@@ -379,8 +381,9 @@
   }
   
   .hero-text-section {
-    margin-top: 0; /* Start below the image section */
+    margin-top: calc(70px + 70vh); /* Start below the fixed image section */
     position: relative;
+    z-index: 1;
   }
 }
 
@@ -400,8 +403,8 @@
 @media (max-width: 768px) and (min-width: 481px) {
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
-    margin-top: -100px; /* Pull up to cancel body padding-top (100px at mobile) */
-    padding-top: 70px; /* Push back down to account for navbar height (70px) */
+    margin-top: 0;
+    padding-top: 0;
     position: relative;
   }
   
@@ -414,13 +417,15 @@
   }
   
   .hero-image-section {
-    position: relative;
-    margin-top: 0;
+    position: fixed;
+    top: 70px; /* Position directly below navbar */
+    left: 0;
     width: 100%;
     min-height: 70vh;
     height: 70vh;
     display: block;
     overflow: hidden;
+    z-index: 0;
     /* Remove any white background */
     background-color: #000;
   }
