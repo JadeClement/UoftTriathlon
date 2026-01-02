@@ -146,12 +146,16 @@
   gap: 2rem;
   align-items: center;
   flex-wrap: nowrap; /* Prevent wrapping */
+  overflow: hidden; /* Hide items that overflow instead of pushing buttons off */
+  min-width: 0; /* Allow flex container to shrink below content size */
 }
 
-/* Ensure More button and Profile button never shrink */
+/* Ensure More button and Profile button never shrink and stay visible */
 .more-dropdown,
 .navbar-menu .profile-dropdown {
   flex-shrink: 0;
+  position: relative; /* Ensure they stay in the layout */
+  z-index: 1; /* Keep them above other items */
 }
 
 .navbar-link {

@@ -243,9 +243,9 @@ const Navbar = () => {
           const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
           const gapBetweenLogoAndNav = 48; // 3rem gap between logo and nav menu (from CSS)
           // Reserve space for profile button + More button + gaps + safety margin
-          // Profile button must always be visible, so be very conservative with extra margin
+          // Profile button must always be visible, so be conservative with extra margin
           // More button should always be visible too
-          const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 3) + 100; // Extra 100px safety margin (very conservative)
+          const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 2) + 60; // Extra 60px safety margin (balanced)
           const availableWidth = Math.max(0, containerWidth - logoWidth - gapBetweenLogoAndNav - reservedSpace - containerPadding);
           
           // Get nav items first (needed for logging and calculation)
