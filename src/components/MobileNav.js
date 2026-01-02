@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { hapticSelection } from '../utils/haptics';
+import { Capacitor } from '@capacitor/core';
 import './MobileNav.css';
 
 const MobileNav = () => {
@@ -16,13 +17,9 @@ const MobileNav = () => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const moreMenuRef = useRef(null);
   
-  // Detect if we're in Capacitor (iOS/Android app) - check multiple ways
-  const isCapacitor = typeof window !== 'undefined' && (
-    window.Capacitor || 
-    window.location.protocol === 'capacitor:' ||
-    window.location.href.includes('capacitor://') ||
-    (window.navigator && window.navigator.standalone)
-  );
+  // Only show in native Capacitor apps (iOS/Android), not in browsers
+  // Use Capacitor.isNativePlatform() to properly detect native app vs browser
+  const isNativeApp = Capacitor.isNativePlatform();
 
   const handleNavClick = (path) => {
     hapticSelection();
@@ -58,15 +55,15 @@ const MobileNav = () => {
     };
   }, [isMoreOpen]);
 
-  // Only show in Capacitor apps (iOS/Android), not in browsers
-  if (!isCapacitor) {
+  // Only show in native Capacitor apps (iOS/Android), not in browsers
+  if (!isNativeApp) {
     return null;
   }
 
   return (
     <>
       <nav 
-        className={`mobile-nav ${isCapacitor ? 'capacitor-nav' : ''} mobile-nav-visible`}
+        className="mobile-nav capacitor-nav mobile-nav-visible"
         role="navigation" 
         aria-label="Main navigation"
       >
