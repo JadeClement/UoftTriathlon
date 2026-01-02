@@ -324,14 +324,17 @@ const Navbar = () => {
       });
     };
     
-    // Debounce resize events (shorter delay for more responsive updates)
+    // Debounce resize events (very short delay for responsive updates)
     let resizeTimeout;
     const handleResize = () => {
       clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(calculateResponsiveLayout, 50); // Reduced from 150ms to 50ms
+      // Use requestAnimationFrame for immediate visual update, then recalculate
+      requestAnimationFrame(() => {
+        resizeTimeout = setTimeout(calculateResponsiveLayout, 16); // ~1 frame delay
+      });
     };
     
-    // Calculate on mount and resize
+    // Calculate on mount
     const timeoutId = setTimeout(calculateResponsiveLayout, 100);
     window.addEventListener('resize', handleResize);
     
@@ -340,7 +343,10 @@ const Navbar = () => {
     if (navbarContainerRef.current && window.ResizeObserver) {
       resizeObserver = new ResizeObserver(() => {
         clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(calculateResponsiveLayout, 50);
+        // Immediate calculation on container size change
+        requestAnimationFrame(() => {
+          calculateResponsiveLayout();
+        });
       });
       resizeObserver.observe(navbarContainerRef.current);
     }
