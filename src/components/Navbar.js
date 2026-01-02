@@ -596,9 +596,11 @@ const Navbar = () => {
         </div>
         )}
           
-        {/* Profile dropdown - always show on iOS apps */}
-        {currentUser ? (
-          <div className="profile-dropdown" ref={profileRef}>
+        {/* Profile dropdown - show on desktop, hide on mobile (mobile uses profile-dropdown-mobile) */}
+        {!isMobile && (
+          <>
+            {currentUser ? (
+              <div className="profile-dropdown" ref={profileRef}>
             <div 
               className="profile-picture-nav"
               onClick={() => setIsProfileOpen(!isProfileOpen)}

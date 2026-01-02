@@ -365,7 +365,7 @@
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
     margin-top: 0;
-    padding-top: 70px; /* Account for fixed navbar height */
+    padding-top: 0; /* No extra padding on mobile - navbar handles spacing */
   }
   
   .split-hero {
