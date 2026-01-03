@@ -351,20 +351,20 @@
 @media (max-width: 750px) and (min-width: 467px) {
   /* Ensure content starts below fixed navbar at these widths */
   .home {
-    margin-top: 0;
+    margin-top: -70px; /* Pull up to compensate for body padding */
     padding-top: 0;
     position: relative;
   }
   
   .split-hero {
-    margin-top: 70px; /* Start below navbar */
+    margin-top: 0;
     padding-top: 0;
     position: relative;
   }
   
   .hero-image-section {
     position: relative;
-    margin-top: -70px; /* Pull back up to navbar */
+    margin-top: 70px; /* Start directly below navbar */
     width: 100%;
     min-height: 70vh;
     height: 70vh;
@@ -403,7 +403,7 @@
 @media (max-width: 768px) and (min-width: 481px) {
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
-    margin-top: 0;
+    margin-top: -70px; /* Pull up to compensate for body padding */
     padding-top: 0;
     position: relative;
   }
@@ -412,13 +412,13 @@
     flex-direction: column;
     min-height: auto;
     position: relative;
-    margin-top: 70px; /* Start below navbar */
+    margin-top: 0;
     padding-top: 0;
   }
   
   .hero-image-section {
     position: relative;
-    margin-top: -70px; /* Pull back up to navbar */
+    margin-top: 70px; /* Start directly below navbar */
     width: 100% !important;
     min-height: 70vh !important;
     height: 70vh !important;
