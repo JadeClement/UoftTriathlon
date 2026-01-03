@@ -357,19 +357,18 @@
   }
   
   .split-hero {
-    margin-top: 0;
-    padding-top: 70vh; /* Reserve space for fixed image section (70vh height) */
+    margin-top: 70px; /* Start below navbar */
+    padding-top: 0;
     position: relative;
   }
   
   .hero-image-section {
-    position: fixed;
-    top: 70px; /* Position directly below navbar */
-    left: 0;
+    position: relative;
+    margin-top: -70px; /* Pull back up to navbar */
     width: 100%;
     min-height: 70vh;
     height: 70vh;
-    z-index: 0;
+    display: block !important;
   }
   
   .hero-image-section .slideshow-container {
@@ -378,10 +377,11 @@
     left: 0;
     width: 100%;
     height: 100%; /* Full height */
+    display: block !important;
   }
   
   .hero-text-section {
-    margin-top: 0; /* Start below the reserved space */
+    margin-top: 0; /* Start below the image section */
     position: relative;
     z-index: 1;
   }
@@ -412,20 +412,18 @@
     flex-direction: column;
     min-height: auto;
     position: relative;
-    margin-top: 0;
-    padding-top: 70vh; /* Reserve space for fixed image section (70vh height) */
+    margin-top: 70px; /* Start below navbar */
+    padding-top: 0;
   }
   
   .hero-image-section {
-    position: fixed;
-    top: 70px; /* Position directly below navbar */
-    left: 0;
+    position: relative;
+    margin-top: -70px; /* Pull back up to navbar */
     width: 100%;
     min-height: 70vh;
     height: 70vh;
-    display: block;
+    display: block !important;
     overflow: hidden;
-    z-index: 0;
     /* Remove any white background */
     background-color: #000;
   }
@@ -433,16 +431,18 @@
   /* Show the slideshow at these sizes */
   .hero-image-section .slideshow-container {
     position: absolute;
-    top: 0; /* Start at the top of the section */
+    top: 0;
     left: 0;
     width: 100%;
-    height: 100%; /* Full height */
+    height: 100%;
+    display: block !important;
   }
   
   .hero-image-section .slideshow {
     position: relative;
     width: 100%;
     height: 100%;
+    display: block !important;
   }
   
   .hero-image-section .slide {
@@ -474,7 +474,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 0; /* Start below the reserved space */
+    margin-top: 0; /* Start below the image section */
     margin-bottom: 0;
     position: relative;
     z-index: 1;
