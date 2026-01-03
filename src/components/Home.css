@@ -1,29 +1,17 @@
 .home {
-  margin-top: 0;
-  padding-top: 0; /* No padding - navbar is fixed and content starts below it */
   width: 100%;
-  /* Don't set min-height or overflow - let content determine height naturally */
 }
 
 /* Split Screen Hero Section */
 .split-hero {
   min-height: 100vh;
   display: flex;
-  overflow: visible; /* Allow scrolling */
-  margin-top: 0;
-  padding-top: 0;
-}
-
-/* Spacer div - hidden on desktop, visible on mobile */
-.hero-image-spacer {
-  display: none;
 }
 
 .hero-image-section {
   width: 60%;
   position: relative;
-  overflow: visible; /* Allow scrolling */
-  background-color: #f0f0f0; /* Fallback background so we can see if section is there */
+  background-color: #f0f0f0;
 }
 
 .hero-text-section {
@@ -149,25 +137,27 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 2rem;
-  z-index: 3;
+  gap: 1rem;
+  z-index: 10;
 }
 
 .control-btn {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.8);
   border: none;
-  color: white;
-  font-size: 2rem;
-  width: 50px;
-  height: 50px;
   border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  font-size: 1.5rem;
+  color: #1E3A8A;
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
 }
 
 .control-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: white;
   transform: scale(1.1);
 }
 
@@ -177,10 +167,10 @@
 }
 
 .indicator {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -190,108 +180,10 @@
   transform: scale(1.2);
 }
 
-.indicator:hover {
-  background: rgba(255, 255, 255, 0.7);
-}
-
-/* Hero Section */
-.hero {
-  min-height: 100vh; /* Changed from height to min-height to allow scrolling */
-  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-              url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');
-  background-size: cover;
-  background-position: center;
-  background-attachment: scroll; /* Changed from fixed to allow scrolling */
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-.hero-content {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-}
-
-.hero-title {
-  font-size: 4rem;
-  color: white;
-  margin-bottom: 1rem;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-
-
-.hero-subtitle {
-  font-size: 1.5rem;
-  color: white;
-  margin-bottom: 2rem;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-  max-width: 600px;
-}
-
-.hero-buttons {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #1E3A8A, #1E40AF);
-  color: white;
-}
-
-.btn-secondary {
-  background: transparent;
-  border: 2px solid white;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: white;
-  color: #333;
-}
-
-/* Features Section */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  margin-top: 3rem;
-}
-
-.feature-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 10px;
-  text-align: center;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-5px);
-}
-
-.feature-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.feature-card h3 {
-  color: #1E3A8A;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-}
-
-.feature-card p {
-  color: #666;
-  line-height: 1.6;
-}
-
 /* About Section */
 .about {
-  background: #f8f9fa;
+  padding: 80px 0;
+  background: #f8fafc;
 }
 
 .about-content {
@@ -301,331 +193,71 @@
   align-items: center;
 }
 
-.about-text p {
+.about-text {
+  text-align: left;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  color: #1E3A8A;
   margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+
+.about-text p {
   font-size: 1.1rem;
-  color: #555;
+  line-height: 1.8;
+  color: #4b5563;
+  margin-bottom: 1.5rem;
 }
 
 .about-image {
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .team-icon {
-  width: 280px;
-  height: 280px;
-  object-fit: contain;
-  border-radius: 10px;
-}
-
-/* Stats Section */
-.stats {
-  background: linear-gradient(135deg, #1E3A8A, #1E40AF);
-  color: white;
-}
-
-.stats .section-title {
-  color: white;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 2rem;
-  margin-top: 3rem;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-number {
-  font-size: 3rem;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  font-size: 1.1rem;
-  opacity: 0.9;
+  max-width: 300px;
+  width: 100%;
+  height: auto;
 }
 
 /* Responsive Design */
-@media (max-width: 750px) and (min-width: 467px) {
-  /* Ensure content starts below fixed navbar at these widths */
-  .home {
-    margin-top: 0;
-    padding-top: 0;
-    position: relative;
-  }
-  
-  .split-hero {
-    margin-top: 0;
-    padding-top: 70vh; /* Reserve space for fixed image */
-    position: relative;
-  }
-  
-  /* Hide spacer - using padding-top instead */
-  .hero-image-spacer {
-    display: none;
-  }
-  
+@media (max-width: 1024px) {
   .hero-image-section {
-    position: fixed;
-    top: 70px; /* Directly below navbar */
-    left: 0;
-    width: 100%;
-    min-height: 70vh;
-    height: 70vh;
-    display: block !important;
-    z-index: 1; /* Above text section */
-  }
-  
-  .hero-image-section .slideshow-container {
-    position: absolute;
-    top: 0; /* Start at the top of the section */
-    left: 0;
-    width: 100%;
-    height: 100%; /* Full height */
-    display: block !important;
+    width: 50%;
   }
   
   .hero-text-section {
-    margin-top: 0; /* Flows naturally after spacer */
-    position: relative;
-    z-index: 0; /* Lower than image so it appears below */
-  }
-}
-
-@media (max-width: 1024px) and (min-width: 769px) {
-  /* Tablet/medium sizes - ensure image stays visible */
-  .hero-image-section {
-    min-width: 300px; /* Ensure image section never gets too narrow */
-    width: 50%; /* Reduce from 60% to give more balance at smaller sizes */
-  }
-  
-  .hero-text-section {
-    min-width: 250px; /* Ensure text section has minimum width */
-    width: 50%; /* Balance with image section */
-  }
-}
-
-@media (max-width: 768px) and (min-width: 481px) {
-  /* Medium mobile sizes - stack vertically but ensure image is visible */
-  .home {
-    margin-top: 0;
-    padding-top: 0;
-    position: relative;
-  }
-  
-  .split-hero {
-    flex-direction: column;
-    min-height: auto;
-    position: relative;
-    margin-top: 0;
-    padding-top: 70vh; /* Reserve space for fixed image */
-  }
-  
-  /* Hide spacer - using padding-top instead */
-  .hero-image-spacer {
-    display: none;
-  }
-  
-  .hero-image-section {
-    position: fixed;
-    top: 70px; /* Directly below navbar */
-    left: 0;
-    width: 100% !important;
-    min-height: 70vh !important;
-    height: 70vh !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    overflow: hidden;
-    z-index: 1; /* Above text section */
-    /* Remove any white background */
-    background-color: #000;
-    pointer-events: auto;
-  }
-  
-  /* Show the slideshow at these sizes */
-  .hero-image-section .slideshow-container {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-  }
-  
-  .hero-image-section .slideshow {
-    position: relative !important;
-    width: 100% !important;
-    height: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-  }
-  
-  .hero-image-section .slide {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    opacity: 0;
-    transition: opacity 0.8s ease-in-out;
-    display: block !important;
-    visibility: visible !important;
-  }
-  
-  .hero-image-section .slide.active {
-    opacity: 1 !important;
-    z-index: 1;
-  }
-  
-  .hero-image-section .slide img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-    display: block !important;
-    visibility: visible !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-  }
-  
-  .hero-text-section {
-    width: 100%;
-    min-height: auto;
-    height: auto;
-    padding: 2rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 0; /* Flows naturally after spacer */
-    margin-bottom: 0;
-    position: relative;
-    z-index: 0; /* Lower than image so it appears below */
-    /* Add subtle shadow to separate from image */
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    width: 50%;
   }
 }
 
 @media (max-width: 768px) {
-  .home {
-    margin-top: 0;
-    padding-top: 0;
-    position: relative;
-  }
-  
   .split-hero {
     flex-direction: column;
-    min-height: auto;
-    position: relative;
-    padding-top: 70vh; /* Reserve space for fixed image */
-  }
-  
-  /* Hide spacer - using padding-top instead */
-  .hero-image-spacer {
-    display: none;
   }
   
   .hero-image-section {
-    position: fixed;
-    top: 70px; /* Directly below navbar */
-    left: 0;
     width: 100%;
-    min-height: 70vh;
-    height: 70vh;
-    display: block;
-    overflow: hidden;
-    z-index: 1; /* Above text section */
-    background-color: #000;
-  }
-  
-  .hero-image-section .slideshow-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: block;
-  }
-  
-  .hero-image-section .slideshow {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: block;
-  }
-  
-  .hero-image-section .slide {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    transition: opacity 0.8s ease-in-out;
-    display: block;
-  }
-  
-  .hero-image-section .slide.active {
-    opacity: 1;
-    z-index: 1;
-  }
-  
-  .hero-image-section .slide img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    position: absolute;
-    top: 0;
-    left: 0;
+    height: 50vh;
   }
   
   .hero-text-section {
     width: 100%;
-    min-height: auto;
-    height: auto;
-    padding: 2rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 0; /* Flows naturally after spacer */
-    position: relative;
-    z-index: 0; /* Lower than image so it appears below */
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-  }
-  
-  .hero-content {
-    width: 100%;
-    max-width: 100%;
   }
   
   .hero-title {
     font-size: 2.2rem;
-    line-height: 1.2;
-    margin-bottom: 1rem;
   }
   
   .hero-subtitle {
     font-size: 1.1rem;
-    margin-bottom: 0.75rem;
   }
   
   .hero-description {
     font-size: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .hero-buttons {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
   }
   
   .about-content {
@@ -636,89 +268,4 @@
   .about-text {
     text-align: center;
   }
-  
-  .team-icon {
-    width: 100%;
-    max-width: 280px;
-  }
-  
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
-
-/* Admin Setup Section */
-.admin-setup {
-  background: #f8fafc;
-  padding: 3rem 0;
-}
-
-.admin-setup-content {
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.role-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: #e0e7ff;
-  color: #3730a3;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.admin-note {
-  color: #6b7280;
-  font-size: 0.9rem;
-  font-style: italic;
-  margin-top: 1rem;
-}
-
-@media (max-width: 480px) {
-  .hero-title {
-    font-size: 1.8rem;
-    line-height: 1.1;
-  }
-  
-  .hero-subtitle {
-    font-size: 1rem;
-  }
-  
-  .hero-description {
-    font-size: 0.9rem;
-  }
-  
-  /* Hide spacer - using padding-top instead */
-  .hero-image-spacer {
-    display: none;
-  }
-  
-  .split-hero {
-    padding-top: 45vh; /* Reserve space for fixed image (45vh at mobile) */
-  }
-  
-  .hero-text-section {
-    height: 55vh;
-    padding: 1.5rem 1rem;
-    margin-top: 0;
-    position: relative;
-  }
-  
-  .hero-image-section {
-    height: 45vh;
-    min-height: 45vh;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-
