@@ -14,6 +14,11 @@
   padding-top: 0;
 }
 
+/* Spacer div - hidden on desktop, visible on mobile */
+.hero-image-spacer {
+  display: none;
+}
+
 .hero-image-section {
   width: 60%;
   position: relative;
