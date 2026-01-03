@@ -29,7 +29,7 @@
 /* Coaches Section */
 .coaches-section {
   background: white;
-  padding: 1.25rem 2rem 2rem; /* trim top padding */
+  padding: 2rem; /* restore generous padding */
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
@@ -40,7 +40,7 @@
   flex-wrap: wrap;
   gap: 2rem;
   align-items: stretch;
-  margin-top: 1rem; /* modest spacing under Coaches heading */
+  margin-top: 2rem; /* balanced spacing under Coaches heading */
 }
 
 .coach-card-container {
@@ -56,7 +56,7 @@
 
 .coach-card {
   background: #f8fafc;
-  padding: 2.25rem 1.5rem 1.5rem; /* extra top padding to avoid clipping avatar */
+  padding: 2.5rem 1.5rem 1.5rem; /* extra top padding to avoid clipping avatar */
   border-radius: 8px;
   border-left: 4px solid #1E40AF;
   text-align: center;
