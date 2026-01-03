@@ -383,8 +383,11 @@
   }
   
   .hero-text-section {
-    margin-top: calc(70px + 70vh); /* Start below navbar (70px) + image height (70vh) */
-    position: relative;
+    margin-top: 0;
+    position: absolute;
+    top: calc(70px + 70vh); /* Position below navbar (70px) + image height (70vh) */
+    left: 0;
+    right: 0;
     z-index: 1;
   }
 }
@@ -416,6 +419,7 @@
     position: relative;
     margin-top: 0;
     padding-top: 0;
+    min-height: calc(70px + 70vh + 200px); /* Reserve space for fixed image + text section */
   }
   
   .hero-image-section {
@@ -432,6 +436,7 @@
     z-index: 0;
     /* Remove any white background */
     background-color: #000;
+    pointer-events: auto;
   }
   
   /* Show the slideshow at these sizes */
@@ -489,9 +494,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: calc(70px + 70vh); /* Start below navbar (70px) + image height (70vh) */
+    margin-top: 0;
     margin-bottom: 0;
-    position: relative;
+    position: absolute;
+    top: calc(70px + 70vh); /* Position below navbar (70px) + image height (70vh) */
+    left: 0;
+    right: 0;
     z-index: 1;
     /* Add subtle shadow to separate from image */
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
@@ -507,7 +515,7 @@
   
   .split-hero {
     flex-direction: column;
-    min-height: auto;
+    min-height: calc(70px + 70vh + 200px); /* Reserve space for fixed image + text section */
     position: relative;
     padding-top: 0;
   }
@@ -574,8 +582,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: calc(70px + 70vh); /* Start below navbar (70px) + image height (70vh) */
-    position: relative;
+    margin-top: 0;
+    position: absolute;
+    top: calc(70px + 70vh); /* Position below navbar (70px) + image height (70vh) */
+    left: 0;
+    right: 0;
     z-index: 1;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   }
@@ -681,7 +692,11 @@
   .hero-text-section {
     height: 55vh;
     padding: 1.5rem 1rem;
-    margin-top: calc(70px + 45vh); /* Start below navbar (70px) + image height (45vh at mobile) */
+    margin-top: 0;
+    position: absolute;
+    top: calc(70px + 45vh); /* Position below navbar (70px) + image height (45vh at mobile) */
+    left: 0;
+    right: 0;
   }
   
   .hero-image-section {
