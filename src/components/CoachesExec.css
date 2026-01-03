@@ -22,7 +22,7 @@
 .section-subtitle {
   color: #1E3A8A;
   font-size: 1.8rem;
-  margin-bottom: 1.5rem;
+  margin: 0 0 1.5rem; /* remove extra top margin */
   font-weight: 600;
 }
 
