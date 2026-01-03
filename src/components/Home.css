@@ -4,16 +4,16 @@
 
 /* Split Screen Hero Section */
 .split-hero {
-  min-height: 100vh;
   display: flex;
+  flex-wrap: wrap;
+  min-height: auto;
 }
 
 .hero-image-section {
   width: 60%;
   position: relative;
   background-color: #f0f0f0;
-  min-height: 100vh;
-  height: 100vh;
+  min-height: 50vh;
 }
 
 .hero-text-section {
@@ -34,15 +34,15 @@
 .slideshow-container {
   width: 100%;
   height: 100%;
-  min-height: 100%;
   position: relative;
+  min-height: 50vh;
 }
 
 .slideshow {
   width: 100%;
   height: 100%;
-  min-height: 100%;
   position: relative;
+  min-height: 50vh;
 }
 
 .slide {
@@ -231,6 +231,7 @@
 @media (max-width: 1024px) {
   .hero-image-section {
     width: 50%;
+    min-height: 50vh;
   }
   
   .hero-text-section {
@@ -246,8 +247,8 @@
   
   .hero-image-section {
     width: 100%;
-    min-height: 0; /* Reset desktop min-height */
-    height: 50vh;
+    min-height: 45vh;
+    height: auto;
     order: 1; /* Ensure image appears first */
   }
   
