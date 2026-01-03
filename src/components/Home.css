@@ -522,7 +522,7 @@
     margin-top: 0; /* Flows naturally after spacer */
     margin-bottom: 0;
     position: relative;
-    z-index: 1;
+    z-index: 0; /* Lower than image so it appears below */
     /* Add subtle shadow to separate from image */
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   }
@@ -618,7 +618,7 @@
     justify-content: center;
     margin-top: 0; /* Flows naturally after spacer */
     position: relative;
-    z-index: 1;
+    z-index: 0; /* Lower than image so it appears below */
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   }
   
