@@ -376,6 +376,10 @@
     height: 70vh;
     display: block !important;
     z-index: 0;
+    /* Remove from flex layout when fixed */
+    order: -1;
+    flex: 0 0 auto;
+    align-self: flex-start;
   }
   
   .hero-image-section .slideshow-container {
@@ -452,6 +456,10 @@
     /* Remove any white background */
     background-color: #000;
     pointer-events: auto;
+    /* Remove from flex layout when fixed */
+    order: -1;
+    flex: 0 0 auto;
+    align-self: flex-start;
   }
   
   /* Show the slideshow at these sizes */
@@ -550,6 +558,10 @@
     overflow: hidden;
     z-index: 0;
     background-color: #000;
+    /* Remove from flex layout when fixed */
+    order: -1;
+    flex: 0 0 auto;
+    align-self: flex-start;
   }
   
   .hero-image-section .slideshow-container {
