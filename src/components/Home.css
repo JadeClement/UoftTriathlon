@@ -363,8 +363,13 @@
   
   .split-hero {
     margin-top: 0;
-    padding-top: 0;
+    padding-top: 70vh; /* Reserve space for fixed image */
     position: relative;
+  }
+  
+  /* Hide spacer - using padding-top instead */
+  .hero-image-spacer {
+    display: none;
   }
   
   .hero-image-section {
@@ -375,11 +380,7 @@
     min-height: 70vh;
     height: 70vh;
     display: block !important;
-    z-index: 0;
-    /* Remove from flex layout when fixed */
-    order: -1;
-    flex: 0 0 auto;
-    align-self: flex-start;
+    z-index: 1; /* Above text section */
   }
   
   .hero-image-section .slideshow-container {
@@ -389,14 +390,6 @@
     width: 100%;
     height: 100%; /* Full height */
     display: block !important;
-  }
-  
-  /* Spacer div to reserve space for fixed image */
-  .hero-image-spacer {
-    display: block;
-    width: 100%;
-    height: 70vh;
-    flex-shrink: 0;
   }
   
   .hero-text-section {
