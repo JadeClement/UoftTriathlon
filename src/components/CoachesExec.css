@@ -30,14 +30,14 @@
 /* Coaches Section */
 .coaches-section {
   background: white;
-  padding: 0 2rem 2rem; /* minimal top padding */
+  padding: 0 2rem 2rem; /* pull title up */
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: -2.5rem 0 2rem; /* pull section closer to page title */
+  margin: -1rem 0 2rem; /* pull section upward */
 }
 
 .coaches-section .section-subtitle {
-  transform: translateY(-24px); /* lift subtitle without affecting layout flow */
+  transform: translateY(-16px); /* lift subtitle without affecting layout flow */
 }
 
 .coaches-grid {
@@ -51,7 +51,7 @@
 .coach-card-container {
   flex: 1;
   min-width: 250px;
-  margin-top: 1.5rem; /* separation from subtitle */
+  margin-top: 3.25rem; /* add separation from subtitle */
 }
 
 .coach-card-link {
