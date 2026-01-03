@@ -384,11 +384,12 @@
   
   .hero-text-section {
     margin-top: 0;
-    position: absolute;
-    top: calc(70px + 70vh); /* Position below navbar (70px) + image height (70vh) */
-    left: 0;
-    right: 0;
+    position: relative;
     z-index: 1;
+  }
+  
+  .split-hero {
+    padding-top: 70vh; /* Reserve space for fixed image */
   }
 }
 
@@ -418,8 +419,7 @@
     min-height: auto;
     position: relative;
     margin-top: 0;
-    padding-top: 0;
-    min-height: calc(70px + 70vh + 200px); /* Reserve space for fixed image + text section */
+    padding-top: 70vh; /* Reserve space for fixed image */
   }
   
   .hero-image-section {
@@ -496,13 +496,14 @@
     justify-content: center;
     margin-top: 0;
     margin-bottom: 0;
-    position: absolute;
-    top: calc(70px + 70vh); /* Position below navbar (70px) + image height (70vh) */
-    left: 0;
-    right: 0;
+    position: relative;
     z-index: 1;
     /* Add subtle shadow to separate from image */
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .split-hero {
+    padding-top: 70vh; /* Reserve space for fixed image */
   }
 }
 
@@ -583,10 +584,7 @@
     align-items: center;
     justify-content: center;
     margin-top: 0;
-    position: absolute;
-    top: calc(70px + 70vh); /* Position below navbar (70px) + image height (70vh) */
-    left: 0;
-    right: 0;
+    position: relative;
     z-index: 1;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   }
@@ -686,17 +684,14 @@
   }
   
   .split-hero {
-    padding-top: 0;
+    padding-top: 45vh; /* Reserve space for fixed image (45vh at mobile) */
   }
   
   .hero-text-section {
     height: 55vh;
     padding: 1.5rem 1rem;
     margin-top: 0;
-    position: absolute;
-    top: calc(70px + 45vh); /* Position below navbar (70px) + image height (45vh at mobile) */
-    left: 0;
-    right: 0;
+    position: relative;
   }
   
   .hero-image-section {
