@@ -509,7 +509,7 @@
     flex-direction: column;
     min-height: auto;
     position: relative;
-    padding-top: 70vh; /* Reserve space for fixed image section */
+    padding-top: 0;
   }
   
   .hero-image-section {
