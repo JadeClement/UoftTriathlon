@@ -383,7 +383,7 @@
   }
   
   .hero-text-section {
-    margin-top: 0; /* Start below the image section */
+    margin-top: -70vh; /* Pull up to start immediately after image */
     position: relative;
     z-index: 1;
   }
@@ -489,7 +489,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 0; /* Start below reserved space */
+    margin-top: -70vh; /* Pull up to start immediately after image */
     margin-bottom: 0;
     position: relative;
     z-index: 1;
