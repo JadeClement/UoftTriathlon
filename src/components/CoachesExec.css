@@ -27,6 +27,11 @@
   font-weight: 600;
 }
 
+/* Lift coaches subtitle upward slightly */
+.coaches-section .section-subtitle {
+  margin-top: -0.5rem;
+}
+
 /* Coaches Section */
 .coaches-section {
   background: white;
