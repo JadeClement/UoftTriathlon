@@ -23,6 +23,7 @@
   color: #1E3A8A;
   font-size: 1.8rem;
   margin: 0; /* no extra margin */
+  padding: 0 0 8px; /* tighten subtitle box */
   font-weight: 600;
 }
 
@@ -40,7 +41,7 @@
   flex-wrap: wrap;
   gap: 2rem;
   align-items: stretch;
-  margin-top: 1.25rem; /* reduced spacing under Coaches heading */
+  margin-top: 2rem; /* more space under Coaches heading */
 }
 
 .coach-card-container {
