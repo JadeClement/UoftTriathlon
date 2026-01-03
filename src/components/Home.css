@@ -1,6 +1,6 @@
 .home {
   width: 100%;
-  margin-top: -12px; /* pull hero up closer to navbar */
+  margin-top: -32px; /* pull hero up closer to navbar and banner */
 }
 
 /* Hero Section: always stacked, image first, text second */
