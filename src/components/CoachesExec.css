@@ -30,14 +30,20 @@
 /* Coaches Section */
 .coaches-section {
   background: white;
-  padding: 0 2rem 2rem; /* pull title up */
+  position: relative;
+  padding: 3.5rem 2rem 2rem; /* reserve space for sticky subtitle */
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin: -1rem 0 2rem; /* pull section upward */
 }
 
 .coaches-section .section-subtitle {
-  transform: translateY(-16px); /* lift subtitle without affecting layout flow */
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
 }
 
 .coaches-grid {
@@ -51,7 +57,7 @@
 .coach-card-container {
   flex: 1;
   min-width: 250px;
-  margin-top: 3.25rem; /* add separation from subtitle */
+  margin-top: 1rem; /* separation from subtitle */
 }
 
 .coach-card-link {
