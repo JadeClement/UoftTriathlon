@@ -370,15 +370,6 @@
     min-height: 70vh;
     height: 70vh;
     z-index: 0;
-    pointer-events: auto; /* Ensure it's interactive */
-  }
-  
-  /* Hide the image section from layout flow when fixed */
-  .split-hero > .hero-image-section {
-    position: fixed;
-    height: 0;
-    min-height: 0;
-    overflow: visible;
   }
   
   .hero-image-section .slideshow-container {
