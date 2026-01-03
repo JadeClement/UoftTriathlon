@@ -15,7 +15,7 @@
   text-align: center;
   color: #1E3A8A;
   font-size: 2.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   font-weight: 700;
 }
 
@@ -27,18 +27,13 @@
   font-weight: 600;
 }
 
-/* Lift coaches subtitle upward slightly */
-.coaches-section .section-subtitle {
-  margin-top: -3rem;
-}
-
 /* Coaches Section */
 .coaches-section {
   background: white;
   padding: 0 2rem 2rem; /* pull title up */
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
+  margin: -1rem 0 2rem; /* pull section upward */
 }
 
 .coaches-grid {
