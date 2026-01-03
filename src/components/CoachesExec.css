@@ -1,6 +1,6 @@
 .coaches-exec-container {
   margin-top: 0;
-  padding: 2rem 0;
+  padding: 1rem 0 2rem; /* reduce top padding to pull titles closer to navbar */
   background: #f8fafc;
   min-height: calc(100vh - var(--navbar-height, 70px));
 }
@@ -40,6 +40,7 @@
   flex-wrap: wrap;
   gap: 2rem;
   align-items: stretch;
+  margin-top: 1.25rem; /* add breathing room under Coaches heading */
 }
 
 .coach-card-container {
@@ -55,7 +56,7 @@
 
 .coach-card {
   background: #f8fafc;
-  padding: 1.5rem;
+  padding: 2.25rem 1.5rem 1.5rem; /* extra top padding to avoid clipping avatar */
   border-radius: 8px;
   border-left: 4px solid #1E40AF;
   text-align: center;
