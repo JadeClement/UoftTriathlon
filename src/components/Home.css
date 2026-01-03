@@ -501,41 +501,83 @@
 @media (max-width: 768px) {
   .home {
     margin-top: 0;
-    padding-top: 0; /* No extra padding on mobile - navbar handles spacing */
+    padding-top: 0;
+    position: relative;
   }
   
   .split-hero {
     flex-direction: column;
-    min-height: auto; /* Allow natural height */
+    min-height: auto;
+    position: relative;
+    padding-top: 70vh; /* Reserve space for fixed image section */
   }
   
   .hero-image-section {
+    position: fixed;
+    top: 70px; /* Directly below navbar */
+    left: 0;
     width: 100%;
-    min-height: 50vh;
-    height: auto;
-    display: block; /* Ensure image section is visible */
+    min-height: 70vh;
+    height: 70vh;
+    display: block;
+    overflow: hidden;
+    z-index: 0;
+    background-color: #000;
   }
   
   .hero-image-section .slideshow-container {
-    display: block; /* Ensure slideshow container is visible */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
   }
   
   .hero-image-section .slideshow {
-    display: block; /* Ensure slideshow is visible */
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: block;
   }
   
   .hero-image-section .slide {
-    display: block; /* Ensure slides are visible */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+    display: block;
+  }
+  
+  .hero-image-section .slide.active {
+    opacity: 1;
+    z-index: 1;
+  }
+  
+  .hero-image-section .slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
   }
   
   .hero-text-section {
     width: 100%;
-    min-height: 50vh;
+    min-height: auto;
     height: auto;
     padding: 2rem 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-top: -70vh; /* Pull up to start immediately after image */
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   }
   
   .hero-content {
@@ -632,13 +674,19 @@
     font-size: 0.9rem;
   }
   
+  .split-hero {
+    padding-top: 45vh; /* Reserve space for smaller image at mobile */
+  }
+  
   .hero-text-section {
     height: 55vh;
     padding: 1.5rem 1rem;
+    margin-top: -45vh; /* Pull up to match image height */
   }
   
   .hero-image-section {
     height: 45vh;
+    min-height: 45vh;
   }
   
   .stats-grid {
