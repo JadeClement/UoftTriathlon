@@ -35,6 +35,8 @@ const Home = () => {
     <div className="home">
       {/* Split Screen Hero - 60% Image, 40% Text */}
       <section className="split-hero">
+        {/* Spacer for fixed image section */}
+        <div className="hero-image-spacer"></div>
         {/* Left Side - Image Slideshow (60%) */}
         <div className="hero-image-section">
           <div className="slideshow-container">
