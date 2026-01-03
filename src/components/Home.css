@@ -405,7 +405,7 @@
 @media (max-width: 768px) and (min-width: 481px) {
   /* Medium mobile sizes - stack vertically but ensure image is visible */
   .home {
-    margin-top: -100px; /* Pull up to compensate for body padding-top (100px on mobile) */
+    margin-top: 0;
     padding-top: 0;
     position: relative;
   }
@@ -415,12 +415,13 @@
     min-height: auto;
     position: relative;
     margin-top: 0;
-    padding-top: 0;
+    padding-top: 70vh; /* Reserve space for image section */
   }
   
   .hero-image-section {
-    position: relative;
-    margin-top: 70px; /* Start directly below navbar (70px tall) */
+    position: fixed;
+    top: 70px; /* Directly below navbar */
+    left: 0;
     width: 100% !important;
     min-height: 70vh !important;
     height: 70vh !important;
@@ -428,6 +429,7 @@
     visibility: visible !important;
     opacity: 1 !important;
     overflow: hidden;
+    z-index: 0;
     /* Remove any white background */
     background-color: #000;
   }
