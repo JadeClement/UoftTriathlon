@@ -40,7 +40,7 @@
   flex-wrap: wrap;
   gap: 2rem;
   align-items: stretch;
-  margin-top: 3rem; /* extra breathing room under Coaches heading */
+  margin-top: 4.5rem; /* extra breathing room under Coaches heading */
 }
 
 .coach-card-container {
