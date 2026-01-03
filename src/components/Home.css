@@ -237,15 +237,19 @@
 @media (max-width: 768px) {
   .split-hero {
     flex-direction: column;
+    min-height: auto;
   }
   
   .hero-image-section {
     width: 100%;
+    min-height: 50vh;
     height: 50vh;
+    order: 1; /* Ensure image appears first */
   }
   
   .hero-text-section {
     width: 100%;
+    order: 2; /* Ensure text appears second (below image) */
   }
   
   .hero-title {
