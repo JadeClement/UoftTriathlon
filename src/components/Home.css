@@ -696,8 +696,9 @@
     font-size: 0.9rem;
   }
   
-  .split-hero {
-    padding-top: 45vh; /* Reserve space for fixed image (45vh at mobile) */
+  /* Spacer div to reserve space for fixed image (45vh at mobile) */
+  .hero-image-spacer {
+    height: 45vh;
   }
   
   .hero-text-section {
