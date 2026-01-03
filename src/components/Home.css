@@ -242,12 +242,13 @@
 @media (max-width: 768px) {
   .split-hero {
     flex-direction: column;
+    flex-wrap: nowrap;
     min-height: auto;
   }
   
   .hero-image-section {
     width: 100%;
-    min-height: 45vh;
+    min-height: 50vh;
     height: auto;
     order: 1; /* Ensure image appears first */
   }
@@ -256,6 +257,7 @@
     width: 100%;
     order: 2; /* Ensure text appears second (below image) */
     position: relative; /* Ensure normal flow */
+    margin-top: 0;
   }
   
   .hero-title {
