@@ -36,6 +36,10 @@
   margin: -1rem 0 2rem; /* pull section upward */
 }
 
+.coaches-section .section-subtitle {
+  transform: translateY(-16px); /* lift subtitle without affecting layout flow */
+}
+
 .coaches-grid {
   display: flex;
   flex-wrap: wrap;
