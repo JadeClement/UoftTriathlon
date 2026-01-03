@@ -718,6 +718,7 @@
   
   /* Spacer div to reserve space for fixed image (45vh at mobile) */
   .hero-image-spacer {
+    display: block;
     height: 45vh;
   }
   
