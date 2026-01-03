@@ -282,7 +282,7 @@ const CoachesExec = () => {
         
         {/* Coaches Section */}
         <div className="coaches-section">
-          <h2 className="section-subtitle">Our Coaches</h2>
+          <h2 className="section-subtitle">Coaches</h2>
           <div className="coaches-grid">
             <div className="coach-card-container">
               {(isAdmin(currentUser) || isExec(currentUser)) && (
