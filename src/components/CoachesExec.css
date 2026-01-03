@@ -29,7 +29,7 @@
 /* Coaches Section */
 .coaches-section {
   background: white;
-  padding: 2rem; /* restore generous padding */
+  padding: 1.25rem 2rem 2rem; /* trim top padding to pull title upward */
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
@@ -40,7 +40,7 @@
   flex-wrap: wrap;
   gap: 2rem;
   align-items: stretch;
-  margin-top: 2rem; /* balanced spacing under Coaches heading */
+  margin-top: 1.25rem; /* reduced spacing under Coaches heading */
 }
 
 .coach-card-container {
