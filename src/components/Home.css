@@ -358,7 +358,7 @@
   
   .split-hero {
     margin-top: 0;
-    padding-top: 70vh; /* Reserve space for image section */
+    padding-top: 0;
     position: relative;
   }
   
@@ -383,7 +383,7 @@
   }
   
   .hero-text-section {
-    margin-top: 70vh; /* Start below the fixed image section */
+    margin-top: calc(70px + 70vh); /* Start below navbar (70px) + image height (70vh) */
     position: relative;
     z-index: 1;
   }
@@ -415,7 +415,7 @@
     min-height: auto;
     position: relative;
     margin-top: 0;
-    padding-top: 70vh; /* Reserve space for image section */
+    padding-top: 0;
   }
   
   .hero-image-section {
@@ -489,7 +489,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 70vh; /* Start below the fixed image section */
+    margin-top: calc(70px + 70vh); /* Start below navbar (70px) + image height (70vh) */
     margin-bottom: 0;
     position: relative;
     z-index: 1;
@@ -574,7 +574,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 70vh; /* Start below the fixed image section */
+    margin-top: calc(70px + 70vh); /* Start below navbar (70px) + image height (70vh) */
     position: relative;
     z-index: 1;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
@@ -675,13 +675,13 @@
   }
   
   .split-hero {
-    padding-top: 45vh; /* Reserve space for smaller image at mobile */
+    padding-top: 0;
   }
   
   .hero-text-section {
     height: 55vh;
     padding: 1.5rem 1rem;
-    margin-top: 45vh; /* Start below the fixed image section (45vh at mobile) */
+    margin-top: calc(70px + 45vh); /* Start below navbar (70px) + image height (45vh at mobile) */
   }
   
   .hero-image-section {
