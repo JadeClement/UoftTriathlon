@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Capacitor } from '@capacitor/core';
 import './Navbar.css';
 // Simple linkifier for the banner message: escapes HTML, then converts URLs to <a>
 function escapeHtml(input) {
@@ -31,17 +32,47 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [banner, setBanner] = useState({ enabled: false, items: [], rotationIntervalMs: 6000 });
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [isBannerHovered, setIsBannerHovered] = useState(false);
   const [popupModal, setPopupModal] = useState({ enabled: false, message: '', popupId: null });
   const [showPopupModal, setShowPopupModal] = useState(false);
+  const [itemsInMore, setItemsInMore] = useState(new Set()); // Track which items are in More dropdown
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const navigate = useNavigate();
   const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
   const profileRef = useRef(null);
+  const profileMobileRef = useRef(null);
   const moreRef = useRef(null);
+  const logoRef = useRef(null);
+  const navbarContainerRef = useRef(null);
+  const navbarMenuRef = useRef(null);
+  
+  // Refs for each nav item to measure widths
+  const navItemRefs = useRef({});
+  
+  // Define nav items in order (left to right)
+  // Move order (right to left into More): Races → Coaches & Exec → Schedule → Join Us → Admin → Forum
+  const getNavItems = () => {
+    const items = [
+      { key: 'home', path: '/', label: 'Home', alwaysVisible: true, ref: 'home' },
+      { key: 'forum', path: '/forum', label: 'Forum', condition: () => currentUser, ref: 'forum' },
+      { key: 'joinUs', path: '/join-us', label: 'Join Us', ref: 'joinUs' },
+      { key: 'schedule', path: '/schedule', label: 'Schedule', ref: 'schedule' },
+      { key: 'coachesExec', path: '/coaches-exec', label: 'Coaches & Exec', ref: 'coachesExec' },
+      { key: 'races', path: '/races', label: 'Races', condition: () => currentUser && isMember(currentUser), ref: 'races' },
+      { key: 'admin', path: '/admin', label: 'Admin', condition: () => currentUser && (isAdmin(currentUser) || isExec(currentUser)), ref: 'admin' },
+    ];
+    
+    // Filter by conditions
+    return items.filter(item => !item.condition || item.condition());
+  };
+  
+  // Move order (right to left): Races → Coaches & Exec → Schedule → Join Us → Admin → Forum
+  const moveOrder = ['races', 'coachesExec', 'schedule', 'joinUs', 'admin', 'forum'];
   
   // Listen for profile updates to refresh the navbar profile image
   useEffect(() => {
@@ -158,6 +189,178 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, [banner.enabled, banner.items, banner.rotationIntervalMs, isBannerHovered]);
 
+  // Track mobile state
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Responsive navbar: calculate which items fit and move overflow to More dropdown
+  const isCalculatingRef = useRef(false);
+  
+  useEffect(() => {
+    const calculateResponsiveLayout = () => {
+      // Prevent re-entrancy
+      if (isCalculatingRef.current) {
+        return;
+      }
+      
+      // Only run on desktop (not mobile)
+      if (isMobile) {
+        setItemsInMore(new Set()); // Clear items in More on mobile
+        return;
+      }
+      
+      const container = navbarContainerRef.current;
+      const menu = navbarMenuRef.current;
+      const logo = logoRef.current;
+      const profile = profileRef.current;
+      const moreButton = moreRef.current;
+      
+      if (!container || !menu || !logo || !profile || !moreButton) {
+        return;
+      }
+      
+      isCalculatingRef.current = true;
+      
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        try {
+          const containerWidth = container.offsetWidth;
+          const logoWidth = logo.offsetWidth;
+          // Ensure profile button is always measured - use a minimum width if measurement fails
+          const profileWidth = Math.max(profile.offsetWidth || 0, 50); // Minimum 50px for profile button
+          // More button should always be visible, use minimum width if not measured yet
+          const moreButtonWidth = Math.max(moreButton.offsetWidth || 0, 60); // Minimum 60px for More button
+          
+          // Calculate available space for nav items
+          // Account for padding (15px on each side = 30px total)
+          const containerPadding = 30; // 15px on each side
+          const gapBetweenItems = 32; // 2rem gap between nav items (from CSS)
+          // No gap between logo and nav menu since we use space-between
+          // Reserve space for profile button + More button + gaps + safety margin
+          // Profile button must always be visible, so be conservative with extra margin
+          // More button should always be visible too
+          const reservedSpace = profileWidth + moreButtonWidth + (gapBetweenItems * 2) + 100; // Extra 100px safety margin to ensure profile never gets pushed off
+          const availableWidth = Math.max(0, containerWidth - logoWidth - reservedSpace - containerPadding);
+          
+          // Get nav items first (needed for logging and calculation)
+          const navItems = getNavItems();
+          
+          // Debug logging
+          console.log('📐 Navbar calculation:', {
+            containerWidth,
+            logoWidth,
+            profileWidth,
+            moreButtonWidth,
+            reservedSpace,
+            availableWidth,
+            navItemsCount: navItems.length
+          });
+          const itemWidths = {};
+          
+          // Measure ALL items' widths (even those currently in More) to get accurate measurements
+          navItems.forEach(item => {
+            const ref = navItemRefs.current[item.ref];
+            if (ref) {
+              // Temporarily show the item to measure it accurately
+              const wasHidden = ref.style.display === 'none';
+              if (wasHidden) {
+                ref.style.display = '';
+              }
+              const width = ref.offsetWidth;
+              itemWidths[item.key] = width;
+              if (wasHidden) {
+                ref.style.display = 'none';
+              }
+            }
+          });
+          
+          // Calculate which items should be visible
+          const newItemsInMore = new Set();
+          let currentWidth = 0;
+          
+          // Start with all items visible, then move to More if needed
+          for (const item of navItems) {
+            if (item.alwaysVisible) {
+              currentWidth += (itemWidths[item.key] || 0) + gapBetweenItems;
+              continue;
+            }
+            
+            const itemWidth = (itemWidths[item.key] || 0) + gapBetweenItems;
+            const wouldFit = currentWidth + itemWidth <= availableWidth;
+            
+            if (wouldFit) {
+              currentWidth += itemWidth;
+            } else {
+              // This item doesn't fit, move it to More
+              newItemsInMore.add(item.key);
+            }
+          }
+          
+          console.log('📊 Navbar items calculation:', {
+            availableWidth,
+            currentWidth,
+            itemsInMore: Array.from(newItemsInMore),
+            itemWidths
+          });
+          
+          // Only update state if it actually changed
+          const currentSet = itemsInMore;
+          const setsEqual = currentSet.size === newItemsInMore.size && 
+                           Array.from(currentSet).every(key => newItemsInMore.has(key));
+          
+          if (!setsEqual) {
+            console.log('🔄 Updating itemsInMore:', Array.from(newItemsInMore));
+            setItemsInMore(newItemsInMore);
+          }
+        } finally {
+          isCalculatingRef.current = false;
+        }
+      });
+    };
+    
+    // Debounce resize events (very short delay for responsive updates)
+    let resizeTimeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      // Use requestAnimationFrame for immediate visual update, then recalculate
+      requestAnimationFrame(() => {
+        resizeTimeout = setTimeout(calculateResponsiveLayout, 16); // ~1 frame delay
+      });
+    };
+    
+    // Calculate on mount
+    const timeoutId = setTimeout(calculateResponsiveLayout, 100);
+    window.addEventListener('resize', handleResize);
+    
+    // Also use ResizeObserver for more accurate container size changes
+    let resizeObserver;
+    if (navbarContainerRef.current && window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => {
+        clearTimeout(resizeTimeout);
+        // Immediate calculation on container size change
+        requestAnimationFrame(() => {
+          calculateResponsiveLayout();
+        });
+      });
+      resizeObserver.observe(navbarContainerRef.current);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      clearTimeout(timeoutId);
+      clearTimeout(resizeTimeout);
+    };
+  }, [currentUser, isMember, isAdmin, isExec, isMobile]); // Removed itemsInMore from dependencies
+
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
@@ -189,6 +392,7 @@ const Navbar = () => {
   const closeMenu = () => {
     setIsOpen(false);
     setIsMoreOpen(false);
+    setIsHamburgerOpen(false);
   };
 
   const closeProfileMenu = () => {
@@ -202,19 +406,43 @@ const Navbar = () => {
   // Handle clicks outside profile and more dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
+      const clickedInsideProfile = 
+        (profileRef.current && profileRef.current.contains(event.target)) ||
+        (profileMobileRef.current && profileMobileRef.current.contains(event.target));
+      
+      if (!clickedInsideProfile) {
         setIsProfileOpen(false);
       }
+      
       if (moreRef.current && !moreRef.current.contains(event.target)) {
         setIsMoreOpen(false);
+      }
+      
+      // Close hamburger menu when clicking outside
+      const hamburgerButton = document.querySelector('.navbar-hamburger');
+      const hamburgerMenu = document.querySelector('.hamburger-menu');
+      if (hamburgerButton && hamburgerMenu && 
+          !hamburgerButton.contains(event.target) && 
+          !hamburgerMenu.contains(event.target)) {
+        setIsHamburgerOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, []);
+
+  const navItems = getNavItems();
+  const itemsInMoreArray = Array.from(itemsInMore);
+  const itemsInMoreMenu = navItems.filter(item => itemsInMoreArray.includes(item.key));
+  const itemsInMainNav = navItems.filter(item => !itemsInMoreArray.includes(item.key));
+  
+  // Check if in Capacitor app
+  const isNativeApp = Capacitor.isNativePlatform();
 
   return (
     <>
@@ -258,56 +486,68 @@ const Navbar = () => {
         </div>
       </div>
     )}
-    <nav className="navbar" style={{ marginTop: banner.enabled && (banner.items?.length > 0) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
-      <div className="navbar-container">
-        <Link to="/" className="navbar-logo" onClick={closeMenu}>
+    <nav className={`navbar ${isNativeApp ? 'capacitor-navbar' : ''}`} style={{ marginTop: banner.enabled && (banner.items?.length > 0) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
+      <div className="navbar-container" ref={navbarContainerRef}>
+        <Link to="/" className="navbar-logo" onClick={closeMenu} ref={logoRef}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
           <span className="logo-text">UofT Triathlon</span>
         </Link>
         
-        <div className={`navbar-menu ${isOpen ? 'active' : ''}`}>
-          <Link 
-            to="/" 
-            className={`navbar-link ${isActive('/') ? 'active' : ''}`}
-            onClick={closeMenu}
+        {/* Hamburger menu for mobile - hide on iOS apps */}
+        {isMobile && !isNativeApp && (
+          <button 
+            className="navbar-hamburger"
+            onClick={() => setIsHamburgerOpen(!isHamburgerOpen)}
+            aria-label="Menu"
           >
-            Home
-          </Link>
-          <Link 
-            to="/join-us" 
-            className={`navbar-link ${isActive('/join-us') ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Join Us
-          </Link>
-
-          <Link 
-            to="/schedule" 
-            className={`navbar-link ${isActive('/schedule') ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Schedule
-          </Link>
-
-          <Link
-            to="/coaches-exec"
-            className={`navbar-link ${isActive('/coaches-exec') ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Coaches & Exec
-          </Link>
-
-          {currentUser && isMember(currentUser) && (
-            <Link 
-              to="/races" 
-              className={`navbar-link ${isActive('/races') ? 'active' : ''}`}
+            <span className={`hamburger-bar ${isHamburgerOpen ? 'active' : ''}`}></span>
+            <span className={`hamburger-bar ${isHamburgerOpen ? 'active' : ''}`}></span>
+            <span className={`hamburger-bar ${isHamburgerOpen ? 'active' : ''}`}></span>
+          </button>
+        )}
+        
+        {/* Hamburger menu dropdown for mobile - hide on iOS apps */}
+        {isMobile && !isNativeApp && isHamburgerOpen && (
+          <div className="hamburger-menu">
+            {navItems.map(item => (
+              <Link
+                key={item.key}
+                to={item.path}
+                className={`hamburger-item ${isActive(item.path) ? 'active' : ''}`}
+                onClick={closeMenu}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link to="/faq" className={`hamburger-item ${isActive('/faq') ? 'active' : ''}`} onClick={closeMenu}>
+              FAQ
+            </Link>
+            <Link to="/resources" className={`hamburger-item ${isActive('/resources') ? 'active' : ''}`} onClick={closeMenu}>
+              Resources
+            </Link>
+            <Link to="/team-gear" className={`hamburger-item ${isActive('/team-gear') ? 'active' : ''}`} onClick={closeMenu}>
+              Team Gear
+            </Link>
+          </div>
+        )}
+        
+        {/* Hide navbar menu on iOS apps - everything is in bottom nav */}
+        {!isNativeApp && (
+        <div className={`navbar-menu ${isOpen ? 'active' : ''}`} ref={navbarMenuRef}>
+          {/* Main nav items */}
+          {itemsInMainNav.map(item => (
+            <Link
+              key={item.key}
+              to={item.path}
+              ref={el => { if (el) navItemRefs.current[item.ref] = el; }}
+              className={`navbar-link ${isActive(item.path) ? 'active' : ''}`}
               onClick={closeMenu}
             >
-              Races
+              {item.label}
             </Link>
-          )}
+          ))}
 
-          {/* More dropdown for extra pages */}
+          {/* More dropdown */}
           <div className="navbar-link more-dropdown" ref={moreRef}>
             <button 
               className={`navbar-link as-button ${isMoreOpen ? 'active' : ''}`}
@@ -317,23 +557,35 @@ const Navbar = () => {
             </button>
             {isMoreOpen && (
               <div className="more-menu">
+                {/* Items moved from main nav */}
+                {itemsInMoreMenu.map(item => (
+                  <Link
+                    key={item.key}
+                    to={item.path}
+                    className={`more-item ${isActive(item.path) ? 'active' : ''}`}
+                    onClick={closeMenu}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                {/* Always in More dropdown */}
                 <Link 
                   to="/faq" 
-                  className="more-item"
+                  className={`more-item ${isActive('/faq') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
                   FAQ
                 </Link>
                 <Link 
                   to="/resources" 
-                  className="more-item"
+                  className={`more-item ${isActive('/resources') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
                   Resources
                 </Link>
                 <Link 
                   to="/team-gear" 
-                  className="more-item"
+                  className={`more-item ${isActive('/team-gear') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
                   Team Gear
@@ -341,31 +593,146 @@ const Navbar = () => {
               </div>
             )}
           </div>
-
           
-          
-          {currentUser && (
-            <Link 
-              to="/forum" 
-              className={`navbar-link ${isActive('/forum') ? 'active' : ''}`}
-              onClick={closeMenu}
-            >
-              Forum
-            </Link>
+          {/* Profile dropdown - inside navbar-menu on desktop, on the far right */}
+          {!isMobile && (
+            <>
+              {currentUser ? (
+                <div className="profile-dropdown" ref={profileRef}>
+                  <div 
+                    className="profile-picture-nav"
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  >
+                    {profileImageUrl ? (
+                      <img 
+                        src={profileImageUrl} 
+                        alt="Profile" 
+                        onError={(e) => {
+                          console.log('❌ Navbar profile image failed to load, falling back to default');
+                          e.target.src = '/images/default_profile.png';
+                        }}
+                      />
+                    ) : (
+                      <img 
+                        src="/images/default_profile.png" 
+                        alt="Profile" 
+                      />
+                    )}
+                  </div>
+                  
+                  {isProfileOpen && (
+                    <div className="profile-menu">
+                      <Link 
+                        to="/profile" 
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          closeMenu();
+                        }}
+                      >
+                        Profile
+                      </Link>
+                      <button 
+                        className="profile-menu-item logout-btn"
+                        onClick={() => {
+                          logout();
+                        }}
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="profile-dropdown" ref={profileRef}>
+                  <Link 
+                    to="/login"
+                    className="profile-picture-nav"
+                    onClick={closeMenu}
+                  >
+                    <img 
+                      src="/images/default_profile.png" 
+                      alt="Profile" 
+                    />
+                  </Link>
+                </div>
+              )}
+            </>
           )}
+        </div>
+        )}
           
-          {currentUser && (isAdmin(currentUser) || isExec(currentUser)) && (
-            <Link
-              to="/admin"
-              className={`navbar-link ${isActive('/admin') ? 'active' : ''}`}
-              onClick={closeMenu}
-            >
-              Admin
-            </Link>
-          )}
-          
+        {/* Profile dropdown - always show in top nav bar on the right (outside navbar-menu for iOS apps) */}
+        {isNativeApp && (
+          <>
+            {currentUser ? (
+              <div className="profile-dropdown" ref={profileRef}>
+                <div 
+                  className="profile-picture-nav"
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                >
+                  {profileImageUrl ? (
+                    <img 
+                      src={profileImageUrl} 
+                      alt="Profile" 
+                      onError={(e) => {
+                        console.log('❌ Navbar profile image failed to load, falling back to default');
+                        e.target.src = '/images/default_profile.png';
+                      }}
+                    />
+                  ) : (
+                    <img 
+                      src="/images/default_profile.png" 
+                      alt="Profile" 
+                    />
+                  )}
+                </div>
+                
+                {isProfileOpen && (
+                  <div className="profile-menu">
+                    <Link 
+                      to="/profile" 
+                      className="profile-menu-item"
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        closeMenu();
+                      }}
+                    >
+                      Profile
+                    </Link>
+                    <button 
+                      className="profile-menu-item logout-btn"
+                      onClick={() => {
+                        logout();
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="profile-dropdown" ref={profileRef}>
+                <Link 
+                  to="/login"
+                  className="profile-picture-nav"
+                  onClick={closeMenu}
+                >
+                  <img 
+                    src="/images/default_profile.png" 
+                    alt="Profile" 
+                  />
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+        
+        {/* Profile dropdown visible on mobile browsers (outside navbar-menu) */}
+        {isMobile && !isNativeApp && (
+          <div className="profile-dropdown-mobile" ref={profileMobileRef}>
           {currentUser ? (
-            <div className="profile-dropdown" ref={profileRef}>
+            <>
               <div 
                 className="profile-picture-nav"
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -394,11 +761,21 @@ const Navbar = () => {
                     className="profile-menu-item"
                     onClick={() => {
                       setIsProfileOpen(false);
-                      closeMenu();
                     }}
                   >
                     Profile
                   </Link>
+                  {currentUser && (isAdmin(currentUser) || isExec(currentUser)) && (
+                    <Link
+                      to="/admin"
+                      className="profile-menu-item"
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                      }}
+                    >
+                      Admin
+                    </Link>
+                  )}
                   <button 
                     className="profile-menu-item logout-btn"
                     onClick={() => {
@@ -409,17 +786,20 @@ const Navbar = () => {
                   </button>
                 </div>
               )}
-            </div>
+            </>
           ) : (
-            <Link 
-              to="/login" 
-              className={`navbar-link ${isActive('/login') ? 'active' : ''}`}
-              onClick={closeMenu}
+            <div 
+              className="profile-picture-nav"
+              onClick={() => navigate('/login')}
             >
-              Login
-            </Link>
+              <img 
+                src="/images/default_profile.png" 
+                alt="Profile" 
+              />
+            </div>
           )}
-        </div>
+          </div>
+        )}
         
         <div className="navbar-toggle" onClick={toggleMenu}>
           <span className={`bar ${isOpen ? 'active' : ''}`}></span>

@@ -7,11 +7,23 @@ const router = express.Router();
 // GET /api/merch-orders - list merch orders
 router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT id, first_name, last_name, email, item, size, quantity, gender, created_at 
-       FROM merch_orders 
-       ORDER BY created_at DESC`
-    );
+    // Get filter parameter (all, archived, not_archived)
+    const filter = req.query.filter || 'not_archived'; // Default to not_archived
+    
+    // Build query based on filter
+    let query = `SELECT id, first_name, last_name, email, item, size, quantity, gender, created_at, archived 
+                 FROM merch_orders`;
+    
+    if (filter === 'archived') {
+      query += ' WHERE archived = true';
+    } else if (filter === 'not_archived') {
+      query += ' WHERE archived = false OR archived IS NULL';
+    }
+    // If filter is 'all', no WHERE clause needed
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const result = await pool.query(query);
     const orders = (result.rows || []).map(row => ({
       id: row.id,
       firstName: row.first_name,
@@ -22,6 +34,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
       quantity: row.quantity,
       gender: row.gender,
       created_at: row.created_at,
+      archived: row.archived || false,
     }));
     res.json({ orders });
   } catch (error) {
@@ -38,7 +51,13 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     const qty = Number.isFinite(quantity) ? quantity : parseInt(quantity, 10) || 1;
-    const genderValue = gender === 'womens' ? 'W' : 'M'; // Store as M/W
+
+    // Gender is now controlled by the gear item's hasGender flag on the frontend
+    // If gender is provided, store as M/W; otherwise null
+    let genderValue = null;
+    if (gender) {
+      genderValue = gender === 'womens' ? 'W' : 'M';
+    }
     const result = await pool.query(
       `INSERT INTO merch_orders (first_name, last_name, email, item, size, quantity, gender)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -62,6 +81,70 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
   } catch (error) {
     console.error('Create merch order error:', error);
     res.status(500).json({ error: 'Failed to create merch order' });
+  }
+});
+
+// Archive multiple orders - MUST come before /:id route to avoid route conflict
+router.put('/archive', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+    
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ error: 'orderIds must be a non-empty array' });
+    }
+    
+    // Validate all IDs are numbers
+    const validIds = orderIds.filter(id => !isNaN(parseInt(id, 10))).map(id => parseInt(id, 10));
+    if (validIds.length === 0) {
+      return res.status(400).json({ error: 'No valid order IDs provided' });
+    }
+    
+    // Update all orders to archived = true
+    const placeholders = validIds.map((_, i) => `$${i + 1}`).join(', ');
+    const result = await pool.query(
+      `UPDATE merch_orders SET archived = true WHERE id IN (${placeholders})`,
+      validIds
+    );
+    
+    res.json({ 
+      message: `${result.rowCount} order(s) archived successfully`,
+      archivedCount: result.rowCount
+    });
+  } catch (error) {
+    console.error('Archive orders error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Unarchive multiple orders - MUST come before /:id route to avoid route conflict
+router.put('/unarchive', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+    
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ error: 'orderIds must be a non-empty array' });
+    }
+    
+    // Validate all IDs are numbers
+    const validIds = orderIds.filter(id => !isNaN(parseInt(id, 10))).map(id => parseInt(id, 10));
+    if (validIds.length === 0) {
+      return res.status(400).json({ error: 'No valid order IDs provided' });
+    }
+    
+    // Update all orders to archived = false
+    const placeholders = validIds.map((_, i) => `$${i + 1}`).join(', ');
+    const result = await pool.query(
+      `UPDATE merch_orders SET archived = false WHERE id IN (${placeholders})`,
+      validIds
+    );
+    
+    res.json({ 
+      message: `${result.rowCount} order(s) unarchived successfully`,
+      unarchivedCount: result.rowCount
+    });
+  } catch (error) {
+    console.error('Unarchive orders error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

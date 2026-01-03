@@ -11,12 +11,26 @@ const dataDir = path.join(__dirname, '../data');
 const dataFilePath = path.join(dataDir, 'merch-orders.json');
 
 // GET all orders
-router.get('/', authenticateToken, requireAdmin, async (_req, res) => {
+router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    // Get filter parameter (all, archived, not_archived)
+    const filter = req.query.filter || 'not_archived'; // Default to not_archived
+    
+    // Build query based on filter
+    let query = 'SELECT id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at, archived FROM merch_orders';
+    const params = [];
+    
+    if (filter === 'archived') {
+      query += ' WHERE archived = true';
+    } else if (filter === 'not_archived') {
+      query += ' WHERE archived = false OR archived IS NULL';
+    }
+    // If filter is 'all', no WHERE clause needed
+    
+    query += ' ORDER BY created_at DESC';
+    
     // Load from DB
-    const { rows } = await db.query(
-      'SELECT id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at FROM merch_orders ORDER BY created_at DESC'
-    );
+    const { rows } = await db.query(query, params);
 
     // If DB empty but legacy JSON exists, backfill once
     if (rows.length === 0 && fs.existsSync(dataFilePath)) {
@@ -37,7 +51,7 @@ router.get('/', authenticateToken, requireAdmin, async (_req, res) => {
               );
             }
           }
-          const after = await db.query('SELECT id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at FROM merch_orders ORDER BY created_at DESC');
+          const after = await db.query('SELECT id, first_name AS "firstName", last_name AS "lastName", email, item, size, quantity, created_at, archived FROM merch_orders WHERE archived = false OR archived IS NULL ORDER BY created_at DESC');
           return res.json({ orders: after.rows });
         }
       } catch (bfErr) {
@@ -120,6 +134,38 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     res.json({ message: 'Order deleted' });
   } catch (e) {
     console.error('Delete order error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Archive multiple orders
+router.put('/archive', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+    
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ error: 'orderIds must be a non-empty array' });
+    }
+    
+    // Validate all IDs are numbers
+    const validIds = orderIds.filter(id => !isNaN(parseInt(id, 10))).map(id => parseInt(id, 10));
+    if (validIds.length === 0) {
+      return res.status(400).json({ error: 'No valid order IDs provided' });
+    }
+    
+    // Update all orders to archived = true
+    const placeholders = validIds.map((_, i) => `$${i + 1}`).join(', ');
+    const result = await db.query(
+      `UPDATE merch_orders SET archived = true WHERE id IN (${placeholders})`,
+      validIds
+    );
+    
+    res.json({ 
+      message: `${result.rowCount} order(s) archived successfully`,
+      archivedCount: result.rowCount
+    });
+  } catch (e) {
+    console.error('Archive orders error:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

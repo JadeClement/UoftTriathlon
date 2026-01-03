@@ -1,0 +1,34 @@
+# Test coverage
+coverage/
+*.lcov
+
+# Test environment
+.env.test
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Push notification credentials (sensitive)
+config/firebase-service-account.json
+config/AuthKey_*.p8
+config/*.p8
+firebase-service-account.json
+AuthKey_*.p8
+
+# OS files
+.DS_Store
+Thumbs.db
+

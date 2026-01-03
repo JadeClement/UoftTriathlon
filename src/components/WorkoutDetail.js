@@ -1,21 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
+import { useWorkout, useOnlineStatus } from '../hooks/useOfflineData';
 import { linkifyText } from '../utils/linkUtils';
+import { combineDateTime, getHoursUntil, isWithinHours, formatSignupDateForDisplay, formatSignupTimeOnlyForDisplay } from '../utils/dateUtils';
+import { normalizeProfileImageUrl } from '../utils/imageUtils';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
+import { getFieldsForSport } from '../config/sportFields';
 import './WorkoutDetail.css';
 
 const WorkoutDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser, isMember } = useAuth();
+  
+  // Offline data hooks
+  const isOnline = useOnlineStatus();
+  const {
+    workout: cachedWorkout,
+    signups: cachedSignups,
+    waitlist: cachedWaitlist,
+    loading: workoutLoading,
+    fromCache: workoutFromCache,
+    isOffline: workoutOffline,
+    refresh: refreshWorkout
+  } = useWorkout(id);
+  
+  // Use cached data if available, otherwise use state
   const [workout, setWorkout] = useState(null);
   const [signups, setSignups] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isSignedUp, setIsSignedUp] = useState(false);
   const [isOnWaitlist, setIsOnWaitlist] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -26,10 +46,31 @@ const WorkoutDetail = () => {
   const [editingAttendance, setEditingAttendance] = useState(false);
   const [swimMembers, setSwimMembers] = useState([]);
   const [isSwimWorkout, setIsSwimWorkout] = useState(false);
+  const [testEvent, setTestEvent] = useState(null);
+  const [testEventRecords, setTestEventRecords] = useState([]);
+  const [showTestEventModal, setShowTestEventModal] = useState(false);
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [testEventForm, setTestEventForm] = useState({
+    title: '',
+    sport: 'run',
+    date: '',
+    workout: ''
+  });
+  const [recordForm, setRecordForm] = useState({
+    result: '',
+    notes: '',
+    user_id: null,
+    result_fields: {}
+  });
+  // User selection state for coaches/admins when adding a result
+  const [recordUserSearchQuery, setRecordUserSearchQuery] = useState('');
+  const [recordUserSearchResults, setRecordUserSearchResults] = useState([]);
+  const [showRecordUserDropdown, setShowRecordUserDropdown] = useState(false);
+  const [selectedRecordUser, setSelectedRecordUser] = useState(null);
+
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   const { 
-    editingWorkout, 
     editForm, 
     saving, 
     startEdit, 
@@ -40,12 +81,218 @@ const WorkoutDetail = () => {
   
   const [editMode, setEditMode] = useState(false);
 
+  const isCoachOrAdmin = currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator');
+
+  // Define loader before effects to avoid temporal dead zone
+  const loadWorkoutDetails = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) {
+        const errorMsg = 'No authentication token found. Please log in.';
+        console.error(errorMsg);
+        setError(errorMsg);
+        setLoading(false);
+        return;
+      }
+
+      // Validate workout ID
+      if (!id || isNaN(parseInt(id))) {
+        const errorMsg = 'Invalid workout ID';
+        console.error(errorMsg);
+        setError(errorMsg);
+        setLoading(false);
+        return;
+      }
+
+      console.log(`🔍 Loading workout details for ID: ${id}`);
+
+      // Load workout details
+      const workoutResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (workoutResponse.ok) {
+        const workoutData = await workoutResponse.json();
+        console.log('🔍 Workout details loaded:', workoutData);
+        console.log('🖼️ Author profile picture URL:', workoutData.workout?.authorProfilePictureUrl);
+        
+        if (!workoutData.workout) {
+          throw new Error('Workout data not found in response');
+        }
+        
+        setWorkout(workoutData.workout);
+        setSignups(workoutData.signups || []);
+        setWaitlist(workoutData.waitlist || []);
+        setError(null);
+        
+        // Check if this is a swim workout and user is exec/admin
+        const isSwim = workoutData.workout?.workout_type === 'swim';
+        const isExec = currentUser?.role === 'exec' || currentUser?.role === 'administrator' || currentUser?.role === 'coach';
+        setIsSwimWorkout(isSwim);
+        
+        // Load swim members if this is a swim workout and user is exec/admin
+        if (isSwim && isExec) {
+          try {
+            const swimMembersResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance-members`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (swimMembersResponse.ok) {
+              const swimMembersData = await swimMembersResponse.json();
+              console.log('🏊‍♂️ Swim members loaded:', swimMembersData);
+              setSwimMembers(swimMembersData.members || []);
+            } else {
+              console.error('❌ Failed to load swim members:', swimMembersResponse.status);
+            }
+          } catch (swimError) {
+            console.error('❌ Error loading swim members:', swimError);
+            // Don't fail the whole page if swim members fail to load
+          }
+        }
+      } else {
+        const errorText = await workoutResponse.text().catch(() => 'Unknown error');
+        let errorMsg = `Failed to load workout: ${workoutResponse.status}`;
+        
+        if (workoutResponse.status === 404) {
+          errorMsg = 'Workout not found. It may have been deleted.';
+        } else if (workoutResponse.status === 401) {
+          errorMsg = 'Authentication required. Please log in.';
+        } else if (workoutResponse.status === 403) {
+          errorMsg = 'You do not have permission to view this workout.';
+        }
+        
+        console.error('❌ Failed to load workout details:', workoutResponse.status, workoutResponse.statusText, errorText);
+        setError(errorMsg);
+      }
+
+      // Check if attendance has already been submitted
+      const attendanceResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/attendance`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (attendanceResponse.ok) {
+        const attendanceData = await attendanceResponse.json();
+        console.log('🔍 Attendance data loaded:', attendanceData);
+        // If there are any attendance records, attendance has been submitted
+        setAttendanceSaved(attendanceData.attendance && attendanceData.attendance.length > 0);
+        console.log('📊 Attendance saved status:', attendanceData.attendance && attendanceData.attendance.length > 0);
+        
+        // Process attendance and late status
+        if (attendanceData.attendance && attendanceData.attendance.length > 0) {
+          const attendanceMap = {};
+          const lateMap = {};
+          attendanceData.attendance.forEach(record => {
+            attendanceMap[record.user_id] = record.attended;
+            lateMap[record.user_id] = record.late || false;
+          });
+          setAttendance(attendanceMap);
+          setLateStatus(lateMap);
+        }
+      } else {
+        console.log('ℹ️ No attendance data found or error loading attendance');
+        setAttendanceSaved(false);
+      }
+
+      // Load signups
+      const signupsResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/signups`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (signupsResponse.ok) {
+        const signupsData = await signupsResponse.json();
+        console.log('📋 Signups data received:', signupsData);
+        console.log('👥 Individual signups:', signupsData.signups);
+        
+        // Debug profile picture URLs
+        signupsData.signups.forEach((signup, index) => {
+          console.log(`👤 Signup ${index + 1}:`, {
+            name: signup.user_name,
+            profilePictureUrl: signup.userProfilePictureUrl,
+            hasProfilePicture: !!signup.userProfilePictureUrl
+          });
+        });
+        
+        setSignups(signupsData.signups);
+        
+        // Check if current user is signed up
+        const userSignup = signupsData.signups.find(s => s.user_id === currentUser.id);
+        setIsSignedUp(!!userSignup);
+      }
+
+      // Load waitlist
+      const waitlistResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}/waitlist`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (waitlistResponse.ok) {
+        const waitlistData = await waitlistResponse.json();
+        setWaitlist(waitlistData.waitlist);
+        
+        // Check if current user is on waitlist
+        const userWaitlist = waitlistData.waitlist.find(w => w.user_id === currentUser.id);
+        setIsOnWaitlist(!!userWaitlist);
+      }
+
+      // Load comments
+      try {
+        const commentsResponse = await fetch(`${API_BASE_URL}/forum/posts/${id}/comments`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json();
+          setComments(commentsData.comments || []);
+        } else {
+          setComments([]);
+        }
+      } catch (error) {
+        console.error('Error loading comments:', error);
+        setComments([]);
+      }
+
+      // Load test event for this workout
+      const testEventResponse = await fetch(`${API_BASE_URL}/test-events/by-workout/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (testEventResponse.ok) {
+        const testEventData = await testEventResponse.json();
+        setTestEvent(testEventData.testEvent);
+        setTestEventRecords(testEventData.records || []);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('❌ Error loading workout details:', error);
+      setError(error.message || 'Failed to load workout details. Please try again.');
+      setLoading(false);
+    }
+  }, [API_BASE_URL, id, currentUser]);
+
   const isWorkoutArchived = () => {
     try {
-      if (!workout || !workout.workout_date) return false;
+      const workoutToCheck = displayWorkout || workout;
+      if (!workoutToCheck || !workoutToCheck.workout_date) return false;
       
       // Parse the workout date and get just the date part (YYYY-MM-DD)
-      const workoutDate = new Date(workout.workout_date);
+      const workoutDate = new Date(workoutToCheck.workout_date);
       if (isNaN(workoutDate.getTime())) return false;
       
       // Get today's date
@@ -61,9 +308,63 @@ const WorkoutDetail = () => {
     }
   };
 
+  // Check if workout has started (date + time is in the past)
+  const isWorkoutStarted = () => {
+    try {
+      const workoutToCheck = displayWorkout || workout;
+      if (!workoutToCheck || !workoutToCheck.workout_date || !workoutToCheck.workout_time) {
+        console.log('🔍 isWorkoutStarted: Missing workout data', { 
+          hasWorkout: !!workoutToCheck, 
+          workout_date: workoutToCheck?.workout_date, 
+          workout_time: workoutToCheck?.workout_time 
+        });
+        return false;
+      }
+      
+      // Extract just the date part if workout_date is an ISO string
+      let dateStr = workoutToCheck.workout_date;
+      if (typeof dateStr === 'string' && dateStr.includes('T')) {
+        dateStr = dateStr.split('T')[0];
+      }
+      
+      // Use combineDateTime to get the workout datetime in EST/EDT
+      const workoutDateTime = combineDateTime(dateStr, workoutToCheck.workout_time);
+      if (!workoutDateTime) {
+        console.log('🔍 isWorkoutStarted: Failed to create workout datetime', { 
+          dateStr, 
+          workout_time: workoutToCheck.workout_time 
+        });
+        return false;
+      }
+      
+      // Compare workout datetime to current time
+      const now = new Date();
+      const hasStarted = workoutDateTime < now;
+      
+      console.log('🔍 isWorkoutStarted check:', {
+        workout_date: workoutToCheck.workout_date,
+        dateStr,
+        workout_time: workoutToCheck.workout_time,
+        workoutDateTimeISO: workoutDateTime.toISOString(),
+        workoutDateTimeLocal: workoutDateTime.toString(),
+        nowISO: now.toISOString(),
+        nowLocal: now.toString(),
+        diffMs: workoutDateTime - now,
+        diffHours: (workoutDateTime - now) / (1000 * 60 * 60),
+        hasStarted
+      });
+      
+      return hasStarted;
+    } catch (error) {
+      console.error('Error checking if workout started:', error);
+      return false;
+    }
+  };
+
   // Helpers for waitlist position display
   const getWaitlistPosition = () => {
-    const idx = waitlist.findIndex(w => w.user_id === currentUser.id);
+    const waitlistToCheck = displayWaitlist.length > 0 ? displayWaitlist : waitlist;
+    const idx = waitlistToCheck.findIndex(w => w.user_id === currentUser.id);
     return idx === -1 ? null : idx + 1;
   };
 
@@ -73,6 +374,33 @@ const WorkoutDetail = () => {
     return n + (s[(v-20)%10] || s[v] || s[0]);
   };
 
+  // Sync cached workout data to state
+  useEffect(() => {
+    if (cachedWorkout) {
+      setWorkout(cachedWorkout);
+    }
+    if (cachedSignups && cachedSignups.length > 0) {
+      setSignups(cachedSignups);
+      // Check if current user is signed up
+      const userSignup = cachedSignups.find(s => s.user_id === currentUser?.id);
+      setIsSignedUp(!!userSignup);
+    }
+    if (cachedWaitlist && cachedWaitlist.length > 0) {
+      setWaitlist(cachedWaitlist);
+      // Check if current user is on waitlist
+      const userWaitlist = cachedWaitlist.find(w => w.user_id === currentUser?.id);
+      setIsOnWaitlist(!!userWaitlist);
+    }
+    // Update loading state based on workout hook
+    if (!workoutLoading) {
+      setLoading(false);
+    }
+  }, [cachedWorkout, cachedSignups, cachedWaitlist, workoutLoading, currentUser]);
+
+  // Track if we've loaded workout details to prevent infinite loops
+  const hasLoadedRef = useRef(false);
+  const lastWorkoutIdRef = useRef(null);
+  
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');
@@ -84,13 +412,24 @@ const WorkoutDetail = () => {
       return;
     }
     
-    loadWorkoutDetails();
-  }, [currentUser, navigate, isMember, id]);
+    // Only load if workout ID changed or we haven't loaded yet
+    const workoutIdChanged = lastWorkoutIdRef.current !== id;
+    const hasWorkoutData = cachedWorkout || workout;
+    const shouldLoad = workoutIdChanged || (!hasLoadedRef.current && hasWorkoutData);
+    
+    if (shouldLoad && hasWorkoutData) {
+      console.log('🔄 Loading workout details (ID changed or first load)');
+      hasLoadedRef.current = true;
+      lastWorkoutIdRef.current = id;
+      loadWorkoutDetails();
+    }
+  }, [currentUser, navigate, isMember, id, cachedWorkout, loadWorkoutDetails]); // Removed 'workout' from deps to prevent infinite loop
 
   // Listen for profile updates to refresh profile pictures
   useEffect(() => {
     const handleProfileUpdate = (event) => {
       console.log('🔄 Profile updated event received, refreshing workout details...');
+      refreshWorkout();
       loadWorkoutDetails();
     };
 
@@ -99,9 +438,9 @@ const WorkoutDetail = () => {
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, []);
+  }, [refreshWorkout, loadWorkoutDetails]);
 
-  const loadWorkoutDetails = async () => {
+  const loadWorkoutDetails_legacy = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -224,8 +563,24 @@ const WorkoutDetail = () => {
         setIsOnWaitlist(!!userWaitlist);
       }
 
-      // Load comments (will be implemented with real backend data)
-      setComments([]);
+      // Load comments
+      try {
+        const commentsResponse = await fetch(`${API_BASE_URL}/forum/posts/${id}/comments`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json();
+          setComments(commentsData.comments || []);
+        } else {
+          setComments([]);
+        }
+      } catch (error) {
+        console.error('Error loading comments:', error);
+        setComments([]);
+      }
 
 
       setLoading(false);
@@ -236,6 +591,12 @@ const WorkoutDetail = () => {
   };
 
   const handleSignUp = async () => {
+      // Check if offline - workout signups require online connection
+      if (!navigator.onLine) {
+        showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+        return;
+      }
+
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -284,11 +645,11 @@ const WorkoutDetail = () => {
         }
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error}`);
+        showError(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error updating signup:', error);
-      alert('Error updating signup');
+      showError('Error updating signup');
     }
   };
 
@@ -322,11 +683,11 @@ const WorkoutDetail = () => {
         }
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error}`);
+        showError(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error joining waitlist:', error);
-      alert('Error joining waitlist');
+      showError('Error joining waitlist');
     }
   };
 
@@ -360,11 +721,11 @@ const WorkoutDetail = () => {
         }
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error}`);
+        showError(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error leaving waitlist:', error);
-      alert('Error leaving waitlist');
+      showError('Error leaving waitlist');
     }
   };
 
@@ -374,10 +735,14 @@ const WorkoutDetail = () => {
 
 
 
+  const [deleteWorkoutConfirm, setDeleteWorkoutConfirm] = useState({ isOpen: false });
+
   const handleDeleteWorkout = async () => {
-    if (!window.confirm('Are you sure you want to delete this workout post?')) {
-      return;
-    }
+    setDeleteWorkoutConfirm({ isOpen: true });
+  };
+
+  const confirmDeleteWorkout = async () => {
+    setDeleteWorkoutConfirm({ isOpen: false });
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -400,7 +765,7 @@ const WorkoutDetail = () => {
       }
     } catch (error) {
       console.error('Error deleting workout:', error);
-      alert(`Error deleting workout: ${error.message}`);
+      showError(`Error deleting workout: ${error.message}`);
     }
   };
 
@@ -409,6 +774,12 @@ const WorkoutDetail = () => {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
         console.error('No authentication token found');
+        return;
+      }
+
+      // Check if offline - workout cancellations require online connection
+      if (!navigator.onLine) {
+        showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
         return;
       }
 
@@ -457,11 +828,11 @@ const WorkoutDetail = () => {
         setShowCancelModal(false);
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error}`);
+        showError(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error canceling signup:', error);
-      alert('Error canceling signup');
+      showError('Error canceling signup');
     }
   };
 
@@ -528,13 +899,13 @@ const WorkoutDetail = () => {
         console.error('Failed to save attendance:', errorData.error);
         // Revert optimistic update on failure
         setAttendanceSaved(false);
-        alert(`Failed to save attendance: ${errorData.error}`);
+        showError(`Failed to save attendance: ${errorData.error}`);
       }
     } catch (error) {
       console.error('Error submitting attendance:', error);
       // Revert optimistic update on failure
       setAttendanceSaved(false);
-      alert('Error submitting attendance. Please try again.');
+      showError('Error submitting attendance. Please try again.');
     } finally {
       setSubmittingAttendance(false);
     }
@@ -561,27 +932,294 @@ const WorkoutDetail = () => {
         return;
       }
 
-      const newCommentObj = {
-        id: Date.now(),
-        user_name: currentUser.name,
-        content: newComment.trim(),
-        created_at: new Date().toISOString()
-      };
+      const response = await fetch(`${API_BASE_URL}/forum/posts/${id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: newComment.trim()
+        })
+      });
 
-      setComments([...comments, newCommentObj]);
-      setNewComment('');
+      if (response.ok) {
+        const data = await response.json();
+        // Add the new comment to the list
+        setComments([...comments, data.comment]);
+        setNewComment('');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to post comment' }));
+        console.error('Error posting comment:', errorData);
+        showError(errorData.error || 'Failed to post comment');
+      }
     } catch (error) {
       console.error('Error adding comment:', error);
+      showError('Failed to post comment. Please try again.');
     }
   };
 
-  if (loading) {
-    return <div className="loading">Loading workout details...</div>;
+  // User search helpers for coaches/admins when adding a result
+  const searchRecordUsers = async (query) => {
+    if (!query || query.length < 2) {
+      setRecordUserSearchResults([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(
+        `${API_BASE_URL}/admin/members?search=${encodeURIComponent(query)}&limit=10`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setRecordUserSearchResults(data.members || []);
+      }
+    } catch (error) {
+      console.error('Error searching users for test result:', error);
+    }
+  };
+
+  const handleRecordUserSearchChange = (e) => {
+    const query = e.target.value;
+    setRecordUserSearchQuery(query);
+    if (query) {
+      searchRecordUsers(query);
+      setShowRecordUserDropdown(true);
+    } else {
+      setRecordUserSearchResults([]);
+      setShowRecordUserDropdown(false);
+      setSelectedRecordUser(null);
+      setRecordForm((prev) => ({ ...prev, user_id: null }));
+    }
+  };
+
+  const selectRecordUser = (user) => {
+    setSelectedRecordUser(user);
+    setRecordUserSearchQuery(user.name || user.email);
+    setRecordForm((prev) => ({ ...prev, user_id: user.id }));
+    setShowRecordUserDropdown(false);
+    setRecordUserSearchResults([]);
+  };
+
+  // Test Event functions
+  const handleCreateTestEvent = async () => {
+    if (!testEventForm.title || !testEventForm.sport || !testEventForm.date || !testEventForm.workout) {
+      showError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/test-events`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...testEventForm,
+          workout_post_id: parseInt(id)
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json().catch(() => null);
+
+        // Optimistically update local state so the UI reflects the new test event
+        if (data && data.testEvent) {
+          setTestEvent(data.testEvent);
+          setTestEventRecords([]);
+        }
+
+        showSuccess('Test event created successfully!');
+        setShowTestEventModal(false);
+        setTestEventForm({ title: '', sport: 'run', date: '', workout: '' });
+        // Also reload from the backend to stay in sync
+        loadWorkoutDetails();
+      } else {
+        const error = await response.json();
+        showError(`Failed to create test event: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating test event:', error);
+      showError('Error creating test event');
+    }
+  };
+
+  const handleAddRecord = async () => {
+    if (!recordForm.result) {
+      showError('Please enter a result');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const payload = {
+        test_event_id: testEvent.id,
+        title: testEvent.title,
+        result: recordForm.result,
+        notes: recordForm.notes,
+        result_fields: recordForm.result_fields || {}
+      };
+
+      // Only allow coaches/admins to specify a different user_id
+      if (isCoachOrAdmin && recordForm.user_id) {
+        payload.user_id = recordForm.user_id;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/records`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        showSuccess('Result added successfully!');
+        setShowRecordModal(false);
+        setRecordForm({ result: '', notes: '', user_id: null, result_fields: {} });
+        setSelectedRecordUser(null);
+        setRecordUserSearchQuery('');
+        setRecordUserSearchResults([]);
+        setShowRecordUserDropdown(false);
+        loadWorkoutDetails();
+      } else {
+        const error = await response.json();
+        // Check for duplicate record error
+        if (error.error === 'duplicate_record') {
+          showError(error.message || 'Whoops! You already have a result for this test event. Please edit that one instead.');
+        } else {
+          showError(`Failed to add result: ${error.error}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error adding record:', error);
+      showError('Error adding result');
+    }
+  };
+
+  const openTestEventModal = () => {
+    // Pre-fill form with workout info
+    const workoutToCheck = displayWorkout || workout;
+    const workoutDate = workoutToCheck.workout_date ? workoutToCheck.workout_date.split('T')[0] : '';
+    const sportMap = {
+      'swim': 'swim',
+      'spin': 'bike',
+      'outdoor-ride': 'bike',
+      'brick': 'bike',
+      'run': 'run'
+    };
+    const mappedSport = sportMap[workoutToCheck.workout_type] || 'run';
+    
+    setTestEventForm({
+      title: workoutToCheck.title || '',
+      sport: mappedSport,
+      date: workoutDate,
+      workout: workoutToCheck.content || ''
+    });
+    setShowTestEventModal(true);
+  };
+
+  if (loading || workoutLoading) {
+    return (
+      <div className="workout-detail-container">
+        <div className="container">
+          <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>
+            Loading workout details...
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  if (!workout) {
-    return <div className="error">Workout not found</div>;
+  // Show error if there's an error and no cached data
+  if (error && !cachedWorkout) {
+    return (
+      <div className="workout-detail-container">
+        <div className="container">
+          <button className="back-btn" onClick={() => navigate('/forum')}>
+            ← Back to Forum
+          </button>
+          <div className="error" style={{ 
+            padding: '2rem', 
+            textAlign: 'center',
+            backgroundColor: '#fee',
+            border: '1px solid #fcc',
+            borderRadius: '4px',
+            margin: '2rem 0'
+          }}>
+            <h2>Error Loading Workout</h2>
+            <p>{error}</p>
+            <button 
+              onClick={() => {
+                setError(null);
+                loadWorkoutDetails();
+              }}
+              style={{
+                marginTop: '1rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
+
+  if (!workout && !cachedWorkout && !error) {
+    return (
+      <div className="workout-detail-container">
+        <div className="container">
+          <button className="back-btn" onClick={() => navigate('/forum')}>
+            ← Back to Forum
+          </button>
+          <div className="error" style={{ 
+            padding: '2rem', 
+            textAlign: 'center',
+            backgroundColor: '#fee',
+            border: '1px solid #fcc',
+            borderRadius: '4px',
+            margin: '2rem 0'
+          }}>
+            <h2>Workout Not Found</h2>
+            <p>The workout you're looking for doesn't exist or has been deleted.</p>
+            <button 
+              onClick={() => navigate('/forum')}
+              style={{
+                marginTop: '1rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Go to Forum
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Use cached workout if state workout is not available
+  const displayWorkout = workout || cachedWorkout;
+  const displaySignups = signups.length > 0 ? signups : (cachedSignups || []);
+  const displayWaitlist = waitlist.length > 0 ? waitlist : (cachedWaitlist || []);
 
   return (
     <div className="workout-detail-container">
@@ -589,80 +1227,109 @@ const WorkoutDetail = () => {
         <button className="back-btn" onClick={() => navigate('/forum')}>
           ← Back to Forum
         </button>
+        
+        {/* Offline Indicator */}
+        {!isOnline && (
+          <div className="offline-indicator">
+            <span className="offline-icon">📴</span>
+            <span className="offline-text">You're offline. Showing cached data.</span>
+          </div>
+        )}
 
         <div className="workout-detail-card">
           <div className="workout-header">
             <div className="workout-title-section">
-              <h1 className="workout-title">{workout.title}</h1>
-              {/* Edit and Delete buttons for workout author or executives */}
-              {(() => {
-                const canEdit = currentUser.id === workout.user_id || currentUser.role === 'exec' || currentUser.role === 'administrator';
-                console.log('🔍 Edit button permission check:', {
-                  currentUserId: currentUser.id,
-                  workoutUserId: workout.user_id,
-                  currentUserRole: currentUser.role,
-                  isAuthor: currentUser.id === workout.user_id,
-                  isExec: currentUser.role === 'exec',
-                  isAdmin: currentUser.role === 'administrator',
-                  canEdit: canEdit
-                });
-                return canEdit;
-              })() && (
-                <div className="workout-actions-admin">
-                  <button 
-                    className="edit-btn"
-                    onClick={() => {
-                      startEdit(workout);
-                      setEditMode(true);
-                    }}
-                    disabled={editMode}
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button 
-                    className="delete-btn"
-                    onClick={handleDeleteWorkout}
-                    disabled={editMode}
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              )}
+              <h1 className="workout-title">
+                {displayWorkout.title}
+                {!isOnline && (
+                  <span className="offline-badge" style={{ marginLeft: '0.75rem' }} title="You're offline">
+                    📴 Offline
+                  </span>
+                )}
+                {workoutFromCache && isOnline && (
+                  <span className="cache-indicator" style={{ marginLeft: '0.75rem' }} title="Showing cached data">
+                    📦 Cached
+                  </span>
+                )}
+              </h1>
             </div>
             <div className="workout-author">
               <div className="author-info">
-                                    {workout.authorProfilePictureUrl ? (
-                      <img 
-                        src={`${API_BASE_URL}${workout.authorProfilePictureUrl}`} 
-                        alt="Profile" 
-                        className="author-avatar"
-                        onError={(e) => {
-                          e.target.src = '/images/default_profile.png';
-                        }}
-                      />
-                    ) : (
-                      <img 
-                        src="/images/default_profile.png" 
-                        alt="Profile" 
-                        className="author-avatar"
-                      />
-                    )}
-                <span className="author-name">Posted by {workout.author_name}</span>
+                {(() => {
+                  console.log('🖼️ Display workout authorProfilePictureUrl:', displayWorkout.authorProfilePictureUrl);
+                  const url = normalizeProfileImageUrl(displayWorkout.authorProfilePictureUrl);
+                  console.log('🖼️ Normalized URL:', url);
+                  return url ? (
+                    <img 
+                      src={url}
+                      alt="Profile" 
+                      className="author-avatar"
+                      loading="lazy"
+                      decoding="async"
+                      fetchpriority="low"
+                      onError={(e) => {
+                        e.target.src = '/images/default_profile.png';
+                      }}
+                    />
+                  ) : (
+                    <img 
+                      src="/images/default_profile.png" 
+                      alt="Profile" 
+                      className="author-avatar"
+                    />
+                  );
+                })()}
+                <span className="author-name">Posted by {displayWorkout.author_name}</span>
               </div>
             </div>
           </div>
 
-          {workout.workout_type && (
+          {displayWorkout.workout_type && (
             <div className="workout-meta">
-              <span className="workout-type-badge">{workout.workout_type}</span>
-              {workout.workout_date && (
+              <span className="workout-type-badge">{displayWorkout.workout_type}</span>
+              {displayWorkout.workout_date && (
                 <span className="workout-date">
-                  📅 {(() => { const b = workout.workout_date.split('T')[0]; const [y,m,d] = b.split('-').map(Number); return new Date(Date.UTC(y,m-1,d)).toLocaleDateString(undefined,{ timeZone: 'UTC' }); })()}
-                  {workout.workout_time && (
-                    <span className="workout-time"> • 🕐 {workout.workout_time}</span>
+                  📅 {(() => { const b = displayWorkout.workout_date.split('T')[0]; const [y,m,d] = b.split('-').map(Number); return new Date(Date.UTC(y,m-1,d)).toLocaleDateString(undefined,{ timeZone: 'UTC' }); })()}
+                  {displayWorkout.workout_time && (
+                    <span className="workout-time"> • 🕐 {displayWorkout.workout_time}</span>
                   )}
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Edit/Delete actions for workout author or exec/admin - bottom left of first card */}
+          {(() => {
+            const canEdit =
+              currentUser.id === displayWorkout.user_id ||
+              currentUser.role === 'exec' ||
+              currentUser.role === 'administrator';
+            return canEdit;
+          })() && !editMode && (
+            <div className="workout-actions-admin-bottom-left">
+              <button
+                className="edit-btn"
+                onClick={() => {
+                  console.log('🔍 Edit button clicked, workout:', displayWorkout);
+                  if (displayWorkout) {
+                    startEdit(displayWorkout);
+                    setEditMode(true);
+                    console.log('✅ Edit mode activated, editForm should be:', editForm);
+                  } else {
+                    console.error('❌ Workout is null or undefined');
+                  }
+                }}
+                disabled={editMode}
+              >
+                ✏️<span className="btn-text"> Edit</span>
+              </button>
+              <button
+                className="delete-btn"
+                onClick={handleDeleteWorkout}
+                disabled={editMode}
+              >
+                🗑️<span className="btn-text"> Delete</span>
+              </button>
             </div>
           )}
 
@@ -749,7 +1416,7 @@ const WorkoutDetail = () => {
                 <button 
                   className="btn btn-primary" 
                                       onClick={async () => {
-                      const result = await saveWorkout(workout.id, loadWorkoutDetails);
+                      const result = await saveWorkout(displayWorkout.id, loadWorkoutDetails);
                       if (result.success) {
                         setEditMode(false);
                         showSuccess('Workout updated successfully!');
@@ -775,26 +1442,24 @@ const WorkoutDetail = () => {
             </div>
           ) : (
             <div className="workout-content">
-              {linkifyText(workout.content)}
+              {linkifyText(displayWorkout.content)}
             </div>
           )}
 
           {/* Only show signup/waitlist buttons for non-swim workouts */}
-          {!isSwimWorkout && (
+          {!isSwimWorkout && !isWorkoutStarted() && (
             <div className="workout-actions">
               <div className="button-group">
-                {!isWorkoutArchived() && (
-                  <button 
-                    onClick={handleSignUp}
-                    className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
-                    disabled={workout.capacity && signups.length >= workout.capacity && !isSignedUp}
-                  >
-                    {isSignedUp ? '✓ Signed Up' : (workout.capacity && signups.length >= workout.capacity) ? 'Full' : 'Sign Up'}
-                  </button>
-                )}
+                <button 
+                  onClick={handleSignUp}
+                  className={`signup-btn ${isSignedUp ? 'signed-up' : ''}`}
+                  disabled={displayWorkout.capacity && displaySignups.length >= displayWorkout.capacity && !isSignedUp}
+                >
+                  {isSignedUp ? '✓ Signed Up' : (displayWorkout.capacity && displaySignups.length >= displayWorkout.capacity) ? 'Full' : 'Sign Up'}
+                </button>
                 
                 {/* Cancel button for signed-up users */}
-                {isSignedUp && !isWorkoutArchived() && (
+                {isSignedUp && (
                   <button 
                     onClick={handleCancelClick}
                     className="cancel-btn"
@@ -804,7 +1469,7 @@ const WorkoutDetail = () => {
                 )}
                 
                 {/* Waitlist button for full workouts */}
-                {workout.capacity && signups.length >= workout.capacity && !isSignedUp && !isWorkoutArchived() && (
+                {displayWorkout.capacity && displaySignups.length >= displayWorkout.capacity && !isSignedUp && (
                   <button 
                     onClick={isOnWaitlist ? handleWaitlistLeave : handleWaitlistJoin}
                     className={`waitlist-btn ${isOnWaitlist ? 'on-waitlist' : ''}`}
@@ -814,7 +1479,7 @@ const WorkoutDetail = () => {
                 )}
 
                 {/* Position label when on waitlist */}
-                {workout.capacity && signups.length >= workout.capacity && isOnWaitlist && !isWorkoutArchived() && (
+                {displayWorkout.capacity && displaySignups.length >= displayWorkout.capacity && isOnWaitlist && (
                   <span className="waitlist-position">
                     {`You're ${formatOrdinal(getWaitlistPosition())} on the waitlist`}
                   </span>
@@ -830,7 +1495,7 @@ const WorkoutDetail = () => {
             <h2>
               {isSwimWorkout && currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') 
                 ? `Swim Attendance (${swimMembers.length})` 
-                : `Who's Coming (${signups.length}${workout.capacity ? `/${workout.capacity}` : ''})`
+                : `Who's Coming (${displaySignups.length}${displayWorkout.capacity ? `/${displayWorkout.capacity}` : ''})`
               }
             </h2>
             
@@ -951,12 +1616,12 @@ const WorkoutDetail = () => {
             )
           ) : (
             /* Regular signups display for non-swim workouts */
-            signups.length === 0 ? (
+            displaySignups.length === 0 ? (
               <p className="no-signups">No one has signed up yet. Be the first!</p>
             ) : (
               <>
                 <div className="signups-list">
-                  {signups.map(signup => (
+                  {displaySignups.map(signup => (
                     <div key={signup.id} className="signup-item">
                       {/* Attendance checkbox for coaches, executives, and administrators */}
                       {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
@@ -1006,11 +1671,11 @@ const WorkoutDetail = () => {
                       </div>
                       <span className="signup-date">
                         📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
-                          ? new Date(signup.signup_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(signup.signup_time)
                           : 'Recently'
                         }
                         <span className="signup-time"> • 🕐 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
-                          ? new Date(signup.signup_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                          ? formatSignupTimeOnlyForDisplay(signup.signup_time)
                           : 'Recently'
                         }</span>
                       </span>
@@ -1019,10 +1684,10 @@ const WorkoutDetail = () => {
                 </div>
                 
                 {/* Submit attendance button for coaches, executives and administrators */}
-                {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && signups.length > 0 && (
+                {currentUser && (currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && displaySignups.length > 0 && (
                   <div className="attendance-submit">
                     <div className="attendance-debug">
-                      <small>📊 {signups.length} signups • {Object.keys(attendance).length} attendance records</small>
+                      <small>📊 {displaySignups.length} signups • {Object.keys(attendance).length} attendance records</small>
                     </div>
                     {attendanceSaved && !editingAttendance ? (
                       <div className="attendance-actions">
@@ -1067,11 +1732,11 @@ const WorkoutDetail = () => {
         )}
 
         {/* Waitlist section - only show for non-swim workouts */}
-        {!isSwimWorkout && workout.capacity && waitlist.length > 0 && (
+        {!isSwimWorkout && displayWorkout.capacity && displayWaitlist.length > 0 && (
           <div className="waitlist-section">
-            <h2>Waitlist ({waitlist.length})</h2>
+            <h2>Waitlist ({displayWaitlist.length})</h2>
             <div className="waitlist-list">
-              {waitlist.map(waitlistItem => (
+              {displayWaitlist.map(waitlistItem => (
                 <div key={waitlistItem.id} className="waitlist-item">
                   <div className="waitlist-user-info">
                     {waitlistItem.userProfilePictureUrl ? (
@@ -1103,6 +1768,192 @@ const WorkoutDetail = () => {
             </div>
           </div>
         )}
+
+        {/* Test Event / Results Section */}
+        <div className="test-event-section" style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h2 style={{ margin: 0, color: '#374151' }}>Test Results</h2>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {/* Show "Create Test Event" button for coaches/admins only if no test event exists */}
+              {!testEvent && currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator') && (
+                <button 
+                  className="new-post-btn" 
+                  onClick={openTestEventModal}
+                >
+                  +<span className="btn-text"> Create Test Event</span>
+                </button>
+              )}
+              {/* Show \"Add Test Result\" button if test event exists and user is a member/coach/admin */}
+              {testEvent && currentUser && (currentUser.role === 'member' || currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    setShowRecordModal(true);
+                    setRecordForm({ result: '', notes: '', user_id: null, result_fields: {} });
+                    setSelectedRecordUser(null);
+                    setRecordUserSearchQuery('');
+                    setRecordUserSearchResults([]);
+                    setShowRecordUserDropdown(false);
+                  }}
+                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                >
+                  + Add Test Result
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!testEvent ? (
+            <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
+              {currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator')
+                ? 'No test event linked to this workout. Click "Create Test Event" to add one.'
+                : 'No test event linked to this workout.'}
+            </p>
+          ) : (
+            <>
+              <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>{testEvent.title}</h3>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: '#6b7280' }}>
+                  <span><strong>Sport:</strong> <span className={`sport-badge ${testEvent.sport}`} style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 500, textTransform: 'capitalize' }}>{testEvent.sport}</span></span>
+                  <span><strong>Date:</strong> {new Date(testEvent.date).toLocaleDateString()}</span>
+                  <span><strong>Workout:</strong> {testEvent.workout}</span>
+                </div>
+              </div>
+
+              {currentUser && (
+                <>
+                  {isCoachOrAdmin ? (
+                    // Coaches/admins see all results
+                    <>
+                      {testEventRecords.length > 0 ? (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {testEventRecords.map(record => {
+                                // Parse result_fields if available
+                                let resultFields = {};
+                                if (record.result_fields) {
+                                  try {
+                                    resultFields = typeof record.result_fields === 'string' 
+                                      ? JSON.parse(record.result_fields) 
+                                      : record.result_fields;
+                                  } catch (e) {
+                                    resultFields = {};
+                                  }
+                                }
+                                const sport = testEvent?.sport;
+                                const fields = sport ? getFieldsForSport(sport) : [];
+                                const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
+                                
+                                return (
+                                  <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{record.user_name}</td>
+                                    <td style={{ padding: '0.75rem', color: '#475569' }}>
+                                      {record.result || '-'}
+                                      {hasFields && (
+                                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                                          {fields.map(field => {
+                                            const value = resultFields[field.key];
+                                            if (value === null || value === undefined || value === '') return null;
+                                            return (
+                                              <div key={field.key} style={{ marginTop: '0.25rem' }}>
+                                                <strong>{field.label}:</strong> {Array.isArray(value) ? value.join(', ') : value}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
+                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>No results yet. Be the first to add one!</p>
+                      )}
+                    </>
+                  ) : (
+                    // Regular members/execs see public results + their own results (already filtered by backend)
+                    <>
+                      {testEventRecords.length > 0 ? (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {testEventRecords.map(record => {
+                                // Parse result_fields if available
+                                let resultFields = {};
+                                if (record.result_fields) {
+                                  try {
+                                    resultFields = typeof record.result_fields === 'string' 
+                                      ? JSON.parse(record.result_fields) 
+                                      : record.result_fields;
+                                  } catch (e) {
+                                    resultFields = {};
+                                  }
+                                }
+                                const sport = testEvent?.sport;
+                                const fields = sport ? getFieldsForSport(sport) : [];
+                                const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
+                                
+                                return (
+                                  <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{record.user_name}</td>
+                                    <td style={{ padding: '0.75rem', color: '#475569' }}>
+                                      {record.result || '-'}
+                                      {hasFields && (
+                                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                                          {fields.map(field => {
+                                            const value = resultFields[field.key];
+                                            if (value === null || value === undefined || value === '') return null;
+                                            return (
+                                              <div key={field.key} style={{ marginTop: '0.25rem' }}>
+                                                <strong>{field.label}:</strong> {Array.isArray(value) ? value.join(', ') : value}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
+                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>
+                          No result recorded yet. Click "Add Test Result" to add yours.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
 
         <div className="comments-section">
           <h2>Comments ({comments.length})</h2>
@@ -1171,25 +2022,344 @@ const WorkoutDetail = () => {
           )}
         </div>
 
-        {/* Cancel Confirmation Modal */}
-        {showCancelModal && (
+        {/* Create Test Event Modal */}
+        {showTestEventModal && (
           <div className="modal-overlay">
             <div className="modal">
-              <h2>Cancel Workout Signup</h2>
-              <p>Are you sure you want to cancel your signup for this workout?</p>
-              <p className="warning-text">
-                <strong>Warning:</strong> If you cancel less than 12 hours in advance, it will count as an absence. 
-                Your absences are recorded and once you have three, you will be suspended from signing up for a week. 
-                This is to keep it fair for all members!
-              </p>
-              <div className="modal-actions">
-                <button onClick={handleCancelSignup} className="btn btn-danger">Cancel Signup</button>
-                <button onClick={closeCancelModal} className="btn btn-secondary">Keep Booking</button>
-              </div>
+              <h2>Create Test Event</h2>
+              <form onSubmit={(e) => { e.preventDefault(); handleCreateTestEvent(); }}>
+                <div className="form-group">
+                  <label>Title:</label>
+                  <input
+                    type="text"
+                    value={testEventForm.title}
+                    onChange={(e) => setTestEventForm({...testEventForm, title: e.target.value})}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Sport:</label>
+                  <select
+                    value={testEventForm.sport}
+                    onChange={(e) => setTestEventForm({...testEventForm, sport: e.target.value})}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  >
+                    <option value="swim">Swim</option>
+                    <option value="bike">Bike</option>
+                    <option value="run">Run</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Date:</label>
+                  <input
+                    type="date"
+                    value={testEventForm.date}
+                    onChange={(e) => setTestEventForm({...testEventForm, date: e.target.value})}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Workout Description:</label>
+                  <textarea
+                    rows="3"
+                    value={testEventForm.workout}
+                    onChange={(e) => setTestEventForm({...testEventForm, workout: e.target.value})}
+                    placeholder="e.g., 5 400ms fast on the track"
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => {
+                    setShowTestEventModal(false);
+                    setTestEventForm({ title: '', sport: 'run', date: '', workout: '' });
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Create Test Event
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
+
+        {/* Add Record Modal */}
+        {showRecordModal && testEvent && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>Add My Result</h2>
+              <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#374151' }}>{testEvent.title}</h3>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{testEvent.workout}</p>
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); handleAddRecord(); }}>
+                {isCoachOrAdmin && (
+                  <div className="form-group">
+                    <label>Athlete:</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        value={recordUserSearchQuery}
+                        onChange={handleRecordUserSearchChange}
+                        placeholder="Search members by name or email"
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                      />
+                      {showRecordUserDropdown && recordUserSearchResults.length > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          background: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          marginTop: '0.25rem',
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          zIndex: 10,
+                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                        }}>
+                          {recordUserSearchResults.map(user => (
+                            <button
+                              key={user.id}
+                              type="button"
+                              onClick={() => selectRecordUser(user)}
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '0.5rem 0.75rem',
+                                border: 'none',
+                                background: selectedRecordUser && selectedRecordUser.id === user.id ? '#eff6ff' : 'white',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              <div style={{ fontWeight: 500, color: '#111827' }}>{user.name || user.email}</div>
+                              {user.name && user.email && (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{user.email}</div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <small style={{ color: '#6b7280' }}>Leave blank to use your own name.</small>
+                  </div>
+                )}
+                
+                {/* Sport-specific fields */}
+                {testEvent && (() => {
+                  const sport = testEvent.sport;
+                  const sportFields = sport ? getFieldsForSport(sport) : [];
+                  
+                  if (sportFields.length > 0) {
+                    return (
+                      <div className="form-group" style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <label style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#374151', display: 'block' }}>
+                          {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
+                        </label>
+                        {sportFields.map(field => (
+                          <div key={field.key} style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                              {field.label}:
+                            </label>
+                            {field.type === 'array' ? (
+                              <input
+                                type="text"
+                                value={Array.isArray(recordForm.result_fields?.[field.key]) 
+                                  ? recordForm.result_fields[field.key].join(', ') 
+                                  : (recordForm.result_fields?.[field.key] || '')}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  const arrayValue = value ? value.split(',').map(v => v.trim()).filter(v => v) : [];
+                                  setRecordForm({
+                                    ...recordForm,
+                                    result_fields: {
+                                      ...recordForm.result_fields,
+                                      [field.key]: arrayValue.length > 0 ? arrayValue : null
+                                    }
+                                  });
+                                }}
+                                placeholder={field.placeholder}
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                              />
+                            ) : field.type === 'number' ? (
+                              <input
+                                type="number"
+                                value={recordForm.result_fields?.[field.key] || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                                  setRecordForm({
+                                    ...recordForm,
+                                    result_fields: {
+                                      ...recordForm.result_fields,
+                                      [field.key]: value
+                                    }
+                                  });
+                                }}
+                                placeholder={field.placeholder}
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                              />
+                            ) : (
+                              <input
+                                type="text"
+                                value={recordForm.result_fields?.[field.key] || ''}
+                                onChange={(e) => {
+                                  setRecordForm({
+                                    ...recordForm,
+                                    result_fields: {
+                                      ...recordForm.result_fields,
+                                      [field.key]: e.target.value || null
+                                    }
+                                  });
+                                }}
+                                placeholder={field.placeholder}
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                              />
+                            )}
+                            {field.helpText && (
+                              <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem', fontSize: '0.75rem' }}>
+                                {field.helpText}
+                              </small>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+                
+                <div className="form-group">
+                  <label>Result:</label>
+                  <textarea
+                    rows="3"
+                    value={recordForm.result}
+                    onChange={(e) => setRecordForm({...recordForm, result: e.target.value})}
+                    placeholder="e.g., 1:20, 1:18, 1:19, 1:17, 1:16"
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                  <small style={{ color: '#6b7280' }}>Text description of times/results</small>
+                </div>
+                <div className="form-group">
+                  <label>Notes (optional):</label>
+                  <textarea
+                    rows="3"
+                    value={recordForm.notes}
+                    onChange={(e) => setRecordForm({...recordForm, notes: e.target.value})}
+                    placeholder="Additional notes..."
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => {
+                    setShowRecordModal(false);
+                    setRecordForm({ result: '', notes: '', user_id: null, result_fields: {} });
+                    setSelectedRecordUser(null);
+                    setRecordUserSearchQuery('');
+                    setRecordUserSearchResults([]);
+                    setShowRecordUserDropdown(false);
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Add Result
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Confirmation Modal */}
+        {showCancelModal && displayWorkout && (() => {
+          // Calculate hours until workout
+          console.log('🔍 Cancel modal calculation:', {
+            workout_date: workout.workout_date,
+            workout_time: workout.workout_time,
+            workout_date_type: typeof workout.workout_date,
+            workout: workout
+          });
+          
+          // Extract just the date part if workout_date is an ISO string
+          let dateStr = workout.workout_date;
+          if (typeof dateStr === 'string' && dateStr.includes('T')) {
+            dateStr = dateStr.split('T')[0];
+            console.log('🔍 Extracted date from ISO string:', { original: workout.workout_date, extracted: dateStr });
+          }
+          
+          const workoutDateTime = dateStr && workout.workout_time 
+            ? combineDateTime(dateStr, workout.workout_time)
+            : null;
+          
+          console.log('🔍 Workout datetime result:', { 
+            workoutDateTime,
+            workoutDateTimeISO: workoutDateTime?.toISOString(),
+            workoutDateTimeLocal: workoutDateTime?.toString()
+          });
+          
+          const hoursUntil = workoutDateTime ? getHoursUntil(workoutDateTime) : null;
+          const within12Hours = workoutDateTime ? isWithinHours(workoutDateTime, 12) : false;
+          
+          console.log('🔍 Final calculation:', { 
+            hoursUntil, 
+            within12Hours,
+            nowISO: new Date().toISOString(),
+            nowLocal: new Date().toString(),
+            workoutIsInPast: hoursUntil !== null && hoursUntil <= 0
+          });
+          
+          return (
+            <div className="modal-overlay">
+              <div className="modal">
+                <h2>Cancel Workout Signup</h2>
+                <p>Are you sure you want to cancel your signup for this workout?</p>
+                {within12Hours && hoursUntil !== null && (
+                  <p className="warning-text">
+                    <strong>⚠️ Warning:</strong> You are canceling less than 12 hours before this workout ({hoursUntil.toFixed(1)} hours remaining). 
+                    This cancellation will count as an absence. 
+                    Your absences are recorded and once you have three, you will be suspended from signing up for a week. 
+                    This is to keep it fair for all members!
+                  </p>
+                )}
+                {!within12Hours && hoursUntil !== null && hoursUntil > 0 && (
+                  <p style={{ background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '8px', padding: '1rem', margin: '1rem 0', color: '#065f46' }}>
+                    <strong>✓ Safe to Cancel:</strong> You are canceling more than 12 hours in advance ({hoursUntil.toFixed(1)} hours remaining). 
+                    This cancellation will NOT count as an absence.
+                  </p>
+                )}
+                {hoursUntil !== null && hoursUntil <= 0 && (
+                  <p className="warning-text">
+                    <strong>Note:</strong> This workout is in the past. Canceling will not affect your attendance record.
+                  </p>
+                )}
+                <div className="modal-actions">
+                  <button onClick={handleCancelSignup} className="btn btn-danger">Cancel Signup</button>
+                  <button onClick={closeCancelModal} className="btn btn-secondary">Keep Booking</button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
+
+      <ConfirmModal
+        isOpen={deleteWorkoutConfirm.isOpen}
+        onConfirm={confirmDeleteWorkout}
+        onCancel={() => setDeleteWorkoutConfirm({ isOpen: false })}
+        title="Delete Workout"
+        message="Are you sure you want to delete this workout post?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
     </div>
   );
 };

@@ -30,6 +30,8 @@ const raceRoutes = require('./routes/races');
 const siteRoutes = require('./routes/site');
 const gearRoutes = require('./routes/gear');
 const merchRoutes = require('./routes/merch');
+const testEventsRoutes = require('./routes/testEvents');
+const recordsRoutes = require('./routes/records');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -37,15 +39,32 @@ const PORT = process.env.PORT || 5001;
 // Security and rate limiting temporarily disabled for CORS debugging
 
 // CORS configuration - allow specific origins
+// Note: Capacitor apps use native HTTP and bypass CORS, but we still need this for web browsers
 app.use(cors({
-  origin: [
-    'https://www.uoft-tri.club',
-    'https://uoft-tri.club', 
-    'https://uoft-triathlon-staging.vercel.app',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:55731'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://www.uoft-tri.club',
+      'https://uoft-tri.club', 
+      'https://uoft-triathlon-staging.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:55731',
+      'capacitor://localhost',
+      'ionic://localhost',
+      'http://localhost',
+      'http://localhost:8080',
+      'http://localhost:8100'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all for now - tighten in production
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
@@ -116,6 +135,8 @@ app.use('/api/races', raceRoutes);
 app.use('/api/site', siteRoutes);
 app.use('/api/gear', gearRoutes);
 app.use('/api/merch-orders', merchRoutes);
+app.use('/api/test-events', testEventsRoutes);
+app.use('/api/records', recordsRoutes);
 console.log('✅ All API routes registered');
 
 // Health check endpoint

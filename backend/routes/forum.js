@@ -4,6 +4,7 @@ const { authenticateToken, requireMember, requireAdmin, requireExec, requireCoac
 const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
 const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -39,7 +40,7 @@ const requireMemberOrCoachForWorkouts = (req, res, next) => {
 // Get all forum posts with optional filtering
 router.get('/posts', authenticateToken, requireMember, async (req, res) => {
   try {
-    const { type = '', search = '', page = 1, limit = 20, time = '' } = req.query;
+    const { type = '', search = '', page = 1, limit = 20, time = '', workout_type = '' } = req.query;
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE is_deleted = false';
@@ -66,6 +67,30 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
         whereClause += ' AND (workout_date IS NULL OR workout_date >= CURRENT_DATE)';
       } else if (time === 'past') {
         whereClause += ' AND workout_date < CURRENT_DATE';
+      }
+    }
+
+    // Optional workout_type filter: accepts comma-separated list (e.g., "run,outdoor-ride,brick")
+    // or single value (e.g., "bike" which maps to multiple types)
+    if (type === 'workout' && workout_type && workout_type !== 'all') {
+      // Handle special "bike" filter which includes multiple types
+      if (workout_type === 'bike') {
+        paramCount++;
+        whereClause += ` AND workout_type = ANY($${paramCount}::text[])`;
+        params.push(['spin', 'outdoor-ride', 'brick']);
+      } else if (workout_type.includes(',')) {
+        // Comma-separated list of workout types
+        const types = workout_type.split(',').map(t => t.trim()).filter(t => t);
+        if (types.length > 0) {
+          paramCount++;
+          whereClause += ` AND workout_type = ANY($${paramCount}::text[])`;
+          params.push(types);
+        }
+      } else {
+        // Single workout type
+        paramCount++;
+        whereClause += ` AND workout_type = $${paramCount}`;
+        params.push(workout_type);
       }
     }
 
@@ -173,9 +198,35 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
       WHERE fp.id = $1
     `, [result.rows[0].id]);
     
+    const post = fullPostResult.rows[0];
+    
+    // Send notifications based on post type (non-blocking)
+    setImmediate(async () => {
+      try {
+        if (type === 'workout' && workoutType) {
+          await notificationService.notifyWorkoutPosted(workoutType, {
+            id: post.id,
+            title: post.title || 'Workout',
+            workoutDate: post.workout_date,
+            workoutTime: post.workout_time,
+            content: post.content
+          });
+        } else if (type === 'event') {
+          await notificationService.notifyEventPosted({
+            id: post.id,
+            title: post.title || 'Event',
+            eventDate: post.event_date,
+            content: post.content
+          });
+        }
+      } catch (error) {
+        console.error('Error sending notifications:', error);
+      }
+    });
+    
     res.status(201).json({ 
       message: 'Post created successfully',
-      post: fullPostResult.rows[0]
+      post: post
     });
   } catch (error) {
     console.error('Create post error:', error);
@@ -407,7 +458,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           increment: updatedAbsences - currentAbsences
         });
       } else {
-        console.log(`✅ CANCELLATION OUTSIDE 24 HOURS - No Absence:`, {
+        console.log(`✅ CANCELLATION OUTSIDE 12 HOURS - No Absence:`, {
           workoutId: id,
           workoutTitle,
           userId: userId,
@@ -428,7 +479,10 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
       // Remove signup
       await client.query('DELETE FROM workout_signups WHERE id = $1', [existingSignup.rows[0].id]);
 
-      // Promote first waitlisted user if any (avoid race using SKIP LOCKED)
+      // Get workout details for email notifications (reuse data already fetched)
+      const workoutDetailsForEmail = workoutDetails.rows[0] || {};
+
+      // Handle waitlist based on cancellation timing
       const waitlistResult = await client.query(
         `SELECT ww.id, ww.user_id, u.name as user_name, u.email, u.phone_number
          FROM workout_waitlist ww
@@ -442,29 +496,70 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
 
       if (waitlistResult.rows.length > 0) {
         const w = waitlistResult.rows[0];
-        await client.query('DELETE FROM workout_waitlist WHERE id = $1', [w.id]);
-        await client.query(
-          'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
-          [w.user_id, id]
-        );
-        // Notifications are best-effort after commit
-        setImmediate(async () => {
-          try {
-            const details = await pool.query('SELECT title, workout_date, workout_time FROM forum_posts WHERE id = $1', [id]);
-            if (details.rows.length > 0) {
-              await emailService.sendWaitlistPromotion(
+        
+        if (within12hrs) {
+          // Within 12 hours: Don't auto-promote, just send last minute cancellation opportunity email
+          // Keep them on the waitlist so they can manually sign up
+          console.log(`📧 Last minute cancellation - sending opportunity email to waitlist user:`, {
+            workoutId: id,
+            workoutTitle: workoutTitle,
+            waitlistUserId: w.user_id,
+            waitlistUserName: w.user_name
+          });
+          
+          // Notifications are best-effort after commit
+          setImmediate(async () => {
+            try {
+              await emailService.sendLastMinuteCancellationOpportunity(
                 w.email,
                 w.user_name,
-                details.rows[0].title || 'Workout',
-                details.rows[0].workout_date,
-                details.rows[0].workout_time,
+                workoutDetailsForEmail.title || workoutTitle || 'Workout',
+                workoutDetailsForEmail.workout_date,
+                workoutDetailsForEmail.workout_time,
                 id
               );
+            } catch (e) {
+              console.log('Last minute cancellation opportunity email error:', e.message);
             }
-          } catch (e) {
-            console.log('Waitlist promotion notification error:', e.message);
-          }
-        });
+          });
+        } else {
+          // Outside 12 hours: Auto-promote waitlist person (existing behavior)
+          await client.query('DELETE FROM workout_waitlist WHERE id = $1', [w.id]);
+          await client.query(
+            'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+            [w.user_id, id]
+          );
+          
+          console.log(`✅ Auto-promoted waitlist user:`, {
+            workoutId: id,
+            workoutTitle: workoutTitle,
+            waitlistUserId: w.user_id,
+            waitlistUserName: w.user_name
+          });
+          
+          // Notifications are best-effort after commit
+          setImmediate(async () => {
+            try {
+              // Use notification service which checks preferences
+              await notificationService.notifyWaitlistPromotion(
+                {
+                  id: w.user_id,
+                  email: w.email,
+                  phone: w.phone_number || null,
+                  name: w.user_name
+                },
+                {
+                  id: id,
+                  title: workoutDetailsForEmail.title || 'Workout',
+                  workoutDate: workoutDetailsForEmail.workout_date,
+                  workoutTime: workoutDetailsForEmail.workout_time
+                }
+              );
+            } catch (e) {
+              console.log('Waitlist promotion notification error:', e.message);
+            }
+          });
+        }
       }
 
       await client.query('COMMIT');
@@ -543,8 +638,8 @@ router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) =
     const workoutResult = await pool.query(`
       SELECT 
         fp.id, fp.title, fp.content, fp.workout_type, fp.workout_date, 
-        fp.workout_time, fp.capacity, fp.created_at,
-        u.name as author_name, u.role as author_role
+        fp.workout_time, fp.capacity, fp.created_at, fp.user_id,
+        u.name as author_name, u.role as author_role, u.profile_picture_url as "authorProfilePictureUrl"
       FROM forum_posts fp
       JOIN users u ON fp.user_id = u.id
       WHERE fp.id = $1 AND fp.type = 'workout' AND fp.is_deleted = false
@@ -701,7 +796,7 @@ router.get('/events/:id', authenticateToken, requireMember, async (req, res) => 
     const eventResult = await pool.query(`
       SELECT 
         fp.id, fp.title, fp.content, fp.event_date, fp.created_at,
-        u.name as author_name, u.role as author_role
+        u.name as author_name, u.role as author_role, u.profile_picture_url as "authorProfilePictureUrl"
       FROM forum_posts fp
       JOIN users u ON fp.user_id = u.id
       WHERE fp.id = $1 AND fp.type = 'event' AND fp.is_deleted = false
@@ -1059,12 +1154,131 @@ router.post('/workouts', authenticateToken, requireMember, async (req, res) => {
       WHERE fp.id = $1
     `, [postId]);
 
+    const post = postResult.rows[0];
+
+    // Send notifications for workout post (non-blocking)
+    setImmediate(async () => {
+      try {
+        if (workoutType) {
+          await notificationService.notifyWorkoutPosted(workoutType, {
+            id: post.id,
+            title: post.title,
+            workoutDate: post.workout_date,
+            workoutTime: post.workout_time,
+            content: post.content
+          });
+        }
+      } catch (error) {
+        console.error('Error sending workout notifications:', error);
+      }
+    });
+
     res.status(201).json({
       message: 'Workout post created successfully',
-      post: postResult.rows[0]
+      post: post
     });
   } catch (error) {
     console.error('Create workout post error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create comment/reply on a forum post
+router.post('/posts/:id/comments', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+
+    // Verify the post exists
+    const postResult = await pool.query(
+      `SELECT id, title, type FROM forum_posts WHERE id = $1 AND is_deleted = false`,
+      [id]
+    );
+
+    if (postResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const post = postResult.rows[0];
+
+    // Insert the comment
+    const commentResult = await pool.query(
+      `INSERT INTO forum_comments (post_id, user_id, content, created_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+       RETURNING id, post_id, user_id, content, created_at`,
+      [id, userId, content.trim()]
+    );
+
+    const comment = commentResult.rows[0];
+
+    // Get comment with user info
+    const fullCommentResult = await pool.query(`
+      SELECT 
+        fc.id, fc.post_id, fc.content, fc.created_at,
+        u.id as user_id, u.name as user_name, u.profile_picture_url as "userProfilePictureUrl"
+      FROM forum_comments fc
+      JOIN users u ON fc.user_id = u.id
+      WHERE fc.id = $1
+    `, [comment.id]);
+
+    const fullComment = fullCommentResult.rows[0];
+
+    // Send notifications if this is a workout post (non-blocking)
+    if (post.type === 'workout') {
+      setImmediate(async () => {
+        try {
+          // Get the author name for the notification
+          const authorResult = await pool.query(
+            'SELECT name FROM users WHERE id = $1',
+            [userId]
+          );
+          const authorName = authorResult.rows.length > 0 ? authorResult.rows[0].name : 'Someone';
+
+          await notificationService.notifyWorkoutReplyToSignups(post.id, {
+            postId: post.id,
+            postTitle: post.title || 'Workout',
+            replyAuthor: authorName,
+            replyContent: content.trim()
+          });
+        } catch (error) {
+          console.error('Error sending workout reply notifications:', error);
+        }
+      });
+    }
+
+    res.status(201).json({
+      message: 'Comment created successfully',
+      comment: fullComment
+    });
+  } catch (error) {
+    console.error('Create comment error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get comments for a forum post
+router.get('/posts/:id/comments', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const commentsResult = await pool.query(`
+      SELECT 
+        fc.id, fc.post_id, fc.content, fc.created_at,
+        u.id as user_id, u.name as user_name, u.profile_picture_url as "userProfilePictureUrl"
+      FROM forum_comments fc
+      JOIN users u ON fc.user_id = u.id
+      WHERE fc.post_id = $1
+      ORDER BY fc.created_at ASC
+    `, [id]);
+
+    res.json({ comments: commentsResult.rows || [] });
+  } catch (error) {
+    console.error('Get comments error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

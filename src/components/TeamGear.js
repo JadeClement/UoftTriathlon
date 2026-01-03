@@ -1,6 +1,88 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { showError, showSuccess } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
 import './TeamGear.css';
+
+// Auto-resizing text component that shrinks font until it fits
+const AutoResizeText = ({ text, className = '', style = {}, inline = false }) => {
+  const textRef = useRef(null);
+  const containerRef = useRef(null);
+  const [fontSize, setFontSize] = useState(inline ? 14 : 16);
+
+  useEffect(() => {
+    const adjustFontSize = () => {
+      if (!textRef.current || !containerRef.current) return;
+      
+      const container = containerRef.current;
+      const textElement = textRef.current;
+      const containerWidth = container.offsetWidth;
+      
+      // Start with a reasonable font size
+      let currentSize = inline ? 14 : 16;
+      textElement.style.fontSize = `${currentSize}px`;
+      
+      // Keep reducing font size until text fits
+      while (textElement.scrollWidth > containerWidth && currentSize > 10) {
+        currentSize -= 0.5;
+        textElement.style.fontSize = `${currentSize}px`;
+      }
+      
+      setFontSize(currentSize);
+    };
+
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(adjustFontSize, 10);
+    
+    // Adjust on mount and window resize
+    window.addEventListener('resize', adjustFontSize);
+    
+    // Use ResizeObserver for more accurate detection
+    const resizeObserver = new ResizeObserver(() => {
+      setTimeout(adjustFontSize, 10);
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', adjustFontSize);
+      resizeObserver.disconnect();
+    };
+  }, [text, inline]);
+
+  const containerStyle = inline ? {
+    display: 'inline',
+    ...style 
+  } : {
+    display: 'inline-block',
+    width: '100%',
+    minWidth: 0,
+    ...style 
+  };
+
+  return (
+    <span 
+      ref={containerRef}
+      style={containerStyle}
+    >
+      <span
+        ref={textRef}
+        className={className}
+        style={{
+          fontSize: `${fontSize}px`,
+          wordBreak: 'break-word',
+          overflowWrap: 'break-word',
+          display: inline ? 'inline' : 'inline-block',
+          maxWidth: inline ? 'none' : '100%'
+        }}
+      >
+        {text}
+      </span>
+    </span>
+  );
+};
 
 const TeamGear = () => {
   const { currentUser, isAdmin, getUserRole } = useAuth();
@@ -15,7 +97,7 @@ const TeamGear = () => {
 
   // Admin edit modal state
   const [editingItem, setEditingItem] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', price: '', description: '' });
+  const [editForm, setEditForm] = useState({ title: '', price: '', description: '', hasGender: false, hasSize: false, availableSizes: [] });
   const [newImages, setNewImages] = useState([]);
   const [saving, setSaving] = useState(false);
   const [currentImages, setCurrentImages] = useState([]);
@@ -24,7 +106,7 @@ const TeamGear = () => {
 
   // Admin add modal state
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ title: '', price: '', description: '' });
+  const [addForm, setAddForm] = useState({ title: '', price: '', description: '', hasGender: false, hasSize: false, availableSizes: [] });
   const [adding, setAdding] = useState(false);
 
   // Lightbox (enlarge) state
@@ -34,6 +116,7 @@ const TeamGear = () => {
   // Order confirmation modal state
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [deleteGearConfirm, setDeleteGearConfirm] = useState({ isOpen: false, itemId: null });
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderEmail, setOrderEmail] = useState('');
   const [orderEmailConfirm, setOrderEmailConfirm] = useState('');
@@ -170,10 +253,20 @@ const TeamGear = () => {
   // Edit handlers
   const openEditModal = (item) => {
     setEditingItem(item);
+    // Migrate old size format to new format if needed
+    let availableSizes = Array.isArray(item.availableSizes) ? item.availableSizes : [];
+    // If item has old format (just 'xs', 's', etc) and hasGender, convert to new format
+    if (item.hasGender && availableSizes.length > 0 && availableSizes[0] && !availableSizes[0].includes('-')) {
+      // Old format detected - convert to new format (default to men's for backward compatibility)
+      availableSizes = availableSizes.map(size => `m-${size}`);
+    }
     setEditForm({
       title: item.title || '',
       price: item.price || '',
-      description: item.description || ''
+      description: item.description || '',
+      hasGender: item.hasGender || false,
+      hasSize: item.hasSize || false,
+      availableSizes: availableSizes
     });
     setCurrentImages([...(item.images || [])]);
     setNewImages([]);
@@ -223,7 +316,7 @@ const TeamGear = () => {
       setCurrentImages(prev => prev.filter(img => img !== imageUrl));
     } catch (e) {
       console.error('❌ [FRONTEND] Error removing image:', e);
-      alert(`Failed to remove image: ${e.message}`);
+      showError(`Failed to remove image: ${e.message}`);
     }
   };
 
@@ -244,7 +337,7 @@ const TeamGear = () => {
   // Add new gear item
   const addGearItem = async () => {
     if (!addForm.title.trim()) {
-      alert('Please enter a title');
+      showError('Please enter a title');
       return;
     }
     
@@ -272,10 +365,10 @@ const TeamGear = () => {
       })));
       
       setShowAddModal(false);
-      setAddForm({ title: '', price: '', description: '' });
+      setAddForm({ title: '', price: '', description: '', hasGender: false, hasSize: false, availableSizes: [] });
     } catch (e) {
       console.error('Error adding gear item:', e);
-      alert('Failed to add gear item');
+      showError('Failed to add gear item');
     } finally {
       setAdding(false);
     }
@@ -283,9 +376,14 @@ const TeamGear = () => {
 
   // Delete gear item
   const deleteGearItem = async (itemId) => {
-    if (!window.confirm('Are you sure you want to delete this gear item? This action cannot be undone.')) {
-      return;
-    }
+    setDeleteGearConfirm({ isOpen: true, itemId });
+  };
+
+  const confirmDeleteGearItem = async () => {
+    const { itemId } = deleteGearConfirm;
+    setDeleteGearConfirm({ isOpen: false, itemId: null });
+    
+    if (!itemId) return;
     
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -308,9 +406,10 @@ const TeamGear = () => {
       })));
       
       closeEditModal();
+      showSuccess('Gear item deleted successfully');
     } catch (e) {
       console.error('Error deleting gear item:', e);
-      alert('Failed to delete gear item');
+      showError('Failed to delete gear item');
     }
   };
 
@@ -329,7 +428,10 @@ const TeamGear = () => {
           title: editForm.title,
           price: editForm.price,
           description: editForm.description,
-          images: currentImages
+          images: currentImages,
+          hasGender: editForm.hasGender,
+          hasSize: editForm.hasSize,
+          availableSizes: editForm.availableSizes
         })
       });
       if (!putRes.ok) throw new Error('Failed to save gear details');
@@ -365,7 +467,7 @@ const TeamGear = () => {
       closeEditModal();
     } catch (e) {
       console.error(e);
-      alert(e.message || 'Failed to save');
+      showError(e.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -375,12 +477,12 @@ const TeamGear = () => {
   const handleOrderClick = (item) => {
     // Check if user is logged in and has member role
     if (!currentUser) {
-      alert('Please log in to place an order.');
+      showError('Please log in to place an order.');
       return;
     }
     
     if (!['member', 'coach', 'exec', 'administrator'].includes(currentUser.role)) {
-      alert('You need to be a member to place orders. Please contact an administrator to upgrade your account.');
+      showError('You need to be a member to place orders. Please contact an administrator to upgrade your account.');
       return;
     }
     
@@ -436,7 +538,8 @@ const TeamGear = () => {
         lastName: currentUser.last_name || currentUser.name?.split(' ').slice(1).join(' ') || '',
         email: emailToUse,
         item: selectedItem.title,
-        size: orderSelections[selectedItem.id]?.size || '',
+        gender: selectedItem.hasGender && orderSelections[selectedItem.id]?.fit ? (orderSelections[selectedItem.id].fit === 'womens' ? 'womens' : 'mens') : null,
+        size: selectedItem.hasSize ? (orderSelections[selectedItem.id]?.size || null) : null,
         quantity: 1
       };
 
@@ -620,92 +723,102 @@ const TeamGear = () => {
               <h3 className="gear-title">{item.title}</h3>
               <p className="gear-description">{(item.images && item.images.length > 1) ? (item.description || '').replace(/image coming soon\.?/ig, '').trim() : item.description}</p>
               <div className="gear-price">${item.price}</div>
-              {/* Ordering options */}
+              {/* Ordering options - based on gear item flags */}
               {(() => {
-                const isClothingItem = item.title.toLowerCase().includes('suit') || 
-                                     item.title.toLowerCase().includes('jersey') || 
-                                     item.title.toLowerCase().includes('shorts');
-                const isUnisexItem = item.title.toLowerCase().includes('backpack') || 
-                                   item.title.toLowerCase().includes('cap');
+                const hasGender = item.hasGender || false;
+                const hasSize = item.hasSize || false;
                 
-                if (isUnisexItem) {
-                  // No ordering options for unisex items (backpack, cap) - they're one-size
+                // If neither flag is set, show no options
+                if (!hasGender && !hasSize) {
                   return null;
-                } else if (isClothingItem) {
-                  // Show both fit and size for clothing items
-                  return (
-                    <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0 12px' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
-                        <select
-                          value={(orderSelections[item.id]?.fit) || 'mens'}
-                          onChange={(e) => setOrderSelections(prev => {
-                            const fit = e.target.value;
+                }
+                
+                // Build options based on flags
+                const options = [];
+                
+                if (hasGender) {
+                  options.push(
+                    <div key="fit" className="form-group" style={{ margin: 0 }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
+                      <select
+                        value={(orderSelections[item.id]?.fit) || 'mens'}
+                        onChange={(e) => {
+                          const fit = e.target.value;
+                          setOrderSelections(prev => {
                             const prevItem = prev[item.id] || {};
-                            const adjustedSize = (fit === 'mens' && prevItem.size === 'xs') ? 's' : (prevItem.size || 'm');
-                            return { ...prev, [item.id]: { ...prevItem, fit, size: adjustedSize } };
-                          })}
-                          aria-label="Select fit"
-                        >
-                          <option value="mens">Men's</option>
-                          <option value="womens">Women's</option>
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
-                        <select
-                          value={(orderSelections[item.id]?.size) || 'm'}
-                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
-                          aria-label="Select size"
-                        >
-                          {((orderSelections[item.id]?.fit) || 'mens') !== 'mens' && (<option value="xs">XS</option>)}
-                          <option value="s">S</option>
-                          <option value="m">M</option>
-                          <option value="l">L</option>
-                          <option value="xl">XL</option>
-                          <option value="2xl">2XL</option>
-                        </select>
-                      </div>
-                    </div>
-                  );
-                } else {
-                  // Default: show both options for other items
-                  return (
-                    <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0 12px' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fit</label>
-                        <select
-                          value={(orderSelections[item.id]?.fit) || 'mens'}
-                          onChange={(e) => setOrderSelections(prev => {
-                            const fit = e.target.value;
-                            const prevItem = prev[item.id] || {};
-                            const adjustedSize = (fit === 'mens' && prevItem.size === 'xs') ? 's' : (prevItem.size || 'm');
-                            return { ...prev, [item.id]: { ...prevItem, fit, size: adjustedSize } };
-                          })}
-                          aria-label="Select fit"
-                        >
-                          <option value="mens">Men's</option>
-                          <option value="womens">Women's</option>
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
-                        <select
-                          value={(orderSelections[item.id]?.size) || 'm'}
-                          onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
-                          aria-label="Select size"
-                        >
-                          {((orderSelections[item.id]?.fit) || 'mens') !== 'mens' && (<option value="xs">XS</option>)}
-                          <option value="s">S</option>
-                          <option value="m">M</option>
-                          <option value="l">L</option>
-                          <option value="xl">XL</option>
-                          <option value="2xl">2XL</option>
-                        </select>
-                      </div>
+                            // When gender changes, reset size to first available for that gender
+                            const genderPrefix = fit === 'womens' ? 'w-' : 'm-';
+                            const availableSizes = Array.isArray(item.availableSizes) ? item.availableSizes : [];
+                            const genderSizes = availableSizes
+                              .filter(size => size && size.startsWith(genderPrefix))
+                              .map(size => size.replace(genderPrefix, ''))
+                              .filter(size => ['xs', 's', 'm', 'l', 'xl', '2xl'].includes(size));
+                            const defaultSize = genderSizes.length > 0 ? genderSizes[0] : 'm';
+                            return { ...prev, [item.id]: { ...prevItem, fit, size: defaultSize } };
+                          });
+                        }}
+                        aria-label="Select fit"
+                      >
+                        <option value="mens">Men's</option>
+                        <option value="womens">Women's</option>
+                      </select>
                     </div>
                   );
                 }
+                
+                if (hasSize) {
+                  // Get available sizes based on selected gender and item's availableSizes
+                  const selectedFit = (orderSelections[item.id]?.fit) || 'mens';
+                  const availableSizes = Array.isArray(item.availableSizes) ? item.availableSizes : [];
+                  
+                  let sizeOptions = [];
+                  if (hasGender) {
+                    // Filter sizes for the selected gender (w- or m- prefix)
+                    const genderPrefix = selectedFit === 'womens' ? 'w-' : 'm-';
+                    const genderSizes = availableSizes
+                      .filter(size => size && size.startsWith(genderPrefix))
+                      .map(size => size.replace(genderPrefix, ''))
+                      .filter(size => ['xs', 's', 'm', 'l', 'xl', '2xl'].includes(size));
+                    
+                    sizeOptions = genderSizes.length > 0 ? genderSizes : ['xs', 's', 'm', 'l', 'xl', '2xl']; // Fallback if no sizes specified
+                  } else {
+                    // Unisex sizes (no prefix)
+                    const unisexSizes = availableSizes
+                      .filter(size => size && !size.includes('-'))
+                      .filter(size => ['xs', 's', 'm', 'l', 'xl', '2xl'].includes(size));
+                    
+                    sizeOptions = unisexSizes.length > 0 ? unisexSizes : ['xs', 's', 'm', 'l', 'xl', '2xl']; // Fallback if no sizes specified
+                  }
+                  
+                  // Get current size or default to first available
+                  const currentSize = orderSelections[item.id]?.size;
+                  const defaultSize = sizeOptions.includes(currentSize) ? currentSize : (sizeOptions[0] || 'm');
+                  
+                  options.push(
+                    <div key="size" className="form-group" style={{ margin: 0 }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Size</label>
+                      <select
+                        value={defaultSize}
+                        onChange={(e) => setOrderSelections(prev => ({ ...prev, [item.id]: { ...(prev[item.id]||{}), size: e.target.value } }))}
+                        aria-label="Select size"
+                      >
+                        {sizeOptions.map(size => (
+                          <option key={size} value={size}>{size.toUpperCase()}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+                
+                if (options.length === 0) {
+                  return null;
+                }
+                
+                return (
+                  <div className="gear-order-options" style={{ display: 'grid', gridTemplateColumns: options.length === 2 ? '1fr 1fr' : '1fr', gap: '8px', margin: '8px 0 12px' }}>
+                    {options}
+                  </div>
+                );
               })()}
               <div className="gear-buttons">
                 {currentUser && ['member', 'coach', 'exec', 'administrator'].includes(currentUser.role) ? (
@@ -817,6 +930,96 @@ const TeamGear = () => {
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
               />
             </div>
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start' }}>
+              <label style={{ fontWeight: 600, marginBottom: '4px' }}>Options</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <input
+                  type="checkbox"
+                  checked={editForm.hasGender}
+                  onChange={(e) => setEditForm({ ...editForm, hasGender: e.target.checked })}
+                />
+                <span>Has Men's/Women's fit options</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <input
+                  type="checkbox"
+                  checked={editForm.hasSize}
+                  onChange={(e) => setEditForm({ ...editForm, hasSize: e.target.checked, availableSizes: e.target.checked ? editForm.availableSizes : [] })}
+                />
+                <span>Has size options</span>
+              </label>
+              {editForm.hasSize && (
+                <div style={{ marginTop: '8px' }}>
+                  {editForm.hasGender ? (
+                    // Show 10 boxes: 5 women's, then 5 men's
+                    <div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', display: 'block' }}>Women's Sizes:</label>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                          {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                            <div key={`w-${size}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                              <input
+                                type="checkbox"
+                                checked={editForm.availableSizes.includes(`w-${size}`)}
+                                onChange={(e) => {
+                                  const newSizes = e.target.checked
+                                    ? [...editForm.availableSizes, `w-${size}`]
+                                    : editForm.availableSizes.filter(s => s !== `w-${size}`);
+                                  setEditForm({ ...editForm, availableSizes: newSizes });
+                                }}
+                                style={{ cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>W-{size}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', display: 'block' }}>Men's Sizes:</label>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                          {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                            <div key={`m-${size}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                              <input
+                                type="checkbox"
+                                checked={editForm.availableSizes.includes(`m-${size}`)}
+                                onChange={(e) => {
+                                  const newSizes = e.target.checked
+                                    ? [...editForm.availableSizes, `m-${size}`]
+                                    : editForm.availableSizes.filter(s => s !== `m-${size}`);
+                                  setEditForm({ ...editForm, availableSizes: newSizes });
+                                }}
+                                style={{ cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>M-{size}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Show 5 unisex boxes when no gender
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                      {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                        <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <input
+                            type="checkbox"
+                            checked={editForm.availableSizes.includes(size)}
+                            onChange={(e) => {
+                              const newSizes = e.target.checked
+                                ? [...editForm.availableSizes, size]
+                                : editForm.availableSizes.filter(s => s !== size);
+                              setEditForm({ ...editForm, availableSizes: newSizes });
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>{size}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="form-group">
               <label>Current Images</label>
               {currentImages.length > 0 ? (
@@ -927,6 +1130,96 @@ const TeamGear = () => {
                   placeholder="Enter description"
                 />
               </div>
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start' }}>
+                <label style={{ fontWeight: 600, marginBottom: '4px' }}>Options</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <input
+                    type="checkbox"
+                    checked={addForm.hasGender}
+                    onChange={(e) => setAddForm({ ...addForm, hasGender: e.target.checked })}
+                  />
+                  <span>Has Men's/Women's fit options</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <input
+                    type="checkbox"
+                    checked={addForm.hasSize}
+                    onChange={(e) => setAddForm({ ...addForm, hasSize: e.target.checked, availableSizes: e.target.checked ? addForm.availableSizes : [] })}
+                  />
+                  <span>Has size options</span>
+                </label>
+                {addForm.hasSize && (
+                  <div style={{ marginTop: '8px' }}>
+                    {addForm.hasGender ? (
+                      // Show 10 boxes: 5 women's, then 5 men's
+                      <div>
+                        <div style={{ marginBottom: '12px' }}>
+                          <label style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', display: 'block' }}>Women's Sizes:</label>
+                          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                            {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                              <div key={`w-${size}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={addForm.availableSizes.includes(`w-${size}`)}
+                                  onChange={(e) => {
+                                    const newSizes = e.target.checked
+                                      ? [...addForm.availableSizes, `w-${size}`]
+                                      : addForm.availableSizes.filter(s => s !== `w-${size}`);
+                                    setAddForm({ ...addForm, availableSizes: newSizes });
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>W-{size}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', display: 'block' }}>Men's Sizes:</label>
+                          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                            {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                              <div key={`m-${size}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={addForm.availableSizes.includes(`m-${size}`)}
+                                  onChange={(e) => {
+                                    const newSizes = e.target.checked
+                                      ? [...addForm.availableSizes, `m-${size}`]
+                                      : addForm.availableSizes.filter(s => s !== `m-${size}`);
+                                    setAddForm({ ...addForm, availableSizes: newSizes });
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>M-{size}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // Show 5 unisex boxes when no gender
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                        {['xs', 's', 'm', 'l', 'xl'].map(size => (
+                          <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <input
+                              type="checkbox"
+                              checked={addForm.availableSizes.includes(size)}
+                              onChange={(e) => {
+                                const newSizes = e.target.checked
+                                  ? [...addForm.availableSizes, size]
+                                  : addForm.availableSizes.filter(s => s !== size);
+                                setAddForm({ ...addForm, availableSizes: newSizes });
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span style={{ fontSize: '12px', textTransform: 'uppercase' }}>{size}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="gear-modal-actions">
               <button className="cancel-button" onClick={() => setShowAddModal(false)} disabled={adding}>Cancel</button>
@@ -940,9 +1233,9 @@ const TeamGear = () => {
       {showOrderModal && selectedItem && (
         <div className="gear-modal-overlay" onClick={closeOrderModal}>
           <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="gear-modal-header">
+            <div className="gear-modal-header order-modal-header">
+              <button className="gear-modal-close order-modal-close" onClick={closeOrderModal}>×</button>
               <h2>Confirm Order</h2>
-              <button className="gear-modal-close" onClick={closeOrderModal}>×</button>
             </div>
             <div className="gear-modal-body">
               <div className="order-confirmation">
@@ -950,15 +1243,17 @@ const TeamGear = () => {
                 <div className="order-item">
                   <strong>Item:</strong> {selectedItem.title}
                 </div>
-                <div className={`order-item ${orderSelections[selectedItem.id]?.size ? 'size-highlighted' : ''}`}>
-                  <strong>Size:</strong> {orderSelections[selectedItem.id]?.size ? (
-                    <span style={{ color: '#059669', fontWeight: '600' }}>
-                      {orderSelections[selectedItem.id].size.toUpperCase()}
-                    </span>
-                  ) : (
-                    <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>
-                  )}
-                </div>
+                {selectedItem.hasSize && (
+                  <div className={`order-item ${orderSelections[selectedItem.id]?.size ? 'size-highlighted' : ''}`}>
+                    <strong>Size:</strong> {orderSelections[selectedItem.id]?.size ? (
+                      <span style={{ color: '#059669', fontWeight: '600' }}>
+                        {orderSelections[selectedItem.id].size.toUpperCase()}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>
+                    )}
+                  </div>
+                )}
                 <div className="order-item">
                   <strong>Quantity:</strong> 1
                 </div>
@@ -994,7 +1289,7 @@ const TeamGear = () => {
                   Note: Use your University of Toronto email, or the same email you used to purchase your gym membership.
                 </p>
                 <div className="order-notice">
-                  <p><strong>Important:</strong> You will receive an invoice email shortly after confirming your order.</p>
+                  <p><strong>Important:</strong> You'll receive an invoice email once all orders have been submitted.</p>
                   <p>Please check your email for payment instructions and order details.</p>
                 </div>
               </div>
@@ -1021,9 +1316,14 @@ const TeamGear = () => {
       <div className="gear-modal-overlay" onClick={closeSuccessModal}>
         <div className="gear-modal success-modal" onClick={(e) => e.stopPropagation()}>
           <div className="gear-modal-header success-header">
-            <div className="success-icon">🎉</div>
-            <h2>Order Confirmed!</h2>
-            <button className="gear-modal-close" onClick={closeSuccessModal}>×</button>
+            <div style={{ flex: 1 }}></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', flex: 1, minWidth: 0 }}>
+              <div className="success-icon" style={{ flexShrink: 0 }}>🎉</div>
+              <h2 style={{ margin: 0, whiteSpace: 'nowrap', fontSize: 'clamp(1.1rem, 4vw, 1.5rem)' }}>Order Confirmed!</h2>
+            </div>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="gear-modal-close" onClick={closeSuccessModal}>×</button>
+            </div>
           </div>
           <div className="gear-modal-body success-body">
             <div className="success-message">
@@ -1047,7 +1347,11 @@ const TeamGear = () => {
                   </div>
                 )}
                 <div className="recap-item">
-                  <strong>Email:</strong> {orderSuccessData.email}
+                  <strong>Email:</strong> 
+                  <AutoResizeText 
+                    text={orderSuccessData.email} 
+                    className="email-text"
+                  />
                 </div>
                 <div className="recap-item">
                   <strong>Price:</strong> {orderSuccessData.item.price || 'Contact for pricing'}
@@ -1058,7 +1362,7 @@ const TeamGear = () => {
                 <h3>📧 What's Next?</h3>
                 <p>
                   You'll receive an invoice email once all orders have been submitted. 
-                  Please check your email ({orderSuccessData.email}) for payment instructions and order details.
+                  Please check your email for payment instructions and order details.
                 </p>
               </div>
 
@@ -1090,6 +1394,7 @@ const TeamGear = () => {
       /* Success Modal Styles */
       .success-modal {
         max-width: 500px;
+        width: 95%;
       }
 
       .success-header {
@@ -1097,7 +1402,7 @@ const TeamGear = () => {
         background: linear-gradient(135deg, #10b981, #059669);
         color: white;
         border-radius: 8px 8px 0 0;
-        padding: 20px;
+        padding: 16px 20px;
         position: relative;
       }
 
@@ -1110,10 +1415,16 @@ const TeamGear = () => {
         margin: 0;
         font-size: 1.5rem;
         font-weight: 600;
+        white-space: nowrap;
       }
 
       .success-body {
-        padding: 24px;
+        padding: 12px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        flex: 1;
+        min-height: 0;
       }
 
       .success-main-text {
@@ -1142,9 +1453,22 @@ const TeamGear = () => {
       .recap-item {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         padding: 8px 0;
         border-bottom: 1px solid #e5e7eb;
+        gap: 8px;
+      }
+      
+      .recap-item strong {
+        flex-shrink: 0;
+      }
+      
+      .recap-item .email-text {
+        text-align: right;
+        flex: 1;
+        min-width: 0;
+        word-break: break-all;
+        overflow-wrap: break-word;
       }
 
       .recap-item:last-child {
@@ -1171,6 +1495,16 @@ const TeamGear = () => {
         text-decoration: underline;
       }
     `}</style>
+      <ConfirmModal
+        isOpen={deleteGearConfirm.isOpen}
+        onConfirm={confirmDeleteGearItem}
+        onCancel={() => setDeleteGearConfirm({ isOpen: false, itemId: null })}
+        title="Delete Gear Item"
+        message="Are you sure you want to delete this gear item? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
   </div>
 );
 };

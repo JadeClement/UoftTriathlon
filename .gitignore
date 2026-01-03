@@ -32,6 +32,12 @@ backend/node_modules/
 build/
 dist/
 
+# Capacitor
+.capacitor/
+ios/
+!ios/ci_scripts/
+android/
+
 # Logs and OS cruft
 npm-debug.log*
 *.log

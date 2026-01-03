@@ -2,6 +2,7 @@ const express = require('express');
 const { pool } = require('../database-pg');
 const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('../middleware/auth');
 const ExcelJS = require('exceljs');
+const notificationService = require('../services/notificationService');
 
 // Function to convert markdown-like formatting to HTML
 const formatText = (text) => {
@@ -60,39 +61,48 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
 // Allow exec and admin to view members; restrict mutating routes to admin below
 router.get('/members', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
+    console.log('🔍 Admin members endpoint called by user:', req.user?.email, 'role:', req.user?.role);
     const { page = 1, limit = 50, search = '', role = '' } = req.query;
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE is_active = true';
+    let whereClause = 'WHERE u.is_active = true';
     let params = [];
     let paramCount = 0;
 
     if (search) {
       paramCount++;
-      whereClause += ` AND (name ILIKE $${paramCount} OR email ILIKE $${paramCount + 1})`;
+      whereClause += ` AND (u.name ILIKE $${paramCount} OR u.email ILIKE $${paramCount + 1})`;
       params.push(`%${search}%`, `%${search}%`);
       paramCount++;
     }
 
     if (role && role !== 'all') {
       paramCount++;
-      whereClause += ` AND role = $${paramCount}`;
+      whereClause += ` AND u.role = $${paramCount}`;
       params.push(role);
     }
 
-    // Get total count
-    const countResult = await pool.query(`SELECT COUNT(*) as total FROM users ${whereClause}`, params);
+    // Get total count (using users table for count)
+    const countWhereClause = whereClause.replace(/u\./g, '');
+    const countResult = await pool.query(`SELECT COUNT(*) as total FROM users ${countWhereClause}`, params);
+    console.log('🔍 Total members count:', countResult.rows[0].total);
     
-    // Get members
+    // Get members with term information
+    // JOIN is needed to get t.term (term name) for display in the UI
     const membersResult = await pool.query(`
       SELECT 
-        id, email, name, role, created_at,
-        join_date, expiry_date, phone_number, absences, charter_accepted, sport
-      FROM users
+        u.id, u.email, u.name, u.role, u.created_at,
+        u.join_date, u.phone_number, u.absences, u.charter_accepted, u.sport,
+        u.term_id, t.term
+      FROM users u
+      LEFT JOIN terms t ON u.term_id = t.id
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY u.created_at DESC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `, [...params, limit, offset]);
+
+    console.log('🔍 Members query returned:', membersResult.rows.length, 'members');
+    console.log('🔍 Sample member:', membersResult.rows[0]);
 
     res.json({
       members: membersResult.rows || [],
@@ -105,6 +115,21 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
     });
   } catch (error) {
     console.error('Get members error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all terms
+router.get('/terms', authenticateToken, requireRole('exec'), async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, term, start_date, end_date
+      FROM terms
+      ORDER BY start_date DESC
+    `);
+    res.json({ terms: result.rows || [] });
+  } catch (error) {
+    console.error('Get terms error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -130,16 +155,31 @@ router.put('/members/:id/role', authenticateToken, requireAdmin, async (req, res
       }
     }
 
-    await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+    // Get current role and join_date
+    const currentUser = await pool.query('SELECT role, join_date FROM users WHERE id = $1', [id]);
+    const oldRole = currentUser.rows[0]?.role || req.body.oldRole || 'unknown';
+    const currentJoinDate = currentUser.rows[0]?.join_date;
+
+    // Set join_date only if:
+    // 1. User is transitioning from 'pending' to any role, AND
+    // 2. join_date is currently NULL
+    // This preserves the original join_date if they change roles later (e.g., member -> exec)
+    const shouldSetJoinDate = oldRole === 'pending' && !currentJoinDate;
+    
+    if (shouldSetJoinDate) {
+      await pool.query('UPDATE users SET role = $1, join_date = CURRENT_DATE WHERE id = $2', [role, id]);
+    } else {
+      await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+    }
 
     // Create role change notification
     await pool.query(`
       INSERT INTO role_change_notifications (user_id, old_role, new_role)
       VALUES ($1, $2, $3)
-    `, [id, req.body.oldRole || 'unknown', role]);
+    `, [id, oldRole, role]);
 
     // Send role change email notification
-    console.log(`🔍 DEBUG: Starting role change email process for user ${id} from ${req.body.oldRole || 'unknown'} to ${role}`);
+    console.log(`🔍 DEBUG: Starting role change email process for user ${id} from ${oldRole} to ${role}`);
     try {
       const emailService = require('../services/emailService');
       console.log(`🔍 DEBUG: EmailService loaded successfully for role change`);
@@ -149,7 +189,6 @@ router.put('/members/:id/role', authenticateToken, requireAdmin, async (req, res
       
       if (userDetails.rows.length > 0) {
         const { name, email } = userDetails.rows[0];
-        const oldRole = req.body.oldRole || 'unknown';
         console.log(`🔍 DEBUG: Found user for role change - Name: ${name}, Email: ${email}, Old Role: ${oldRole}, New Role: ${role}`);
         
         const result = await emailService.sendRoleChangeNotification(email, name, oldRole, role);
@@ -201,9 +240,9 @@ router.put('/members/:id/charter', authenticateToken, requireAdmin, async (req, 
 router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone_number, role, charterAccepted, expiryDate, sport } = req.body;
+    const { name, email, phone_number, role, charterAccepted, sport, term_id } = req.body;
     
-    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, expiryDate });
+    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, term_id });
 
     // Get the current role before updating to check if it actually changed
     let currentRole = null;
@@ -271,24 +310,41 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       console.log('🔧 Charter update:', { charterAccepted, charterValue });
     }
 
-    if (expiryDate !== undefined) {
-      paramCount++;
-      updates.push(`expiry_date = $${paramCount}`);
-      // Convert empty string to null, otherwise use the date
-      const expiryValue = expiryDate === '' ? null : expiryDate;
-      values.push(expiryValue);
-      console.log('🔧 Expiry date update:', { expiryDate, expiryValue });
-    }
+    // Note: expiry_date removed - expiry is now determined by term.end_date
 
     if (sport !== undefined) {
       // Validate sport
-      if (!['triathlon', 'duathlon', 'run_only'].includes(sport)) {
-        return res.status(400).json({ error: 'Invalid sport. Must be triathlon, duathlon, or run_only' });
+      if (!['triathlon', 'duathlon', 'run_only', 'swim_only'].includes(sport)) {
+        return res.status(400).json({ error: 'Invalid sport. Must be triathlon, duathlon, run_only, or swim_only' });
       }
       paramCount++;
       updates.push(`sport = $${paramCount}`);
       values.push(sport);
       console.log('🔧 Sport update:', { sport });
+    }
+
+    if (term_id !== undefined) {
+      // Validate term_id - can be null or a valid integer
+      if (term_id !== null && term_id !== '') {
+        const termIdInt = parseInt(term_id, 10);
+        if (isNaN(termIdInt)) {
+          return res.status(400).json({ error: 'Invalid term_id. Must be a number or empty' });
+        }
+        // Verify term exists
+        const termCheck = await pool.query('SELECT id FROM terms WHERE id = $1', [termIdInt]);
+        if (termCheck.rows.length === 0) {
+          return res.status(400).json({ error: 'Term not found' });
+        }
+        paramCount++;
+        updates.push(`term_id = $${paramCount}`);
+        values.push(termIdInt);
+      } else {
+        // Set to null if empty string or null
+        paramCount++;
+        updates.push(`term_id = $${paramCount}`);
+        values.push(null);
+      }
+      console.log('🔧 Term update:', { term_id });
     }
 
     if (updates.length === 0) {
@@ -394,8 +450,15 @@ router.post('/members/:id/approve', authenticateToken, requireAdmin, async (req,
       return res.status(400).json({ error: 'User is not pending approval' });
     }
 
-    // Update user role
-    await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+    // Update user role and set join_date if it's not already set
+    // join_date should be the first time they're approved (pending -> any role)
+    // If they change roles later (member -> exec), keep the original join_date
+    await pool.query(`
+      UPDATE users 
+      SET role = $1, 
+          join_date = COALESCE(join_date, CURRENT_DATE)
+      WHERE id = $2
+    `, [role, id]);
 
     // Create role change notification
     await pool.query(`
@@ -643,14 +706,24 @@ router.delete('/race-management/:id', authenticateToken, requireAdmin, async (re
   }
 });
 
-// Send email route (execs and admins)
-router.post('/send-email', authenticateToken, requireRole('exec'), async (req, res) => {
+// Send email route (execs and admins) - supports file attachments
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+
+router.post('/send-email', authenticateToken, requireRole('exec'), upload.array('attachments', 10), async (req, res) => {
   try {
-    const { to, subject, message } = req.body;
+    // Handle both JSON (backward compatibility) and multipart/form-data
+    const to = req.body.to;
+    const subject = req.body.subject;
+    const message = req.body.message;
+    const template = req.body.template ? (typeof req.body.template === 'string' ? JSON.parse(req.body.template) : req.body.template) : null;
 
     if (!to || !subject || !message) {
       return res.status(400).json({ error: 'Missing required fields: to, subject, message' });
     }
+
+    // Get attachments from multer
+    const attachments = req.files || [];
 
     // Import email service
     const emailService = require('../services/emailService');
@@ -688,7 +761,11 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
 </body>
 </html>`;
 
-    const result = await emailService.sendEmail(to, subject, htmlContent, message, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+    // Send email with attachments if any
+    const result = attachments.length > 0
+      ? await emailService.sendEmailWithAttachments(to, subject, htmlContent, message, attachments, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club')
+      : await emailService.sendEmail(to, subject, htmlContent, message, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+    
     if (result.success) {
       return res.json({ message: 'Email sent successfully' });
     }
@@ -699,10 +776,23 @@ router.post('/send-email', authenticateToken, requireRole('exec'), async (req, r
   }
 });
 
-// Send bulk email route (execs and admins)
-router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (req, res) => {
+// Send bulk email route (execs and admins) - supports file attachments
+router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.array('attachments', 10), async (req, res) => {
   try {
-    const { subject, message, recipients, template, customEmails } = req.body;
+    // Handle both JSON (backward compatibility) and multipart/form-data
+    const subject = req.body.subject;
+    const message = req.body.message;
+    const recipients = req.body.recipients ? (typeof req.body.recipients === 'string' ? JSON.parse(req.body.recipients) : req.body.recipients) : {};
+    const template = req.body.template ? (typeof req.body.template === 'string' ? JSON.parse(req.body.template) : req.body.template) : null;
+    const customEmails = req.body.customEmails;
+    
+    // Get attachments from multer
+    const attachments = req.files || [];
+    
+    console.log('📎 Bulk email attachments received:', {
+      count: attachments.length,
+      files: attachments.map(f => ({ name: f.originalname, size: f.size, mimetype: f.mimetype }))
+    });
 
     if (process.env.NODE_ENV !== 'production') {
       console.log('🔍 Bulk email request body (sanitized):', { subject, template: !!template });
@@ -906,7 +996,15 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), async (r
           const personalizedHtml = htmlContent.replace(/\[name\]/g, recipient.name);
           const personalizedText = textContent.replace(/\[name\]/g, recipient.name);
           
-          const result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+          // Send email with attachments if any
+          let result;
+          if (attachments.length > 0) {
+            console.log(`📧 Sending bulk email with ${attachments.length} attachment(s) to ${recipient.email}`);
+            result = await emailService.sendEmailWithAttachments(recipient.email, subject, personalizedHtml, personalizedText, attachments, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+          } else {
+            console.log(`📧 Sending bulk email without attachments to ${recipient.email}`);
+            result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
+          }
           
           if (result.success) {
             
@@ -1158,6 +1256,8 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
     const signupsResult = await pool.query(signupsQuery, [workoutId]);
 
     // Get attendance records - include both attendance records and cancellations
+    // Only include records for users who were actually signed up (not just on waitlist)
+    // This ensures we don't show attendance for people who were never actually signed up
     const attendanceQuery = `
       WITH all_attendance AS (
         SELECT 
@@ -1170,7 +1270,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
           u.email,
           u.role,
         NULL as profile_picture_url,
-        sub.name as submitted_by_name,
+          sub.name as submitted_by_name,
           CASE 
             WHEN wc.marked_absent = true THEN 'cancelled'
             ELSE 'attended'
@@ -1179,6 +1279,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
         JOIN users u ON wa.user_id = u.id
         LEFT JOIN users sub ON wa.submitted_by = sub.id
         LEFT JOIN workout_cancellations wc ON wa.post_id = wc.post_id AND wa.user_id = wc.user_id
+        INNER JOIN workout_signups ws ON wa.post_id = ws.post_id AND wa.user_id = ws.user_id
         WHERE wa.post_id = $1
         
         UNION ALL
@@ -1197,6 +1298,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
           'cancelled' as attendance_type
         FROM workout_cancellations wc
         JOIN users u ON wc.user_id = u.id
+        INNER JOIN workout_signups ws ON wc.post_id = ws.post_id AND wc.user_id = ws.user_id
         WHERE wc.post_id = $1 AND wc.marked_absent = true
         AND NOT EXISTS (
           SELECT 1 FROM workout_attendance wa2 
@@ -1285,16 +1387,67 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
   }
 });
 
+// Test push notification endpoint
+router.post('/test-push-notification', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, title, body } = req.body;
+    
+    // If userId not provided, use the current user
+    const targetUserId = userId || req.user.userId;
+    
+    // Default test notification
+    const notification = {
+      title: title || 'Test Push Notification',
+      body: body || 'This is a test push notification from the UofT Triathlon app!',
+      data: { type: 'test', timestamp: new Date().toISOString() }
+    };
+    
+    console.log(`🧪 Testing push notification for user ${targetUserId}:`, notification);
+    
+    const success = await notificationService.sendPushNotificationToUser(targetUserId, notification);
+    
+    if (success) {
+      res.json({ 
+        success: true, 
+        message: 'Push notification sent successfully',
+        notification 
+      });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Failed to send push notification. Check that user has registered device tokens and APNs/FCM is configured.',
+        notification 
+      });
+    }
+  } catch (error) {
+    console.error('Test push notification error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 module.exports = router;
 
 // Merch export endpoint - must be defined before module export (moved above if needed)
 router.get('/merch/export', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT first_name, last_name, email, item, size, quantity, created_at
-      FROM merch_orders
-      ORDER BY created_at DESC
-    `);
+    // Get filter parameter (all, archived, not_archived) - defaults to all for export
+    const filter = req.query.filter || 'all';
+    
+    // Build query based on filter
+    // Include gender so it can be exported as its own column
+    let query = `SELECT first_name, last_name, email, item, size, quantity, gender, created_at
+                 FROM merch_orders`;
+    
+    if (filter === 'archived') {
+      query += ' WHERE archived = true';
+    } else if (filter === 'not_archived') {
+      query += ' WHERE archived = false OR archived IS NULL';
+    }
+    // If filter is 'all', no WHERE clause needed
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const result = await pool.query(query);
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Merch Orders');
@@ -1305,7 +1458,8 @@ router.get('/merch/export', authenticateToken, requireAdmin, async (req, res) =>
       { header: 'Email', key: 'email', width: 30 },
       { header: 'Item', key: 'item', width: 30 },
       { header: 'Size', key: 'size', width: 12 },
-      { header: 'Quantity', key: 'quantity', width: 10 }
+      { header: 'Quantity', key: 'quantity', width: 10 },
+      { header: 'Gender', key: 'gender', width: 12 }
     ];
 
     for (const row of result.rows) {
@@ -1313,8 +1467,9 @@ router.get('/merch/export', authenticateToken, requireAdmin, async (req, res) =>
     }
 
     const dateStr = new Date().toISOString().split('T')[0];
+    const filterSuffix = filter === 'archived' ? '_archived' : filter === 'not_archived' ? '_not_archived' : '';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="merch_orders_${dateStr}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="merch_orders${filterSuffix}_${dateStr}.xlsx"`);
 
     const buffer = await workbook.xlsx.writeBuffer();
     return res.send(Buffer.from(buffer));

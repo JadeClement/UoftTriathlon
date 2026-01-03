@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { installFetchInterceptor } from '../utils/installFetchInterceptor';
+import { registerForPushNotifications, unregisterFromPushNotifications } from '../services/pushNotificationService';
 
 const AuthContext = createContext();
 
@@ -47,6 +48,11 @@ export const AuthProvider = ({ children }) => {
           if (isValid) {
             console.log('✅ Token is valid, setting current user');
             setCurrentUser(parsedUser);
+            
+            // Register for push notifications (if on native platform)
+            registerForPushNotifications(parsedUser.id).catch(error => {
+              console.error('❌ Error registering for push notifications:', error);
+            });
           } else {
             console.warn('⚠️ Token is invalid, clearing auth data');
             handleTokenExpired('Token expired or invalid');
@@ -69,11 +75,18 @@ export const AuthProvider = ({ children }) => {
     return () => {
       if (typeof remove === 'function') remove();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle token expiration/invalidation
   const handleTokenExpired = (reason = 'session_expired') => {
     console.log('🔒 Handling token expiration:', reason);
+    
+    // Unregister from push notifications on logout
+    unregisterFromPushNotifications().catch(error => {
+      console.error('❌ Error unregistering from push notifications:', error);
+    });
+    
     localStorage.removeItem('triathlonUser');
     localStorage.removeItem('triathlonToken');
     setCurrentUser(null);
@@ -129,6 +142,12 @@ export const AuthProvider = ({ children }) => {
       console.log('💾 User and token stored in localStorage');
       
       setCurrentUser(normalizedUser);
+      
+      // Register for push notifications (if on native platform)
+      registerForPushNotifications(normalizedUser.id).catch(error => {
+        console.error('❌ Error registering for push notifications:', error);
+      });
+      
       return normalizedUser;
     } catch (error) {
       console.error('Signup error:', error);
@@ -156,7 +175,17 @@ export const AuthProvider = ({ children }) => {
       const responseData = await response.json();
       console.log('✅ Login response received:', responseData);
       
-      const { user, token } = responseData;
+      const { user: userData, token } = responseData;
+      
+      // Normalize user data to ensure consistent field names
+      const user = {
+        ...userData,
+        charterAccepted: userData.charter_accepted || userData.charterAccepted,
+        profilePictureUrl: userData.profile_picture_url || userData.profilePictureUrl,
+        phoneNumber: userData.phone_number || userData.phoneNumber,
+        resultsPublic: userData.results_public !== undefined ? userData.results_public : (userData.resultsPublic !== undefined ? userData.resultsPublic : false),
+        results_public: userData.results_public !== undefined ? userData.results_public : (userData.resultsPublic !== undefined ? userData.resultsPublic : false)
+      };
       
       if (!token) {
         console.error('❌ No token in login response');
@@ -170,7 +199,9 @@ export const AuthProvider = ({ children }) => {
         profilePictureUrl: user.profile_picture_url || user.profilePictureUrl,
         phoneNumber: user.phone_number || user.phoneNumber,
         bio: user.bio,
-        sport: user.sport // Preserve sport field
+        sport: user.sport, // Preserve sport field
+        resultsPublic: user.results_public !== undefined ? user.results_public : (user.resultsPublic !== undefined ? user.resultsPublic : false),
+        results_public: user.results_public !== undefined ? user.results_public : (user.resultsPublic !== undefined ? user.resultsPublic : false)
       };
       
       // Remove duplicate fields to keep only normalized versions
@@ -185,6 +216,11 @@ export const AuthProvider = ({ children }) => {
       
       setCurrentUser(normalizedUser);
       console.log('👤 Current user state set to:', normalizedUser);
+      
+      // Register for push notifications (if on native platform)
+      registerForPushNotifications(normalizedUser.id).catch(error => {
+        console.error('❌ Error registering for push notifications:', error);
+      });
       
       return normalizedUser;
     } catch (error) {
@@ -306,6 +342,7 @@ export const AuthProvider = ({ children }) => {
     const interval = setInterval(validateTokenPeriodically, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
   // Refresh user data and token
@@ -329,7 +366,9 @@ export const AuthProvider = ({ children }) => {
           charterAccepted: user.charter_accepted || user.charterAccepted,
           profilePictureUrl: user.profile_picture_url || user.profilePictureUrl,
           phoneNumber: user.phone_number || user.phoneNumber,
-          bio: user.bio
+          bio: user.bio,
+          resultsPublic: user.results_public || user.resultsPublic || false,
+          results_public: user.results_public !== undefined ? user.results_public : (user.resultsPublic !== undefined ? user.resultsPublic : false)
         };
         
         setCurrentUser(normalizedUser);

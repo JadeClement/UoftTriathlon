@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { showError } from './SimpleNotification';
 import './CoachesExec.css';
 
 const CoachesExec = () => {
@@ -17,21 +18,35 @@ const CoachesExec = () => {
     email: ''
   });
   const [saving, setSaving] = useState(false);
+  const [imagePreview, setImagePreview] = useState('');
+  const [imageFile, setImageFile] = useState(null);
 
   // Load team members from backend API
   useEffect(() => {
     const loadTeamMembers = async () => {
       try {
         setLoading(true);
-        console.log('🔄 Loading team members from:', `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
+        const apiUrl = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`;
+        console.log('🔄 Loading team members from:', apiUrl);
         
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }).catch((networkError) => {
+          // Catch network errors (connection failed, timeout, etc.)
+          console.error('🌐 Network error:', networkError);
+          throw new Error(`Network error: ${networkError.message || 'Failed to connect to server'}`);
+        });
         
         console.log('📡 Response status:', response.status);
         console.log('📡 Response ok:', response.ok);
         
         if (!response.ok) {
-          throw new Error('Failed to fetch team members');
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error('❌ Response error:', errorText);
+          throw new Error(`Failed to fetch team members: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
@@ -65,7 +80,13 @@ const CoachesExec = () => {
         setError(null);
       } catch (error) {
         console.error('❌ Error loading team members:', error);
-        setError('Failed to load team members');
+        console.error('❌ Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+          toString: error.toString()
+        });
+        setError(`Failed to load team members: ${error.message || 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
@@ -85,6 +106,8 @@ const CoachesExec = () => {
         image: member.image || '',
         email: member.email || ''
       });
+      setImagePreview(member.image || '');
+      setImageFile(null);
     }
   };
 
@@ -111,15 +134,31 @@ const CoachesExec = () => {
       setSaving(true);
       const token = localStorage.getItem('triathlonToken');
       
-      console.log('📤 Sending edit form data:', editForm);
+      // Build multipart form data to support image uploads
+      const formData = new FormData();
+      formData.append('name', editForm.name || '');
+      formData.append('bio', editForm.bio || '');
+      formData.append('email', editForm.email || '');
+      // Only include the image file if a new one was chosen; otherwise, allow URL fallback
+      if (imageFile) {
+        formData.append('image', imageFile);
+      } else if (editForm.image && typeof editForm.image === 'string') {
+        formData.append('image', editForm.image);
+      }
+
+      console.log('📤 Sending edit form data (multipart):', {
+        name: editForm.name,
+        email: editForm.email,
+        hasImageFile: !!imageFile,
+        imageFromText: !imageFile && !!editForm.image
+      });
       
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles/${editingMember}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(editForm)
+        body: formData
       });
 
       if (!response.ok) {
@@ -132,18 +171,27 @@ const CoachesExec = () => {
       console.log('✅ Profile updated successfully:', result);
 
       // Update local state
+      const updatedFromServer = result.member || {};
+      // Normalize returned image to absolute URL if needed
+      let normalizedImage = updatedFromServer.image;
+      if (normalizedImage && normalizedImage.startsWith('/uploads/')) {
+        normalizedImage = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${normalizedImage}`;
+      }
       setTeamMembers(prev => ({
         ...prev,
         [editingMember]: {
           ...prev[editingMember],
-          ...editForm
+          name: updatedFromServer.name ?? editForm.name,
+          email: updatedFromServer.email ?? editForm.email,
+          bio: updatedFromServer.bio ?? editForm.bio,
+          image: normalizedImage || editForm.image || prev[editingMember]?.image
         }
       }));
 
       handleCloseEdit();
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile. Please try again.');
+      showError('Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -633,15 +681,36 @@ const CoachesExec = () => {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="image">Image URL:</label>
-                <input
-                  type="url"
-                  id="image"
-                  name="image"
-                  value={editForm.image}
-                  onChange={handleEditChange}
-                  placeholder="Enter image URL"
-                />
+                <label>Photo:</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 72, height: 72, borderRadius: 8, overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img
+                      src={imagePreview || editForm.image || '/images/default_profile.png'}
+                      alt="Preview"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { e.target.src = '/images/default_profile.png'; }}
+                    />
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files && e.target.files[0];
+                      if (file) {
+                        setImageFile(file);
+                        const url = URL.createObjectURL(file);
+                        setImagePreview(url);
+                        // Clear text URL when picking a file
+                        setEditForm(prev => ({ ...prev, image: '' }));
+                      }
+                    }}
+                  />
+                </div>
+                {!imageFile && (
+                  <p style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
+                    Tip: Choose a photo to upload. Existing image URL will remain if no file is selected.
+                  </p>
+                )}
               </div>
             </div>
             <div className="edit-modal-footer">

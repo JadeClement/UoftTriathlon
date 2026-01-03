@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
+import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
 import Forum from './components/Forum';
@@ -18,13 +19,14 @@ import FAQ from './components/FAQ';
 import Resources from './components/Resources';
 import TeamGear from './components/TeamGear';
 import Footer from './components/Footer';
-import InstallPrompt from './components/InstallPrompt';
 import ResetPassword from './components/ResetPassword';
 import Logout from './components/Logout';
+import MobileNav from './components/MobileNav';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
 import SimpleNotification from './components/SimpleNotification';
+import { setNavigationFunction, getPendingNavigation } from './utils/notificationNavigation';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -138,6 +140,77 @@ const CharterPrompt = () => {
 
 function AppContent() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Set up navigation function for notification handling
+  useEffect(() => {
+    setNavigationFunction(navigate);
+    
+    // Check for pending navigation from notification
+    const pendingPath = getPendingNavigation();
+    if (pendingPath && pendingPath !== location.pathname) {
+      console.log(`📍 Executing pending navigation to: ${pendingPath}`);
+      // Small delay to ensure app is fully loaded
+      setTimeout(() => {
+        navigate(pendingPath);
+      }, 500);
+    }
+    
+    // Also check URL parameters in case notification opened app with deep link
+    const urlParams = new URLSearchParams(window.location.search);
+    const notificationPath = urlParams.get('notification_path');
+    if (notificationPath && notificationPath !== location.pathname) {
+      console.log(`📍 Found notification_path in URL: ${notificationPath}`);
+      setTimeout(() => {
+        navigate(notificationPath);
+      }, 500);
+    }
+    
+    // Check for stored notification data (when app opens from notification click)
+    if (typeof window !== 'undefined' && window.lastReceivedNotification) {
+      console.log('📍 Found stored notification data on app start:', window.lastReceivedNotification);
+      const notificationData = window.lastReceivedNotification;
+      
+      // Small delay to ensure everything is loaded
+      setTimeout(() => {
+        if (notificationData?.type === 'workout' && notificationData?.workoutId) {
+          const workoutId = String(notificationData.workoutId);
+          console.log(`📍 Navigating to workout from stored notification: /workout/${workoutId}`);
+          navigate(`/workout/${workoutId}`);
+          // Clear after use
+          delete window.lastReceivedNotification;
+        }
+      }, 1000);
+    }
+    
+    // Check for pending notification action (when app launches from notification)
+    // This is set by setupEarlyNotificationListeners before user login
+    setTimeout(() => {
+      if (window.pendingNotificationAction) {
+        console.log('📍 Found pending notification action on app start');
+        const notification = window.pendingNotificationAction;
+        delete window.pendingNotificationAction;
+        
+        // Try to navigate
+        const data = notification?.notification?.data || notification?.data || {};
+        console.log('📍 Pending notification data:', data);
+        if (data?.type === 'workout' && data?.workoutId) {
+          const workoutId = String(data.workoutId);
+          console.log(`📍 Navigating to workout from pending notification: /workout/${workoutId}`);
+          navigate(`/workout/${workoutId}`);
+        } else if (data?.type === 'event' && data?.eventId) {
+          const eventId = String(data.eventId);
+          console.log(`📍 Navigating to event from pending notification: /event/${eventId}`);
+          navigate(`/event/${eventId}`);
+        } else if (data?.type === 'race' && data?.raceId) {
+          const raceId = String(data.raceId);
+          console.log(`📍 Navigating to race from pending notification: /race/${raceId}`);
+          navigate(`/race/${raceId}`);
+        }
+      }
+    }, 1500);
+  }, [navigate, location.pathname]);
   
   return (
     <>
@@ -165,24 +238,26 @@ function AppContent() {
         </Routes>
       </main>
       <Footer />
+      <MobileNav />
     </>
   );
 }
 
 function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <Router>
         <div className="App">
           <ScrollToTop />
           <Navbar />
-          <InstallPrompt />
           <CharterPrompt />
           <AppContent />
           <SimpleNotification />
         </div>
       </Router>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -127,6 +127,17 @@
   opacity: 0.8;
 }
 
+/* Hide line break on desktop, show on mobile */
+.footer-break {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .footer-break {
+    display: block;
+  }
+}
+
 .footer-bottom p {
   margin-bottom: 0.5rem;
 }

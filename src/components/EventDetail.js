@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
+import { formatSignupDateForDisplay } from '../utils/dateUtils';
+import { normalizeProfileImageUrl } from '../utils/imageUtils';
+import { showError, showSuccess } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
 import './EventDetail.css';
 
 const EventDetail = () => {
@@ -17,6 +21,7 @@ const EventDetail = () => {
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', date: '', content: '' });
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false });
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -158,11 +163,11 @@ const EventDetail = () => {
       } else {
         const error = await response.json();
         console.error('Error updating RSVP:', error.error);
-        alert(error.error || 'Error updating RSVP');
+        showError(error.error || 'Error updating RSVP');
       }
     } catch (error) {
       console.error('Error updating event RSVP:', error);
-      alert('Error updating RSVP');
+      showError('Error updating RSVP');
     }
   };
 
@@ -198,16 +203,20 @@ const EventDetail = () => {
       setSaving(false);
       setEditMode(false);
       await loadEventDetails();
-      alert('Event updated successfully!');
+      showSuccess('Event updated successfully!');
     } catch (error) {
       setSaving(false);
       console.error('Error updating event:', error);
-      alert(error.message || 'Error updating event');
+      showError(error.message || 'Error updating event');
     }
   };
 
   const handleDeleteEvent = async () => {
-    if (!window.confirm('Are you sure you want to delete this event?')) return;
+    setDeleteConfirm({ isOpen: true });
+  };
+
+  const confirmDeleteEvent = async () => {
+    setDeleteConfirm({ isOpen: false });
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) throw new Error('No authentication token found');
@@ -225,7 +234,7 @@ const EventDetail = () => {
       navigate('/forum?tab=events');
     } catch (error) {
       console.error('Error deleting event:', error);
-      alert(error.message || 'Error deleting event');
+      showError(error.message || 'Error deleting event');
     }
   };
 
@@ -285,13 +294,15 @@ const EventDetail = () => {
             <div className="event-author">
               <div className="author-info">
                 {(() => {
-                  const { normalizeProfileImageUrl } = require('../utils/imageUtils');
                   const url = normalizeProfileImageUrl(event.authorProfilePictureUrl);
                   return url ? (
                     <img 
                       src={url}
                       alt="Profile" 
                       className="author-avatar"
+                      loading="lazy"
+                      decoding="async"
+                      fetchpriority="low"
                       onError={(e) => {
                         e.target.src = '/images/default_profile.png';
                       }}
@@ -315,14 +326,14 @@ const EventDetail = () => {
                         onClick={() => setEditMode(true)}
                         disabled={saving}
                       >
-                        ✏️ Edit
+                        ✏️<span className="btn-text"> Edit</span>
                       </button>
                       <button 
                         className="delete-btn"
                         onClick={handleDeleteEvent}
                         disabled={saving}
                       >
-                        🗑️ Delete
+                        🗑️<span className="btn-text"> Delete</span>
                       </button>
                     </>
                   ) : (
@@ -434,7 +445,7 @@ const EventDetail = () => {
                       </div>
                       <span className="rsvp-date">
                         {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
-                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(rsvp.rsvp_time)
                           : 'Recently'
                         }
                       </span>
@@ -473,7 +484,7 @@ const EventDetail = () => {
                       </div>
                       <span className="rsvp-date">
                         {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
-                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(rsvp.rsvp_time)
                           : 'Recently'
                         }
                       </span>
@@ -512,7 +523,7 @@ const EventDetail = () => {
                       </div>
                       <span className="rsvp-date">
                         {rsvp.rsvp_time && rsvp.rsvp_time !== 'Invalid Date' && rsvp.rsvp_time !== 'null' 
-                          ? new Date(rsvp.rsvp_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(rsvp.rsvp_time)
                           : 'Recently'
                         }
                       </span>
@@ -574,6 +585,17 @@ const EventDetail = () => {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onConfirm={confirmDeleteEvent}
+        onCancel={() => setDeleteConfirm({ isOpen: false })}
+        title="Delete Event"
+        message="Are you sure you want to delete this event?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
     </div>
   );
 };

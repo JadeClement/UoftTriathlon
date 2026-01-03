@@ -354,6 +354,9 @@
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
   padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh; /* Default max-height for desktop */
 }
 
 .gear-modal-header {
@@ -363,6 +366,23 @@
   margin-bottom: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid #e5e7eb;
+  position: relative;
+}
+
+/* Order modal header: X in top right, title centered below */
+.order-modal-header {
+  flex-direction: column;
+  align-items: center;
+  padding-top: 2rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.order-modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  margin: 0;
 }
 
 .gear-modal-header h2 {
@@ -370,6 +390,15 @@
   color: #1f2937;
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.success-header {
+  position: relative;
+}
+
+.success-icon {
+  font-size: 2rem;
+  line-height: 1;
 }
 
 .gear-modal-close {
@@ -389,6 +418,10 @@
 
 .gear-modal-body {
   margin-bottom: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .gear-modal h2 {
@@ -609,9 +642,49 @@
     right: 8px;
   }
   
-  .gear-indicator {
-    width: 6px;
-    height: 6px;
+  .gear-image-container .gear-image-indicators {
+    gap: 0 !important;
+  }
+  
+  .gear-image-container .gear-indicator {
+    width: 4px !important;
+    height: 4px !important;
+    transform: scale(0.25) !important;
+    padding: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    margin-right: 0 !important;
+  }
+  
+  .gear-image-container .gear-indicator + .gear-indicator {
+    margin-left: -6px !important;
+  }
+  
+  .gear-image-container .gear-indicator.active {
+    width: 4px !important;
+    height: 4px !important;
+    transform: scale(0.3) !important;
+    padding: 0 !important;
+  }
+  
+  .gear-image-container .gear-indicator:hover {
+    transform: scale(0.25) !important;
+  }
+  
+  /* Lightbox arrows - position inside image area on mobile */
+  .gear-lightbox-left {
+    left: 10px !important;
+  }
+  
+  .gear-lightbox-right {
+    right: 10px !important;
+  }
+  
+  .gear-lightbox-nav {
+    background: rgba(0, 0, 0, 0.6) !important;
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 18px !important;
   }
 }
 
@@ -687,17 +760,33 @@
     right: 0;
     bottom: 0;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .gear-modal {
     width: 95%;
-    max-width: none;
-    max-height: 90vh;
+    max-width: 500px; /* Same max-width as desktop */
+    /* Calculate max-height: viewport - top nav - bottom nav - margins - top spacing */
+    max-height: calc(100vh - var(--navbar-height-mobile, 100px) - env(safe-area-inset-top, 0px) - 70px - 2rem - 1rem);
     margin: 1rem;
+    margin-top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px) + 1rem); /* Add space below top nav */
+    margin-bottom: calc(70px + 1rem); /* Add space above bottom nav */
     display: flex;
     flex-direction: column;
     position: relative;
     overflow: hidden;
+  }
+  
+  /* Success modal should be same size on mobile */
+  .success-modal {
+    width: 95%;
+    max-width: 500px;
+    /* Calculate max-height: viewport - top nav - bottom nav - margins - top spacing */
+    max-height: calc(100vh - var(--navbar-height-mobile, 100px) - env(safe-area-inset-top, 0px) - 70px - 2rem - 1rem);
+    margin-top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px) + 1rem); /* Add space below top nav */
+    margin-bottom: calc(70px + 1rem); /* Add space above bottom nav */
   }
   
   .gear-modal-header {
@@ -717,6 +806,8 @@
     padding: 1rem;
     -webkit-overflow-scrolling: touch;
     min-height: 0;
+    /* Body should fit within modal, which already accounts for nav bars */
+    max-height: none; /* Let flex handle it */
   }
   
   .gear-modal-actions {

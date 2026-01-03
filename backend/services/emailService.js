@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const { SESClient, SendEmailCommand, SendRawEmailCommand } = require('@aws-sdk/client-ses');
 
 // Configure AWS SES
 console.log('🔑 EmailService: Setting up AWS SES...');
@@ -66,6 +66,85 @@ class EmailService {
       return { success: true, messageId: result.MessageId };
     } catch (error) {
       console.error('❌ Error sending email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send email with attachments using SendRawEmailCommand
+  async sendEmailWithAttachments(to, subject, htmlContent, textContent = null, attachments = [], replyTo = null) {
+    try {
+      console.log('📧 EmailService.sendEmailWithAttachments called with:', { to, subject, attachmentsCount: attachments.length, fromEmail: this.fromEmail, replyTo });
+      
+      // Build multipart MIME message
+      const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const fromEmail = this.fromEmail;
+      const fromName = this.fromName;
+      
+      let rawMessage = `From: ${fromName} <${fromEmail}>\r\n`;
+      rawMessage += `To: ${to}\r\n`;
+      rawMessage += `Subject: ${subject}\r\n`;
+      if (replyTo) {
+        rawMessage += `Reply-To: ${Array.isArray(replyTo) ? replyTo[0] : replyTo}\r\n`;
+      }
+      rawMessage += `MIME-Version: 1.0\r\n`;
+      rawMessage += `Content-Type: multipart/mixed; boundary="${boundary}"\r\n`;
+      rawMessage += `\r\n`;
+      
+      // Add HTML body
+      rawMessage += `--${boundary}\r\n`;
+      rawMessage += `Content-Type: multipart/alternative; boundary="${boundary}_alt"\r\n`;
+      rawMessage += `\r\n`;
+      
+      // Text part
+      if (textContent) {
+        rawMessage += `--${boundary}_alt\r\n`;
+        rawMessage += `Content-Type: text/plain; charset=UTF-8\r\n`;
+        rawMessage += `Content-Transfer-Encoding: 7bit\r\n`;
+        rawMessage += `\r\n`;
+        rawMessage += textContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+        rawMessage += `\r\n`;
+      }
+      
+      // HTML part
+      rawMessage += `--${boundary}_alt\r\n`;
+      rawMessage += `Content-Type: text/html; charset=UTF-8\r\n`;
+      rawMessage += `Content-Transfer-Encoding: 7bit\r\n`;
+      rawMessage += `\r\n`;
+      rawMessage += htmlContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+      rawMessage += `\r\n`;
+      rawMessage += `--${boundary}_alt--\r\n`;
+      
+      // Add attachments
+      for (const attachment of attachments) {
+        const filename = attachment.originalname || attachment.filename || 'attachment';
+        const contentType = attachment.mimetype || 'application/octet-stream';
+        const content = attachment.buffer || attachment.data;
+        
+        rawMessage += `--${boundary}\r\n`;
+        rawMessage += `Content-Type: ${contentType}; name="${filename}"\r\n`;
+        rawMessage += `Content-Disposition: attachment; filename="${filename}"\r\n`;
+        rawMessage += `Content-Transfer-Encoding: base64\r\n`;
+        rawMessage += `\r\n`;
+        rawMessage += content.toString('base64').match(/.{1,76}/g).join('\r\n');
+        rawMessage += `\r\n`;
+      }
+      
+      rawMessage += `--${boundary}--\r\n`;
+      
+      const params = {
+        RawMessage: {
+          Data: Buffer.from(rawMessage)
+        },
+        Destinations: [to]
+      };
+      
+      const command = new SendRawEmailCommand(params);
+      const result = await sesClient.send(command);
+      
+      console.log('✅ Email with attachments sent successfully:', result.MessageId);
+      return { success: true, messageId: result.MessageId };
+    } catch (error) {
+      console.error('❌ Error sending email with attachments:', error);
       return { success: false, error: error.message };
     }
   }
@@ -149,6 +228,99 @@ class EmailService {
       return await this.sendEmail(userEmail, subject, htmlContent, textContent, this.fromEmail);
     } catch (error) {
       console.error('❌ Error sending waitlist promotion email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send last minute cancellation opportunity email
+  async sendLastMinuteCancellationOpportunity(userEmail, userName, workoutTitle, workoutDate, workoutTime, workoutId) {
+    try {
+      console.log('📧 EmailService.sendLastMinuteCancellationOpportunity called with:', { userEmail, userName, workoutTitle, workoutDate, workoutTime, workoutId, fromEmail: this.fromEmail });
+      
+      const frontendUrl = process.env.FRONTEND_URL || 'https://uoft-tri.club';
+      const workoutUrl = `${frontendUrl}/workout/${workoutId}`;
+      const subject = `⚠️ Last minute cancellation! Do you want to sign up for ${workoutTitle}?`;
+      
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Last Minute Cancellation Opportunity</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #f59e0b, #f97316); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 28px;">⚠️ Last Minute Cancellation!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">UofT Triathlon Club</p>
+          </div>
+          
+          <div style="background: #f8fafc; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+            <h2 style="color: #1E3A8A; margin-top: 0;">Hello ${userName}!</h2>
+            <p style="font-size: 16px; margin-bottom: 20px;">A spot has opened up due to a last-minute cancellation for:</p>
+            
+            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #f59e0b; margin-bottom: 20px;">
+              <h3 style="margin: 0 0 10px 0; color: #1f2937;">${workoutTitle}</h3>
+              <p style="margin: 5px 0; color: #6b7280;"><strong>📅 Date:</strong> ${workoutDate}</p>
+              ${workoutTime ? `<p style="margin: 5px 0; color: #6b7280;"><strong>⏰ Time:</strong> ${workoutTime}</p>` : ''}
+            </div>
+            
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border: 1px solid #f59e0b; margin-bottom: 25px;">
+              <h3 style="color: #92400e; margin-top: 0;">⚠️ Important</h3>
+              <p style="color: #92400e; margin: 0;">This spot is <strong>not automatically yours</strong>. You need to manually sign up if you want to take it. The spot will remain available until someone claims it.</p>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${workoutUrl}" 
+               style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+              Sign Up for This Workout
+            </a>
+          </div>
+          
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border: 1px solid #0ea5e9; margin-bottom: 25px;">
+            <h3 style="color: #0c4a6e; margin-top: 0;">💡 Quick Reminder</h3>
+            <ul style="color: #0c4a6e; margin: 0; padding-left: 20px;">
+              <li>Click the button above to go to the workout page</li>
+              <li>Click "Sign Up" to claim the spot</li>
+              <li>If you don't sign up, the spot may be taken by someone else</li>
+            </ul>
+          </div>
+          
+          <div style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p>UofT Triathlon Club | <a href="https://uoft-tri.club" style="color: #3b82f6;">uoft-tri.club</a></p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const textContent = `
+        ⚠️ Last Minute Cancellation!
+        
+        Hello ${userName}!
+        
+        A spot has opened up due to a last-minute cancellation for:
+        
+        ${workoutTitle}
+        📅 Date: ${workoutDate}
+        ${workoutTime ? `⏰ Time: ${workoutTime}` : ''}
+        
+        ⚠️ Important:
+        This spot is not automatically yours. You need to manually sign up if you want to take it. The spot will remain available until someone claims it.
+        
+        Sign up for this workout: ${workoutUrl}
+        
+        💡 Quick Reminder:
+        - Click the link above to go to the workout page
+        - Click "Sign Up" to claim the spot
+        - If you don't sign up, the spot may be taken by someone else
+        
+        UofT Triathlon Club | uoft-tri.club
+      `;
+
+      return await this.sendEmail(userEmail, subject, htmlContent, textContent, this.fromEmail);
+    } catch (error) {
+      console.error('❌ Error sending last minute cancellation opportunity email:', error);
       return { success: false, error: error.message };
     }
   }

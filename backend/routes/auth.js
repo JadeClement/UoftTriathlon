@@ -153,7 +153,8 @@ router.post('/login', async (req, res) => {
         charter_accepted: user.charter_accepted,
         profile_picture_url: user.profile_picture_url,
         phone_number: user.phone_number,
-        sport: user.sport
+        sport: user.sport,
+        results_public: user.results_public || false
       },
       token
     });

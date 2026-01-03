@@ -75,7 +75,7 @@ const Footer = () => {
         
         <div className="footer-bottom">
           <p>&copy; 2025 UofT Triathlon Team. All rights reserved.</p>
-          <p>Built with ❤️ for the triathlon community by Jade Clement</p>
+          <p>Built with ❤️ for the triathlon community<br className="footer-break" /> by Jade Clement</p>
         </div>
       </div>
     </footer>

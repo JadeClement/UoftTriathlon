@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
+import { useForumPosts, useOnlineStatus } from '../hooks/useOfflineData';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
+import PullToRefresh from './PullToRefresh';
+import { PostSkeleton } from './LoadingSkeleton';
+import { hapticImpact } from '../utils/haptics';
 import './Forum.css';
 
 const Forum = () => {
@@ -10,10 +16,25 @@ const Forum = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('workouts');
   const [workoutPosts, setWorkoutPosts] = useState([]);
-  const [eventPosts, setEventPosts] = useState([]);
+  const [allLoadedWorkouts, setAllLoadedWorkouts] = useState([]); // Store all loaded workouts from backend
+  const [workoutsFullyLoaded, setWorkoutsFullyLoaded] = useState(false); // Track if we've loaded all workouts
+  const [lastWorkoutFilter, setLastWorkoutFilter] = useState('all'); // Track last filter to detect changes
   const [newWorkout, setNewWorkout] = useState('');
   const [newEvent, setNewEvent] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // Offline data hooks
+  const isOnline = useOnlineStatus();
+  const { 
+    posts: eventPostsFromCache, 
+    loading: eventsLoadingFromCache, 
+    fromCache: eventsFromCache,
+    isOffline: eventsOffline,
+    refresh: refreshEvents
+  } = useForumPosts({ type: 'event' });
+  
+  // Use cached events if available, otherwise use state
+  const [eventPosts, setEventPosts] = useState([]);
   const [showWorkoutForm, setShowWorkoutForm] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [workoutFilter, setWorkoutFilter] = useState('all');
@@ -33,6 +54,50 @@ const Forum = () => {
     date: '',
     content: ''
   });
+  // Ref to ensure the workout date input never has a min attribute (Safari/iOS can persist it)
+  const workoutDateInputRef = useRef(null);
+
+  useEffect(() => {
+    if (workoutDateInputRef.current) {
+      try {
+        workoutDateInputRef.current.removeAttribute('min');
+      } catch (_) {}
+    }
+  }, [showWorkoutForm]);
+
+  // Lock body scroll when workout form modal is open
+  useEffect(() => {
+    if (showWorkoutForm) {
+      // Save current scroll position
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+      
+      // Lock body scroll - use a simpler approach that doesn't interfere with modal positioning
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+      
+      // Prevent scrolling
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      
+      return () => {
+        // Restore original styles
+        document.body.style.overflow = originalOverflow;
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.left = '';
+        document.body.style.right = '';
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showWorkoutForm]);
   // Inline edit state for events (admin/exec)
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventEditForm, setEventEditForm] = useState({
@@ -50,7 +115,11 @@ const Forum = () => {
   const [promotedWorkout, setPromotedWorkout] = useState(null);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const [workoutsLoading, setWorkoutsLoading] = useState(false);
-  const [eventsLoading, setEventsLoading] = useState(false);
+  const [termExpired, setTermExpired] = useState(false);
+  const [termExpiredMessage, setTermExpiredMessage] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [deleteWorkoutConfirm, setDeleteWorkoutConfirm] = useState({ isOpen: false, postId: null });
+  const [deleteEventConfirm, setDeleteEventConfirm] = useState({ isOpen: false, postId: null });
   
   // Reload when time filter or past page changes
   useEffect(() => {
@@ -59,6 +128,32 @@ const Forum = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeFilter, pastPage]);
+
+  // Reset to page 1 when filters change (so pagination starts fresh)
+  useEffect(() => {
+    setPastPage(1);
+    // When workout filter changes, reload workouts if we're on past view
+    // This ensures we load enough workouts for the new filter
+    if (timeFilter === 'past' && isMember(currentUser)) {
+      loadForumPosts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workoutFilter]);
+
+  // Load more workouts when navigating to later pages if needed
+  useEffect(() => {
+    if (timeFilter === 'past' && isMember(currentUser) && pastPage > 1) {
+      const filtered = getFilteredWorkouts();
+      const itemsPerPage = 5;
+      const neededForCurrentPage = pastPage * itemsPerPage;
+      
+      // If we don't have enough workouts for the current page, load more
+      if (filtered.length < neededForCurrentPage && !workoutsFullyLoaded) {
+        loadForumPosts();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pastPage]);
   
   // Function to check if a workout type is allowed for the user's sport
   const isWorkoutTypeAllowed = (workoutType) => {
@@ -78,8 +173,10 @@ const Forum = () => {
       switch (sport) {
         case 'run_only':
           return workoutType === 'run';
+        case 'swim_only':
+          return workoutType === 'swim';
         case 'duathlon':
-          return ['run', 'outdoor-ride', 'brick'].includes(workoutType);
+          return ['run', 'outdoor-ride', 'brick', 'spin'].includes(workoutType);
         case 'triathlon':
           return ['run', 'outdoor-ride', 'brick', 'swim', 'spin'].includes(workoutType);
         default:
@@ -113,11 +210,17 @@ const Forum = () => {
           { value: 'run', label: 'Run' },
           { value: 'other', label: 'Other' }
         ];
+      case 'swim_only':
+        return [
+          { value: 'swim', label: 'Swim' },
+          { value: 'other', label: 'Other' }
+        ];
       case 'duathlon':
         return [
           { value: 'run', label: 'Run' },
           { value: 'outdoor-ride', label: 'Outdoor Ride' },
           { value: 'brick', label: 'Brick (Bike + Run)' },
+          { value: 'spin', label: 'Spin' },
           { value: 'other', label: 'Other' }
         ];
       case 'triathlon':
@@ -193,6 +296,13 @@ const Forum = () => {
     // If no tab param or invalid value, default to 'workouts' (existing behavior)
   }, []);
 
+  // Sync event posts from cache hook to state (must be before any early returns)
+  useEffect(() => {
+    if (eventPostsFromCache && eventPostsFromCache.length > 0) {
+      setEventPosts(eventPostsFromCache);
+    }
+  }, [eventPostsFromCache]);
+
   const loadForumPosts = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -201,75 +311,234 @@ const Forum = () => {
         return;
       }
 
-      // Load workout posts
-      const qp = new URLSearchParams();
-      qp.set('type', 'workout');
-      // Upcoming loads without pagination; past loads paginated 4/page
-      if (timeFilter === 'past') {
-        qp.set('time', 'past');
-        qp.set('page', String(pastPage));
-        qp.set('limit', '4');
-      } else {
-        qp.set('time', 'upcoming');
-      }
+      // Reset term expired state when loading
+      setTermExpired(false);
+      setTermExpiredMessage('');
+
+      console.log('🔄 loadForumPosts called:', { timeFilter, workoutFilter, pastPage });
+
+      // Load workout posts - load in batches until we have enough filtered results
       setWorkoutsLoading(true);
-      const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (workoutResponse.ok) {
-        const workoutData = await workoutResponse.json();
-        console.log('🔍 Workout data received:', workoutData);
-        
-        // Ensure we have valid posts data
-        const posts = workoutData.posts || workoutData || [];
-        console.log('🔍 Posts to set:', posts);
-        
-        // Filter out any invalid posts
-        const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
-        console.log('🔍 Valid posts:', validPosts);
-        
-        
-        setWorkoutPosts(validPosts);
-        if (timeFilter === 'past' && workoutData.pagination) {
-          setPastPagination(workoutData.pagination);
-        }
-        
-        // Do not load per-workout signups/waitlists here; fetch on demand in detail view
+      
+      // Determine if we need to reset (when filters change) or continue loading (when navigating pages)
+      const filterChanged = workoutFilter !== lastWorkoutFilter;
+      const shouldReset = timeFilter === 'past' && (allLoadedWorkouts.length === 0 || filterChanged);
+      
+      console.log('🔄 Loading state:', { filterChanged, shouldReset, allLoadedWorkoutsCount: allLoadedWorkouts.length });
+      
+      if (filterChanged) {
+        setLastWorkoutFilter(workoutFilter);
+        setAllLoadedWorkouts([]);
+        setWorkoutsFullyLoaded(false);
       }
-
-      // Load event posts only when Events tab is active to speed up initial load
-      if (activeTab === 'events') {
-        setEventsLoading(true);
-        const eventResponse = await fetch(`${API_BASE_URL}/forum/posts?type=event`, {
+      
+      let allWorkouts = shouldReset ? [] : [...allLoadedWorkouts]; // Keep existing workouts if continuing
+      let page = shouldReset ? 1 : Math.floor(allLoadedWorkouts.length / 20) + 1; // Continue from where we left off
+      let hasMore = true;
+      const limit = 20; // Load 20 at a time
+      
+      // For upcoming workouts, just load once (no pagination needed client-side)
+      if (timeFilter === 'upcoming') {
+        const qp = new URLSearchParams();
+        qp.set('type', 'workout');
+        qp.set('time', 'upcoming');
+        
+        const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
-        if (eventResponse.ok) {
-          const eventData = await eventResponse.json();
-          console.log('🔍 Event data received:', eventData);
-          
-          // Ensure we have valid posts data
-          const posts = eventData.posts || eventData || [];
-          console.log('🔍 Event posts to set:', posts);
-          
-          // Filter out any invalid posts
-          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
-          console.log('🔍 Valid event posts:', validPosts);
-          
-          setEventPosts(validPosts);
+        if (workoutResponse.status === 403) {
+          const errorData = await workoutResponse.json();
+          if (errorData.error === 'term_expired') {
+            setTermExpired(true);
+            setTermExpiredMessage(errorData.message || 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.');
+            return;
+          }
         }
+
+        if (workoutResponse.ok) {
+          const workoutData = await workoutResponse.json();
+          const posts = workoutData.posts || [];
+          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
+          allWorkouts = validPosts;
+        }
+      } else {
+        // For past workouts: Simple and reliable approach
+        // 1. Load batches from backend (with backend workout_type filter if available)
+        // 2. Accumulate in allWorkouts
+        // 3. After each batch, check getFilteredWorkouts() to see if we have enough
+        // 4. Keep loading until we have enough for current page OR run out of data
+        
+        console.log('📋 Loading past workouts:', { shouldReset, page, pastPage, workoutFilter });
+        
+        const itemsPerPage = 5;
+        const neededForCurrentPage = pastPage * itemsPerPage;
+        const neededForNextPage = (pastPage + 1) * itemsPerPage;
+        
+        // Load batches until we have enough filtered workouts
+        while (hasMore) {
+          const qp = new URLSearchParams();
+          qp.set('type', 'workout');
+          qp.set('time', 'past');
+          qp.set('page', String(page));
+          qp.set('limit', String(limit));
+          
+          // Use backend filtering for workout_type (efficiency optimization)
+          if (workoutFilter !== 'all') {
+            qp.set('workout_type', workoutFilter);
+          }
+          
+          const fetchUrl = `${API_BASE_URL}/forum/posts?${qp.toString()}`;
+          console.log('🌐 Fetching:', fetchUrl);
+          
+          const workoutResponse = await fetch(fetchUrl, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (workoutResponse.status === 403) {
+            const errorData = await workoutResponse.json();
+            if (errorData.error === 'term_expired') {
+              setTermExpired(true);
+              setTermExpiredMessage(errorData.message || 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.');
+              return;
+            }
+          }
+
+          if (!workoutResponse.ok) {
+            console.error('❌ Fetch failed:', workoutResponse.status);
+            break;
+          }
+          
+          const workoutData = await workoutResponse.json();
+          const posts = workoutData.posts || [];
+          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
+          
+          console.log('📦 Backend returned:', { totalPosts: posts.length, validPosts: validPosts.length });
+          
+          if (validPosts.length === 0) {
+            hasMore = false;
+            break;
+          }
+          
+          // Add new workouts to collection
+          allWorkouts = [...allWorkouts, ...validPosts];
+          
+          console.log('📊 Total loaded so far:', allWorkouts.length);
+          
+          // Temporarily update state so getFilteredWorkouts() can use it
+          // (We'll set it properly at the end)
+          const tempAllLoaded = allWorkouts;
+          
+          // Use the EXACT same filtering logic as getFilteredWorkouts() to ensure accuracy
+          // Step 1: Filter by sport (matches getFilteredWorkouts line 1113-1115)
+          const bySport = tempAllLoaded.filter(post => {
+            return isWorkoutTypeAllowed(post.workout_type);
+          });
+          
+          // Step 2: Filter by time (matches getFilteredWorkouts line 1118-1121)
+          const byTime = bySport.filter(post => {
+            const past = isPast(post.workout_date);
+            return timeFilter === 'past' ? past : !past;
+          });
+          
+          // Step 3: Apply workout type filter (matches getFilteredWorkouts line 1115-1128)
+          let tempFiltered = byTime;
+          if (workoutFilter !== 'all') {
+            tempFiltered = byTime.filter(post => {
+              switch (workoutFilter) {
+                case 'bike':
+                  return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
+                case 'swim':
+                  return post.workout_type === 'swim';
+                case 'run':
+                  return post.workout_type === 'run';
+                default:
+                  return true;
+              }
+            });
+          }
+          
+          const filteredCount = tempFiltered.length;
+          
+          // Check if backend has more pages
+          const pagination = workoutData.pagination;
+          hasMore = pagination?.hasMore || false;
+          
+          // Decision: Do we have enough?
+          // CRITICAL: For page 1, we MUST have at least 5 workouts before stopping
+          // For page 2+, we need at least (pastPage) * 5
+          
+          console.log('🔍 Loading check:', {
+            pastPage,
+            filteredCount,
+            neededForCurrentPage,
+            neededForNextPage,
+            hasMore,
+            allWorkoutsCount: allWorkouts.length
+          });
+          
+          // Priority 1: If on page 1, we MUST keep loading until we have at least 5
+          if (pastPage === 1 && filteredCount < itemsPerPage) {
+            if (!hasMore) {
+              // No more data, have to stop with what we have
+              console.log('⚠️ Page 1: Only', filteredCount, 'workouts but no more data available');
+              break;
+            }
+            // Continue loading to try to get at least 5
+            console.log('🔄 Page 1: Only', filteredCount, 'workouts, loading more...');
+            page++;
+            continue;
+          }
+          
+          // Priority 2: Stop if we have enough for current + next page (ideal)
+          if (filteredCount >= neededForNextPage) {
+            console.log('✅ Have enough for current + next page:', filteredCount);
+            break;
+          }
+          
+          // Priority 3: If we have enough for current page, we can stop
+          if (filteredCount >= neededForCurrentPage) {
+            console.log('✅ Have enough for current page:', filteredCount);
+            break;
+          }
+          
+          // If no more data from backend, stop even if we don't have enough
+          if (!hasMore) {
+            console.log('⚠️ No more data available, stopping with', filteredCount, 'workouts');
+            break;
+          }
+          
+          // Load next batch
+          page++;
+          
+          // Safety limit to prevent infinite loops
+          if (page > 100) {
+            console.warn('Hit safety limit of 100 pages while loading workouts');
+            break;
+          }
+        }
+      }
+      
+      setAllLoadedWorkouts(allWorkouts);
+      setWorkoutPosts(allWorkouts);
+      setWorkoutsFullyLoaded(!hasMore || timeFilter === 'upcoming');
+        
+      // Do not load per-workout signups/waitlists here; fetch on demand in detail view
+
+      // Event posts are now loaded via useForumPosts hook (offline-first)
+      // Only manually refresh if needed
+      if (activeTab === 'events' && isOnline) {
+        refreshEvents();
       }
     } catch (error) {
       console.error('Error loading forum posts:', error);
     } finally {
       setLoading(false);
       setWorkoutsLoading(false);
-      setEventsLoading(false);
     }
   };
 
@@ -419,11 +688,17 @@ const Forum = () => {
     } catch (error) {
       console.error('Error updating event:', error);
       setSavingEvent(false);
-      alert(error.message || 'Error updating event');
+      showError(error.message || 'Error updating event');
     }
   };
 
   const handleWorkoutSignUp = async (workoutId) => {
+    // Check if offline - workout signups require online connection
+    if (!navigator.onLine) {
+      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -575,11 +850,11 @@ const Forum = () => {
       } else {
         const error = await response.json();
         console.error('Error updating RSVP:', error.error);
-        alert(error.error || 'Error updating RSVP');
+        showError(error.error || 'Error updating RSVP');
       }
     } catch (error) {
       console.error('Error updating event RSVP:', error);
-      alert('Error updating RSVP');
+      showError('Error updating RSVP');
     }
   };
 
@@ -610,11 +885,11 @@ const Forum = () => {
         await loadWorkoutWaitlists(workoutPosts);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to join waitlist');
+        showError(error.error || 'Failed to join waitlist');
       }
     } catch (error) {
       console.error('Error joining waitlist:', error);
-      alert('Failed to join waitlist');
+      showError('Failed to join waitlist');
     }
   };
 
@@ -638,11 +913,11 @@ const Forum = () => {
         await loadWorkoutWaitlists(workoutPosts);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to leave waitlist');
+        showError(error.error || 'Failed to leave waitlist');
       }
     } catch (error) {
       console.error('Error leaving waitlist:', error);
-      alert('Failed to leave waitlist');
+      showError('Failed to leave waitlist');
     }
   };
 
@@ -676,11 +951,11 @@ const Forum = () => {
         setWorkoutToCancel(null);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to cancel signup');
+        showError(error.error || 'Failed to cancel signup');
       }
     } catch (error) {
       console.error('Error canceling signup:', error);
-      alert('Failed to cancel signup');
+      showError('Failed to cancel signup');
     }
   };
 
@@ -712,15 +987,13 @@ const Forum = () => {
     e.preventDefault();
     if (!workoutForm.title.trim() || !workoutForm.date || !workoutForm.time || !workoutForm.content.trim()) return;
 
-    // Check if the selected date is in the future
-    const selectedDate = new Date(workoutForm.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-    
-    if (selectedDate <= today) {
-      alert('Please select a future date for your workout.');
+    // Check if offline - forum posts require online connection
+    if (!navigator.onLine) {
+      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
       return;
     }
+
+    // Allow both past and future dates for workouts (practices can be added retroactively)
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -786,13 +1059,19 @@ const Forum = () => {
     e.preventDefault();
     if (!eventForm.title.trim() || !eventForm.date || !eventForm.content.trim()) return;
 
+    // Check if offline - forum posts require online connection
+    if (!navigator.onLine) {
+      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+      return;
+    }
+
     // Check if the selected date is in the future
     const selectedDate = new Date(eventForm.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
     
     if (selectedDate <= today) {
-      alert('Please select a future date for your event.');
+      showError('Please select a future date for your event.');
       return;
     }
 
@@ -820,6 +1099,8 @@ const Forum = () => {
       if (response.ok) {
         const newPostData = await response.json();
         setEventPosts([newPostData.post, ...eventPosts]);
+        // Refresh events from cache to sync
+        refreshEvents();
         setEventForm({
           title: '',
           date: '',
@@ -861,14 +1142,20 @@ const Forum = () => {
   };
 
   const handleDeleteWorkout = async (postId) => {
-    if (!window.confirm('Are you sure you want to delete this workout post?')) {
-      return;
-    }
+    setDeleteWorkoutConfirm({ isOpen: true, postId: postId });
+  };
+
+  const confirmDeleteWorkout = async () => {
+    const { postId } = deleteWorkoutConfirm;
+    setDeleteWorkoutConfirm({ isOpen: false, postId: null });
+    
+    if (!postId) return;
 
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
         console.error('No authentication token found');
+        showError('Authentication required. Please log in again.');
         return;
       }
 
@@ -880,24 +1167,40 @@ const Forum = () => {
       });
 
       if (response.ok) {
+        showSuccess('Workout post deleted successfully');
         loadForumPosts();
       } else {
-        console.error('Failed to delete workout post');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        if (response.status === 404) {
+          showWarning('This workout post may have already been deleted. Refreshing...');
+          loadForumPosts();
+        } else if (response.status === 403) {
+          showError('You are not authorized to delete this post.');
+        } else {
+          showError(errorData.error || 'Failed to delete workout post');
+        }
       }
     } catch (error) {
       console.error('Error deleting workout post:', error);
+      showError('Failed to delete workout post. Please try again.');
     }
   };
 
   const handleDeleteEvent = async (postId) => {
-    if (!window.confirm('Are you sure you want to delete this event post?')) {
-      return;
-    }
+    setDeleteEventConfirm({ isOpen: true, postId: postId });
+  };
+
+  const confirmDeleteEvent = async () => {
+    const { postId } = deleteEventConfirm;
+    setDeleteEventConfirm({ isOpen: false, postId: null });
+    
+    if (!postId) return;
 
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
         console.error('No authentication token found');
+        showError('Authentication required. Please log in again.');
         return;
       }
 
@@ -909,12 +1212,22 @@ const Forum = () => {
       });
 
       if (response.ok) {
+        showSuccess('Event post deleted successfully');
         loadForumPosts();
       } else {
-        console.error('Failed to delete event post');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        if (response.status === 404) {
+          showWarning('This event post may have already been deleted. Refreshing...');
+          loadForumPosts();
+        } else if (response.status === 403) {
+          showError('You are not authorized to delete this post.');
+        } else {
+          showError(errorData.error || 'Failed to delete event post');
+        }
       }
     } catch (error) {
       console.error('Error deleting event post:', error);
+      showError('Failed to delete event post. Please try again.');
     }
   };
 
@@ -952,13 +1265,35 @@ const Forum = () => {
 
   // Filter workouts based on selected filters (time + type + sport)
   const getFilteredWorkouts = () => {
-    // First filter by sport preference
-    const bySport = workoutPosts.filter(post => {
-      return isWorkoutTypeAllowed(post.workout_type);
-    });
+    // Use all loaded workouts for filtering
+    let filtered = allLoadedWorkouts;
+
+    // Only apply sport preference filtering when a specific workout type is selected
+    // When "all" is selected, show all workout types regardless of sport preference
+    if (workoutFilter !== 'all') {
+      filtered = filtered.filter(post => {
+        return isWorkoutTypeAllowed(post.workout_type);
+      });
+    }
+
+    // Filter by workout type if not "all"
+    if (workoutFilter !== 'all') {
+      filtered = filtered.filter(post => {
+        switch (workoutFilter) {
+          case 'bike':
+            return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
+          case 'swim':
+            return post.workout_type === 'swim';
+          case 'run':
+            return post.workout_type === 'run';
+          default:
+            return true;
+        }
+      });
+    }
 
     // Then filter by time
-    const byTime = bySport.filter(post => {
+    const byTime = filtered.filter(post => {
       const past = isPast(post.workout_date);
       return timeFilter === 'past' ? past : !past;
     });
@@ -970,24 +1305,55 @@ const Forum = () => {
       return timeFilter === 'past' ? db - da : da - db; // past: newest first, upcoming: soonest first
     });
 
-    if (workoutFilter === 'all') return byTime;
+    return byTime;
+  };
 
-    return byTime.filter(post => {
-      switch (workoutFilter) {
-        case 'bike':
-          return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
-        case 'swim':
-          return post.workout_type === 'swim';
-        case 'run':
-          return post.workout_type === 'run';
-        default:
-          return true;
-      }
-    });
+  // Get paginated workouts for past workouts (5 per page)
+  const getPaginatedWorkouts = () => {
+    const filtered = getFilteredWorkouts();
+    if (timeFilter === 'upcoming') {
+      // Upcoming workouts: show all (no pagination)
+      return filtered;
+    }
+    // Past workouts: paginate
+    const itemsPerPage = 5;
+    const startIndex = (pastPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  // Calculate pagination info for past workouts and load more if needed
+  const getPaginationInfo = () => {
+    if (timeFilter === 'upcoming') {
+      return null; // No pagination for upcoming
+    }
+    const filtered = getFilteredWorkouts();
+    const itemsPerPage = 5;
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    
+    // Note: Loading more workouts is handled by the useEffect on pastPage change
+    
+    return {
+      currentPage: pastPage,
+      totalPages: totalPages || 1,
+      totalPosts: filtered.length,
+      hasMore: pastPage < totalPages
+    };
   };
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="forum-container">
+        <div className="container">
+          <h1 className="section-title">Team Forum</h1>
+          <div className="posts-list">
+            <PostSkeleton />
+            <PostSkeleton />
+            <PostSkeleton />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!currentUser) {
@@ -1020,14 +1386,57 @@ const Forum = () => {
     );
   }
 
+  // Gate for expired terms: show message instead of forum content
+  if (termExpired) {
+    return (
+      <div className="forum-container">
+        <div className="container">
+          <h1 className="section-title">Team Forum</h1>
+          <div className="notice-card" style={{
+            background: '#fee2e2',
+            border: '1px solid #ef4444',
+            color: '#991b1b',
+            padding: '16px',
+            borderRadius: '8px',
+            lineHeight: 1.6
+          }}>
+            <p style={{margin: 0}}>
+              {termExpiredMessage}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleRefresh = async () => {
+    hapticImpact();
+    if (activeTab === 'events') {
+      await refreshEvents();
+    } else {
+      await loadForumPosts();
+    }
+  };
+
   return (
-    <div className="forum-container">
-      <div className="container">
-        <h1 className="section-title">Team Forum</h1>
-        <p className="section-subtitle">Connect with your teammates and discuss training, races, and more!</p>
-        
-        {/* Forum Tabs */}
-        <div className="forum-tabs">
+    <PullToRefresh onRefresh={handleRefresh} disabled={!isOnline}>
+      <div className="forum-container">
+        <div className="container">
+          <div style={{ marginBottom: '1rem' }}>
+            <h1 className="section-title" style={{ marginBottom: '-1rem', marginTop: '0', lineHeight: '1', paddingBottom: '0', display: 'block' }}>Team Forum</h1>
+            <p className="section-subtitle" style={{ marginTop: '2rem', marginBottom: '0', lineHeight: '1.2', paddingTop: '0', display: 'block' }}>Connect with your teammates and discuss training, races, and more!</p>
+          </div>
+          
+          {/* Offline Indicator */}
+          {!isOnline && (
+            <div className="offline-indicator">
+              <span className="offline-icon">📴</span>
+              <span className="offline-text">You're offline. Showing cached data.</span>
+            </div>
+          )}
+          
+          {/* Forum Tabs */}
+          <div className="forum-tabs">
           <button 
             className={`tab-button ${activeTab === 'workouts' ? 'active' : ''}`}
             onClick={() => setActiveTab('workouts')}
@@ -1047,94 +1456,135 @@ const Forum = () => {
           <div className="workouts-section">
             <div className="section-header">
               <h2>Workout Posts</h2>
-              {(isExec(currentUser) || isCoach(currentUser)) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {!isOnline && (
+                  <span className="offline-badge" title="You're offline">
+                    📴 Offline
+                  </span>
+                )}
                 <button 
-                  className="new-post-btn"
-                  onClick={() => setShowWorkoutForm(true)}
+                  className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
+                  onClick={() => setShowFilters(!showFilters)}
+                  aria-label="Toggle filters"
                 >
-                  + New Workout
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="3" y1="5" x2="17" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="6" cy="5" r="1.5" fill="currentColor"/>
+                    <line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="14" cy="10" r="1.5" fill="currentColor"/>
+                    <line x1="3" y1="15" x2="17" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="6" cy="15" r="1.5" fill="currentColor"/>
+                  </svg>
                 </button>
-              )}
+                {(isExec(currentUser) || isCoach(currentUser)) && (
+                  <button 
+                    className="new-post-btn"
+                    onClick={() => setShowWorkoutForm(true)}
+                  >
+                    +<span className="btn-text"> New Workout</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Time Filters (row 1) */}
-            <div className="workout-filters" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button 
-                  className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
-                  onClick={() => { setTimeFilter('upcoming'); setPastPage(1); }}
-                >
-                  ⏳ Upcoming
-                </button>
-                <button 
-                  className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
-                  onClick={() => { setTimeFilter('past'); setPastPage(1); }}
-                >
-                  🗂 Past
-                </button>
-              </div>
-
-              {timeFilter === 'past' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pastPagination.currentPage} of {pastPagination.totalPages}</span>
+            {/* Filters Container */}
+            <div className={`filters-container ${showFilters ? 'filters-visible' : ''}`}>
+              {/* Time Filters (row 1) */}
+              <div className="workout-filters" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: 8 }}>
                   <button 
-                    className="filter-btn"
-                    onClick={() => setPastPage(p => Math.max(1, p - 1))}
-                    disabled={pastPagination.currentPage <= 1}
+                    className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
+                    onClick={() => { setTimeFilter('upcoming'); setPastPage(1); }}
                   >
-                    Previous
+                    ⏳ Upcoming
                   </button>
                   <button 
-                    className="filter-btn"
-                    onClick={() => setPastPage(p => Math.min(pastPagination.totalPages, p + 1))}
-                    disabled={pastPagination.currentPage >= pastPagination.totalPages}
+                    className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
+                    onClick={() => { setTimeFilter('past'); setPastPage(1); }}
                   >
-                    Next
+                    🗂 Past
                   </button>
                 </div>
-              )}
+
+                {(() => {
+                  const pagination = getPaginationInfo();
+                  if (!pagination) return null;
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalPosts} workouts)</span>
+                      <button 
+                        className="filter-btn"
+                        onClick={() => setPastPage(p => Math.max(1, p - 1))}
+                        disabled={pagination.currentPage <= 1}
+                      >
+                        Previous
+                      </button>
+                      <button 
+                        className="filter-btn"
+                        onClick={() => setPastPage(p => Math.min(pagination.totalPages, p + 1))}
+                        disabled={pagination.currentPage >= pagination.totalPages}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Type Filters (row 2) */}
+              <div className="workout-filters">
+                <button 
+                  className={`filter-btn ${workoutFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setWorkoutFilter('all')}
+                >
+                  🏁 All Types
+                </button>
+                <button 
+                  className={`filter-btn ${workoutFilter === 'bike' ? 'active' : ''}`}
+                  onClick={() => setWorkoutFilter('bike')}
+                >
+                  🚴‍♂️ Bike
+                </button>
+                <button 
+                  className={`filter-btn ${workoutFilter === 'swim' ? 'active' : ''}`}
+                  onClick={() => setWorkoutFilter('swim')}
+                >
+                  🏊‍♂️ Swim
+                </button>
+                <button 
+                  className={`filter-btn ${workoutFilter === 'run' ? 'active' : ''}`}
+                  onClick={() => setWorkoutFilter('run')}
+                >
+                  🏃‍♀️ Run
+                </button>
+              </div>
             </div>
 
-            {/* Type Filters (row 2) */}
-            <div className="workout-filters">
-              <button 
-                className={`filter-btn ${workoutFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setWorkoutFilter('all')}
-              >
-                🏁 All Types
-              </button>
-              <button 
-                className={`filter-btn ${workoutFilter === 'bike' ? 'active' : ''}`}
-                onClick={() => setWorkoutFilter('bike')}
-              >
-                🚴‍♂️ Bike (Indoor/Outdoor/Brick)
-              </button>
-              <button 
-                className={`filter-btn ${workoutFilter === 'swim' ? 'active' : ''}`}
-                onClick={() => setWorkoutFilter('swim')}
-              >
-                🏊‍♂️ Swim
-              </button>
-              <button 
-                className={`filter-btn ${workoutFilter === 'run' ? 'active' : ''}`}
-                onClick={() => setWorkoutFilter('run')}
-              >
-                🏃‍♀️ Run
-              </button>
-            </div>
-
-            {getFilteredWorkouts().length === 0 ? (
-              <p className="no-posts">
-                {workoutsLoading 
-                  ? 'Loading workouts...'
-                  : (workoutPosts.length === 0 
-                      ? 'No workout posts yet.' 
-                      : `No ${workoutFilter === 'all' ? '' : workoutFilter} workouts found.`)}
-              </p>
-            ) : (
-              <div className="posts-list">
-                {getFilteredWorkouts().filter(post => post && post.id).map(post => (
-                  <div key={post.id} className="post-card workout-post" onClick={() => window.location.href = `/workout/${post.id}`}>
+            {(() => {
+              const paginatedWorkouts = getPaginatedWorkouts();
+              const filteredCount = getFilteredWorkouts().length;
+              
+              if (filteredCount === 0) {
+                return (
+                  <p className="no-posts">
+                    {workoutsLoading 
+                      ? 'Loading workouts...'
+                      : (workoutPosts.length === 0 
+                          ? 'No workout posts yet.' 
+                          : `No ${workoutFilter === 'all' ? '' : workoutFilter} workouts found.`)}
+                  </p>
+                );
+              }
+              
+              return (
+                <div className="posts-list">
+                  {paginatedWorkouts.filter(post => post && post.id).map(post => (
+                  <div key={post.id} className="post-card workout-post" onClick={(e) => {
+                      // Only navigate if clicking on the card itself, not on buttons or edit form
+                      if (!e.target.closest('.workout-actions-admin') && !e.target.closest('.workout-edit-form')) {
+                        window.location.href = `/workout/${post.id}`;
+                      }
+                    }}>
                     <div className="post-header">
                       {post.title ? (
                         <div className="workout-title">
@@ -1159,7 +1609,7 @@ const Forum = () => {
                             }}
                             disabled={editingWorkout === post.id}
                           >
-                            ✏️ Edit
+                            ✏️<span className="btn-text"> Edit</span>
                           </button>
                           <button 
                             className="delete-btn"
@@ -1169,7 +1619,7 @@ const Forum = () => {
                             }}
                             disabled={editingWorkout === post.id}
                           >
-                            🗑️ Delete
+                            🗑️<span className="btn-text"> Delete</span>
                           </button>
                         </div>
                       )}
@@ -1357,27 +1807,42 @@ const Forum = () => {
                   </div>
                 ))}
               </div>
-            )}
+            );
+          })()}
           </div>
         )}
+        
 
         {/* Events Section */}
         {activeTab === 'events' && (
           <div className="events-section">
             <div className="section-header">
               <h2>Event Posts</h2>
-              {isExec(currentUser) && (
-                <button 
-                  className="new-post-btn"
-                  onClick={() => setShowEventForm(true)}
-                >
-                  + New Event
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {/* Offline/Cache Indicator */}
+                {eventsFromCache && (
+                  <span className="cache-indicator" title="Showing cached data">
+                    📦 Cached
+                  </span>
+                )}
+                {eventsOffline && (
+                  <span className="offline-badge" title="You're offline">
+                    📴 Offline
+                  </span>
+                )}
+                {isMember(currentUser) && (
+                  <button 
+                    className="new-post-btn"
+                    onClick={() => setShowEventForm(true)}
+                  >
+                    +<span className="btn-text"> New Event</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {eventPosts.length === 0 ? (
-              <p className="no-posts">{eventsLoading ? 'Events loading...' : 'No event posts yet.'}</p>
+              <p className="no-posts">{eventsLoadingFromCache ? 'Events loading...' : 'No event posts yet.'}</p>
             ) : (
               <div className="posts-list">
                 {eventPosts.map(post => (
@@ -1455,14 +1920,14 @@ const Forum = () => {
                                 onClick={(e) => { e.stopPropagation(); startEventEdit(post); }}
                                 disabled={editingEvent === post.id}
                               >
-                                ✏️ Edit
+                                ✏️<span className="btn-text"> Edit</span>
                               </button>
                               <button 
                                 className="delete-btn"
                                 onClick={(e) => { e.stopPropagation(); handleDeleteEvent(post.id); }}
                                 disabled={editingEvent === post.id}
                               >
-                                🗑️ Delete
+                                🗑️<span className="btn-text"> Delete</span>
                               </button>
                             </div>
                           )}
@@ -1576,8 +2041,32 @@ const Forum = () => {
         )}
 
         {/* Workout Creation Modal */}
-        {showWorkoutForm && (
-          <div className="modal-overlay">
+        {showWorkoutForm && createPortal(
+          <div 
+            className="modal-overlay"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh',
+              minWidth: '100vw',
+              minHeight: '100vh',
+              maxWidth: '100vw',
+              maxHeight: '100vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: 0,
+              padding: '1rem',
+              boxSizing: 'border-box',
+              zIndex: 99999,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              overflow: 'hidden'
+            }}
+          >
             <div className="modal">
               <h2>Create New Workout Post</h2>
               <form onSubmit={handleSubmitWorkout}>
@@ -1613,8 +2102,12 @@ const Forum = () => {
                   <input
                     type="date"
                     value={workoutForm.date}
-                    onChange={(e) => setWorkoutForm({...workoutForm, date: e.target.value})}
-                    min={new Date().toISOString().split('T')[0]}
+                    ref={workoutDateInputRef}
+                    onFocus={(e) => { try { e.target.removeAttribute('min'); } catch (_) {} }}
+                    onChange={(e) => {
+                      console.log('📅 Date selected:', e.target.value);
+                      setWorkoutForm({...workoutForm, date: e.target.value});
+                    }}
                     required
                   />
                 </div>
@@ -1661,7 +2154,8 @@ const Forum = () => {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Event Creation Modal */}
@@ -1715,8 +2209,33 @@ const Forum = () => {
           </div>
         )}
       </div>
+
+        <ConfirmModal
+          isOpen={deleteWorkoutConfirm.isOpen}
+          onConfirm={confirmDeleteWorkout}
+          onCancel={() => setDeleteWorkoutConfirm({ isOpen: false, postId: null })}
+          title="Delete Workout"
+          message="Are you sure you want to delete this workout post?"
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDanger={true}
+        />
+
+        <ConfirmModal
+          isOpen={deleteEventConfirm.isOpen}
+          onConfirm={confirmDeleteEvent}
+          onCancel={() => setDeleteEventConfirm({ isOpen: false, postId: null })}
+          title="Delete Event"
+          message="Are you sure you want to delete this event post?"
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDanger={true}
+        />
     </div>
+    </PullToRefresh>
   );
 };
 
+
 export default Forum;
+

@@ -1,0 +1,42 @@
+/* Pull-to-Refresh Styles */
+.pull-to-refresh-container {
+  position: relative;
+  min-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pull-to-refresh-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: white;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.pull-to-refresh-spinner {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.pull-to-refresh-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Hide on desktop */
+@media (min-width: 769px) {
+  .pull-to-refresh-indicator {
+    display: none;
+  }
+}
+

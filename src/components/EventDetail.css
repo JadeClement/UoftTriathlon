@@ -385,6 +385,49 @@
   color: #ef4444;
 }
 
+/* Edit and Delete Buttons */
+.workout-actions-admin {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.edit-btn, .delete-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.edit-btn {
+  background: #10b981;
+  color: white;
+}
+
+.edit-btn:hover:not(:disabled) {
+  background: #059669;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.edit-btn:disabled, .delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .rsvp-categories {
@@ -397,6 +440,23 @@
   
   .rsvp-btn {
     width: 100%;
+  }
+
+  /* Mobile: Show only emoji icons for edit/delete buttons */
+  .edit-btn, .delete-btn {
+    padding: 0.5rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
+
+  .edit-btn .btn-text,
+  .delete-btn .btn-text {
+    display: none;
   }
 }
 

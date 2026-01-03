@@ -1,13 +1,56 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getFieldsForSport } from '../config/sportFields';
+import { formatSignupTimeForDisplay } from '../utils/dateUtils';
+import { showError, showSuccess } from './SimpleNotification';
+import ConfirmModal from './ConfirmModal';
 import './Admin.css';
 
 const Admin = () => {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, isCoach, isExec } = useAuth();
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState('members');
+  
+  // Test Events state
+  const [testEvents, setTestEvents] = useState([]);
+  const [selectedTestEvent, setSelectedTestEvent] = useState(null);
+  const [testEventRecords, setTestEventRecords] = useState([]);
+  const [expandedRecordIds, setExpandedRecordIds] = useState(new Set()); // Track which records are expanded
+  const [showTestEventModal, setShowTestEventModal] = useState(false);
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [testEventForm, setTestEventForm] = useState({
+    title: '',
+    sport: 'swim',
+    date: '',
+    workout: '',
+    workout_post_id: null
+  });
+  const [testEventRecordCount, setTestEventRecordCount] = useState(0);
+  const [availableWorkouts, setAvailableWorkouts] = useState([]);
+  const [loadingWorkouts, setLoadingWorkouts] = useState(false);
+  const [recordForm, setRecordForm] = useState({
+    title: '',
+    result: '',
+    description: '',
+    user_id: null,
+    result_fields: {}
+  });
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  
+  // Pagination state for members
+  const [currentPage, setCurrentPage] = useState(1);
+  const [membersPerPage] = useState(15);
+  
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [memberSearch]);
+  
   // Banner + popup form supports multiple items and rotation interval
   const [bannerForm, setBannerForm] = useState({
     enabled: false,
@@ -29,6 +72,7 @@ const Admin = () => {
   });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', body: '' });
+  const [emailAttachments, setEmailAttachments] = useState([]);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
@@ -42,6 +86,21 @@ const Admin = () => {
     setTimeout(() => {
       setNotification({ show: false, message: '', type: 'success' });
     }, 3000);
+  };
+
+  // Format term name for display (e.g., "Fall 25" or "Fall/Winter 25-26")
+  const formatTermName = (term) => {
+    const termName = term.term.charAt(0).toUpperCase() + term.term.slice(1);
+    const startDate = new Date(term.start_date);
+    const endDate = new Date(term.end_date);
+    const startYear = startDate.getFullYear() % 100; // Get last 2 digits
+    const endYear = endDate.getFullYear() % 100;
+    
+    if (startYear === endYear) {
+      return `${termName} ${startYear}`;
+    } else {
+      return `${termName} ${startYear}-${endYear}`;
+    }
   };
 
   // Rich text editor functions
@@ -120,23 +179,26 @@ const Admin = () => {
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
 
   const [editingMember, setEditingMember] = useState(null);
+  const [terms, setTerms] = useState([]);
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
     role: '',
-    expiryDate: '',
     phoneNumber: '',
-    charterAccepted: false
+    charterAccepted: false,
+    sport: 'triathlon',
+    term_id: null
   });
   const [approvingMember, setApprovingMember] = useState(null);
   const [approvalForm, setApprovalForm] = useState({
-    role: 'member',
-    expiryDate: ''
+    role: 'member'
   });
 
   // Orders state
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState(new Set());
+  const [orderFilter, setOrderFilter] = useState('not_archived'); // 'all', 'archived', 'not_archived'
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderForm, setOrderForm] = useState({
     id: null,
@@ -149,6 +211,12 @@ const Admin = () => {
     gender: 'mens' // Add gender field
   });
   const [gearItems, setGearItems] = useState([]);
+  const [removeBannerConfirm, setRemoveBannerConfirm] = useState({ isOpen: false });
+  const [deleteOrderConfirm, setDeleteOrderConfirm] = useState({ isOpen: false, orderId: null });
+  const [archiveOrdersConfirm, setArchiveOrdersConfirm] = useState({ isOpen: false, count: 0 });
+  const [unarchiveOrdersConfirm, setUnarchiveOrdersConfirm] = useState({ isOpen: false, count: 0 });
+  const [deleteTestEventConfirm, setDeleteTestEventConfirm] = useState({ isOpen: false, eventId: null });
+  const [deleteUserConfirm, setDeleteUserConfirm] = useState({ isOpen: false, userId: null });
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -198,6 +266,7 @@ const Admin = () => {
     }
 
     loadAdminData();
+    loadTerms();
   }, [currentUser, isAdmin]);
 
   // Load attendance data when filters change
@@ -340,9 +409,11 @@ const Admin = () => {
       return;
     }
 
-    if (!window.confirm('Remove the current pop up message?')) {
-      return;
-    }
+    setRemoveBannerConfirm({ isOpen: true });
+  };
+
+  const confirmRemoveBanner = async () => {
+    setRemoveBannerConfirm({ isOpen: false });
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -412,21 +483,30 @@ const Admin = () => {
       if (emailType === 'individual') {
         setSendingEmail(true);
         const token = localStorage.getItem('triathlonToken');
+        
+        // Prepare form data for file uploads
+        const formData = new FormData();
+        formData.append('to', emailForm.to);
+        formData.append('subject', emailForm.subject);
+        formData.append('message', emailForm.message);
+        formData.append('template', JSON.stringify(template));
+        
+        // Add attachments if any
+        emailAttachments.forEach((file) => {
+          formData.append('attachments', file);
+        });
+        
         const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ 
-            to: emailForm.to, 
-            subject: emailForm.subject,
-            message: emailForm.message,
-            template: template 
-          })
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
         });
         const data = await resp.json();
         if (resp.ok) {
           setEmailStatus({ type: 'success', text: 'Email sent successfully!' });
           setEmailForm({ to: '', subject: '', message: '' });
           setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+          setEmailAttachments([]);
         } else {
           setEmailStatus({ type: 'error', text: data.error || 'Failed to send email' });
         }
@@ -434,25 +514,36 @@ const Admin = () => {
       } else {
         setSendingBulkEmail(true);
         const token = localStorage.getItem('triathlonToken');
+        
+        // Prepare form data for file uploads
+        const formData = new FormData();
+        formData.append('subject', template.title || 'UofT Tri Club Update');
+        formData.append('message', template.body || '');
+        formData.append('template', JSON.stringify(template));
+        formData.append('recipients', JSON.stringify({
+          members: true,
+          exec: true,
+          admin: true,
+          pending: false
+        }));
+        
+        // Add attachments if any
+        console.log('📎 Frontend: Preparing to send bulk email with attachments:', emailAttachments.length);
+        emailAttachments.forEach((file, idx) => {
+          console.log(`📎 Frontend: Adding attachment ${idx + 1}:`, file.name, `(${(file.size / 1024).toFixed(1)} KB)`);
+          formData.append('attachments', file);
+        });
+        
         const resp = await fetch(`${API_BASE_URL}/admin/send-bulk-email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            subject: template.title || 'UofT Tri Club Update',
-            message: template.body || '',
-            template: template,
-            recipients: {
-              members: true,
-              exec: true,
-              admin: true,
-              pending: false
-            }
-          })
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
         });
         const data = await resp.json();
         if (resp.ok) {
-          setBulkEmailStatus({ type: 'success', text: `Bulk email sent successfully to ${data.sentCount} recipients!` });
+          setBulkEmailStatus({ type: 'success', text: `Bulk email sent successfully to ${data.recipientCount || data.sentCount || 0} recipients!` });
           setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
+          setEmailAttachments([]);
         } else {
           setBulkEmailStatus({ type: 'error', text: data.error || 'Failed to send bulk email' });
         }
@@ -466,6 +557,23 @@ const Admin = () => {
         setBulkEmailStatus({ type: 'error', text: err.message });
         setSendingBulkEmail(false);
       }
+    }
+  };
+
+  const loadTerms = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/terms`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTerms(data.terms || []);
+      }
+    } catch (error) {
+      console.error('Error loading terms:', error);
     }
   };
 
@@ -483,8 +591,8 @@ const Admin = () => {
       // Load gear items for order form
       await loadGearItems();
 
-      // Load all members
-      const membersResponse = await fetch(`${API_BASE_URL}/admin/members`, {
+      // Load all members (set high limit to get all members)
+      const membersResponse = await fetch(`${API_BASE_URL}/admin/members?limit=1000`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -497,8 +605,9 @@ const Admin = () => {
         // Transform backend data to frontend format (snake_case to camelCase)
         const transformedMembers = membersData.members.map(member => ({
           ...member,
-          joinDate: member.join_date,
-          expiryDate: member.expiry_date,
+          joinDate: member.join_date || member.created_at, // Use created_at as fallback if join_date is null
+          term: member.term || null, // Term name (fall, winter, etc.)
+          term_id: member.term_id || null, // Term ID for editing
           absences: member.absences || 0,
           charterAccepted: member.charter_accepted || 0
         }));
@@ -509,6 +618,14 @@ const Admin = () => {
         console.log('🔍 Sample member with charter:', transformedMembers.find(m => m.id)?.charterAccepted);
         console.log('🔍 Raw charter_accepted values:', membersData.members.map(m => ({ id: m.id, charter_accepted: m.charter_accepted })));
         console.log('🔍 Full transformed members:', JSON.stringify(transformedMembers, null, 2));
+        
+        // Debug: Check for jade members
+        const jadeMembers = transformedMembers.filter(m => 
+          (m.name && m.name.toLowerCase().includes('jade')) || 
+          (m.email && m.email.toLowerCase().includes('jade'))
+        );
+        console.log('🔍 Jade members found:', jadeMembers);
+        
         setMembers(transformedMembers);
         
         // Filter pending members
@@ -526,11 +643,15 @@ const Admin = () => {
       if (!currentUser || !isAdmin(currentUser)) return;
       setOrdersLoading(true);
       const token = localStorage.getItem('triathlonToken');
-      const res = await fetch(`${API_BASE_URL}/merch-orders`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/merch-orders?filter=${orderFilter}`, { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
 
       if (!res.ok) throw new Error('Failed to load orders');
       const data = await res.json();
       setOrders(Array.isArray(data.orders) ? data.orders : []);
+      // Clear selection when orders change
+      setSelectedOrders(new Set());
     } catch (e) {
       console.error('Failed to load orders:', e);
     } finally {
@@ -542,7 +663,7 @@ const Admin = () => {
     if (activeTab === 'orders') {
       loadOrders();
     }
-  }, [activeTab]);
+  }, [activeTab, orderFilter]);
 
   const openNewOrder = () => {
     setOrderForm({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1, gender: 'mens' });
@@ -585,20 +706,135 @@ const Admin = () => {
       await loadOrders();
       setShowOrderModal(false);
     } catch (e) {
-      alert(`Failed to Save Order: ${e.message}`);
+      showError(`Failed to Save Order: ${e.message}`);
     }
   };
 
   const deleteOrder = async (id) => {
-    if (!window.confirm('Delete this order?')) return;
+    setDeleteOrderConfirm({ isOpen: true, orderId: id });
+  };
+
+  const confirmDeleteOrder = async () => {
+    const { orderId } = deleteOrderConfirm;
+    setDeleteOrderConfirm({ isOpen: false, orderId: null });
+    
+    if (!orderId) return;
     try {
       const token = localStorage.getItem('triathlonToken');
-      const res = await fetch(`${API_BASE_URL}/merch-orders/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/merch-orders/${orderId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
 
       if (!res.ok) throw new Error('Failed to delete order');
       await loadOrders();
     } catch (e) {
-      alert(`Failed to Delete Order: ${e.message}`);
+      showError(`Failed to Delete Order: ${e.message}`);
+    }
+  };
+
+  const handleOrderSelect = (orderId) => {
+    const newSelected = new Set(selectedOrders);
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId);
+    } else {
+      newSelected.add(orderId);
+    }
+    setSelectedOrders(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedOrders.size === orders.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(orders.map(o => o.id)));
+    }
+  };
+
+  const archiveSelectedOrders = async () => {
+    if (selectedOrders.size === 0) {
+      showError('Please select at least one order to archive');
+      return;
+    }
+    setArchiveOrdersConfirm({ isOpen: true, count: selectedOrders.size });
+  };
+
+  const confirmArchiveOrders = async () => {
+    const count = archiveOrdersConfirm.count;
+    setArchiveOrdersConfirm({ isOpen: false, count: 0 });
+    
+    // Use the state instead of reading from DOM
+    if (selectedOrders.size === 0) {
+      showError('Please select at least one order to archive');
+      return;
+    }
+
+    const orderIds = Array.from(selectedOrders);
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE_URL}/merch-orders/archive`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderIds })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to archive orders');
+      }
+
+      const data = await res.json();
+      showSuccess(data.message || `${orderIds.length} order(s) archived successfully`);
+      setSelectedOrders(new Set()); // Clear selection after archiving
+      await loadOrders();
+    } catch (e) {
+      showError(`Failed to Archive Orders: ${e.message}`);
+    }
+  };
+
+  const unarchiveSelectedOrders = async () => {
+    if (selectedOrders.size === 0) {
+      showError('Please select at least one order to unarchive');
+      return;
+    }
+    setUnarchiveOrdersConfirm({ isOpen: true, count: selectedOrders.size });
+  };
+
+  const confirmUnarchiveOrders = async () => {
+    const count = unarchiveOrdersConfirm.count;
+    setUnarchiveOrdersConfirm({ isOpen: false, count: 0 });
+    
+    // Use the state instead of reading from DOM
+    if (selectedOrders.size === 0) {
+      showError('Please select at least one order to unarchive');
+      return;
+    }
+
+    const orderIds = Array.from(selectedOrders);
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE_URL}/merch-orders/unarchive`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderIds })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to unarchive orders');
+      }
+
+      const data = await res.json();
+      showSuccess(data.message || `${orderIds.length} order(s) unarchived successfully`);
+      setSelectedOrders(new Set()); // Clear selection after unarchiving
+      await loadOrders();
+    } catch (e) {
+      showError(`Failed to Unarchive Orders: ${e.message}`);
     }
   };
 
@@ -641,6 +877,259 @@ const Admin = () => {
       setAttendanceLoading(false);
     }
   };
+
+  // Load test events
+  const loadTestEvents = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/test-events`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTestEvents(data.testEvents || []);
+      }
+    } catch (error) {
+      console.error('Error loading test events:', error);
+      showNotification('Failed to load test events', 'error');
+    }
+  };
+
+  // Load records for a test event
+  const loadTestEventRecords = async (testEventId) => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/test-events/${testEventId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedTestEvent(data.testEvent);
+        setTestEventRecords(data.records || []);
+      }
+    } catch (error) {
+      console.error('Error loading test event records:', error);
+      showNotification('Failed to load records', 'error');
+    }
+  };
+
+  // Load workouts for linking (filtered by sport and optional date)
+  const loadAvailableWorkouts = async (sport, date = null) => {
+    if (!sport) {
+      setAvailableWorkouts([]);
+      return;
+    }
+
+    try {
+      setLoadingWorkouts(true);
+      const token = localStorage.getItem('triathlonToken');
+      const params = new URLSearchParams({ sport });
+      if (date) {
+        params.append('date', date);
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/test-events/workouts/search?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableWorkouts(data.workouts || []);
+      }
+    } catch (error) {
+      console.error('Error loading workouts:', error);
+      setAvailableWorkouts([]);
+    } finally {
+      setLoadingWorkouts(false);
+    }
+  };
+
+  // Load record count for a test event
+  const loadTestEventRecordCount = async (testEventId) => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/records?test_event_id=${testEventId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTestEventRecordCount(data.records?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error loading record count:', error);
+      setTestEventRecordCount(0);
+    }
+  };
+
+  // Delete test event
+  const deleteTestEvent = async () => {
+    if (!testEventForm.id) return;
+
+    setDeleteTestEventConfirm({ isOpen: true, eventId: testEventForm.id });
+  };
+
+  const confirmDeleteTestEvent = async () => {
+    const { eventId } = deleteTestEventConfirm;
+    setDeleteTestEventConfirm({ isOpen: false, eventId: null });
+    
+    if (!eventId) return;
+    
+    const confirmMessage = `Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`;
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/test-events/${eventId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        showNotification('Test event deleted successfully', 'success');
+        setShowTestEventModal(false);
+        setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+        setTestEventRecordCount(0);
+        await loadTestEvents();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete test event');
+      }
+    } catch (error) {
+      showNotification(`Failed to delete test event: ${error.message}`, 'error');
+    }
+  };
+
+  // Create or update test event
+  const createTestEvent = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const isEdit = !!testEventForm.id;
+      const url = isEdit ? `${API_BASE_URL}/test-events/${testEventForm.id}` : `${API_BASE_URL}/test-events`;
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(testEventForm)
+      });
+      if (response.ok) {
+        showNotification(`Test event ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        setShowTestEventModal(false);
+        setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+        await loadTestEvents();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || `Failed to ${isEdit ? 'update' : 'create'} test event`);
+      }
+    } catch (error) {
+      showNotification(`Failed to ${testEventForm.id ? 'update' : 'create'} test event: ${error.message}`, 'error');
+    }
+  };
+
+  // Search users for record creation
+  const searchUsers = async (query) => {
+    if (!query || query.length < 2) {
+      setUserSearchResults([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/members?search=${encodeURIComponent(query)}&limit=10`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserSearchResults(data.members || []);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+    }
+  };
+
+  // Handle user search input
+  const handleUserSearchChange = (e) => {
+    const query = e.target.value;
+    setUserSearchQuery(query);
+    if (query) {
+      searchUsers(query);
+      setShowUserDropdown(true);
+    } else {
+      setUserSearchResults([]);
+      setShowUserDropdown(false);
+      setSelectedUser(null);
+      setRecordForm((prev) => ({ ...prev, user_id: null }));
+    }
+  };
+
+  // Select a user from search results
+  const selectUser = (user) => {
+    setSelectedUser(user);
+    setUserSearchQuery(user.name || user.email);
+    setRecordForm((prev) => ({ ...prev, user_id: user.id }));
+    setShowUserDropdown(false);
+    setUserSearchResults([]);
+  };
+
+  // Create new record
+  const createRecord = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/records`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...recordForm,
+          test_event_id: selectedTestEvent.id,
+          title: recordForm.title || selectedTestEvent.title,
+          user_id: recordForm.user_id || currentUser?.id,
+          result_fields: recordForm.result_fields || {}
+        })
+      });
+      if (response.ok) {
+        showNotification('Record created successfully', 'success');
+        setShowRecordModal(false);
+        setRecordForm({ title: '', result: '', description: '', user_id: null, result_fields: {} });
+        setUserSearchQuery('');
+        setSelectedUser(null);
+        await loadTestEventRecords(selectedTestEvent.id);
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create record');
+      }
+    } catch (error) {
+      showNotification(`Failed to create record: ${error.message}`, 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'test-events' && !selectedTestEvent) {
+      loadTestEvents();
+    }
+  }, [activeTab]);
+
+  // Load workouts when sport or date changes in test event form
+  useEffect(() => {
+    if (showTestEventModal && testEventForm.sport) {
+      loadAvailableWorkouts(testEventForm.sport, testEventForm.date || null);
+    }
+  }, [showTestEventModal, testEventForm.sport, testEventForm.date]);
+
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserDropdown && !event.target.closest('.user-search-container')) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserDropdown]);
 
   // Load detailed attendance for a specific workout
   const loadAttendanceDetails = async (workoutId) => {
@@ -693,7 +1182,7 @@ const Admin = () => {
   const exportMerchToExcel = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/admin/merch/export`, {
+      const response = await fetch(`${API_BASE_URL}/admin/merch/export?filter=${orderFilter}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -706,42 +1195,41 @@ const Admin = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       const dateStr = new Date().toISOString().split('T')[0];
+      const filterSuffix = orderFilter === 'archived' ? '_archived' : orderFilter === 'not_archived' ? '_not_archived' : '';
       a.href = url;
-      a.download = `merch_orders_${dateStr}.xlsx`;
+      a.download = `merch_orders${filterSuffix}_${dateStr}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err.message || 'Failed to export merch orders');
+      showError(err.message || 'Failed to export merch orders');
     }
   };
 
   const approveMember = (member) => {
     setApprovingMember(member);
     setApprovalForm({
-      role: 'member',
-      expiryDate: ''
+      role: 'member'
     });
   };
 
   const handleApprovalSubmit = async () => {
-    if (!approvingMember || !approvalForm.expiryDate) {
-      alert('Please set an expiry date before approving the member.');
+    if (!approvingMember) {
+      showError('Please select a member to approve.');
       return;
     }
 
     try {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/members/${approvingMember.id}/approve`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-          role: approvalForm.role,
-          expiryDate: approvalForm.expiryDate
+          role: approvalForm.role
         })
       });
 
@@ -749,7 +1237,7 @@ const Admin = () => {
         // Reload data to get updated information
         await loadAdminData();
         setApprovingMember(null);
-        setApprovalForm({ role: 'member', expiryDate: '' });
+        setApprovalForm({ role: 'member' });
       } else {
         console.error('Failed to approve member');
       }
@@ -760,18 +1248,24 @@ const Admin = () => {
 
   const cancelApproval = () => {
     setApprovingMember(null);
-    setApprovalForm({ role: 'member', expiryDate: '' });
+    setApprovalForm({ role: 'member' });
   };
 
 
 
   const removeMember = async (memberId) => {
-    const confirmed = window.confirm('⚠️ WARNING: This will PERMANENTLY DELETE this user and all their data!\n\nThis action cannot be undone. Are you sure you want to continue?');
-    if (!confirmed) return;
+    setDeleteUserConfirm({ isOpen: true, userId: memberId });
+  };
+
+  const confirmDeleteUser = async () => {
+    const { userId } = deleteUserConfirm;
+    setDeleteUserConfirm({ isOpen: false, userId: null });
+    
+    if (!userId) return;
 
     try {
       const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/admin/members/${memberId}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/members/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -785,11 +1279,11 @@ const Admin = () => {
       } else {
         console.error('Failed to delete user');
         const err = await response.json().catch(() => ({}));
-        alert(`Failed to delete user${err.error ? `: ${err.error}` : ''}`);
+        showError(`Failed to delete user${err.error ? `: ${err.error}` : ''}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(`Error deleting user: ${error.message}`);
+      showError(`Error deleting user: ${error.message}`);
     }
   };
 
@@ -828,15 +1322,15 @@ const Admin = () => {
       name: member.name,
       email: member.email,
       role: member.role,
-      expiryDate: member.expiryDate || '',
       phoneNumber: member.phone_number || '',
-      charterAccepted: initialCharterAccepted
+      charterAccepted: initialCharterAccepted,
+      sport: member.sport || 'triathlon',
+      term_id: member.term_id || null
     });
     console.log('📝 Edit form set to:', {
       name: member.name,
       email: member.email,
       role: member.role,
-      expiryDate: member.expiryDate || '',
       phoneNumber: member.phone_number || '',
       charterAccepted: initialCharterAccepted
     });
@@ -854,10 +1348,13 @@ const Admin = () => {
     
     // Clean up the form data - convert empty strings to null for optional fields
     const cleanFormData = {
-      ...editForm,
-      phoneNumber: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending
-      expiryDate: editForm.expiryDate || null,
-      charterAccepted: editForm.charterAccepted ? 1 : 0
+      name: editForm.name,
+      email: editForm.email,
+      role: editForm.role,
+      phone_number: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending and map to backend field name
+      charterAccepted: editForm.charterAccepted ? 1 : 0,
+      sport: editForm.sport || 'triathlon',
+      term_id: editForm.term_id || null
     };
     
     console.log('🧹 Cleaned form data:', cleanFormData);
@@ -922,18 +1419,19 @@ const Admin = () => {
           name: '',
           email: '',
           role: '',
-          expiryDate: '',
           phoneNumber: '',
-          charterAccepted: false
+          charterAccepted: false,
+          sport: 'triathlon',
+          term_id: null
         });
       } else {
         const errorData = await response.json();
         console.error('❌ Failed to update member:', errorData);
-        alert(`Failed to update member: ${errorData.error || 'Unknown error'}`);
+        showError(`Failed to update member: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('❌ Error updating member:', error);
-      alert(`Error updating member: ${error.message}`);
+      showError(`Error updating member: ${error.message}`);
     }
   };
 
@@ -943,9 +1441,10 @@ const Admin = () => {
       name: '',
       email: '',
       role: '',
-      expiryDate: '',
       phoneNumber: '',
-      charterAccepted: false
+      charterAccepted: false,
+      sport: 'triathlon',
+      term_id: null
     });
   };
 
@@ -1028,6 +1527,18 @@ const Admin = () => {
             Merch Orders
           </button>
         )}
+        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && (
+          <button 
+            className={`tab-button ${activeTab === 'test-events' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('test-events');
+              setSelectedTestEvent(null);
+              loadTestEvents();
+            }}
+          >
+            Test Events
+          </button>
+        )}
       </div>
 
       <div className="admin-content">
@@ -1036,13 +1547,115 @@ const Admin = () => {
         {activeTab === 'members' && (
                       <div className="members-section">
               <h2>All Members</h2>
-              <div className="form-group" style={{ maxWidth: 420, marginBottom: 16 }}>
-                <input
-                  type="text"
-                  placeholder="Search by name or email…"
-                  value={memberSearch}
-                  onChange={(e)=> setMemberSearch(e.target.value)}
-                />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: '16px' }}>
+                <div className="form-group" style={{ maxWidth: 420, display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search by name or email…"
+                    value={memberSearch}
+                    onChange={(e)=> setMemberSearch(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  {memberSearch && (
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={() => setMemberSearch('')}
+                      style={{ padding: '8px 12px', fontSize: '14px' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                
+                {/* Top Pagination Controls */}
+                {(() => {
+                  const filteredMembers = members.filter(member => {
+                    const q = memberSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return (
+                      String(member.name || '').toLowerCase().includes(q) ||
+                      String(member.email || '').toLowerCase().includes(q)
+                    );
+                  });
+                  
+                  const totalPages = Math.ceil(filteredMembers.length / membersPerPage);
+                  const startIndex = (currentPage - 1) * membersPerPage;
+                  const endIndex = Math.min(startIndex + membersPerPage, filteredMembers.length);
+                  
+                  if (totalPages <= 1) return null;
+                  
+                  return (
+                    <div className="pagination-controls-top">
+                      <div className="pagination-info">
+                        {memberSearch ? (
+                          <>Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members (filtered from {members.length} total)</>
+                        ) : (
+                          <>Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members</>
+                        )}
+                      </div>
+                      <div className="pagination-buttons">
+                        <button 
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1}
+                        >
+                          First
+                        </button>
+                        <button 
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </button>
+                        
+                        {/* Page numbers */}
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                          // Show first page, last page, current page, and pages around current
+                          const shouldShow = pageNum === 1 || 
+                                           pageNum === totalPages || 
+                                           Math.abs(pageNum - currentPage) <= 2;
+                          
+                          if (!shouldShow) {
+                            // Show ellipsis for gaps
+                            if (pageNum === 2 && currentPage > 4) {
+                              return <span key={`ellipsis-${pageNum}`} className="pagination-ellipsis">...</span>;
+                            }
+                            if (pageNum === totalPages - 1 && currentPage < totalPages - 3) {
+                              return <span key={`ellipsis-${pageNum}`} className="pagination-ellipsis">...</span>;
+                            }
+                            return null;
+                          }
+                          
+                          return (
+                            <button
+                              key={pageNum}
+                              className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
+                              onClick={() => setCurrentPage(pageNum)}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                        
+                        <button 
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                        </button>
+                        <button 
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(totalPages)}
+                          disabled={currentPage === totalPages}
+                        >
+                          Last
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="admin-warning">
                 <p><strong>⚠️ Important:</strong> The "Delete" button will permanently remove users and all their data. This action cannot be undone.</p>
@@ -1054,51 +1667,195 @@ const Admin = () => {
                     <th>Name</th>
                     <th>Email</th>
                     <th>Role</th>
+                    <th>Sport</th>
                     <th>Phone Number</th>
                     <th>Join Date</th>
-                    <th>Expiry Date</th>
+                    <th>Term</th>
                     <th>Absences</th>
                     <th>Charter Accepted</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {members
-                    .filter(member => {
+                  {(() => {
+                    // Filter members based on search
+                    const filteredMembers = members.filter(member => {
                       const q = memberSearch.trim().toLowerCase();
                       if (!q) return true;
-                      return (
-                        String(member.name || '').toLowerCase().includes(q) ||
-                        String(member.email || '').toLowerCase().includes(q)
-                      );
-                    })
-                    .map(member => (
-                    <tr key={member.id}>
-                      <td>{member.name}</td>
-                      <td>{member.email}</td>
-                      <td><span className={`role-badge ${member.role}`}>{member.role}</span></td>
-                      <td>{member.phone_number || 'Not set'}</td>
-                      <td>{member.joinDate}</td>
-                      <td>{member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</td>
-                      <td>
-                        <span className={`absence-count ${member.absences > 0 ? 'has-absences' : 'no-absences'}`}>
-                          {member.absences || 0}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`charter-status ${member.charterAccepted ? 'accepted' : 'not-accepted'}`}>
-                          {member.charterAccepted ? '✅ Yes' : '❌ No'}
-                        </span>
-                      </td>
+                      
+                      const nameMatch = String(member.name || '').toLowerCase().includes(q);
+                      const emailMatch = String(member.email || '').toLowerCase().includes(q);
+                      const matches = nameMatch || emailMatch;
+                      
+                      // Debug logging
+                      if (q === 'jade') {
+                        console.log('🔍 Search debug for "jade":', {
+                          memberName: member.name,
+                          memberEmail: member.email,
+                          nameMatch,
+                          emailMatch,
+                          matches
+                        });
+                      }
+                      
+                      return matches;
+                    });
 
-                      <td>
-                        <button className="action-btn small" onClick={() => editMember(member)}>Edit</button>
-                        <button className="action-btn small danger" onClick={() => removeMember(member.id)}>Delete</button>
-                      </td>
-                    </tr>
-                  ))}
+                    // Calculate pagination
+                    const startIndex = (currentPage - 1) * membersPerPage;
+                    const endIndex = startIndex + membersPerPage;
+                    const currentMembers = filteredMembers.slice(startIndex, endIndex);
+
+                    return currentMembers.map(member => (
+                      <tr key={member.id}>
+                        <td>{member.name}</td>
+                        <td>{member.email}</td>
+                        <td><span className={`role-badge ${member.role}`}>{member.role}</span></td>
+                        <td>
+                          <span className={`sport-badge ${member.sport || 'triathlon'}`}>
+                            {member.sport === 'run_only' ? 'Run Only' : 
+                             member.sport === 'swim_only' ? 'Swim Only' : 
+                             member.sport === 'duathlon' ? 'Duathlon' : 
+                             member.sport === 'triathlon' ? 'Triathlon' : 
+                             'Triathlon'}
+                          </span>
+                        </td>
+                        <td>{member.phone_number || 'Not set'}</td>
+                        <td>{member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : 'Not set'}</td>
+                        <td>
+                          {member.term ? (
+                            <span className={`term-badge ${member.term.toLowerCase().replace('/', '-')}`}>
+                              {member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/')}
+                            </span>
+                          ) : (
+                            <span className="term-badge no-term">Not set</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`absence-count ${member.absences > 0 ? 'has-absences' : 'no-absences'}`}>
+                            {member.absences || 0}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`charter-status ${member.charterAccepted ? 'accepted' : 'not-accepted'}`}>
+                            {member.charterAccepted ? '✅ Yes' : '❌ No'}
+                          </span>
+                        </td>
+                        <td>
+                          <button className="action-btn small" onClick={() => editMember(member)}>Edit</button>
+                          <button className="action-btn small danger" onClick={() => removeMember(member.id)}>Delete</button>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
                 </tbody>
               </table>
+              
+              {/* Pagination Controls */}
+              {(() => {
+                const filteredMembers = members.filter(member => {
+                  const q = memberSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    String(member.name || '').toLowerCase().includes(q) ||
+                    String(member.email || '').toLowerCase().includes(q)
+                  );
+                });
+                
+                const totalPages = Math.ceil(filteredMembers.length / membersPerPage);
+                const startIndex = (currentPage - 1) * membersPerPage;
+                const endIndex = Math.min(startIndex + membersPerPage, filteredMembers.length);
+                
+                // Show pagination if there are members and we have more than 1 page
+                const shouldShowPagination = members.length > 0 && totalPages > 1;
+                
+                if (!shouldShowPagination) {
+                  // If no pagination needed, show member count info
+                  return (
+                    <div className="pagination-controls">
+                      <div className="pagination-info">
+                        {memberSearch ? (
+                          <>Showing {filteredMembers.length} members (filtered from {members.length} total)</>
+                        ) : (
+                          <>Showing all {filteredMembers.length} members</>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="pagination-controls">
+                    <div className="pagination-info">
+                      {memberSearch ? (
+                        <>Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members (filtered from {members.length} total)</>
+                      ) : (
+                        <>Showing {startIndex + 1}-{endIndex} of {filteredMembers.length} members</>
+                      )}
+                    </div>
+                    <div className="pagination-buttons">
+                      <button 
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                      >
+                        First
+                      </button>
+                      <button 
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                      
+                      {/* Page numbers */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                        // Show first page, last page, current page, and pages around current
+                        const shouldShow = pageNum === 1 || 
+                                         pageNum === totalPages || 
+                                         Math.abs(pageNum - currentPage) <= 2;
+                        
+                        if (!shouldShow) {
+                          // Show ellipsis for gaps
+                          if (pageNum === 2 && currentPage > 4) {
+                            return <span key={`ellipsis-${pageNum}`} className="pagination-ellipsis">...</span>;
+                          }
+                          if (pageNum === totalPages - 1 && currentPage < totalPages - 3) {
+                            return <span key={`ellipsis-${pageNum}`} className="pagination-ellipsis">...</span>;
+                          }
+                          return null;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
+                            onClick={() => setCurrentPage(pageNum)}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      
+                      <button 
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </button>
+                      <button 
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Last
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -1117,8 +1874,14 @@ const Admin = () => {
                       <p><strong>Email:</strong> {member.email}</p>
                       <p><strong>Role:</strong> <span className="role-badge">{member.role}</span></p>
                       <p><strong>Phone Number:</strong> {member.phone_number || 'Not set'}</p>
-                      <p><strong>Join Date:</strong> {member.joinDate}</p>
-                      <p><strong>Expiry Date:</strong> {member.expiryDate ? new Date(member.expiryDate).toLocaleDateString() : 'Not set'}</p>
+                      <p><strong>Join Date:</strong> {member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : member.created_at ? new Date(member.created_at).toLocaleDateString() : 'Not set'}</p>
+                      <p><strong>Term:</strong> {member.term ? (
+                        <span className={`term-badge ${member.term.toLowerCase().replace('/', '-')}`}>
+                          {member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/')}
+                        </span>
+                      ) : (
+                        <span className="term-badge no-term">Not set</span>
+                      )}</p>
       
                     </div>
                     <div className="approval-actions">
@@ -1326,6 +2089,132 @@ const Admin = () => {
                           required 
                         />
                       </div>
+                      <div className="form-group">
+                        <label>Attachments (optional)</label>
+                        <div style={{ 
+                          border: '2px dashed #cbd5e1', 
+                          borderRadius: '8px', 
+                          padding: '20px', 
+                          textAlign: 'center',
+                          backgroundColor: '#f8fafc',
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#3b82f6';
+                          e.currentTarget.style.backgroundColor = '#eff6ff';
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#cbd5e1';
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#cbd5e1';
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                          const files = Array.from(e.dataTransfer.files);
+                          setEmailAttachments([...emailAttachments, ...files]);
+                        }}
+                        onClick={() => document.getElementById('email-file-input').click()}
+                        >
+                          <input 
+                            id="email-file-input"
+                            type="file" 
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files);
+                              setEmailAttachments([...emailAttachments, ...files]);
+                              e.target.value = ''; // Reset so same file can be selected again
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          <div style={{ color: '#64748b', marginBottom: '8px' }}>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 8px', display: 'block' }}>
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="17 8 12 3 7 8"></polyline>
+                              <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: '500' }}>
+                              Click to upload or drag and drop
+                            </p>
+                            <p style={{ margin: '0', fontSize: '12px', color: '#94a3b8' }}>
+                              PDF, DOC, DOCX, images, or other files (max 10MB per file)
+                            </p>
+                          </div>
+                        </div>
+                        {emailAttachments.length > 0 && (
+                          <div style={{ 
+                            marginTop: '16px', 
+                            padding: '12px', 
+                            backgroundColor: '#f1f5f9', 
+                            borderRadius: '6px',
+                            border: '1px solid #e2e8f0'
+                          }}>
+                            <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: '#475569' }}>
+                              Attached Files ({emailAttachments.length})
+                            </div>
+                            {emailAttachments.map((file, idx) => (
+                              <div key={idx} style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                gap: '12px', 
+                                padding: '8px 12px',
+                                marginBottom: '6px',
+                                backgroundColor: 'white',
+                                borderRadius: '6px',
+                                border: '1px solid #e2e8f0'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                  <span style={{ fontSize: '18px' }}>📎</span>
+                                  <span style={{ 
+                                    fontSize: '14px', 
+                                    color: '#1e293b',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {file.name}
+                                  </span>
+                                  <span style={{ color: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                                    ({(file.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newFiles = [...emailAttachments];
+                                    newFiles.splice(idx, 1);
+                                    setEmailAttachments(newFiles);
+                                  }}
+                                  style={{
+                                    background: '#fee2e2',
+                                    border: '1px solid #fecaca',
+                                    color: '#dc2626',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    fontWeight: '500',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.background = '#fecaca';
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.background = '#fee2e2';
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
 
@@ -1451,6 +2340,132 @@ const Admin = () => {
                         <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                           💡 Tip: Use **bold**, *italic*, numbered lists (1. 2. 3.), and [links](url) for formatting. Press Enter after numbered items to auto-continue the list!
                         </div>
+                      </div>
+                      <div className="form-group" style={{ marginTop: '20px' }}>
+                        <label>Attachments (optional)</label>
+                        <div style={{ 
+                          border: '2px dashed #cbd5e1', 
+                          borderRadius: '8px', 
+                          padding: '20px', 
+                          textAlign: 'center',
+                          backgroundColor: '#f8fafc',
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#3b82f6';
+                          e.currentTarget.style.backgroundColor = '#eff6ff';
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#cbd5e1';
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#cbd5e1';
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                          const files = Array.from(e.dataTransfer.files);
+                          setEmailAttachments([...emailAttachments, ...files]);
+                        }}
+                        onClick={() => document.getElementById('email-file-input-everyone').click()}
+                        >
+                          <input 
+                            id="email-file-input-everyone"
+                            type="file" 
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files);
+                              setEmailAttachments([...emailAttachments, ...files]);
+                              e.target.value = ''; // Reset so same file can be selected again
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          <div style={{ color: '#64748b', marginBottom: '8px' }}>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 8px', display: 'block' }}>
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="17 8 12 3 7 8"></polyline>
+                              <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: '500' }}>
+                              Click to upload or drag and drop
+                            </p>
+                            <p style={{ margin: '0', fontSize: '12px', color: '#94a3b8' }}>
+                              PDF, DOC, DOCX, images, or other files (max 10MB per file)
+                            </p>
+                          </div>
+                        </div>
+                        {emailAttachments.length > 0 && (
+                          <div style={{ 
+                            marginTop: '16px', 
+                            padding: '12px', 
+                            backgroundColor: '#f1f5f9', 
+                            borderRadius: '6px',
+                            border: '1px solid #e2e8f0'
+                          }}>
+                            <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: '#475569' }}>
+                              Attached Files ({emailAttachments.length})
+                            </div>
+                            {emailAttachments.map((file, idx) => (
+                              <div key={idx} style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                gap: '12px', 
+                                padding: '8px 12px',
+                                marginBottom: '6px',
+                                backgroundColor: 'white',
+                                borderRadius: '6px',
+                                border: '1px solid #e2e8f0'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                  <span style={{ fontSize: '18px' }}>📎</span>
+                                  <span style={{ 
+                                    fontSize: '14px', 
+                                    color: '#1e293b',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {file.name}
+                                  </span>
+                                  <span style={{ color: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                                    ({(file.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newFiles = [...emailAttachments];
+                                    newFiles.splice(idx, 1);
+                                    setEmailAttachments(newFiles);
+                                  }}
+                                  style={{
+                                    background: '#fee2e2',
+                                    border: '1px solid #fecaca',
+                                    color: '#dc2626',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    fontWeight: '500',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.background = '#fecaca';
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.background = '#fee2e2';
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1665,7 +2680,7 @@ const Admin = () => {
                               <span>{workout.submitted_by}</span>
                               {workout.last_attendance_submitted && (
                                 <div className="submitted-time">
-                                  {new Date(workout.last_attendance_submitted).toLocaleString()}
+                                  {formatSignupTimeForDisplay(workout.last_attendance_submitted)}
                                 </div>
                               )}
                             </div>
@@ -1714,9 +2729,37 @@ const Admin = () => {
         {/* Merch Orders Tab */}
         {isAdmin(currentUser) && activeTab === 'orders' && (
           <div className="orders-section">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '16px'}}>
               <h2>Merch Orders</h2>
-              <div style={{display:'flex', gap:8}}>
+              <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                <select 
+                  value={orderFilter} 
+                  onChange={(e) => setOrderFilter(e.target.value)}
+                  style={{padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc'}}
+                >
+                  <option value="not_archived">Not Archived</option>
+                  <option value="archived">Archived</option>
+                  <option value="all">All Orders</option>
+                </select>
+                {selectedOrders.size > 0 && (
+                  orderFilter === 'archived' ? (
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={unarchiveSelectedOrders}
+                      style={{backgroundColor: '#10b981'}}
+                    >
+                      Unarchive Selected ({selectedOrders.size})
+                    </button>
+                  ) : (
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={archiveSelectedOrders}
+                      style={{backgroundColor: '#f59e0b'}}
+                    >
+                      Archive Selected ({selectedOrders.size})
+                    </button>
+                  )
+                )}
                 <button className="btn btn-primary" onClick={openNewOrder}>+ New Order</button>
                 <button className="btn btn-primary" onClick={exportMerchToExcel}>
                   Export to Excel
@@ -1730,6 +2773,7 @@ const Admin = () => {
                 <table>
                   <thead>
                     <tr>
+                      <th style={{width: '40px'}}></th>
                       <th>First Name</th>
                       <th>Last Name</th>
                       <th>Email</th>
@@ -1743,13 +2787,21 @@ const Admin = () => {
                   </thead>
                   <tbody>
                     {orders.map(o => (
-                      <tr key={o.id}>
+                      <tr key={o.id} style={o.archived ? {opacity: 0.6, backgroundColor: '#f9fafb'} : {}}>
+                        <td>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedOrders.has(o.id)}
+                            onChange={() => handleOrderSelect(o.id)}
+                            style={{cursor: 'pointer'}}
+                          />
+                        </td>
                         <td>{o.firstName || o.name?.split(' ')[0] || '-'}</td>
                         <td>{o.lastName || o.name?.split(' ').slice(1).join(' ') || '-'}</td>
                         <td>{o.email}</td>
                         <td>{o.item}</td>
-                        <td>{o.size}</td>
-                        <td>{o.gender || 'M'}</td>
+                        <td>{o.size || '-'}</td>
+                        <td>{o.gender ? (o.gender === 'W' ? 'W' : 'M') : '-'}</td>
                         <td>{o.quantity}</td>
                         <td>{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
                         <td>
@@ -1759,11 +2811,210 @@ const Admin = () => {
                       </tr>
                     ))}
                     {orders.length === 0 && (
-                      <tr><td colSpan="9" style={{textAlign:'center', color:'#6b7280'}}>No orders yet</td></tr>
+                      <tr><td colSpan="9" style={{textAlign:'center', color:'#6b7280'}}>
+                        {orderFilter === 'archived' ? 'No archived orders' : 
+                         orderFilter === 'not_archived' ? 'No orders yet' : 
+                         'No orders found'}
+                      </td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Test Events Tab */}
+        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && activeTab === 'test-events' && (
+          <div className="test-events-section" style={{ padding: '2rem' }}>
+            {!selectedTestEvent ? (
+              // Test Events List View
+              <>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '16px'}}>
+                  <h2>Test Events</h2>
+                  <button className="btn btn-primary" onClick={() => {
+                    setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+                    setTestEventRecordCount(0);
+                    setAvailableWorkouts([]);
+                    setShowTestEventModal(true);
+                  }}>+ New</button>
+                </div>
+                <div className="test-events-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Sport</th>
+                        <th>Date</th>
+                        <th>Workout</th>
+                        <th>Created By</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {testEvents.map(te => (
+                        <tr 
+                          key={te.id} 
+                          style={{cursor: 'pointer'}}
+                          onClick={() => loadTestEventRecords(te.id)}
+                        >
+                          <td>{te.title}</td>
+                          <td><span className={`sport-badge ${te.sport}`}>{te.sport}</span></td>
+                          <td>{new Date(te.date).toLocaleDateString()}</td>
+                          <td>{te.workout}</td>
+                          <td>{te.created_by_name || '-'}</td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <button className="action-btn small" onClick={async () => {
+                              setTestEventForm(te);
+                              setShowTestEventModal(true);
+                              if (te.id) {
+                                await loadTestEventRecordCount(te.id);
+                              }
+                              if (te.sport && te.date) {
+                                await loadAvailableWorkouts(te.sport, te.date);
+                              }
+                            }}>Edit</button>
+                          </td>
+                        </tr>
+                      ))}
+                      {testEvents.length === 0 && (
+                        <tr><td colSpan="6" style={{textAlign:'center', color:'#6b7280'}}>No test events yet</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              // Records Detail View
+              <>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '16px'}}>
+                  <div>
+                    <button className="btn btn-secondary" onClick={() => {
+                      setSelectedTestEvent(null);
+                      setTestEventRecords([]);
+                    }} style={{marginRight: '12px'}}>← Back</button>
+                    <h2 style={{display: 'inline', marginLeft: '12px'}}>{selectedTestEvent.title}</h2>
+                  </div>
+                  <button className="btn btn-primary" onClick={() => {
+                    setRecordForm({ title: selectedTestEvent.title || '', result: '', description: '', user_id: null, result_fields: {} });
+                    setUserSearchQuery('');
+                    setSelectedUser(null);
+                    setShowUserDropdown(false);
+                    setShowRecordModal(true);
+                  }}>+ New Record</button>
+                </div>
+                <div style={{marginBottom: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px'}}>
+                  <p><strong>Sport:</strong> <span className={`sport-badge ${selectedTestEvent.sport}`}>{selectedTestEvent.sport}</span></p>
+                  <p><strong>Date:</strong> {new Date(selectedTestEvent.date).toLocaleDateString()}</p>
+                  <p><strong>Workout:</strong> {selectedTestEvent.workout}</p>
+                  {selectedTestEvent.workout_post_title && (
+                    <p><strong>Linked Workout:</strong> {selectedTestEvent.workout_post_title}</p>
+                  )}
+                </div>
+                <div className="records-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Title</th>
+                        <th>Result</th>
+                        <th>Notes</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {testEventRecords.map(r => {
+                        // Parse result_fields if available
+                        let resultFields = {};
+                        if (r.result_fields) {
+                          try {
+                            resultFields = typeof r.result_fields === 'string' 
+                              ? JSON.parse(r.result_fields) 
+                              : r.result_fields;
+                          } catch (e) {
+                            resultFields = {};
+                          }
+                        }
+                        const sport = selectedTestEvent?.sport;
+                        const fields = sport ? getFieldsForSport(sport) : [];
+                        const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
+                        
+                        const isExpanded = expandedRecordIds.has(r.id);
+                        
+                        return (
+                          <React.Fragment key={r.id}>
+                            <tr>
+                              <td>{r.user_name || r.user_email}</td>
+                              <td>{r.title}</td>
+                              <td>{r.result || '-'}</td>
+                              <td style={{maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{r.description || r.notes || '-'}</td>
+                              <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                              <td>
+                                {hasFields && (
+                                  <button
+                                    onClick={() => {
+                                      const newExpanded = new Set(expandedRecordIds);
+                                      if (isExpanded) {
+                                        newExpanded.delete(r.id);
+                                      } else {
+                                        newExpanded.add(r.id);
+                                      }
+                                      setExpandedRecordIds(newExpanded);
+                                    }}
+                                    style={{
+                                      background: isExpanded ? '#6b7280' : '#3b82f6',
+                                      color: 'white',
+                                      border: 'none',
+                                      padding: '0.375rem 0.75rem',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.875rem',
+                                      fontWeight: 500
+                                    }}
+                                  >
+                                    {isExpanded ? '▼ Collapse' : '▶ Expand'}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                            {isExpanded && hasFields && (
+                              <tr style={{ background: '#f8fafc' }}>
+                                <td colSpan="6" style={{ padding: '1rem' }}>
+                                  <div style={{ padding: '1rem', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#374151', fontSize: '0.875rem', fontWeight: 600 }}>
+                                      {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
+                                    </h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                      {fields.map(field => {
+                                        const value = resultFields[field.key];
+                                        if (value === null || value === undefined || value === '') return null;
+                                        return (
+                                          <div key={field.key} style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px' }}>
+                                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                              {field.label}:
+                                            </div>
+                                            <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
+                                              {Array.isArray(value) ? value.join(', ') : value}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                      {testEventRecords.length === 0 && (
+                        <tr><td colSpan="6" style={{textAlign:'center', color:'#6b7280'}}>No records yet</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -1810,15 +3061,6 @@ const Admin = () => {
               </div>
 
               <div className="form-group">
-                <label>Expiry Date:</label>
-                <input
-                  type="date"
-                  value={editForm.expiryDate}
-                  onChange={(e) => setEditForm({...editForm, expiryDate: e.target.value})}
-                />
-              </div>
-              
-              <div className="form-group">
                 <label>Phone Number:</label>
                 <input
                   type="tel"
@@ -1834,6 +3076,36 @@ const Admin = () => {
                 <small>For SMS notifications when promoted from waitlists</small>
               </div>
               
+              <div className="form-group">
+                <label>Sport:</label>
+                <select
+                  value={editForm.sport}
+                  onChange={(e) => setEditForm({...editForm, sport: e.target.value})}
+                >
+                  <option value="triathlon">Triathlon</option>
+                  <option value="duathlon">Duathlon</option>
+                  <option value="run_only">Run Only</option>
+                  <option value="swim_only">Swim Only</option>
+                </select>
+                <small>Determines which workout types the member can see and create</small>
+              </div>
+
+              <div className="form-group">
+                <label>Term:</label>
+                <select
+                  value={editForm.term_id || ''}
+                  onChange={(e) => setEditForm({...editForm, term_id: e.target.value === '' ? null : parseInt(e.target.value, 10)})}
+                >
+                  <option value="">No term assigned</option>
+                  {terms.map(term => (
+                    <option key={term.id} value={term.id}>
+                      {formatTermName(term)}
+                    </option>
+                  ))}
+                </select>
+                <small>Determines membership expiry date</small>
+              </div>
+
               <div className="form-group">
                 <label>Charter Accepted:</label>
                 <select
@@ -1880,16 +3152,6 @@ const Admin = () => {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Expiry Date:</label>
-                <input
-                  type="date"
-                  value={approvalForm.expiryDate}
-                  onChange={(e) => setApprovalForm({...approvalForm, expiryDate: e.target.value})}
-                  required
-                />
-                <small>Membership will expire on this date</small>
-              </div>
 
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Approve Member</button>
@@ -1905,13 +3167,13 @@ const Admin = () => {
         <div className="modal-overlay">
           <div className="modal attendance-modal">
             <div className="modal-header">
-              <h2>Attendance Details: {attendanceDetails.workout.title}</h2>
               <button 
                 className="close-btn"
                 onClick={() => setShowAttendanceModal(false)}
               >
                 ×
               </button>
+              <h2>Attendance Details: {attendanceDetails.workout.title}</h2>
             </div>
             
             <div className="attendance-details-content">
@@ -1998,7 +3260,7 @@ const Admin = () => {
                           </div>
                         </div>
                         <div className="signup-time">
-                          {new Date(signup.signup_time).toLocaleString()}
+                          {formatSignupTimeForDisplay(signup.signup_time)}
                         </div>
                       </div>
                     ))}
@@ -2296,6 +3558,391 @@ const Admin = () => {
           </div>
         </div>
       )}
+
+      {/* Test Event Modal */}
+      {showTestEventModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>{testEventForm.id ? 'Edit Test Event' : 'New Test Event'}</h2>
+            <form onSubmit={(e) => { e.preventDefault(); createTestEvent(); }}>
+              <div className="form-group">
+                <label>Title:</label>
+                <input
+                  type="text"
+                  value={testEventForm.title}
+                  onChange={(e) => setTestEventForm({...testEventForm, title: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Sport:</label>
+                <select
+                  value={testEventForm.sport}
+                  onChange={(e) => setTestEventForm({...testEventForm, sport: e.target.value})}
+                  required
+                >
+                  <option value="swim">Swim</option>
+                  <option value="bike">Bike</option>
+                  <option value="run">Run</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Date:</label>
+                <input
+                  type="date"
+                  value={testEventForm.date}
+                  onChange={(e) => setTestEventForm({...testEventForm, date: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Workout Description:</label>
+                <textarea
+                  rows="3"
+                  value={testEventForm.workout}
+                  onChange={(e) => setTestEventForm({...testEventForm, workout: e.target.value})}
+                  placeholder="e.g., 5 400ms fast on the track"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Link to Workout (optional):</label>
+                {testEventForm.sport && testEventForm.date ? (
+                  <select
+                    value={testEventForm.workout_post_id || ''}
+                    onChange={(e) => setTestEventForm({...testEventForm, workout_post_id: e.target.value ? parseInt(e.target.value) : null})}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                    disabled={loadingWorkouts}
+                  >
+                    <option value="">No workout linked</option>
+                    {availableWorkouts.map(workout => (
+                      <option key={workout.id} value={workout.id}>
+                        {workout.title} - {workout.workout_type} ({new Date(workout.workout_date).toLocaleDateString()} {workout.workout_time ? workout.workout_time.substring(0, 5) : ''})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{ padding: '0.75rem', background: '#f3f4f6', borderRadius: '4px', color: '#6b7280' }}>
+                    {!testEventForm.sport && !testEventForm.date ? 'Select sport and date to see available workouts' :
+                     !testEventForm.sport ? 'Select sport to see available workouts' :
+                     'Select date to see available workouts'}
+                  </div>
+                )}
+                {loadingWorkouts && (
+                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Loading workouts...</small>
+                )}
+                {!loadingWorkouts && testEventForm.sport && testEventForm.date && availableWorkouts.length === 0 && (
+                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>No workouts found for {testEventForm.sport} on {(() => {
+                    // Format date string directly to avoid timezone issues
+                    const dateStr = testEventForm.date;
+                    if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                      const [year, month, day] = dateStr.split('-');
+                      return `${month}/${day}/${year}`;
+                    }
+                    return new Date(testEventForm.date).toLocaleDateString();
+                  })()}</small>
+                )}
+                <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Optional: Link this test event to a specific workout</small>
+              </div>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  {testEventForm.id && (
+                    <button 
+                      type="button" 
+                      className="btn" 
+                      onClick={deleteTestEvent}
+                      style={{ 
+                        background: '#dc2626', 
+                        color: 'white',
+                        border: 'none'
+                      }}
+                    >
+                      Delete Event
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => {
+                    setShowTestEventModal(false);
+                    setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+                    setTestEventRecordCount(0);
+                    setAvailableWorkouts([]);
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    {testEventForm.id ? 'Update Test Event' : 'Create Test Event'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Record Modal */}
+      {showRecordModal && selectedTestEvent && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>New Record</h2>
+            <form onSubmit={(e) => { e.preventDefault(); createRecord(); }}>
+              <div className="form-group user-search-container" style={{ position: 'relative', marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>User:</label>
+                <input
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={handleUserSearchChange}
+                  onFocus={() => userSearchQuery && setShowUserDropdown(true)}
+                  placeholder="Start typing user's name..."
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 12px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+                {showUserDropdown && userSearchResults.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'white',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    marginTop: '4px'
+                  }}>
+                    {userSearchResults.map(user => (
+                      <div
+                        key={user.id}
+                        onClick={() => selectUser(user)}
+                        style={{
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #eee',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                      >
+                        <div style={{ fontWeight: '500' }}>{user.name || user.email}</div>
+                        {user.name && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{user.email}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedUser && (
+                  <small style={{ display: 'block', marginTop: '4px', color: '#059669' }}>
+                    Selected: {selectedUser.name || selectedUser.email}
+                  </small>
+                )}
+                <small style={{ display: 'block', marginTop: '4px', color: '#6b7280' }}>
+                  {!selectedUser && 'Leave empty to create record for yourself'}
+                </small>
+              </div>
+              <div className="form-group">
+                <label>Title:</label>
+                <input
+                  type="text"
+                  value={recordForm.title}
+                  onChange={(e) => setRecordForm({...recordForm, title: e.target.value})}
+                  placeholder={selectedTestEvent.title}
+                  required
+                />
+                <small>Defaults to test event title</small>
+              </div>
+              
+              {/* Sport-specific fields */}
+              {selectedTestEvent && (() => {
+                const sport = selectedTestEvent.sport;
+                const sportFields = sport ? getFieldsForSport(sport) : [];
+                
+                if (sportFields.length > 0) {
+                  return (
+                    <div className="form-group" style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                      <label style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#374151', display: 'block' }}>
+                        {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
+                      </label>
+                      {sportFields.map(field => (
+                        <div key={field.key} style={{ marginBottom: '1rem' }}>
+                          <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                            {field.label}:
+                          </label>
+                          {field.type === 'array' ? (
+                            <input
+                              type="text"
+                              value={Array.isArray(recordForm.result_fields?.[field.key]) 
+                                ? recordForm.result_fields[field.key].join(', ') 
+                                : (recordForm.result_fields?.[field.key] || '')}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const arrayValue = value ? value.split(',').map(v => v.trim()).filter(v => v) : [];
+                                setRecordForm({
+                                  ...recordForm,
+                                  result_fields: {
+                                    ...recordForm.result_fields,
+                                    [field.key]: arrayValue.length > 0 ? arrayValue : null
+                                  }
+                                });
+                              }}
+                              placeholder={field.placeholder}
+                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                          ) : field.type === 'number' ? (
+                            <input
+                              type="number"
+                              value={recordForm.result_fields?.[field.key] || ''}
+                              onChange={(e) => {
+                                const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                                setRecordForm({
+                                  ...recordForm,
+                                  result_fields: {
+                                    ...recordForm.result_fields,
+                                    [field.key]: value
+                                  }
+                                });
+                              }}
+                              placeholder={field.placeholder}
+                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={recordForm.result_fields?.[field.key] || ''}
+                              onChange={(e) => {
+                                setRecordForm({
+                                  ...recordForm,
+                                  result_fields: {
+                                    ...recordForm.result_fields,
+                                    [field.key]: e.target.value || null
+                                  }
+                                });
+                              }}
+                              placeholder={field.placeholder}
+                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                          )}
+                          {field.helpText && (
+                            <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem', fontSize: '0.75rem' }}>
+                              {field.helpText}
+                            </small>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
+              <div className="form-group">
+                <label>Result:</label>
+                <textarea
+                  rows="3"
+                  value={recordForm.result}
+                  onChange={(e) => setRecordForm({...recordForm, result: e.target.value})}
+                  placeholder="e.g., 1:20, 1:18, 1:19, 1:17, 1:16"
+                />
+                <small>Text description of times/results</small>
+              </div>
+              <div className="form-group">
+                <label>Description (optional):</label>
+                <textarea
+                  rows="3"
+                  value={recordForm.description}
+                  onChange={(e) => setRecordForm({...recordForm, description: e.target.value})}
+                  placeholder="Additional notes..."
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => {
+                  setShowRecordModal(false);
+                  setRecordForm({ title: '', result: '', description: '', user_id: null, result_fields: {} });
+                  setUserSearchQuery('');
+                  setSelectedUser(null);
+                  setShowUserDropdown(false);
+                }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Create Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={removeBannerConfirm.isOpen}
+        onConfirm={confirmRemoveBanner}
+        onCancel={() => setRemoveBannerConfirm({ isOpen: false })}
+        title="Remove Banner"
+        message="Remove the current pop up message?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        confirmDanger={false}
+      />
+
+      <ConfirmModal
+        isOpen={deleteOrderConfirm.isOpen}
+        onConfirm={confirmDeleteOrder}
+        onCancel={() => setDeleteOrderConfirm({ isOpen: false, orderId: null })}
+        title="Delete Order"
+        message="Delete this order?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
+
+      <ConfirmModal
+        isOpen={archiveOrdersConfirm.isOpen}
+        onConfirm={confirmArchiveOrders}
+        onCancel={() => setArchiveOrdersConfirm({ isOpen: false, count: 0 })}
+        title="Archive Orders"
+        message={`Archive ${archiveOrdersConfirm.count} selected order(s)?`}
+        confirmText="Archive"
+        cancelText="Cancel"
+        confirmDanger={false}
+      />
+
+      <ConfirmModal
+        isOpen={unarchiveOrdersConfirm.isOpen}
+        onConfirm={confirmUnarchiveOrders}
+        onCancel={() => setUnarchiveOrdersConfirm({ isOpen: false, count: 0 })}
+        title="Unarchive Orders"
+        message={`Unarchive ${unarchiveOrdersConfirm.count} selected order(s)?`}
+        confirmText="Unarchive"
+        cancelText="Cancel"
+        confirmDanger={false}
+      />
+
+      <ConfirmModal
+        isOpen={deleteTestEventConfirm.isOpen}
+        onConfirm={confirmDeleteTestEvent}
+        onCancel={() => setDeleteTestEventConfirm({ isOpen: false, eventId: null })}
+        title="Delete Test Event"
+        message={`Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
+
+      <ConfirmModal
+        isOpen={deleteUserConfirm.isOpen}
+        onConfirm={confirmDeleteUser}
+        onCancel={() => setDeleteUserConfirm({ isOpen: false, userId: null })}
+        title="Delete User"
+        message="⚠️ WARNING: This will PERMANENTLY DELETE this user and all their data! This action cannot be undone. Are you sure you want to continue?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
     </div>
   );
 };

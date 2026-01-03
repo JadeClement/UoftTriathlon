@@ -1,7 +1,11 @@
 /**
  * Frontend date utilities for consistent date handling
- * All dates are processed in UTC to avoid timezone issues
+ * IMPORTANT: Workout dates/times are in America/Toronto timezone (EST/EDT)
+ * User action timestamps (signups, cancellations) are in UTC (no timezone assumption)
  */
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+
+const TORONTO_TIMEZONE = 'America/Toronto';
 
 /**
  * Parse a date string or Date object into a standardized Date object
@@ -24,10 +28,11 @@ export function parseDate(dateInput) {
       return isNaN(date.getTime()) ? null : date;
     }
     
-    // Handle YYYY-MM-DD format (treat as UTC to avoid timezone shifts)
+    // Handle YYYY-MM-DD format (treat as local date to match user's timezone)
+    // This ensures workout dates match the user's local timezone
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
       const [year, month, day] = dateInput.split('-').map(Number);
-      return new Date(Date.UTC(year, month - 1, day));
+      return new Date(year, month - 1, day);
     }
     
     // Handle other formats
@@ -60,35 +65,96 @@ export function parseTime(timeStr) {
 }
 
 /**
- * Combine a date and time into a single Date object
- * @param {string|Date} dateInput - Date string or Date object
- * @param {string} timeStr - Time string in HH:MM:SS format
- * @returns {Date|null} - Combined Date object or null if invalid
+ * Combine a date and time into a single Date object (UTC)
+ * IMPORTANT: This interprets the date/time as America/Toronto local time (EST/EDT)
+ * The returned Date object is in UTC, representing the workout time in Toronto
+ * @param {string|Date} dateInput - Date string (YYYY-MM-DD) or Date object
+ * @param {string} timeStr - Time string in HH:MM:SS or HH:MM format
+ * @returns {Date|null} - Combined Date object in UTC, or null if invalid
  */
 export function combineDateTime(dateInput, timeStr) {
-  const date = parseDate(dateInput);
   const time = parseTime(timeStr);
+  if (!time) {
+    console.warn('⚠️ combineDateTime: Invalid time', { timeStr });
+    return null;
+  }
   
-  if (!date || !time) return null;
+  // Extract date components
+  let year, month, day;
   
-  // Create a new date with the time set
-  const result = new Date(date);
-  result.setUTCHours(time.hours, time.minutes, time.seconds, 0);
+  if (dateInput instanceof Date) {
+    year = dateInput.getFullYear();
+    month = dateInput.getMonth() + 1;
+    day = dateInput.getDate();
+  } else if (typeof dateInput === 'string') {
+    // Parse YYYY-MM-DD format directly
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+      const parts = dateInput.split('-').map(Number);
+      year = parts[0];
+      month = parts[1];
+      day = parts[2];
+    } else if (dateInput.includes('T')) {
+      // ISO string - extract date part
+      const datePart = dateInput.split('T')[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+        const parts = datePart.split('-').map(Number);
+        year = parts[0];
+        month = parts[1];
+        day = parts[2];
+      } else {
+        console.warn('⚠️ combineDateTime: Invalid ISO date format', { dateInput });
+        return null;
+      }
+    } else {
+      // Try parsing as Date first (fallback)
+      const date = parseDate(dateInput);
+      if (!date) {
+        console.warn('⚠️ combineDateTime: Invalid date format', { dateInput });
+        return null;
+      }
+      year = date.getFullYear();
+      month = date.getMonth() + 1;
+      day = date.getDate();
+    }
+  } else {
+    console.warn('⚠️ combineDateTime: Invalid date input type', { dateInput });
+    return null;
+  }
+  
+  // Create date-time string in Toronto timezone format: YYYY-MM-DDTHH:mm:ss
+  const dateTimeStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}:${String(time.seconds).padStart(2, '0')}`;
+  
+  // Convert Toronto local time to UTC using date-fns-tz
+  // This properly handles DST transitions automatically
+  // fromZonedTime takes a date string and timezone, returns UTC Date
+  const localDate = new Date(dateTimeStr);
+  const result = fromZonedTime(localDate, TORONTO_TIMEZONE);
+  
+  if (isNaN(result.getTime())) {
+    console.error('❌ combineDateTime: Invalid date created', {
+      dateTimeStr,
+      result
+    });
+    return null;
+  }
   
   return result;
 }
 
 /**
- * Format a Date object for display (localized)
- * @param {Date} date - Date object
+ * Format a Date object for display
+ * For workout dates: displays in Toronto timezone
+ * For user timestamps: displays in UTC (no timezone assumption)
+ * @param {Date} date - Date object (in UTC)
  * @param {Object} options - Intl.DateTimeFormat options
+ * @param {boolean} isWorkoutTime - If true, format as Toronto time; if false, format as UTC
  * @returns {string} - Formatted date string
  */
-export function formatDateForDisplay(date, options = {}) {
+export function formatDateForDisplay(date, options = {}, isWorkoutTime = false) {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '';
   
   const defaultOptions = {
-    timeZone: 'UTC',
+    timeZone: isWorkoutTime ? TORONTO_TIMEZONE : 'UTC',
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -98,16 +164,19 @@ export function formatDateForDisplay(date, options = {}) {
 }
 
 /**
- * Format a Date object for display with time (localized)
- * @param {Date} date - Date object
+ * Format a Date object for display with time
+ * For workout datetimes: displays in Toronto timezone
+ * For user timestamps: displays in UTC (no timezone assumption)
+ * @param {Date} date - Date object (in UTC)
  * @param {Object} options - Intl.DateTimeFormat options
+ * @param {boolean} isWorkoutTime - If true, format as Toronto time; if false, format as UTC
  * @returns {string} - Formatted datetime string
  */
-export function formatDateTimeForDisplay(date, options = {}) {
+export function formatDateTimeForDisplay(date, options = {}, isWorkoutTime = false) {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '';
   
   const defaultOptions = {
-    timeZone: 'UTC',
+    timeZone: isWorkoutTime ? TORONTO_TIMEZONE : 'UTC',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -163,13 +232,27 @@ export function isPast(date) {
  * @returns {boolean} - True if date is within the specified hours
  */
 export function isWithinHours(date, hours) {
-  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    console.warn('⚠️ isWithinHours: Invalid date', { date });
+    return false;
+  }
   
   const now = new Date();
   const diffMs = date - now;
   const diffHours = diffMs / (1000 * 60 * 60);
+  const within = diffHours >= 0 && diffHours <= hours;
   
-  return diffHours >= 0 && diffHours <= hours;
+  console.log('🕐 isWithinHours:', {
+    workoutDate: date.toISOString(),
+    workoutDateLocal: date.toString(),
+    currentDate: now.toISOString(),
+    currentDateLocal: now.toString(),
+    diffHours: diffHours.toFixed(2),
+    checkHours: hours,
+    within
+  });
+  
+  return within;
 }
 
 /**
@@ -178,11 +261,25 @@ export function isWithinHours(date, hours) {
  * @returns {number} - Number of hours until the date (negative if in the past)
  */
 export function getHoursUntil(date) {
-  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 0;
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    console.warn('⚠️ getHoursUntil: Invalid date', { date });
+    return 0;
+  }
   
   const now = new Date();
   const diffMs = date - now;
-  return diffMs / (1000 * 60 * 60);
+  const hours = diffMs / (1000 * 60 * 60);
+  
+  console.log('🕐 getHoursUntil:', {
+    workoutDate: date.toISOString(),
+    workoutDateLocal: date.toString(),
+    currentDate: now.toISOString(),
+    currentDateLocal: now.toString(),
+    diffMs,
+    hours: hours.toFixed(2)
+  });
+  
+  return hours;
 }
 
 /**
@@ -226,14 +323,92 @@ export function getRelativeTime(date) {
 /**
  * Get month and year string for grouping
  * @param {Date} date - Date object
+ * @param {boolean} isWorkoutTime - If true, format as Toronto time; if false, format as UTC
  * @returns {string} - Month and year string (e.g., "September 2025")
  */
-export function getMonthYear(date) {
+export function getMonthYear(date, isWorkoutTime = false) {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '';
   
   return date.toLocaleDateString(undefined, { 
-    timeZone: 'UTC',
+    timeZone: isWorkoutTime ? TORONTO_TIMEZONE : 'UTC',
     month: 'long', 
     year: 'numeric' 
   });
 }
+
+/**
+ * Format a signup/action timestamp for display in Toronto timezone
+ * This ensures all users see the same time regardless of their location
+ * @param {Date|string} date - Date object or ISO string (stored in UTC)
+ * @param {Object} options - Intl.DateTimeFormat options
+ * @returns {string} - Formatted datetime string in Toronto timezone
+ */
+export function formatSignupTimeForDisplay(date, options = {}) {
+  if (!date) return '';
+  
+  // Convert to Date object if it's a string
+  const dateObj = date instanceof Date ? date : new Date(date);
+  
+  if (isNaN(dateObj.getTime())) return '';
+  
+  const defaultOptions = {
+    timeZone: TORONTO_TIMEZONE,
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  };
+  
+  return dateObj.toLocaleString(undefined, { ...defaultOptions, ...options });
+}
+
+/**
+ * Format a signup/action date for display in Toronto timezone
+ * @param {Date|string} date - Date object or ISO string (stored in UTC)
+ * @param {Object} options - Intl.DateTimeFormat options
+ * @returns {string} - Formatted date string in Toronto timezone
+ */
+export function formatSignupDateForDisplay(date, options = {}) {
+  if (!date) return '';
+  
+  // Convert to Date object if it's a string
+  const dateObj = date instanceof Date ? date : new Date(date);
+  
+  if (isNaN(dateObj.getTime())) return '';
+  
+  const defaultOptions = {
+    timeZone: TORONTO_TIMEZONE,
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  };
+  
+  return dateObj.toLocaleDateString(undefined, { ...defaultOptions, ...options });
+}
+
+/**
+ * Format a signup/action time (just time, no date) for display in Toronto timezone
+ * @param {Date|string} date - Date object or ISO string (stored in UTC)
+ * @param {Object} options - Intl.DateTimeFormat options
+ * @returns {string} - Formatted time string in Toronto timezone
+ */
+export function formatSignupTimeOnlyForDisplay(date, options = {}) {
+  if (!date) return '';
+  
+  // Convert to Date object if it's a string
+  const dateObj = date instanceof Date ? date : new Date(date);
+  
+  if (isNaN(dateObj.getTime())) return '';
+  
+  const defaultOptions = {
+    timeZone: TORONTO_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit'
+  };
+  
+  return dateObj.toLocaleTimeString(undefined, { ...defaultOptions, ...options });
+}
+
+// Export timezone constant for use in other modules
+export { TORONTO_TIMEZONE };

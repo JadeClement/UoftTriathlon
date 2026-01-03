@@ -64,7 +64,7 @@ router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     const userId = req.user.id;
 
     const userResult = await pool.query(`
-      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted
+      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, results_public
       FROM users 
       WHERE id = $1 AND is_active = true
     `, [userId]);
@@ -90,7 +90,7 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     console.log('🔍 Backend received request body:', req.body);
     console.log('🔍 Backend received headers:', req.headers);
     
-    const { name, email, phone_number, bio } = req.body;
+    const { name, email, phone_number, bio, results_public } = req.body;
     console.log('🔍 Profile update route: Extracted data:', { name, email, phone_number, bio });
 
     if (!name || !email) {
@@ -118,12 +118,37 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
 
     console.log('🔍 Profile update route: Email and phone unique, updating database...');
 
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+    let paramCount = 0;
+
+    updates.push(`name = $${++paramCount}`);
+    values.push(name);
+    
+    updates.push(`email = $${++paramCount}`);
+    values.push(email);
+    
+    updates.push(`phone_number = $${++paramCount}`);
+    values.push(phone_number || null);
+    
+    updates.push(`bio = $${++paramCount}`);
+    values.push(bio || null);
+
+    if (results_public !== undefined) {
+      updates.push(`results_public = $${++paramCount}`);
+      values.push(results_public === true || results_public === 'true');
+    }
+
+    updates.push(`id = $${++paramCount}`);
+    values.push(userId);
+
     // Update user profile
     await pool.query(`
       UPDATE users 
-      SET name = $1, email = $2, phone_number = $3, bio = $4
-      WHERE id = $5
-    `, [name, email, phone_number || null, bio || null, userId]);
+      SET ${updates.slice(0, -1).join(', ')}
+      WHERE id = $${paramCount}
+    `, values.slice(0, -1).concat([userId]));
 
     console.log('✅ Profile update route: Database update successful');
     res.json({ message: 'Profile updated successfully' });
@@ -277,6 +302,194 @@ router.post('/mark-role-notification-read', authenticateToken, requireMember, as
     res.json({ message: 'Notification marked as read' });
   } catch (error) {
     console.error('Mark notification read error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get notification preferences
+router.get('/notification-preferences', authenticateToken, allowOwnProfile(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const result = await pool.query(`
+      SELECT 
+        spin_brick_workouts,
+        swim_workouts,
+        run_workouts,
+        events,
+        forum_replies,
+        waitlist_promotions
+      FROM notification_preferences
+      WHERE user_id = $1
+    `, [userId]);
+    
+    if (result.rows.length === 0) {
+      // Return default preferences if none exist
+      return res.json({
+        preferences: {
+          spin_brick_workouts: false,
+          swim_workouts: false,
+          run_workouts: false,
+          events: false,
+          forum_replies: false,
+          waitlist_promotions: false
+        }
+      });
+    }
+    
+    res.json({ preferences: result.rows[0] });
+  } catch (error) {
+    console.error('Get notification preferences error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update notification preferences
+router.put('/notification-preferences', authenticateToken, allowOwnProfile(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { preferences } = req.body;
+    
+    if (!preferences) {
+      return res.status(400).json({ error: 'Preferences are required' });
+    }
+    
+    // Check if preferences exist
+    const checkResult = await pool.query(`
+      SELECT user_id FROM notification_preferences WHERE user_id = $1
+    `, [userId]);
+    
+    if (checkResult.rows.length === 0) {
+      // Insert new preferences
+      await pool.query(`
+        INSERT INTO notification_preferences (
+          user_id,
+          spin_brick_workouts,
+          swim_workouts,
+          run_workouts,
+          events,
+          forum_replies,
+          waitlist_promotions
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [
+        userId,
+        preferences.spin_brick_workouts || false,
+        preferences.swim_workouts || false,
+        preferences.run_workouts || false,
+        preferences.events || false,
+        preferences.forum_replies || false,
+        preferences.waitlist_promotions || false
+      ]);
+    } else {
+      // Update existing preferences
+      await pool.query(`
+        UPDATE notification_preferences
+        SET
+          spin_brick_workouts = $2,
+          swim_workouts = $3,
+          run_workouts = $4,
+          events = $5,
+          forum_replies = $6,
+          waitlist_promotions = $7
+        WHERE user_id = $1
+      `, [
+        userId,
+        preferences.spin_brick_workouts || false,
+        preferences.swim_workouts || false,
+        preferences.run_workouts || false,
+        preferences.events || false,
+        preferences.forum_replies || false,
+        preferences.waitlist_promotions || false
+      ]);
+    }
+    
+    res.json({ message: 'Notification preferences updated successfully' });
+  } catch (error) {
+    console.error('Update notification preferences error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Store push notification device token
+router.post('/push-token', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { token, platform } = req.body;
+    
+    console.log(`📱 Received push token save request for user ${userId}, platform: ${platform}, token length: ${token ? token.length : 0}`);
+    
+    if (!token || !platform) {
+      console.error('❌ Missing token or platform:', { token: !!token, platform: !!platform });
+      return res.status(400).json({ error: 'Token and platform are required' });
+    }
+    
+    // Validate and clean token format
+    let cleanToken = token.trim();
+    if (platform === 'ios') {
+      // iOS tokens should be 64 hex characters
+      if (cleanToken.length !== 64) {
+        console.error(`❌ Invalid iOS token length: ${cleanToken.length} (expected 64)`);
+        return res.status(400).json({ error: 'Invalid iOS token format: must be 64 hex characters' });
+      }
+      if (!/^[0-9a-f]{64}$/i.test(cleanToken)) {
+        console.error(`❌ Invalid iOS token format: not hex. Token: ${cleanToken.substring(0, 20)}...`);
+        return res.status(400).json({ error: 'Invalid iOS token format: must be hexadecimal' });
+      }
+      // Use lowercase for consistency
+      cleanToken = cleanToken.toLowerCase();
+    }
+    
+    // Check if token already exists for this user
+    const existingToken = await pool.query(
+      `SELECT id FROM push_device_tokens WHERE user_id = $1 AND token = $2`,
+      [userId, cleanToken]
+    );
+    
+    if (existingToken.rows.length > 0) {
+      // Update timestamp
+      await pool.query(
+        `UPDATE push_device_tokens SET updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND token = $2`,
+        [userId, cleanToken]
+      );
+      console.log(`✅ Device token updated for user ${userId}`);
+      return res.json({ message: 'Device token updated successfully' });
+    }
+    
+    // Insert new token
+    await pool.query(
+      `INSERT INTO push_device_tokens (user_id, token, platform) 
+       VALUES ($1, $2, $3) 
+       ON CONFLICT (user_id, token) 
+       DO UPDATE SET updated_at = CURRENT_TIMESTAMP, platform = $3`,
+      [userId, cleanToken, platform]
+    );
+    
+    console.log(`✅ Device token saved successfully for user ${userId}, platform: ${platform}`);
+    res.json({ message: 'Device token saved successfully' });
+  } catch (error) {
+    console.error('❌ Save push token error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete push notification device token
+router.delete('/push-token', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+    
+    await pool.query(
+      `DELETE FROM push_device_tokens WHERE user_id = $1 AND token = $2`,
+      [userId, token]
+    );
+    
+    res.json({ message: 'Device token deleted successfully' });
+  } catch (error) {
+    console.error('Delete push token error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

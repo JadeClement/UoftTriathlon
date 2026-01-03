@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { showError, showSuccess } from './SimpleNotification';
 import './RoleChangeNotification.css';
 
 const RoleChangeNotification = ({ currentUser }) => {
@@ -14,6 +15,8 @@ const RoleChangeNotification = ({ currentUser }) => {
     console.log('🔔 RoleChangeNotification: DISABLED FOR DEBUGGING');
     return;
 
+    // DISABLED CODE - Uncomment when ready to re-enable role change notifications
+    /*
     console.log('🔔 RoleChangeNotification: Starting notification check for user:', currentUser.id);
 
     // Check for role change notifications
@@ -32,7 +35,7 @@ const RoleChangeNotification = ({ currentUser }) => {
         
         // Add alert for debugging
         if (!response.ok) {
-          alert(`🔔 ROLE NOTIFICATION ERROR!\nStatus: ${response.status}\nThis might be causing the redirect!`);
+          showError(`ROLE NOTIFICATION ERROR! Status: ${response.status}. This might be causing the redirect!`);
         }
         
         if (response.ok) {
@@ -47,7 +50,7 @@ const RoleChangeNotification = ({ currentUser }) => {
               console.log('🔄 Auto-updating user session from role', currentUser.role, 'to', data.newRole);
               
               // Show a message that the user needs to log out and back in
-              alert(`🎉 Your role has been updated from ${currentUser.role} to ${data.newRole}!\n\nTo access your new permissions, please log out and log back in.`);
+              showSuccess(`Your role has been updated from ${currentUser.role} to ${data.newRole}! To access your new permissions, please log out and log back in.`);
               
               // Force logout to get a new token with updated role
               localStorage.removeItem('triathlonUser');
@@ -67,6 +70,7 @@ const RoleChangeNotification = ({ currentUser }) => {
     const interval = setInterval(checkNotifications, 30000);
     
     return () => clearInterval(interval);
+    */
   }, [currentUser, updateUser]);
 
   const handleDismiss = async () => {
@@ -90,7 +94,7 @@ const RoleChangeNotification = ({ currentUser }) => {
         console.log('🔄 Updating user session from role', currentUser.role, 'to', notification.newRole);
         
         // Show a message that the user needs to log out and back in
-        alert(`🎉 Your role has been updated from ${currentUser.role} to ${notification.newRole}!\n\nTo access your new permissions, please log out and log back in.`);
+        showSuccess(`Your role has been updated from ${currentUser.role} to ${notification.newRole}! To access your new permissions, please log out and log back in.`);
         
         // Force logout to get a new token with updated role
         localStorage.removeItem('triathlonUser');

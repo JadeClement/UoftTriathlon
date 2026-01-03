@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
+import { formatSignupDateForDisplay } from '../utils/dateUtils';
+import { showError } from './SimpleNotification';
 import './RaceDetail.css';
 
 const RaceDetail = () => {
@@ -102,11 +104,11 @@ const RaceDetail = () => {
       } else {
         const errorData = await response.json();
         console.error('❌ Failed to sign up for race:', errorData);
-        alert(errorData.error || 'Failed to sign up for race');
+        showError(errorData.error || 'Failed to sign up for race');
       }
     } catch (error) {
       console.error('❌ Error signing up for race:', error);
-      alert('Failed to sign up for race');
+      showError('Failed to sign up for race');
     } finally {
       setSignupLoading(false);
     }
@@ -136,11 +138,11 @@ const RaceDetail = () => {
       } else {
         const errorData = await response.json();
         console.error('❌ Failed to cancel signup:', errorData);
-        alert(errorData.error || 'Failed to cancel signup');
+        showError(errorData.error || 'Failed to cancel signup');
       }
     } catch (error) {
       console.error('❌ Error cancelling signup:', error);
-      alert('Failed to cancel signup');
+      showError('Failed to cancel signup');
     } finally {
       setSignupLoading(false);
     }
@@ -245,7 +247,7 @@ const RaceDetail = () => {
                       <div className="signup-name">{signup.user_name}</div>
                       <div className="signup-time">
                         📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null'
-                          ? new Date(signup.signup_time).toLocaleDateString()
+                          ? formatSignupDateForDisplay(signup.signup_time)
                           : 'Recently'
                         }
                       </div>
