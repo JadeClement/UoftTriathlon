@@ -351,24 +351,26 @@
 @media (max-width: 750px) and (min-width: 467px) {
   /* Ensure content starts below fixed navbar at these widths */
   .home {
-    margin-top: -100px; /* Pull up to compensate for body padding-top (100px on mobile) */
+    margin-top: 0;
     padding-top: 0;
     position: relative;
   }
   
   .split-hero {
     margin-top: 0;
-    padding-top: 0;
+    padding-top: 70vh; /* Reserve space for image section */
     position: relative;
   }
   
   .hero-image-section {
-    position: relative;
-    margin-top: 70px; /* Start directly below navbar (70px tall) */
+    position: fixed;
+    top: 70px; /* Directly below navbar */
+    left: 0;
     width: 100%;
     min-height: 70vh;
     height: 70vh;
     display: block !important;
+    z-index: 0;
   }
   
   .hero-image-section .slideshow-container {
@@ -485,7 +487,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 0; /* Start below the image section */
+    margin-top: 0; /* Start below reserved space */
     margin-bottom: 0;
     position: relative;
     z-index: 1;
