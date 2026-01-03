@@ -393,6 +393,7 @@
   
   /* Spacer div to reserve space for fixed image */
   .hero-image-spacer {
+    display: block;
     width: 100%;
     height: 70vh;
     flex-shrink: 0;
@@ -436,6 +437,7 @@
   
   /* Spacer div to reserve space for fixed image */
   .hero-image-spacer {
+    display: block;
     width: 100%;
     height: 70vh;
     flex-shrink: 0;
@@ -542,6 +544,7 @@
   
   /* Spacer div to reserve space for fixed image */
   .hero-image-spacer {
+    display: block;
     width: 100%;
     height: 70vh;
     flex-shrink: 0;
