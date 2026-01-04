@@ -68,7 +68,7 @@
 
 .coach-card {
   background: #f8fafc;
-  padding: 3rem 1.5rem 1.5rem; /* reduce top padding */
+  padding: 0rem 1.5rem 1.5rem; /* minimal top padding */
   border-radius: 8px;
   border-left: 4px solid #1E40AF;
   text-align: center;
