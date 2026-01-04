@@ -3,7 +3,7 @@
   margin-top: -32px; /* pull hero up closer to navbar and banner */
 }
 
-/* Hero Section: always stacked, image first, text second */
+/* Hero Section: stacked on mobile, side-by-side on desktop */
 .split-hero {
   display: flex;
   flex-direction: column;
@@ -231,4 +231,24 @@
 }
 
 /* Responsive Design */
-/* No breakpoint overrides: keep stacked on all widths */
+@media (min-width: 960px) {
+  .split-hero {
+    flex-direction: row;
+    min-height: 70vh;
+  }
+
+  .hero-image-section {
+    width: 60%;
+    min-height: 70vh;
+  }
+
+  .hero-text-section {
+    width: 40%;
+    min-height: 70vh;
+  }
+
+  .slideshow-container,
+  .slideshow {
+    min-height: 70vh;
+  }
+}

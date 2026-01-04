@@ -91,8 +91,9 @@ const Admin = () => {
   // Format term name for display (e.g., "Fall 25" or "Fall/Winter 25-26")
   const formatTermName = (term) => {
     const termName = term.term.charAt(0).toUpperCase() + term.term.slice(1);
-    const startDate = new Date(term.start_date);
-    const endDate = new Date(term.end_date);
+    // Parse as local dates to avoid UTC -> previous-day shifts (which caused 2025-2026 labels)
+    const startDate = new Date(`${term.start_date}T00:00:00`);
+    const endDate = new Date(`${term.end_date}T00:00:00`);
     const startYear = startDate.getFullYear() % 100; // Get last 2 digits
     const endYear = endDate.getFullYear() % 100;
     
