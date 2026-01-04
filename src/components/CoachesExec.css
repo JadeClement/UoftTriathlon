@@ -57,7 +57,7 @@
 .coach-card-container {
   flex: 1;
   min-width: 250px;
-  margin-top: 2rem; /* separation from subtitle */
+  margin-top: 2.5rem; /* separation from subtitle */
 }
 
 .coach-card-link {
