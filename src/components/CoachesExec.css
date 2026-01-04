@@ -68,7 +68,7 @@
 
 .coach-card {
   background: #f8fafc;
-  padding: 4rem 1.5rem 1.5rem; /* extra top padding to avoid clipping avatar */
+  padding: 3rem 1.5rem 1.5rem; /* reduce top padding */
   border-radius: 8px;
   border-left: 4px solid #1E40AF;
   text-align: center;
