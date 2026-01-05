@@ -231,6 +231,26 @@
 }
 
 /* Responsive Design */
+@media (max-width: 900px) {
+  .about {
+    padding: 48px 0;
+  }
+
+  .about-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .about-image {
+    order: 2;
+    justify-content: center;
+  }
+
+  .team-icon {
+    max-width: 220px;
+  }
+}
+
 @media (min-width: 960px) {
   .split-hero {
     flex-direction: row;
