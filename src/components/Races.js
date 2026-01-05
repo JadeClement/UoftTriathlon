@@ -24,9 +24,25 @@ const Races = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
-  useEffect(() => {
-    loadRaces();
+  const cachedUser = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('triathlonUser');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      console.warn('🧭 Races: failed to parse cached user', e);
+      return null;
+    }
   }, []);
+  const effectiveUser = currentUser || cachedUser;
+
+  useEffect(() => {
+    if (effectiveUser && isMember(effectiveUser)) {
+      loadRaces();
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveUser]);
 
   const loadRaces = async () => {
     try {
@@ -273,6 +289,38 @@ const Races = () => {
         <div className="loading">Loading races...</div>
       </div>
     );
+  }
+
+  const noAccessMessage = (
+    <div className="races-container">
+      <div className="races-content">
+        <h1>Races</h1>
+        <div className="notice-card" style={{
+          background: '#fff8e1',
+          border: '1px solid #facc15',
+          color: '#92400e',
+          padding: '16px',
+          borderRadius: '8px',
+          lineHeight: 1.6,
+          marginTop: '16px'
+        }}>
+          <p style={{ margin: 0 }}>
+            You don't have access to the races yet. Please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration! You will have to log out and then log back in to see this page.
+          </p>
+          <p style={{ margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9 }}>
+            <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!effectiveUser) {
+    return noAccessMessage;
+  }
+
+  if (!isMember(effectiveUser)) {
+    return noAccessMessage;
   }
 
   return (
