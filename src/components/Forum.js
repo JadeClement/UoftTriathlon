@@ -255,14 +255,18 @@ const Forum = () => {
   } = useWorkoutEdit(API_BASE_URL);
 
   useEffect(() => {
+    console.log('🧭 Forum mount/useEffect: user', currentUser?.id, 'role', currentUser?.role);
     if (!currentUser) {
+      console.log('🧭 Forum: no currentUser, showing sign-in notice');
       // No user: stop loading so we can show the gate message instead of redirecting
       setLoading(false);
       return;
     }
     
+    const member = isMember(currentUser);
+    console.log('🧭 Forum: user role check', { member, role: currentUser?.role });
     // If user is at least member, load posts. If pending, we'll render a gate message.
-    if (isMember(currentUser)) {
+    if (member) {
       loadForumPosts();
     } else {
       // Ensure we don't stay stuck on loading for pending users
@@ -1358,6 +1362,7 @@ const Forum = () => {
   }
 
   if (!currentUser) {
+    console.log('🧭 Forum render: unauthenticated gate');
     return (
       <div className="forum-container">
         <div className="container">
@@ -1381,6 +1386,7 @@ const Forum = () => {
 
   // Gate for pending users: show message instead of forum content
   if (!isMember(currentUser) && !isCoach(currentUser) && !isExec(currentUser)) {
+    console.log('🧭 Forum render: pending/non-member gate', { role: currentUser?.role });
     return (
       <div className="forum-container">
         <div className="container">

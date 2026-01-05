@@ -53,13 +53,13 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
       const message = (body && (body.error || body.message)) || '';
       const errorType = body && body.error;
       const mentionsExpired = /token.*expired|jwt.*expired|expired token/i.test(message);
-      const isForumPermissionIssue = response.status === 403 && url && url.includes('/forum');
+      const isForumPermissionIssue = (response.status === 401 || response.status === 403) && url && url.includes('/forum');
       
       // Don't treat term_expired as an auth error - it's a business logic error
       // The user IS authenticated, their term just expired
       const isTermExpired = errorType === 'term_expired';
 
-      // Skip redirect for forum permission denials (pending/non-member)
+      // Skip redirect for forum auth/permission denials (pending/non-member, or missing token on forum)
       if ((isAuthError || mentionsExpired) && !isTermExpired && !isForumPermissionIssue) {
         console.warn('🔒 Auth interceptor: Unauthorized response detected', { 
           url, 
@@ -77,7 +77,7 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
       } else if (isTermExpired) {
         console.log('🔍 Auth interceptor: Term expired error detected, not redirecting (business logic error)');
       } else if (isForumPermissionIssue) {
-        console.log('🔍 Auth interceptor: Forum permission error detected, not redirecting (pending/non-member)');
+        console.log('🔍 Auth interceptor: Forum auth/permission error detected, not redirecting', { status: response.status, message });
       }
 
       return response;
