@@ -13,6 +13,16 @@ import './Forum.css';
 
 const Forum = () => {
   const { currentUser, isMember, isExec, isCoach, getUserRole } = useAuth();
+  const cachedUser = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('triathlonUser');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      console.warn('🧭 Forum: failed to parse cached user', e);
+      return null;
+    }
+  }, []);
+  const effectiveUser = currentUser || cachedUser;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('workouts');
   const [workoutPosts, setWorkoutPosts] = useState([]);
@@ -31,7 +41,7 @@ const Forum = () => {
     fromCache: eventsFromCache,
     isOffline: eventsOffline,
     refresh: refreshEvents
-  } = useForumPosts({ type: 'event', enabled: isMember(currentUser) });
+  } = useForumPosts({ type: 'event', enabled: isMember(effectiveUser) });
   
   // Use cached events if available, otherwise use state
   const [eventPosts, setEventPosts] = useState([]);
@@ -255,16 +265,16 @@ const Forum = () => {
   } = useWorkoutEdit(API_BASE_URL);
 
   useEffect(() => {
-    console.log('🧭 Forum mount/useEffect: user', currentUser?.id, 'role', currentUser?.role);
-    if (!currentUser) {
-      console.log('🧭 Forum: no currentUser, showing sign-in notice');
+    console.log('🧭 Forum mount/useEffect: user', effectiveUser?.id, 'role', effectiveUser?.role);
+    if (!effectiveUser) {
+      console.log('🧭 Forum: no effectiveUser, showing sign-in notice');
       // No user: stop loading so we can show the gate message instead of redirecting
       setLoading(false);
       return;
     }
     
-    const member = isMember(currentUser);
-    console.log('🧭 Forum: user role check', { member, role: currentUser?.role });
+    const member = isMember(effectiveUser);
+    console.log('🧭 Forum: user role check', { member, role: effectiveUser?.role });
     // If user is at least member, load posts. If pending, we'll render a gate message.
     if (member) {
       loadForumPosts();
@@ -272,7 +282,7 @@ const Forum = () => {
       // Ensure we don't stay stuck on loading for pending users
       setLoading(false);
     }
-  }, [currentUser, isMember]);
+  }, [effectiveUser, isMember]);
 
   // Listen for profile updates to refresh profile pictures
   useEffect(() => {
@@ -1361,7 +1371,7 @@ const Forum = () => {
     );
   }
 
-  if (!currentUser) {
+  if (!effectiveUser) {
     console.log('🧭 Forum render: unauthenticated gate');
     return (
       <div className="forum-container">
@@ -1373,7 +1383,8 @@ const Forum = () => {
             color: '#92400e',
             padding: '16px',
             borderRadius: '8px',
-            lineHeight: 1.6
+            lineHeight: 1.6,
+            marginTop: '16px'
           }}>
             <p style={{margin: 0}}>
               You need to be signed in to view the forum.
@@ -1385,8 +1396,8 @@ const Forum = () => {
   }
 
   // Gate for pending users: show message instead of forum content
-  if (!isMember(currentUser) && !isCoach(currentUser) && !isExec(currentUser)) {
-    console.log('🧭 Forum render: pending/non-member gate', { role: currentUser?.role });
+  if (!isMember(effectiveUser) && !isCoach(effectiveUser) && !isExec(effectiveUser)) {
+    console.log('🧭 Forum render: pending/non-member gate', { role: effectiveUser?.role });
     return (
       <div className="forum-container">
         <div className="container">
@@ -1397,7 +1408,8 @@ const Forum = () => {
             color: '#92400e',
             padding: '16px',
             borderRadius: '8px',
-            lineHeight: 1.6
+            lineHeight: 1.6,
+            marginTop: '16px'
           }}>
             <p style={{margin: 0}}>
               You don't have access to the forum yet. Please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration! You will have to log out and then log back in to see this page.
