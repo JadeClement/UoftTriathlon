@@ -16,8 +16,14 @@ export function useForumPosts(params = {}) {
   const [error, setError] = useState(null);
   const [fromCache, setFromCache] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const enabled = params.enabled !== false; // default: enabled unless explicitly false
 
   const loadPosts = useCallback(async () => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -45,9 +51,14 @@ export function useForumPosts(params = {}) {
     } finally {
       setLoading(false);
     }
-  }, [JSON.stringify(params)]);
+  }, [enabled, JSON.stringify(params)]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     loadPosts();
     
     // Listen for online/offline events
@@ -58,18 +69,26 @@ export function useForumPosts(params = {}) {
     };
     const handleOffline = () => setIsOffline(true);
     
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    if (enabled) {
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+    }
     
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      if (enabled) {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      }
     };
-  }, [loadPosts]);
+  }, [enabled, loadPosts]);
 
   const refresh = useCallback(() => {
+    if (!enabled) {
+      setLoading(false);
+      return Promise.resolve();
+    }
     return loadPosts();
-  }, [loadPosts]);
+  }, [enabled, loadPosts]);
 
   return {
     posts,

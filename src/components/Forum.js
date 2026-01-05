@@ -31,7 +31,7 @@ const Forum = () => {
     fromCache: eventsFromCache,
     isOffline: eventsOffline,
     refresh: refreshEvents
-  } = useForumPosts({ type: 'event' });
+  } = useForumPosts({ type: 'event', enabled: isMember(currentUser) });
   
   // Use cached events if available, otherwise use state
   const [eventPosts, setEventPosts] = useState([]);
