@@ -201,7 +201,7 @@
 }
 
 .about-text {
-  text-align: left;
+  text-align: center;
 }
 
 .section-title {
@@ -216,6 +216,9 @@
   line-height: 1.8;
   color: #4b5563;
   margin-bottom: 1.5rem;
+}
+.about-text .btn {
+  display: inline-block;
 }
 
 .about-image {
@@ -239,6 +242,10 @@
   .about-content {
     grid-template-columns: 1fr;
     gap: 2rem;
+  }
+
+  .about-text {
+    text-align: center;
   }
 
   .about-image {
