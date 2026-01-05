@@ -182,11 +182,13 @@ const Login = () => {
       if (isLogin) {
         setErrorAndScroll("Username or password are incorrect. Please try again. If you do not have an account, please create one! ");
       } else {
-        // Check if it's a duplicate email error
-        if (error.message.includes('already exists')) {
-          setErrorAndScroll("An account is already associated with this email. ");
+        const msg = error.message || '';
+        if (msg.toLowerCase().includes('phone number')) {
+          setErrorAndScroll('An account is already associated with this phone number.');
+        } else if (msg.toLowerCase().includes('email')) {
+          setErrorAndScroll('An account is already associated with this email.');
         } else {
-          setErrorAndScroll(error.message);
+          setErrorAndScroll(msg || 'Signup failed. Please try again.');
         }
       }
     } finally {

@@ -256,7 +256,8 @@ const Forum = () => {
 
   useEffect(() => {
     if (!currentUser) {
-      navigate('/login');
+      // No user: stop loading so we can show the gate message instead of redirecting
+      setLoading(false);
       return;
     }
     
@@ -267,7 +268,7 @@ const Forum = () => {
       // Ensure we don't stay stuck on loading for pending users
       setLoading(false);
     }
-  }, [currentUser, navigate, isMember]);
+  }, [currentUser, isMember]);
 
   // Listen for profile updates to refresh profile pictures
   useEffect(() => {
@@ -1357,7 +1358,25 @@ const Forum = () => {
   }
 
   if (!currentUser) {
-    return null;
+    return (
+      <div className="forum-container">
+        <div className="container">
+          <h1 className="section-title">Team Forum</h1>
+          <div className="notice-card" style={{
+            background: '#fff8e1',
+            border: '1px solid #facc15',
+            color: '#92400e',
+            padding: '16px',
+            borderRadius: '8px',
+            lineHeight: 1.6
+          }}>
+            <p style={{margin: 0}}>
+              You need to be signed in to view the forum.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Gate for pending users: show message instead of forum content
