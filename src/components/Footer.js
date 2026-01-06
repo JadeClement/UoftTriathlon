@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Footer.css';
 
@@ -21,11 +22,11 @@ const Footer = () => {
           <div className="footer-section">
             <h4>Quick Links</h4>
             <ul className="footer-links">
-                              <li><a href="/">Home</a></li>
-                <li><a href="/schedule">Schedule</a></li>
-                <li><a href="/join-us">Join Us</a></li>
-                <li><a href="/forum">Forum</a></li>
-              <li><a href="/privacy">Privacy Policy</a></li>
+              <li><Link to="/">Home</Link></li>
+              <li><Link to="/schedule">Schedule</Link></li>
+              <li><Link to="/join-us">Join Us</Link></li>
+              <li><Link to="/forum">Forum</Link></li>
+              <li><Link to="/privacy">Privacy Policy</Link></li>
             </ul>
           </div>
           
