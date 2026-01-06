@@ -22,6 +22,7 @@ import Footer from './components/Footer';
 import ResetPassword from './components/ResetPassword';
 import Logout from './components/Logout';
 import MobileNav from './components/MobileNav';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
@@ -226,6 +227,7 @@ function AppContent() {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/team-gear" element={<TeamGear />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:role/:name" element={<Profile />} />
