@@ -1,0 +1,40 @@
+.support-page {
+  background: #f8fafc;
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+  display: flex;
+  justify-content: center;
+}
+
+.support-container {
+  width: 100%;
+  max-width: 720px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 2.25rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.support-container h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #1f2937;
+}
+
+.support-lead {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #4b5563;
+}
+
+.support-lead a {
+  color: #1e3a8a;
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .support-container {
+    padding: 1.5rem;
+  }
+}
+
