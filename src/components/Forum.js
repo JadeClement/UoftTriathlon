@@ -53,7 +53,7 @@ const Forum = () => {
   const [pastPagination, setPastPagination] = useState({ currentPage: 1, totalPages: 1, totalPosts: 0, hasMore: false });
   const [workoutForm, setWorkoutForm] = useState({
     title: '',
-    type: 'spin',
+    type: 'swim',
     date: '',
     time: '',
     content: '',
@@ -253,6 +253,17 @@ const Forum = () => {
         ];
     }
   };
+
+  // Ensure selected workout type stays valid for the user's sport
+  useEffect(() => {
+    const options = getAllowedWorkoutTypes();
+    if (!options || options.length === 0) return;
+    const valid = options.some(o => o.value === workoutForm.type);
+    if (!valid) {
+      setWorkoutForm(form => ({ ...form, type: options[0].value }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.sport]);
   
   const { 
     editingWorkout, 
@@ -1053,9 +1064,10 @@ const Forum = () => {
           loadForumPosts();
         }
         
+        const defaultType = (getAllowedWorkoutTypes()[0]?.value) || 'swim';
         setWorkoutForm({
           title: '',
-          type: 'spin',
+          type: defaultType,
           date: '',
           time: '',
           content: '',
