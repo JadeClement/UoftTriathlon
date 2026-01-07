@@ -2,11 +2,13 @@
   background: #f8fafc;
   min-height: 100vh;
   padding: 2rem 1rem 3rem;
+  display: flex;
+  justify-content: center;
 }
 
 .privacy-container {
+  width: 100%;
   max-width: 900px;
-  margin: 0 auto;
   background: #fff;
   border-radius: 12px;
   padding: 2.5rem;
