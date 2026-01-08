@@ -1979,7 +1979,7 @@ const Admin = () => {
                             setBannerForm({ ...bannerForm, items: next.length ? next : [''] });
                           }}>Remove</button>
                         </div>
-                        <div style={{ fontSize: '12px', color: overLimit ? '#b91c1c' : '#6b7280', textAlign: 'right', marginTop: 2 }}>
+                        <div style={{ fontSize: '12px', color: overLimit ? '#b91c1c' : '#6b7280', textAlign: 'left', marginTop: 2 }}>
                           {length}/50 characters
                         </div>
                       </div>
