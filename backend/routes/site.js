@@ -93,14 +93,20 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
     };
 
     // Enforce constraints: trim, max display length 50, drop empties, cap at 10 items
-    items = items
+    const processedItems = items
       .map((it) => {
         const message = (it.message || '').toString().trim();
-        // Only enforce 50-char limit on display text, preserve full links
-        return getDisplayLength(message) <= 50 ? { message } : null;
+        return message ? { message } : null;
       })
-      .filter((it) => it && it.message)
-      .slice(0, 10);
+      .filter((it) => it && it.message);
+
+    // If any item is too long, return a clear error instead of silently dropping it
+    const hasTooLongItem = processedItems.some((it) => getDisplayLength(it.message) > 50);
+    if (hasTooLongItem) {
+      return res.status(400).json({ error: 'Your message is too long. Banner messages must be 50 characters or less.' });
+    }
+
+    items = processedItems.slice(0, 10);
 
     // Preserve the enabled state as sent by the user, even if there are no items
     const banner = { enabled: enabled, items, rotationIntervalMs };

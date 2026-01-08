@@ -326,6 +326,13 @@ const Admin = () => {
     }
   };
 
+  // Helper for banner character counting (ignores URLs inside markdown links)
+  const getBannerDisplayLength = (text) => {
+    if (!text) return 0;
+    const withoutUrls = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+    return withoutUrls.length;
+  };
+
   const handleSaveBanner = async (e) => {
     e.preventDefault();
     try {
@@ -336,6 +343,13 @@ const Admin = () => {
         .map((m) => String(m || '').trim())
         .filter((m) => m.length > 0)
         .map((m) => ({ message: m }));
+
+      // Validate length: if any message is over 50 chars (excluding URL parts), show error
+      const hasTooLong = itemsToSend.some((it) => getBannerDisplayLength(it.message) > 50);
+      if (hasTooLong) {
+        showNotification('Your message is too long. Banner messages must be 50 characters or less.', 'error');
+        return;
+      }
       
       console.log('Saving banner:', { enabled: bannerForm.enabled, itemsCount: itemsToSend.length, items: itemsToSend });
       
@@ -1944,24 +1958,33 @@ const Admin = () => {
                 {/* Multiple banner items */}
                 <div className="form-group">
                   <label>Banner Messages (max 10)</label>
-                  {(bannerForm.items || []).map((msg, idx) => (
-                    <div key={idx} style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
-                      <input
-                        type="text"
-                        value={msg}
-                        onChange={(e)=> {
-                          const next = [...(bannerForm.items || [])];
-                          next[idx] = e.target.value;
-                          setBannerForm({ ...bannerForm, items: next });
-                        }}
-                        placeholder={`Message #${idx+1}`}
-                      />
-                      <button type="button" className="btn" onClick={()=> {
-                        const next = (bannerForm.items || []).filter((_,i)=> i!==idx);
-                        setBannerForm({ ...bannerForm, items: next.length ? next : [''] });
-                      }}>Remove</button>
-                    </div>
-                  ))}
+                  {(bannerForm.items || []).map((msg, idx) => {
+                    const length = getBannerDisplayLength(msg || '');
+                    const overLimit = length > 50;
+                    return (
+                      <div key={idx} style={{ marginBottom: 8 }}>
+                        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                          <input
+                            type="text"
+                            value={msg}
+                            onChange={(e)=> {
+                              const next = [...(bannerForm.items || [])];
+                              next[idx] = e.target.value;
+                              setBannerForm({ ...bannerForm, items: next });
+                            }}
+                            placeholder={`Message #${idx+1}`}
+                          />
+                          <button type="button" className="btn" onClick={()=> {
+                            const next = (bannerForm.items || []).filter((_,i)=> i!==idx);
+                            setBannerForm({ ...bannerForm, items: next.length ? next : [''] });
+                          }}>Remove</button>
+                        </div>
+                        <div style={{ fontSize: '12px', color: overLimit ? '#b91c1c' : '#6b7280', textAlign: 'right', marginTop: 2 }}>
+                          {length}/50 characters
+                        </div>
+                      </div>
+                    );
+                  })}
                   <button
                     type="button"
                     className="btn"
