@@ -114,18 +114,18 @@ const Profile = () => {
     loadTeamMembers();
   }, []);
   
-  // Load user's results_public setting
+  // Load user's results_public setting (only for members)
   useEffect(() => {
-    if (!isUserProfile || !currentUser?.id) return;
+    if (!isUserProfile || !currentUser?.id || !isMember(currentUser)) return;
     // Check both possible field names (normalized and original)
     const resultsPublicValue = currentUser.results_public || currentUser.resultsPublic || false;
     setResultsPublic(resultsPublicValue);
-  }, [isUserProfile, currentUser]);
+  }, [isUserProfile, currentUser, isMember]);
 
-  // Load notification preferences
+  // Load notification preferences (only for members)
   useEffect(() => {
     const loadNotificationPrefs = async () => {
-      if (!isUserProfile || !currentUser?.id) return;
+      if (!isUserProfile || !currentUser?.id || !isMember(currentUser)) return;
       
       try {
         const token = localStorage.getItem('triathlonToken');
@@ -151,7 +151,7 @@ const Profile = () => {
     };
 
     loadNotificationPrefs();
-  }, [isUserProfile, currentUser?.id]);
+  }, [isUserProfile, currentUser?.id, isMember]);
 
   // Save notification preferences
   const saveNotificationPrefs = async (newPrefs) => {
@@ -1238,7 +1238,7 @@ const Profile = () => {
 
         {/* Notification Preferences Section - Only show if app is installed and for user's own profile */}
         {/* TODO: Uncomment isStandalone() check when ready to restrict to installed app only */}
-        {isUserProfile && /* isStandalone() && */ true && (
+        {isUserProfile && isMember(currentUser) && /* isStandalone() && */ true && (
           <div style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
             <div 
               className="notification-preferences-header"
@@ -1346,8 +1346,8 @@ const Profile = () => {
           </div>
         )}
 
-        {/* Results Section - Only show for user's own profile */}
-        {isUserProfile && (
+        {/* Results Section - Only show for user's own profile and if user is a member */}
+        {isUserProfile && isMember(currentUser) && (
           <div style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ margin: 0, color: '#374151' }}>Results</h2>
