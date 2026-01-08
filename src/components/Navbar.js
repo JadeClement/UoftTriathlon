@@ -138,6 +138,20 @@ const Navbar = () => {
     loadBanner();
   }, [API_BASE_URL]);
 
+  // Add/remove class on body for iOS banner at bottom
+  useEffect(() => {
+    const isIOS = Capacitor.getPlatform() === 'ios';
+    const hasBanner = banner.enabled && (banner.items?.length > 0);
+    if (isIOS && hasBanner) {
+      document.body.classList.add('ios-banner-active');
+    } else {
+      document.body.classList.remove('ios-banner-active');
+    }
+    return () => {
+      document.body.classList.remove('ios-banner-active');
+    };
+  }, [banner.enabled, banner.items]);
+
   useEffect(() => {
     if (!currentUser?.id) {
       setShowPopupModal(false);
