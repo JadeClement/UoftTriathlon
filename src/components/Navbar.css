@@ -76,6 +76,13 @@
   }
 }
 
+/* iOS-specific: Position banner above bottom nav bar instead of at top */
+.site-banner.ios-banner {
+  top: auto;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  z-index: 10001; /* Above bottom nav (10000) but below modals */
+}
+
 .navbar {
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
   padding: 1rem 0;

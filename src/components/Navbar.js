@@ -443,6 +443,8 @@ const Navbar = () => {
   
   // Check if in Capacitor app
   const isNativeApp = Capacitor.isNativePlatform();
+  // Check if iOS specifically
+  const isIOS = Capacitor.getPlatform() === 'ios';
 
   return (
     <>
@@ -468,7 +470,7 @@ const Navbar = () => {
     )}
     {banner.enabled && (banner.items?.length > 0) && (
       <div 
-        className="site-banner active"
+        className={`site-banner active ${isIOS ? 'ios-banner' : ''}`}
         role="status"
         aria-live="polite"
         onMouseEnter={() => setIsBannerHovered(true)}
@@ -486,7 +488,7 @@ const Navbar = () => {
         </div>
       </div>
     )}
-    <nav className={`navbar ${isNativeApp ? 'capacitor-navbar' : ''}`} style={{ marginTop: banner.enabled && (banner.items?.length > 0) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
+    <nav className={`navbar ${isNativeApp ? 'capacitor-navbar' : ''}`} style={{ marginTop: (banner.enabled && (banner.items?.length > 0) && !isIOS) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
       <div className="navbar-container" ref={navbarContainerRef}>
         <Link to="/" className="navbar-logo" onClick={closeMenu} ref={logoRef}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />
