@@ -3051,6 +3051,7 @@ const Admin = () => {
                 >
                   <option value="pending">Pending</option>
                   <option value="member">Member</option>
+                  <option value="coach">Coach</option>
                   <option value="exec">Executive</option>
                   <option value="administrator">Administrator</option>
                 </select>
@@ -3143,6 +3144,7 @@ const Admin = () => {
                   required
                 >
                   <option value="member">Member</option>
+                  <option value="coach">Coach</option>
                   <option value="exec">Executive</option>
                   <option value="administrator">Administrator</option>
                 </select>
