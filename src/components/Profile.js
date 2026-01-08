@@ -9,7 +9,7 @@ import './Profile.css';
 const Profile = () => {
   const params = useParams();
   const { role, name } = params;
-  const { currentUser, updateUser } = useAuth();
+  const { currentUser, updateUser, isMember } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -246,10 +246,17 @@ const Profile = () => {
     }
   };
 
-  // Load user records (only for user's own profile)
+  // Load user records (only for user's own profile, and only if user is a member)
   useEffect(() => {
     const loadUserRecords = async () => {
       if (!isUserProfile || !currentUser?.id) return;
+      
+      // Only load records if user is a member (pending users don't have access to records endpoint)
+      if (!isMember(currentUser)) {
+        console.log('ℹ️ User is pending, skipping records load');
+        setUserRecords([]);
+        return;
+      }
       
       try {
         const token = localStorage.getItem('triathlonToken');
