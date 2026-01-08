@@ -91,16 +91,18 @@ const Admin = () => {
   // Format term name for display (e.g., "Fall 25" or "Fall/Winter 25-26")
   const formatTermName = (term) => {
     const termName = term.term.charAt(0).toUpperCase() + term.term.slice(1);
-    // Parse as local dates to avoid UTC -> previous-day shifts
+    // Parse defensively; if dates are missing/invalid, fall back to name only
     const startDate = new Date(`${term.start_date}T00:00:00`);
     const endDate = new Date(`${term.end_date}T00:00:00`);
-    const startValid = startDate instanceof Date && !Number.isNaN(startDate.getTime());
-    const endValid = endDate instanceof Date && !Number.isNaN(endDate.getTime());
-    if (!startValid || !endValid) {
+    const startYearFull = Number.isFinite(startDate.getFullYear()) ? startDate.getFullYear() : null;
+    const endYearFull = Number.isFinite(endDate.getFullYear()) ? endDate.getFullYear() : null;
+
+    if (startYearFull === null || endYearFull === null) {
       return termName;
     }
-    const startYear = startDate.getFullYear() % 100; // Get last 2 digits
-    const endYear = endDate.getFullYear() % 100;
+
+    const startYear = startYearFull % 100; // last 2 digits
+    const endYear = endYearFull % 100;
     
     if (startYear === endYear) {
       return `${termName} ${startYear}`;
