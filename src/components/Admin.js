@@ -1984,6 +1984,9 @@ const Admin = () => {
                         <div style={{ fontSize: '12px', color: overLimit ? '#b91c1c' : '#6b7280', textAlign: 'left', marginTop: 2 }}>
                           {length}/50 characters
                         </div>
+                        <div style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'left', marginTop: 4, fontStyle: 'italic' }}>
+                          Link format: [text](url). No spaces between brackets.
+                        </div>
                       </div>
                     );
                   })}
