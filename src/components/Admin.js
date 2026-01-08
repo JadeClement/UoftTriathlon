@@ -530,6 +530,7 @@ const Admin = () => {
         formData.append('template', JSON.stringify(template));
         formData.append('recipients', JSON.stringify({
           members: true,
+          coach: true,
           exec: true,
           admin: true,
           pending: false

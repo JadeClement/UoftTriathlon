@@ -823,6 +823,10 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
         whereConditions.push(`role = $${++paramCount}`);
         queryParams.push('member');
       }
+      if (recipients.coach || recipients.coaches) {
+        whereConditions.push(`role = $${++paramCount}`);
+        queryParams.push('coach');
+      }
       if (recipients.exec || recipients.execs) {
         whereConditions.push(`role = $${++paramCount}`);
         queryParams.push('exec');
