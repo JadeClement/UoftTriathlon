@@ -120,6 +120,43 @@
   transform: translateY(-1px);
 }
 
+.danger-zone {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.danger-zone-inner {
+  text-align: center;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #dc2626, #9b1c1c);
+  box-shadow: 0 8px 20px rgba(185, 28, 28, 0.25);
+}
+
+.danger-help {
+  margin-top: 0.5rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+  max-width: 360px;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .form-group {
   margin-bottom: 1.5rem;
 }

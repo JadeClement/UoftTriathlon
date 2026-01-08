@@ -1119,17 +1119,19 @@ const Profile = () => {
                   </div>
 
                   <div className="danger-zone">
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      onClick={() => setShowDeleteConfirm(true)}
-                      disabled={saving}
-                    >
-                      Delete Account
-                    </button>
-                    <p className="danger-help">
-                      This will remove your account. To regain access, you'll need to create a new account.
-                    </p>
+                    <div className="danger-zone-inner">
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        disabled={saving}
+                      >
+                        Delete Account
+                      </button>
+                      <p className="danger-help">
+                        This will remove your account. To regain access, you'll need to create a new account.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
