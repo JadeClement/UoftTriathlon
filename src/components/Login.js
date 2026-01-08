@@ -342,19 +342,6 @@ const Login = () => {
                   placeholder="Enter your full name"
                 />
               </div>
-              
-              <div className="form-group">
-                <label htmlFor="phoneNumber">Phone Number *</label>
-                <input
-                  type="tel"
-                  id="phoneNumber"
-                  value={phoneNumber}
-                  onChange={handlePhoneNumberChange}
-                  placeholder="(123) 456-7890"
-                  required
-                />
-                <small className="form-help">For SMS notifications when promoted from waitlists</small>
-              </div>
             </>
           )}
           
@@ -369,6 +356,19 @@ const Login = () => {
               placeholder="Enter your email"
             />
           </div>
+
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="phoneNumber">Phone Number</label>
+              <input
+                type="tel"
+                id="phoneNumber"
+                value={phoneNumber}
+                onChange={handlePhoneNumberChange}
+                placeholder="(123) 456-7890"
+              />
+            </div>
+          )}
           
           <div className="form-group">
             <label htmlFor="password">Password *</label>
