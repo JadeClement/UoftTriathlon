@@ -50,10 +50,12 @@ router.get('/banner', async (req, res) => {
         const items = parsed.items
           .map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
           .filter((it) => it.message);
-        banner = { enabled: enabled && items.length > 0, items, rotationIntervalMs };
+        // Preserve enabled state as saved, don't force it off
+        banner = { enabled: enabled, items, rotationIntervalMs };
       } else if (typeof parsed.message === 'string') {
         const items = parsed.message ? [{ message: parsed.message }] : [];
-        banner = { enabled: enabled && items.length > 0, items, rotationIntervalMs };
+        // Preserve enabled state as saved, don't force it off
+        banner = { enabled: enabled, items, rotationIntervalMs };
       }
     }
 

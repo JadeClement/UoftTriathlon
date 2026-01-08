@@ -357,22 +357,8 @@ const Admin = () => {
       
       showNotification('Banner updated successfully!', 'success');
       
-      // After successful save, keep the form exactly as the user set it
-      // Don't update from response - just keep what was sent
-      const savedItems = itemsToSend.map((it) => it.message);
-      setBannerForm(prev => ({
-        ...prev,
-        enabled: !!bannerForm.enabled, // Keep the enabled state as user set it
-        items: savedItems.length > 0 ? savedItems : [''], // Keep the items that were sent, or one empty field
-        rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000
-      }));
-      
-      // Update snapshot for comparison
-      setBannerSnapshot({
-        enabled: !!bannerForm.enabled,
-        items: savedItems,
-        rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000
-      });
+      // Reload banner data to ensure form is in sync with what's actually saved
+      await loadBannerData();
     } catch (err) {
       showNotification(err.message, 'error');
     }
