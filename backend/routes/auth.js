@@ -13,8 +13,8 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password, phoneNumber } = req.body;
 
-    if (!name || !email || !password || !phoneNumber) {
-      return res.status(400).json({ error: 'Name, email, password, and phone number are required' });
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
     // Validate email format
@@ -23,10 +23,14 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid email address' });
     }
 
-    // Validate phone number format (10 digits)
-    const phoneDigitsOnly = phoneNumber.replace(/\D/g, '');
-    if (phoneDigitsOnly.length !== 10) {
-      return res.status(400).json({ error: 'Please enter a valid 10-digit phone number' });
+    // Validate phone number format (10 digits) if provided
+    let normalizedPhone = null;
+    if (phoneNumber && phoneNumber.trim().length > 0) {
+      const phoneDigitsOnly = phoneNumber.replace(/\D/g, '');
+      if (phoneDigitsOnly.length !== 10) {
+        return res.status(400).json({ error: 'Please enter a valid 10-digit phone number' });
+      }
+      normalizedPhone = phoneNumber;
     }
 
     // Check if user already exists with this email
@@ -36,9 +40,11 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists with this phone number
-    const existingUserByPhone = await pool.query('SELECT id FROM users WHERE phone_number = $1', [phoneNumber]);
-    if (existingUserByPhone.rows.length > 0) {
-      return res.status(400).json({ error: 'A user with this phone number already exists. Please use a different phone number or contact support if you believe this is an error.' });
+    if (normalizedPhone) {
+      const existingUserByPhone = await pool.query('SELECT id FROM users WHERE phone_number = $1', [normalizedPhone]);
+      if (existingUserByPhone.rows.length > 0) {
+        return res.status(400).json({ error: 'A user with this phone number already exists. Please use a different phone number or contact support if you believe this is an error.' });
+      }
     }
 
     // Hash password
@@ -50,7 +56,7 @@ router.post('/register', async (req, res) => {
       INSERT INTO users (name, email, password_hash, phone_number, role, sport, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
       RETURNING id, name, email, phone_number, role, sport
-    `, [name, email, hashedPassword, phoneNumber, 'pending', 'triathlon']);
+    `, [name, email, hashedPassword, normalizedPhone, 'pending', 'triathlon']);
 
     const user = result.rows[0];
 

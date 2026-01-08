@@ -151,8 +151,8 @@ const Login = () => {
           setLoading(false);
           return;
         }
-        if (!name || !email || !password || !phoneNumber) {
-          setErrorAndScroll('All fields are required');
+        if (!name || !email || !password) {
+          setErrorAndScroll('Name, email, and password are required');
           setLoading(false);
           return;
         }
@@ -164,15 +164,17 @@ const Login = () => {
           return;
         }
         
-        // Validate phone number format
-        if (!validatePhoneNumber(phoneNumber)) {
-          setErrorAndScroll('Please enter a valid 10-digit phone number (e.g., 1234567890 or (123) 456-7890)');
-          setLoading(false);
-          return;
+        // Validate phone number format if provided
+        let formattedPhone = '';
+        if (phoneNumber && phoneNumber.trim().length > 0) {
+          if (!validatePhoneNumber(phoneNumber)) {
+            setErrorAndScroll('Please enter a valid 10-digit phone number (e.g., 1234567890 or (123) 456-7890)');
+            setLoading(false);
+            return;
+          }
+          formattedPhone = formatPhoneNumber(phoneNumber);
         }
         
-        // Format phone number before sending
-        const formattedPhone = formatPhoneNumber(phoneNumber);
         await signup(email, password, name, formattedPhone);
       }
       console.log('🔐 Login: Navigating to home page...');
