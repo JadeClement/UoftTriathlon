@@ -494,5 +494,23 @@ router.delete('/push-token', authenticateToken, async (req, res) => {
   }
 });
 
+// Delete (deactivate) user account
+router.delete('/profile', authenticateToken, allowOwnProfile(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Soft delete: mark inactive and remove profile picture reference
+    await pool.query(
+      `UPDATE users 
+       SET is_active = false, profile_picture_url = NULL 
+       WHERE id = $1`,
+      [userId]
+    );
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
 

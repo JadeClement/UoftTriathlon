@@ -13,6 +13,7 @@ const Profile = () => {
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedEmail, setEditedEmail] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
@@ -22,6 +23,7 @@ const Profile = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Results section state
   const [userRecords, setUserRecords] = useState([]);
@@ -181,6 +183,35 @@ const Profile = () => {
       console.error('Error saving notification preferences:', error);
     } finally {
       setNotificationPrefsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) {
+        setError('Not authenticated');
+        return;
+      }
+      const resp = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        localStorage.removeItem('triathlonUser');
+        localStorage.removeItem('triathlonToken');
+        window.location.href = '/login';
+      } else {
+        setError(data.error || 'Failed to delete account');
+      }
+    } catch (err) {
+      console.error('Delete account error:', err);
+      setError(err.message || 'Failed to delete account');
+    } finally {
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -630,6 +661,7 @@ const Profile = () => {
     setEditedBio(userProfile.bio || ''); // Set bio for editing
     setEditedImage(userProfile.image || '/images/default_profile.png');
     setEditMode(true);
+    setShowEditModal(true);
   };
 
   const handleSave = async () => {
@@ -819,6 +851,7 @@ const Profile = () => {
       });
 
       setEditMode(false);
+      setShowEditModal(false);
       setSaving(false);
       console.log('✅ Saving state set to false - save completed');
       setJustSaved(true);
@@ -837,6 +870,7 @@ const Profile = () => {
 
   const handleCancel = () => {
     setEditMode(false);
+    setShowEditModal(false);
     if (isUserProfile) {
       setEditedName(userProfile?.name || '');
       setEditedEmail(userProfile?.email || '');
@@ -910,31 +944,12 @@ const Profile = () => {
               <h2 className="profile-role">{userProfile.role}</h2>
               {isUserProfile && (
                 <div className="profile-actions">
-                  {editMode ? (
-                    <div className="edit-actions">
-                      <button 
-                        className="btn btn-primary" 
-                        onClick={handleSave}
-                        disabled={saving}
-                      >
-                        {saving ? 'Saving...' : 'Save Changes'}
-                      </button>
-                      <button 
-                        className="btn btn-secondary" 
-                        onClick={handleCancel}
-                        disabled={saving}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button 
-                      className="btn btn-edit" 
-                      onClick={handleEdit}
-                    >
-                      Edit Profile
-                    </button>
-                  )}
+                  <button 
+                    className="btn btn-edit" 
+                    onClick={handleEdit}
+                  >
+                    Edit Profile
+                  </button>
                 </div>
               )}
             </div>
@@ -945,7 +960,31 @@ const Profile = () => {
               </div>
             )}
             
-            {editMode ? (
+            <div className="profile-info">
+              <div className="info-item">
+                <strong>Email:</strong> {userProfile.email}
+              </div>
+              {userProfile.phone && (
+                <div className="info-item">
+                  <strong>Phone:</strong> {userProfile.phone}
+                </div>
+              )}
+              {userProfile.bio && (
+                <div className="profile-bio">
+                  {userProfile.bio.split('\n\n').map((paragraph, index) => (
+                    <p key={index}>{paragraph}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {showEditModal && (
+          <div className="modal-overlay">
+            <div className="modal profile-edit-modal">
+              <h2>Edit Profile</h2>
+              
               <div className="edit-form">
                 <div className="image-upload-section">
                   <label htmlFor="profile-image" className="image-upload-label">
@@ -999,7 +1038,7 @@ const Profile = () => {
                     />
                   </div>
                   
-                                    <div className="form-group">
+                  <div className="form-group">
                     <label htmlFor="email-input" className="form-label">Email:</label>
                     <input
                       id="email-input"
@@ -1045,30 +1084,68 @@ const Profile = () => {
                     />
                   </div>
                   
- 
+                  <div className="form-group">
+                    <label className="form-label">Make results public?</label>
+                    <div className="toggle-wrapper">
+                      <label className="toggle-switch">
+                        <input 
+                          type="checkbox" 
+                          checked={resultsPublic} 
+                          onChange={(e) => setResultsPublic(e.target.checked)} 
+                        />
+                        <span className="toggle-slider"></span>
+                      </label>
+                      <span className="toggle-label">
+                        Allow my race results to be shown publicly on my profile
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="edit-actions">
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={handleSave}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={handleCancel}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <div className="danger-zone">
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      disabled={saving}
+                    >
+                      Delete Account
+                    </button>
+                    <p className="danger-help">
+                      This will remove your account. To regain access, you'll need to create a new account.
+                    </p>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div className="profile-info">
-                <div className="info-item">
-                  <strong>Email:</strong> {userProfile.email}
-                </div>
-                {userProfile.phone && (
-                  <div className="info-item">
-                    <strong>Phone:</strong> {userProfile.phone}
-                  </div>
-                )}
-                {userProfile.bio && (
-                  <div className="profile-bio">
-                    {userProfile.bio.split('\n\n').map((paragraph, index) => (
-                      <p key={index}>{paragraph}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
+
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          title="Delete Account"
+          message="Are you sure you want to delete your account? All details will be removed and if you want access again you'll have to create a new account."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={handleDeleteAccount}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
 
         {/* Notification Preferences Section - Only show if app is installed and for user's own profile */}
         {/* TODO: Uncomment isStandalone() check when ready to restrict to installed app only */}
