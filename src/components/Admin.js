@@ -302,9 +302,10 @@ const Admin = () => {
         }
         const popupEnabled = !!data?.popup?.enabled && !!data?.popup?.message;
         const popupMessage = data?.popup?.message || '';
+        // Load banner form - preserve enabled state even if no items
         setBannerForm({
-          enabled: enabled && items.length > 0,
-          items: items.length ? items : [''],
+          enabled: enabled, // Don't force off if no items - let user control it
+          items: items.length > 0 ? items : [''],
           rotationIntervalMs,
           popupEnabled,
           popupDraft: ''
@@ -329,10 +330,12 @@ const Admin = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('triathlonToken');
-      // Prepare items to send - filter out empty ones
+      
+      // Get non-empty items from form
       const itemsToSend = (bannerForm.items || [])
-        .map((m) => ({ message: String(m || '').trim() }))
-        .filter((m) => m.message);
+        .map((m) => String(m || '').trim())
+        .filter((m) => m.length > 0)
+        .map((m) => ({ message: m }));
       
       const resp = await fetch(`${API_BASE_URL}/site/banner`, {
         method: 'PUT',
@@ -346,32 +349,30 @@ const Admin = () => {
           popupMessage: popupPreview.message || ''
         })
       });
-      const payload = await resp.json().catch(() => null);
+      
       if (!resp.ok) {
-        const err = payload || {};
-        throw new Error(err.error || 'Failed to update banner');
+        const payload = await resp.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to update banner');
       }
+      
       showNotification('Banner updated successfully!', 'success');
-      if (payload?.banner) {
-        const savedItems = Array.isArray(payload.banner.items)
-          ? payload.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
-          : [];
-        const savedBanner = {
-          enabled: !!payload.banner.enabled, // Preserve the enabled state as saved
-          items: savedItems,
-          rotationIntervalMs: Number(payload.banner.rotationIntervalMs) > 0 ? Number(payload.banner.rotationIntervalMs) : 6000
-        };
-        setBannerSnapshot(savedBanner);
-        // Preserve the items that were just sent, converted back to strings
-        // This ensures the user's entered messages don't disappear
-        const itemsJustSent = itemsToSend.map((it) => it.message);
-        setBannerForm(prev => ({
-          ...prev,
-          enabled: savedBanner.enabled, // Use the saved enabled state directly
-          items: itemsJustSent.length ? itemsJustSent : [''], // Preserve what was just sent
-          rotationIntervalMs: savedBanner.rotationIntervalMs
-        }));
-      }
+      
+      // After successful save, keep the form exactly as the user set it
+      // Don't update from response - just keep what was sent
+      const savedItems = itemsToSend.map((it) => it.message);
+      setBannerForm(prev => ({
+        ...prev,
+        enabled: !!bannerForm.enabled, // Keep the enabled state as user set it
+        items: savedItems.length > 0 ? savedItems : [''], // Keep the items that were sent, or one empty field
+        rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000
+      }));
+      
+      // Update snapshot for comparison
+      setBannerSnapshot({
+        enabled: !!bannerForm.enabled,
+        items: savedItems,
+        rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000
+      });
     } catch (err) {
       showNotification(err.message, 'error');
     }
