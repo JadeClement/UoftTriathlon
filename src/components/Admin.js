@@ -326,11 +326,13 @@ const Admin = () => {
     }
   };
 
-  // Helper for banner character counting (ignores URLs inside markdown links)
+  // Helper for banner character counting (ignores brackets and URLs in markdown links)
+  // For [text](url), only counts "text", not the brackets or URL
   const getBannerDisplayLength = (text) => {
     if (!text) return 0;
-    const withoutUrls = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
-    return withoutUrls.length;
+    // Replace [text](url) patterns with just the text part (removes brackets and URL)
+    const withoutLinkSyntax = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+    return withoutLinkSyntax.length;
   };
 
   const handleSaveBanner = async (e) => {
