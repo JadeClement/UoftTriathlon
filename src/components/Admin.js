@@ -329,13 +329,18 @@ const Admin = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('triathlonToken');
+      // Prepare items to send - filter out empty ones
+      const itemsToSend = (bannerForm.items || [])
+        .map((m) => ({ message: String(m || '').trim() }))
+        .filter((m) => m.message);
+      
       const resp = await fetch(`${API_BASE_URL}/site/banner`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           enabled: !!bannerForm.enabled,
           rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000,
-          items: (bannerForm.items || []).map((m) => ({ message: String(m || '').trim() })).filter((m) => m.message),
+          items: itemsToSend,
           // Preserve current popup settings
           popupEnabled: popupPreview.enabled,
           popupMessage: popupPreview.message || ''
@@ -357,11 +362,13 @@ const Admin = () => {
           rotationIntervalMs: Number(payload.banner.rotationIntervalMs) > 0 ? Number(payload.banner.rotationIntervalMs) : 6000
         };
         setBannerSnapshot(savedBanner);
-        // Also update bannerForm to reflect what was saved, preserving the enabled toggle state
+        // Preserve the items that were just sent, converted back to strings
+        // This ensures the user's entered messages don't disappear
+        const itemsJustSent = itemsToSend.map((it) => it.message);
         setBannerForm(prev => ({
           ...prev,
           enabled: savedBanner.enabled, // Use the saved enabled state directly
-          items: savedItems.length ? savedItems : [''],
+          items: itemsJustSent.length ? itemsJustSent : [''], // Preserve what was just sent
           rotationIntervalMs: savedBanner.rotationIntervalMs
         }));
       }
