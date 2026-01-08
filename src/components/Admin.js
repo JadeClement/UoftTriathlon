@@ -352,15 +352,15 @@ const Admin = () => {
           ? payload.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean)
           : [];
         const savedBanner = {
-          enabled: !!payload.banner.enabled && savedItems.length > 0,
+          enabled: !!payload.banner.enabled, // Preserve the enabled state as saved
           items: savedItems,
           rotationIntervalMs: Number(payload.banner.rotationIntervalMs) > 0 ? Number(payload.banner.rotationIntervalMs) : 6000
         };
         setBannerSnapshot(savedBanner);
-        // Also update bannerForm to reflect what was saved
+        // Also update bannerForm to reflect what was saved, preserving the enabled toggle state
         setBannerForm(prev => ({
           ...prev,
-          enabled: savedBanner.enabled,
+          enabled: savedBanner.enabled, // Use the saved enabled state directly
           items: savedItems.length ? savedItems : [''],
           rotationIntervalMs: savedBanner.rotationIntervalMs
         }));

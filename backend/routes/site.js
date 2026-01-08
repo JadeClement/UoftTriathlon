@@ -100,7 +100,8 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
       .filter((it) => it && it.message)
       .slice(0, 10);
 
-    const banner = { enabled: enabled && items.length > 0, items, rotationIntervalMs };
+    // Preserve the enabled state as sent by the user, even if there are no items
+    const banner = { enabled: enabled, items, rotationIntervalMs };
     const value = JSON.stringify(banner);
 
     await pool.query(
