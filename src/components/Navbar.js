@@ -120,7 +120,7 @@ const Navbar = () => {
           ? normalized.items.map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
           : (normalized.message ? [{ message: String(normalized.message) }] : []);
         setBanner({
-          enabled: !!normalized.enabled && items.length > 0,
+          enabled: !!normalized.enabled, // Preserve enabled state as saved
           items,
           rotationIntervalMs: Number(normalized.rotationIntervalMs) > 0 ? Number(normalized.rotationIntervalMs) : 6000,
         });
