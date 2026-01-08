@@ -24,6 +24,7 @@ const Profile = () => {
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showPauseConfirm, setShowPauseConfirm] = useState(false);
   
   // Results section state
   const [userRecords, setUserRecords] = useState([]);
@@ -183,6 +184,36 @@ const Profile = () => {
       console.error('Error saving notification preferences:', error);
     } finally {
       setNotificationPrefsLoading(false);
+    }
+  };
+
+  const handlePauseAccount = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) {
+        setError('Not authenticated');
+        return;
+      }
+      const resp = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile/pause`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        localStorage.removeItem('triathlonUser');
+        localStorage.removeItem('triathlonToken');
+        window.location.href = '/login';
+      } else {
+        setError(data.error || 'Failed to pause account');
+      }
+    } catch (err) {
+      console.error('Pause account error:', err);
+      setError(err.message || 'Failed to pause account');
+    } finally {
+      setShowPauseConfirm(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -1122,6 +1153,18 @@ const Profile = () => {
                     <div className="danger-zone-inner">
                       <button
                         type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setShowPauseConfirm(true)}
+                        disabled={saving}
+                        style={{ marginBottom: '1rem' }}
+                      >
+                        Pause Account
+                      </button>
+                      <p className="danger-help" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                        This will move your account to pending status. Your data will be preserved, but you'll need to be approved again to regain access.
+                      </p>
+                      <button
+                        type="button"
                         className="btn btn-danger"
                         onClick={() => setShowDeleteConfirm(true)}
                         disabled={saving}
@@ -1129,7 +1172,7 @@ const Profile = () => {
                         Delete Account
                       </button>
                       <p className="danger-help">
-                        This will remove your account. To regain access, you'll need to create a new account.
+                        This will permanently remove your account and all associated data. To regain access, you'll need to create a new account.
                       </p>
                     </div>
                   </div>
@@ -1140,14 +1183,51 @@ const Profile = () => {
         )}
 
         <ConfirmModal
-          isOpen={showDeleteConfirm}
-          title="Delete Account"
-          message="Are you sure you want to delete your account? All details will be removed and if you want access again you'll have to create a new account."
-          confirmText="Delete"
+          isOpen={showPauseConfirm}
+          title="Pause Account"
+          message="Are you sure you want to pause your account? Your account will be moved to pending status and you'll need to be approved again to regain access. All your data will be preserved."
+          confirmText="Pause Account"
           cancelText="Cancel"
-          onConfirm={handleDeleteAccount}
-          onCancel={() => setShowDeleteConfirm(false)}
+          onConfirm={handlePauseAccount}
+          onCancel={() => setShowPauseConfirm(false)}
         />
+
+        {showDeleteConfirm && (
+          <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+              <h2>Delete Account</h2>
+              <p style={{ marginBottom: '1rem' }}>
+                Are you sure you want to permanently delete your account? All details, signups, and associated data will be permanently removed. If you want access again, you'll need to create a new account.
+              </p>
+              <p style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', color: '#0369a1' }}>
+                <strong>💡 Instead of deleting, you can pause your account</strong> to preserve all your progress and data. You'll need to be approved again to regain access, but nothing will be lost.
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePauseAccount}
+                  disabled={saving}
+                >
+                  Pause Account Instead
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={handleDeleteAccount}
+                  disabled={saving}
+                >
+                  Delete Permanently
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Notification Preferences Section - Only show if app is installed and for user's own profile */}
         {/* TODO: Uncomment isStandalone() check when ready to restrict to installed app only */}

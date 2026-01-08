@@ -494,21 +494,60 @@ router.delete('/push-token', authenticateToken, async (req, res) => {
   }
 });
 
-// Delete (deactivate) user account
-router.delete('/profile', authenticateToken, allowOwnProfile(), async (req, res) => {
+// Pause account (move to pending role without deleting data)
+router.post('/profile/pause', authenticateToken, allowOwnProfile(), async (req, res) => {
   try {
     const userId = req.user.id;
-    // Soft delete: mark inactive and remove profile picture reference
+    // Move user to pending role
     await pool.query(
       `UPDATE users 
-       SET is_active = false, profile_picture_url = NULL 
+       SET role = 'pending' 
        WHERE id = $1`,
       [userId]
     );
-    res.json({ message: 'Account deleted successfully' });
+    res.json({ message: 'Account paused successfully' });
   } catch (error) {
+    console.error('Pause account error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Permanently delete user account and all associated data
+router.delete('/profile', authenticateToken, allowOwnProfile(), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const userId = req.user.id;
+
+    // Delete all associated data explicitly (even though CASCADE should handle it, being explicit is safer)
+    await client.query('DELETE FROM workout_signups WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM workout_attendance WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM workout_waitlist WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM workout_cancellations WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM race_signups WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM login_history WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM role_change_notifications WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM push_device_tokens WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM notification_preferences WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM post_likes WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM event_rsvps WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM user_popup_views WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM records WHERE user_id = $1', [userId]);
+    
+    // Soft delete forum posts (mark as deleted instead of hard delete to preserve thread structure)
+    await client.query('UPDATE forum_posts SET is_deleted = true WHERE user_id = $1', [userId]);
+    
+    // Finally delete the user
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    await client.query('COMMIT');
+    res.json({ message: 'Account permanently deleted successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Delete account error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 });
 

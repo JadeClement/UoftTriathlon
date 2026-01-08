@@ -70,14 +70,14 @@ export function useForumPosts(params = {}) {
     const handleOffline = () => setIsOffline(true);
     
     if (enabled) {
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     }
     
     return () => {
       if (enabled) {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       }
     };
   }, [enabled, loadPosts]);

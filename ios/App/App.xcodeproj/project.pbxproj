@@ -16,6 +16,7 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		B91572A42F02F12B000302CD /* UoftTriathlonuofttriclubappAppStore.mobileprovision in Resources */ = {isa = PBXBuildFile; fileRef = B91572A32F02F12B000302CD /* UoftTriathlonuofttriclubappAppStore.mobileprovision */; };
+		B9C7FA302F0AE41F0057CADE /* UoftTriathlon_AppStore_2026.mobileprovision in Resources */ = {isa = PBXBuildFile; fileRef = B9C7FA2F2F0AE41F0057CADE /* UoftTriathlon_AppStore_2026.mobileprovision */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +32,7 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		B91572A32F02F12B000302CD /* UoftTriathlonuofttriclubappAppStore.mobileprovision */ = {isa = PBXFileReference; lastKnownFileType = file; path = UoftTriathlonuofttriclubappAppStore.mobileprovision; sourceTree = "<group>"; };
 		B92B5C782F02E85100EB8A1C /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		B9C7FA2F2F0AE41F0057CADE /* UoftTriathlon_AppStore_2026.mobileprovision */ = {isa = PBXFileReference; lastKnownFileType = file; path = UoftTriathlon_AppStore_2026.mobileprovision; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,6 +50,7 @@
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
+				B9C7FA2F2F0AE41F0057CADE /* UoftTriathlon_AppStore_2026.mobileprovision */,
 				B91572A32F02F12B000302CD /* UoftTriathlonuofttriclubappAppStore.mobileprovision */,
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
@@ -114,7 +117,6 @@
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -147,6 +149,7 @@
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
+				B9C7FA302F0AE41F0057CADE /* UoftTriathlon_AppStore_2026.mobileprovision in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				B91572A42F02F12B000302CD /* UoftTriathlonuofttriclubappAppStore.mobileprovision in Resources */,
@@ -303,7 +306,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = GAS64SD6G5;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Uoft Triathlon";
@@ -328,8 +331,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = GAS64SD6G5;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Uoft Triathlon";
@@ -342,6 +346,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = uofttri.club.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

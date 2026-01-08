@@ -1,4 +1,4 @@
-# 📱 Mobile App Implementation Plan
+ -# 📱 Mobile App Implementation Plan
 ## UofT Triathlon Club - PWA → Capacitor → React Native
 
 ---

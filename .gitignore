@@ -34,7 +34,6 @@ dist/
 
 # Capacitor
 .capacitor/
-ios/
 android/
 
 # Logs and OS cruft
