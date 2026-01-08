@@ -83,11 +83,6 @@
   z-index: 10001; /* Above bottom nav (10000) but below modals */
 }
 
-/* Add bottom padding to main content when banner is at bottom on iOS */
-body.ios-banner-active main {
-  padding-bottom: calc(24px + 60px + env(safe-area-inset-bottom, 0px) + 8px) !important; /* Banner height (24px) + nav height (60px) + safe area + spacing (8px) */
-}
-
 .navbar {
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
   padding: 1rem 0;
