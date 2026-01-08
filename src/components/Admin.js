@@ -337,6 +337,8 @@ const Admin = () => {
         .filter((m) => m.length > 0)
         .map((m) => ({ message: m }));
       
+      console.log('Saving banner:', { enabled: bannerForm.enabled, itemsCount: itemsToSend.length, items: itemsToSend });
+      
       const resp = await fetch(`${API_BASE_URL}/site/banner`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -354,6 +356,9 @@ const Admin = () => {
         const payload = await resp.json().catch(() => ({}));
         throw new Error(payload.error || 'Failed to update banner');
       }
+      
+      const payload = await resp.json().catch(() => ({}));
+      console.log('Banner save response:', payload);
       
       showNotification('Banner updated successfully!', 'success');
       
