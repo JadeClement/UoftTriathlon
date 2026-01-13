@@ -34,20 +34,34 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       const savedUser = localStorage.getItem('triathlonUser');
       const savedToken = localStorage.getItem('triathlonToken');
+      const lastLoginTimestamp = localStorage.getItem('triathlonLastLogin');
       
       console.log('📦 Saved user from localStorage:', savedUser);
       console.log('🔑 Saved token from localStorage:', savedToken ? 'present' : 'missing');
+      console.log('🌐 Online status:', navigator.onLine);
       
       if (savedUser && savedToken) {
         try {
           const parsedUser = JSON.parse(savedUser);
           console.log('✅ Parsed user successfully:', parsedUser);
           
-          // Validate token before setting user
+          // If offline, allow cached login without validation (for offline mode support)
+          if (!navigator.onLine) {
+            console.log('📴 Offline mode: Using cached login without token validation');
+            setCurrentUser(parsedUser);
+            setLoading(false);
+            console.log('🏁 AuthContext loading complete (offline mode)');
+            return;
+          }
+          
+          // Online: Validate token before setting user
           const isValid = await isTokenValid();
           if (isValid) {
             console.log('✅ Token is valid, setting current user');
             setCurrentUser(parsedUser);
+            
+            // Update last login timestamp
+            localStorage.setItem('triathlonLastLogin', Date.now().toString());
             
             // Register for push notifications (if on native platform)
             registerForPushNotifications(parsedUser.id).catch(error => {
@@ -59,7 +73,19 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (error) {
           console.error('❌ Error parsing saved user:', error);
-          handleTokenExpired('Invalid user data');
+          // If offline, still allow cached login even if parsing had issues
+          if (!navigator.onLine) {
+            console.log('📴 Offline mode: Attempting to use cached login despite parsing error');
+            try {
+              const parsedUser = JSON.parse(savedUser);
+              setCurrentUser(parsedUser);
+            } catch (parseError) {
+              console.error('❌ Could not parse user even in offline mode');
+              handleTokenExpired('Invalid user data');
+            }
+          } else {
+            handleTokenExpired('Invalid user data');
+          }
         }
       } else {
         console.log('❌ No saved user or token found in localStorage');
@@ -139,6 +165,7 @@ export const AuthProvider = ({ children }) => {
       // Store user and token separately
       localStorage.setItem('triathlonUser', JSON.stringify(normalizedUser));
       localStorage.setItem('triathlonToken', token);
+      localStorage.setItem('triathlonLastLogin', Date.now().toString());
       console.log('💾 User and token stored in localStorage');
       
       setCurrentUser(normalizedUser);
@@ -212,6 +239,7 @@ export const AuthProvider = ({ children }) => {
       // Store user and token separately
       localStorage.setItem('triathlonUser', JSON.stringify(normalizedUser));
       localStorage.setItem('triathlonToken', token);
+      localStorage.setItem('triathlonLastLogin', Date.now().toString());
       console.log('💾 User and token stored in localStorage');
       
       setCurrentUser(normalizedUser);
@@ -326,11 +354,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Periodic token validation (every 5 minutes)
+  // Periodic token validation (every 5 minutes) - skip when offline
   useEffect(() => {
     if (!currentUser) return;
 
     const validateTokenPeriodically = async () => {
+      // Skip validation when offline (allow offline mode)
+      if (!navigator.onLine) {
+        console.log('📴 Offline mode: Skipping periodic token validation');
+        return;
+      }
+      
       const isValid = await isTokenValid();
       if (!isValid) {
         console.warn('⚠️ Periodic token validation failed, logging out user');

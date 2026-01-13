@@ -277,6 +277,30 @@ const Login = () => {
   // Check if offline
   const isOffline = !navigator.onLine;
   
+  // Check if there's a cached login available for offline mode
+  const hasCachedLogin = () => {
+    if (!isOffline) return false;
+    const savedUser = localStorage.getItem('triathlonUser');
+    const savedToken = localStorage.getItem('triathlonToken');
+    return !!(savedUser && savedToken);
+  };
+  
+  // Handle continue offline
+  const handleContinueOffline = () => {
+    const savedUser = localStorage.getItem('triathlonUser');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        // Update auth context by triggering a re-initialization
+        // The AuthContext will detect offline mode and use cached login
+        window.location.reload();
+      } catch (error) {
+        console.error('Error parsing cached user:', error);
+        setErrorAndScroll('Unable to load cached login. Please connect to the internet to sign in.');
+      }
+    }
+  };
+  
   // Check if in Capacitor app for styling
   const isNativeApp = Capacitor.isNativePlatform();
 
@@ -299,8 +323,30 @@ const Login = () => {
               📴 <strong>You're offline</strong>
             </p>
             <p style={{ margin: '0.5rem 0 0 0', fontSize: '14px' }}>
-              Login requires an internet connection. If you're already logged in, you can use the app offline.
+              {hasCachedLogin() 
+                ? "You have a cached login. You can continue using the app offline, or connect to the internet to sign in with a different account."
+                : "Login requires an internet connection. If you're already logged in, you can use the app offline."}
             </p>
+            {hasCachedLogin() && (
+              <button
+                type="button"
+                onClick={handleContinueOffline}
+                style={{
+                  marginTop: '0.75rem',
+                  padding: '0.5rem 1rem',
+                  background: '#4169E1',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  width: '100%'
+                }}
+              >
+                Continue Offline with Last Login
+              </button>
+            )}
           </div>
         )}
         
