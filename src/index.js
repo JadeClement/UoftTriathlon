@@ -15,6 +15,10 @@ root.render(
 // Only enable in production to avoid development errors
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   window.addEventListener('load', () => {
+    let updatePrompted = false; // Track if we've already prompted for this update
+    let userAcceptedUpdate = false; // Track if user accepted the update
+    let reloadAttempted = false; // Prevent infinite reload loops
+    
     navigator.serviceWorker
       .register('/service-worker.js', {
         scope: '/'
@@ -38,21 +42,61 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
               // New service worker available
               console.log('🔄 New service worker available');
               
-              // Optionally show update notification to user
-              // Note: Service worker update confirmation - keeping as is for now
-              // Could be replaced with a custom modal if needed
-              if (window.confirm('A new version is available. Reload to update?')) {
-                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                window.location.reload();
+              // Only show prompt once per update
+              if (!updatePrompted) {
+                updatePrompted = true;
+                
+                // Optionally show update notification to user
+                // Note: Service worker update confirmation - keeping as is for now
+                // Could be replaced with a custom modal if needed
+                if (window.confirm('A new version is available. Reload to update?')) {
+                  userAcceptedUpdate = true;
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  // Don't reload here - let controllerchange handle it
+                } else {
+                  // User declined - reset flag after a delay to allow future updates
+                  setTimeout(() => {
+                    updatePrompted = false;
+                  }, 5000);
+                }
               }
             }
           });
         });
         
+        // Check if there's already a waiting service worker on page load
+        if (registration.waiting) {
+          console.log('🔄 Waiting service worker detected on page load');
+          if (!updatePrompted) {
+            updatePrompted = true;
+            if (window.confirm('A new version is available. Reload to update?')) {
+              userAcceptedUpdate = true;
+              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } else {
+              setTimeout(() => {
+                updatePrompted = false;
+              }, 5000);
+            }
+          }
+        }
+        
         // Listen for controller change (service worker updated)
+        // Only auto-reload if user accepted the update
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          console.log('🔄 Service worker controller changed, reloading...');
-          window.location.reload();
+          console.log('🔄 Service worker controller changed');
+          if (userAcceptedUpdate && !reloadAttempted) {
+            console.log('🔄 Reloading due to accepted update...');
+            reloadAttempted = true; // Prevent multiple reloads
+            userAcceptedUpdate = false; // Reset flag
+            updatePrompted = false; // Reset prompt flag
+            // Use a small delay to ensure the new service worker is ready
+            setTimeout(() => {
+              window.location.reload();
+            }, 100);
+          } else {
+            console.log('🔄 Controller changed but user did not accept update, skipping reload');
+            updatePrompted = false; // Reset so they can be prompted again if needed
+          }
         });
       })
       .catch((error) => {

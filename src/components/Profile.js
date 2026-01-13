@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getFieldsForSport } from '../config/sportFields';
 import { isStandalone } from '../utils/pwaDetection';
+import { Capacitor } from '@capacitor/core';
 import ConfirmModal from './ConfirmModal';
 import './Profile.css';
 
@@ -1236,9 +1237,8 @@ const Profile = () => {
           </div>
         )}
 
-        {/* Notification Preferences Section - Only show if app is installed and for user's own profile */}
-        {/* TODO: Uncomment isStandalone() check when ready to restrict to installed app only */}
-        {isUserProfile && isMember(currentUser) && /* isStandalone() && */ true && (
+        {/* Notification Preferences Section - Only show on iOS apps, not in browser */}
+        {isUserProfile && isMember(currentUser) && Capacitor.getPlatform() === 'ios' && (
           <div style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
             <div 
               className="notification-preferences-header"
