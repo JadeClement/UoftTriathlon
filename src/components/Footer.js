@@ -1,10 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Capacitor } from '@capacitor/core';
 import './Footer.css';
 
 const Footer = () => {
   const { currentUser, logout } = useAuth();
+  
+  // Hide footer on iOS native app to make it look more like a native app
+  const isIOS = Capacitor.getPlatform() === 'ios';
+  if (isIOS && Capacitor.isNativePlatform()) {
+    return null;
+  }
 
   const handleLogout = () => {
     logout();
