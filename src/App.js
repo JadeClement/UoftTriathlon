@@ -15,6 +15,7 @@ import WorkoutDetail from './components/WorkoutDetail';
 import EventDetail from './components/EventDetail';
 import RaceDetail from './components/RaceDetail';
 import Profile from './components/Profile';
+import Settings from './components/Settings';
 import FAQ from './components/FAQ';
 import Resources from './components/Resources';
 import TeamGear from './components/TeamGear';
@@ -29,6 +30,7 @@ import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
 import SimpleNotification from './components/SimpleNotification';
 import { setNavigationFunction, getPendingNavigation } from './utils/notificationNavigation';
+import { startPeriodicSync, stopPeriodicSync } from './services/calendarSyncService';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -145,6 +147,17 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // Start periodic calendar sync for iOS users
+  useEffect(() => {
+    if (currentUser) {
+      startPeriodicSync(5 * 60 * 1000); // Check every 5 minutes
+    }
+    
+    return () => {
+      stopPeriodicSync();
+    };
+  }, [currentUser]);
+  
   // Set up navigation function for notification handling
   useEffect(() => {
     setNavigationFunction(navigate);
@@ -233,6 +246,7 @@ function AppContent() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:role/:name" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
           <Route path="/logout" element={<Logout />} />
           <Route path="/reset-password" element={<ResetPassword />} />

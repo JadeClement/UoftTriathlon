@@ -236,6 +236,34 @@ async function initializeDatabase() {
     `);
     console.log('✅ Notification preferences table created');
 
+    // Create calendar_preferences table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calendar_preferences (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tuesday_swim BOOLEAN DEFAULT FALSE,
+        tuesday_track BOOLEAN DEFAULT FALSE,
+        thursday_swim BOOLEAN DEFAULT FALSE,
+        thursday_run BOOLEAN DEFAULT FALSE,
+        sunday_swim BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Calendar preferences table created');
+
+    // Create calendar_synced_workouts table to track which workouts have been added to user calendars
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calendar_synced_workouts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        workout_id INTEGER NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
+        synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, workout_id)
+      )
+    `);
+    console.log('✅ Calendar synced workouts table created');
+
     // Create role_change_notifications table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS role_change_notifications (

@@ -106,6 +106,16 @@ console.log('🔍 Uploads directory exists:', require('fs').existsSync(uploadsPa
 
 app.use('/uploads', express.static(uploadsPath));
 
+// Debug middleware to log all requests to /api/users/*
+app.use('/api/users', (req, res, next) => {
+  console.log(`📡 [${req.method}] /api/users${req.path}`);
+  console.log('📡 Request headers:', {
+    authorization: req.headers.authorization ? 'Present' : 'Missing',
+    'content-type': req.headers['content-type']
+  });
+  next();
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
@@ -119,6 +129,14 @@ app.use('/api/gear', gearRoutes);
 app.use('/api/merch-orders', merchRoutes);
 app.use('/api/test-events', testEventsRoutes);
 app.use('/api/records', recordsRoutes);
+
+// 404 handler for API routes (must be after all routes)
+app.use('/api/*', (req, res) => {
+  console.log(`❌ 404: Route not found - ${req.method} ${req.path}`);
+  console.log('❌ Full URL:', req.url);
+  console.log('❌ Base URL:', req.baseUrl);
+  res.status(404).json({ error: 'Route not found' });
+});
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
