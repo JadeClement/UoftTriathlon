@@ -160,7 +160,10 @@ const WorkoutDetail = () => {
         const errorText = await workoutResponse.text().catch(() => 'Unknown error');
         let errorMsg = `Failed to load workout: ${workoutResponse.status}`;
         
-        if (workoutResponse.status === 404) {
+        // Check if offline and show appropriate message
+        if (!navigator.onLine) {
+          errorMsg = 'You are offline. This workout cannot be loaded. Please check your internet connection.';
+        } else if (workoutResponse.status === 404) {
           errorMsg = 'Workout not found. It may have been deleted.';
         } else if (workoutResponse.status === 401) {
           errorMsg = 'Authentication required. Please log in.';
@@ -281,7 +284,12 @@ const WorkoutDetail = () => {
       setLoading(false);
     } catch (error) {
       console.error('❌ Error loading workout details:', error);
-      setError(error.message || 'Failed to load workout details. Please try again.');
+      // Check if offline and show appropriate message
+      if (!navigator.onLine) {
+        setError('You are offline. This workout cannot be loaded. Please check your internet connection.');
+      } else {
+        setError(error.message || 'Failed to load workout details. Please try again.');
+      }
       setLoading(false);
     }
   }, [API_BASE_URL, id, currentUser]);
@@ -1140,6 +1148,7 @@ const WorkoutDetail = () => {
 
   // Show error if there's an error and no cached data
   if (error && !cachedWorkout) {
+    const isOffline = !navigator.onLine;
     return (
       <div className="workout-detail-container">
         <div className="container">
@@ -1149,30 +1158,32 @@ const WorkoutDetail = () => {
           <div className="error" style={{ 
             padding: '2rem', 
             textAlign: 'center',
-            backgroundColor: '#fee',
-            border: '1px solid #fcc',
+            backgroundColor: isOffline ? '#fef3c7' : '#fee',
+            border: `1px solid ${isOffline ? '#fbbf24' : '#fcc'}`,
             borderRadius: '4px',
             margin: '2rem 0'
           }}>
-            <h2>Error Loading Workout</h2>
-            <p>{error}</p>
-            <button 
-              onClick={() => {
-                setError(null);
-                loadWorkoutDetails();
-              }}
-              style={{
-                marginTop: '1rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Try Again
-            </button>
+            <h2>{isOffline ? '📴 You Are Offline' : 'Error Loading Workout'}</h2>
+            <p>{isOffline ? 'This workout cannot be loaded while you are offline. Please check your internet connection and try again.' : error}</p>
+            {!isOffline && (
+              <button 
+                onClick={() => {
+                  setError(null);
+                  loadWorkoutDetails();
+                }}
+                style={{
+                  marginTop: '1rem',
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Try Again
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1180,6 +1191,7 @@ const WorkoutDetail = () => {
   }
 
   if (!workout && !cachedWorkout && !error) {
+    const isOffline = !navigator.onLine;
     return (
       <div className="workout-detail-container">
         <div className="container">
@@ -1189,13 +1201,16 @@ const WorkoutDetail = () => {
           <div className="error" style={{ 
             padding: '2rem', 
             textAlign: 'center',
-            backgroundColor: '#fee',
-            border: '1px solid #fcc',
+            backgroundColor: isOffline ? '#fef3c7' : '#fee',
+            border: `1px solid ${isOffline ? '#fbbf24' : '#fcc'}`,
             borderRadius: '4px',
             margin: '2rem 0'
           }}>
-            <h2>Workout Not Found</h2>
-            <p>The workout you're looking for doesn't exist or has been deleted.</p>
+            <h2>{isOffline ? '📴 You Are Offline' : 'Workout Not Found'}</h2>
+            <p>{isOffline 
+              ? 'This workout cannot be loaded while you are offline. Please check your internet connection and try again.'
+              : 'The workout you\'re looking for doesn\'t exist or has been deleted.'}
+            </p>
             <button 
               onClick={() => navigate('/forum')}
               style={{

@@ -105,6 +105,10 @@ const EventDetail = () => {
         console.error('❌ Event response not ok');
         const errorText = await eventResponse.text();
         console.error('❌ Error response:', errorText);
+        // If offline, set event to null so offline message shows
+        if (!navigator.onLine) {
+          setEvent(null);
+        }
       }
 
       // Load comments (will be implemented when backend is ready)
@@ -114,6 +118,10 @@ const EventDetail = () => {
       console.log('✅ EventDetail: Finished loading event details');
     } catch (error) {
       console.error('❌ Error loading event details:', error);
+      // If offline, set event to null so offline message shows
+      if (!navigator.onLine) {
+        setEvent(null);
+      }
       setLoading(false);
     }
   };
@@ -268,7 +276,30 @@ const EventDetail = () => {
   }
 
   if (!event) {
-    return <div className="error">Event not found</div>;
+    const isOffline = !navigator.onLine;
+    return (
+      <div className="event-detail-container">
+        <div className="container">
+          <button className="back-btn" onClick={() => navigate('/forum?tab=events')}>
+            ← Back to Forum
+          </button>
+          <div className="error" style={{ 
+            padding: '2rem', 
+            textAlign: 'center',
+            backgroundColor: isOffline ? '#fef3c7' : '#fee',
+            border: `1px solid ${isOffline ? '#fbbf24' : '#fcc'}`,
+            borderRadius: '4px',
+            margin: '2rem 0'
+          }}>
+            <h2>{isOffline ? '📴 You Are Offline' : 'Event Not Found'}</h2>
+            <p>{isOffline 
+              ? 'This event cannot be loaded while you are offline. Please check your internet connection and try again.'
+              : 'The event you\'re looking for doesn\'t exist or has been deleted.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

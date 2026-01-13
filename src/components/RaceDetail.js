@@ -70,11 +70,21 @@ const RaceDetail = () => {
         setIsSignedUp(data.isSignedUp || false);
       } else {
         console.error('Failed to load race details');
-        navigate('/races');
+        // If offline, don't navigate away - show offline message instead
+        if (!navigator.onLine) {
+          setRace(null);
+        } else {
+          navigate('/races');
+        }
       }
     } catch (error) {
       console.error('Error loading race details:', error);
-      navigate('/races');
+      // If offline, don't navigate away - show offline message instead
+      if (!navigator.onLine) {
+        setRace(null);
+      } else {
+        navigate('/races');
+      }
     } finally {
       setLoading(false);
     }
@@ -174,9 +184,28 @@ const RaceDetail = () => {
   }
 
   if (!race) {
+    const isOffline = !navigator.onLine;
     return (
       <div className="race-detail-container">
-        <div className="error">Race not found</div>
+        <div className="container">
+          <button onClick={() => navigate('/races')} className="back-btn">
+            ← Back to Races
+          </button>
+          <div className="error" style={{ 
+            padding: '2rem', 
+            textAlign: 'center',
+            backgroundColor: isOffline ? '#fef3c7' : '#fee',
+            border: `1px solid ${isOffline ? '#fbbf24' : '#fcc'}`,
+            borderRadius: '4px',
+            margin: '2rem 0'
+          }}>
+            <h2>{isOffline ? '📴 You Are Offline' : 'Race Not Found'}</h2>
+            <p>{isOffline 
+              ? 'This race cannot be loaded while you are offline. Please check your internet connection and try again.'
+              : 'The race you\'re looking for doesn\'t exist or has been deleted.'}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
