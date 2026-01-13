@@ -22,6 +22,24 @@ function linkify(text) {
   let result = input.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
     // Clean up the URL - add https:// if it doesn't start with http
     const cleanUrl = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
+    
+    // Check if it's a same-domain link (for internal navigation in app)
+    try {
+      const linkUrl = new URL(cleanUrl);
+      const currentOrigin = window.location.origin;
+      const isSameDomain = linkUrl.origin === currentOrigin || 
+                          linkUrl.hostname === 'www.uoft-tri.club' || 
+                          linkUrl.hostname === 'uoft-tri.club';
+      
+      if (isSameDomain) {
+        // Mark as internal link - will be handled by click interceptor
+        return `<a href="${cleanUrl}" data-internal-link="true" class="internal-banner-link">${label}</a>`;
+      }
+    } catch (e) {
+      // If URL parsing fails, treat as external
+    }
+    
+    // External links open in new tab
     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
   });
   
@@ -202,6 +220,45 @@ const Navbar = () => {
     }, banner.rotationIntervalMs || 6000);
     return () => clearInterval(interval);
   }, [banner.enabled, banner.items, banner.rotationIntervalMs, isBannerHovered]);
+
+  // Intercept clicks on internal banner links to use app navigation instead of opening browser
+  useEffect(() => {
+    if (!banner.enabled || !banner.items?.length) return;
+    
+    const handleBannerClick = (e) => {
+      // Only handle clicks within the banner
+      const bannerElement = e.target.closest('.site-banner');
+      if (!bannerElement) return;
+      
+      const link = e.target.closest('a[data-internal-link="true"]');
+      if (!link) return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const href = link.getAttribute('href');
+      if (!href) return;
+      
+      try {
+        const url = new URL(href, window.location.origin);
+        const path = url.pathname + url.search + url.hash;
+        
+        // Use React Router navigation for internal links
+        navigate(path);
+      } catch (error) {
+        console.error('Error navigating to internal link:', error);
+        // Fallback to regular navigation
+        window.location.href = href;
+      }
+    };
+    
+    // Use event delegation on document since banner content is dynamically rendered
+    document.addEventListener('click', handleBannerClick, true);
+    
+    return () => {
+      document.removeEventListener('click', handleBannerClick, true);
+    };
+  }, [banner.enabled, banner.items, navigate]);
 
   // Track mobile state
   useEffect(() => {
