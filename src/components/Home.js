@@ -103,7 +103,7 @@ const Home = () => {
               </p>
               <p>
                 Our team consists of athletes from all backgrounds and experience levels, from beginners 
-                to elite competitors. Whether you’re training for fun or chasing speed, you’ll find coached practices, supportive teammates, and year-round motivation!
+                to elite competitors. Whether you're training for fun or chasing speed, you'll find coached practices, supportive teammates, and year-round motivation!
               </p>
               <Link to="/join-us" className="btn btn-primary">Join Us</Link>
             </div>
@@ -118,6 +118,28 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Sponsors Section */}
+      <section className="sponsors section">
+        <div className="container">
+          <h2 className="section-title">Our Sponsors</h2>
+          <div className="sponsors-content">
+            <div className="sponsor-image">
+              <img 
+                src="/images/enduro.png" 
+                alt="Enduro Sponsor"
+                className="sponsor-logo"
+              />
+            </div>
+            <div className="sponsor-image">
+              <img 
+                src="/images/blacksmith.png" 
+                alt="Blacksmith Sponsor"
+                className="sponsor-logo"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
 
       
     </div>
