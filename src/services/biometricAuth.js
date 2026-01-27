@@ -1,5 +1,18 @@
-import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
+
+// Dynamically import Preferences to avoid web build errors
+const getPreferences = async () => {
+  if (!Capacitor.isNativePlatform()) {
+    return null;
+  }
+  try {
+    const { Preferences } = await import('@capacitor/preferences');
+    return Preferences;
+  } catch (error) {
+    console.warn('Failed to load @capacitor/preferences:', error);
+    return null;
+  }
+};
 
 const BIOMETRIC_CREDENTIALS_KEY = 'biometric_credentials';
 const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
@@ -95,6 +108,11 @@ export const saveBiometricCredentials = async (email, token) => {
       savedAt: Date.now(),
     };
 
+    const Preferences = await getPreferences();
+    if (!Preferences) {
+      throw new Error('Preferences not available');
+    }
+
     await Preferences.set({
       key: BIOMETRIC_CREDENTIALS_KEY,
       value: JSON.stringify(credentials),
@@ -122,6 +140,11 @@ export const getBiometricCredentials = async () => {
   }
 
   try {
+    const Preferences = await getPreferences();
+    if (!Preferences) {
+      return null;
+    }
+
     const credentialsData = await Preferences.get({ key: BIOMETRIC_CREDENTIALS_KEY });
     
     if (!credentialsData || !credentialsData.value) {
@@ -149,6 +172,11 @@ export const isBiometricEnabled = async () => {
   }
 
   try {
+    const Preferences = await getPreferences();
+    if (!Preferences) {
+      return false;
+    }
+
     const result = await Preferences.get({ key: BIOMETRIC_ENABLED_KEY });
     return result.value === 'true';
   } catch (error) {
@@ -167,6 +195,11 @@ export const clearBiometricCredentials = async () => {
   }
 
   try {
+    const Preferences = await getPreferences();
+    if (!Preferences) {
+      return;
+    }
+
     await Preferences.remove({ key: BIOMETRIC_CREDENTIALS_KEY });
     await Preferences.remove({ key: BIOMETRIC_ENABLED_KEY });
     console.log('✅ Biometric credentials cleared');
