@@ -1,0 +1,142 @@
+.settings-container {
+  margin-top: 0;
+  padding: 1rem 0;
+  background: #f8fafc;
+  min-height: calc(100vh - 70px);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.settings-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.settings-title {
+  color: #1E3A8A;
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+
+.settings-section {
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.settings-section-title {
+  color: #1E40AF;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.settings-section-description {
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.settings-preferences {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settings-pref-row {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0.75rem 0;
+}
+
+.settings-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: #374151;
+  user-select: none;
+  padding: 0.5rem 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  cursor: pointer;
+  accent-color: #4169E1;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.settings-checkbox-label span {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.settings-checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .settings-container {
+    padding: 0.25rem 0;
+  }
+  
+  .settings-content {
+    padding: 1.5rem;
+  }
+  
+  .settings-title {
+    font-size: 2rem;
+  }
+  
+  .settings-section-title {
+    font-size: 1.3rem;
+  }
+  
+  .container {
+    padding: 0 1rem;
+  }
+  
+  .settings-pref-row {
+    gap: 1.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-content {
+    padding: 1rem;
+  }
+  
+  .settings-title {
+    font-size: 1.8rem;
+  }
+  
+  .settings-section-title {
+    font-size: 1.2rem;
+  }
+}
