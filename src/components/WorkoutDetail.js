@@ -912,7 +912,9 @@ const WorkoutDetail = () => {
   useEffect(() => {
     const checkCalendarStatus = async () => {
       try {
-        if (!displayWorkout || !displayWorkout.workout_date || !displayWorkout.workout_time) {
+        // Use workout || cachedWorkout directly since displayWorkout is defined later
+        const currentWorkout = workout || cachedWorkout;
+        if (!currentWorkout || !currentWorkout.workout_date || !currentWorkout.workout_time) {
           return;
         }
 
@@ -924,7 +926,7 @@ const WorkoutDetail = () => {
         // First check localStorage for quick check
         try {
           const calendarEvents = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
-          if (calendarEvents.includes(displayWorkout.id)) {
+          if (calendarEvents.includes(currentWorkout.id)) {
             setIsInCalendar(true);
             return;
           }
@@ -936,11 +938,11 @@ const WorkoutDetail = () => {
         // This will gracefully fail if plugin isn't registered yet
         try {
           const hasEvent = await hasWorkoutInCalendar({
-            id: displayWorkout.id,
-            title: displayWorkout.title,
-            workout_type: displayWorkout.workout_type,
-            workout_date: displayWorkout.workout_date,
-            workout_time: displayWorkout.workout_time
+            id: currentWorkout.id,
+            title: currentWorkout.title,
+            workout_type: currentWorkout.workout_type,
+            workout_date: currentWorkout.workout_date,
+            workout_time: currentWorkout.workout_time
           });
           
           if (hasEvent) {
@@ -948,8 +950,8 @@ const WorkoutDetail = () => {
             // Update localStorage
             try {
               const events = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
-              if (!events.includes(displayWorkout.id)) {
-                events.push(displayWorkout.id);
+              if (!events.includes(currentWorkout.id)) {
+                events.push(currentWorkout.id);
                 localStorage.setItem('calendarEvents', JSON.stringify(events));
               }
             } catch (e) {
@@ -967,7 +969,7 @@ const WorkoutDetail = () => {
     };
 
     checkCalendarStatus();
-  }, [displayWorkout]);
+  }, [workout, cachedWorkout]);
   /* eslint-enable no-use-before-define */
 
   const handleAttendanceChange = (userId, isPresent) => {
