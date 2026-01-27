@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import {
+  checkBiometricAvailability,
+  authenticateWithBiometrics,
+  saveBiometricCredentials,
+  isBiometricEnabled,
+  performBiometricLogin,
+} from '../services/biometricAuth';
 import './Login.css';
 
 const Login = () => {
@@ -17,7 +24,11 @@ const Login = () => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
-  const [debugLogs, setDebugLogs] = useState(null);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState(null);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const [enableBiometricAfterLogin, setEnableBiometricAfterLogin] = useState(false);
 
   // Function to scroll to top of the page
   const scrollToTop = () => {
@@ -30,7 +41,7 @@ const Login = () => {
     scrollToTop();
   };
   
-  const { signup, login } = useAuth();
+  const { signup, login, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -71,6 +82,24 @@ const Login = () => {
       });
     }
   }, [location.search]);
+
+  // Check biometric availability on mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      if (Capacitor.isNativePlatform()) {
+        const availability = await checkBiometricAvailability();
+        setBiometricAvailable(availability.available);
+        setBiometricType(availability.biometryType);
+        
+        if (availability.available) {
+          const enabled = await isBiometricEnabled();
+          setBiometricEnabled(enabled);
+        }
+      }
+    };
+    
+    checkBiometric();
+  }, []);
 
   // Validation functions
   const validateEmail = (email) => {
@@ -137,6 +166,21 @@ const Login = () => {
         }
         const user = await login(email, password);
         console.log('🔐 Login: Login successful, user:', user);
+        
+        // If biometric is available and user wants to enable it, save credentials
+        if (enableBiometricAfterLogin && biometricAvailable && user) {
+          const token = localStorage.getItem('triathlonToken');
+          if (token) {
+            try {
+              await saveBiometricCredentials(email, token);
+              setBiometricEnabled(true);
+              console.log('✅ Biometric login enabled');
+            } catch (error) {
+              console.error('Error saving biometric credentials:', error);
+              // Don't fail the login if biometric save fails
+            }
+          }
+        }
       } else {
           // Check if offline - signup requires internet connection
         if (!navigator.onLine) {
@@ -301,6 +345,41 @@ const Login = () => {
     }
   };
   
+  // Handle biometric login
+  const handleBiometricLogin = async () => {
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    setBiometricLoading(true);
+    setError('');
+
+    try {
+      const credentials = await performBiometricLogin();
+      
+      if (!credentials) {
+        setBiometricLoading(false);
+        return;
+      }
+
+      // Use the token to login
+      if (loginWithToken) {
+        const user = await loginWithToken(credentials.token);
+        console.log('✅ Biometric login successful');
+        navigate('/');
+      } else {
+        // Fallback: use email/password if token login not available
+        // This shouldn't happen, but handle gracefully
+        setErrorAndScroll('Biometric login failed. Please use email and password.');
+      }
+    } catch (error) {
+      console.error('Biometric login error:', error);
+      setErrorAndScroll('Biometric authentication failed. Please try again or use email and password.');
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
+
   // Check if in Capacitor app for styling
   const isNativeApp = Capacitor.isNativePlatform();
 
@@ -350,6 +429,33 @@ const Login = () => {
           </div>
         )}
         
+        {/* Biometric Login Button */}
+        {isLogin && biometricAvailable && biometricEnabled && !loading && (
+          <div className="biometric-login-container">
+            <button
+              type="button"
+              onClick={handleBiometricLogin}
+              disabled={biometricLoading}
+              className="biometric-login-btn"
+            >
+              {biometricLoading ? (
+                'Authenticating...'
+              ) : (
+                <>
+                  {biometricType === 'faceID' ? '🔐' : '👆'} 
+                  {' '}
+                  {biometricType === 'faceID' ? 'Sign in with Face ID' : 
+                   biometricType === 'touchID' ? 'Sign in with Touch ID' : 
+                   'Sign in with Biometrics'}
+                </>
+              )}
+            </button>
+            <div className="biometric-divider">
+              <span>or</span>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="error-message">
             <div className="error-text">{error}</div>
@@ -460,6 +566,20 @@ const Login = () => {
           >
             {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
           </button>
+          
+          {/* Enable Biometric Option (only show after successful login attempt) */}
+          {isLogin && biometricAvailable && !biometricEnabled && (
+            <div className="biometric-option">
+              <label className="biometric-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={enableBiometricAfterLogin}
+                  onChange={(e) => setEnableBiometricAfterLogin(e.target.checked)}
+                />
+                <span>Enable {biometricType === 'faceID' ? 'Face ID' : biometricType === 'touchID' ? 'Touch ID' : 'Biometric'} login for faster access</span>
+              </label>
+            </div>
+          )}
         </form>
         
         <div className="toggle-mode">

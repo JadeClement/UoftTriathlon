@@ -13,7 +13,7 @@ import './MobileNav.css';
 const MobileNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, isMember, isAdmin, isExec } = useAuth();
+  const { currentUser, isAdmin, isExec } = useAuth();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const moreMenuRef = useRef(null);
   

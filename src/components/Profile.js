@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getFieldsForSport } from '../config/sportFields';
-import { isStandalone } from '../utils/pwaDetection';
 import { Capacitor } from '@capacitor/core';
 import ConfirmModal from './ConfirmModal';
 import './Profile.css';

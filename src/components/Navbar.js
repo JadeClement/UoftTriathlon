@@ -3,16 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import './Navbar.css';
-// Simple linkifier for the banner message: escapes HTML, then converts URLs to <a>
-function escapeHtml(input) {
-  if (!input) return '';
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 function linkify(text) {
   const input = text || '';
@@ -89,10 +79,11 @@ const Navbar = () => {
     return items.filter(item => !item.condition || item.condition());
   };
   
-  // Move order (right to left): Races → Coaches & Exec → Schedule → Join Us → Admin → Forum
-  const moveOrder = ['races', 'coachesExec', 'schedule', 'joinUs', 'admin', 'forum'];
-  
   // Listen for profile updates to refresh the navbar profile image
+  // Responsive navbar: calculate which items fit and move overflow to More dropdown
+  const isCalculatingRef = useRef(false);
+  
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const handleProfileUpdate = (event) => {
       console.log('📡 Navbar received profileUpdated event:', event.detail);
@@ -270,9 +261,6 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Responsive navbar: calculate which items fit and move overflow to More dropdown
-  const isCalculatingRef = useRef(false);
-  
   useEffect(() => {
     const calculateResponsiveLayout = () => {
       // Prevent re-entrancy
