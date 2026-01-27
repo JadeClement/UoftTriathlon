@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { installFetchInterceptor } from '../utils/installFetchInterceptor';
 import { registerForPushNotifications, unregisterFromPushNotifications } from '../services/pushNotificationService';
+import { clearBiometricCredentials } from '../services/biometricAuth';
 
 const AuthContext = createContext();
 
@@ -34,7 +35,6 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       const savedUser = localStorage.getItem('triathlonUser');
       const savedToken = localStorage.getItem('triathlonToken');
-      const lastLoginTimestamp = localStorage.getItem('triathlonLastLogin');
       
       console.log('📦 Saved user from localStorage:', savedUser);
       console.log('🔑 Saved token from localStorage:', savedToken ? 'present' : 'missing');
@@ -111,6 +111,11 @@ export const AuthProvider = ({ children }) => {
     // Unregister from push notifications on logout
     unregisterFromPushNotifications().catch(error => {
       console.error('❌ Error unregistering from push notifications:', error);
+    });
+    
+    // Clear biometric credentials on logout
+    clearBiometricCredentials().catch(error => {
+      console.error('❌ Error clearing biometric credentials:', error);
     });
     
     localStorage.removeItem('triathlonUser');
@@ -253,6 +258,63 @@ export const AuthProvider = ({ children }) => {
       return normalizedUser;
     } catch (error) {
       console.error('❌ Login error:', error);
+      throw error;
+    }
+  };
+
+  // Login with existing token (for biometric authentication)
+  const loginWithToken = async (token) => {
+    try {
+      console.log('🔐 Attempting login with token');
+      
+      // Validate token by fetching user profile
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Token is invalid or expired');
+      }
+
+      const responseData = await response.json();
+      const userData = responseData.user;
+      
+      // Normalize user data to ensure consistent field names
+      const normalizedUser = {
+        ...userData,
+        charterAccepted: userData.charter_accepted || userData.charterAccepted,
+        profilePictureUrl: userData.profile_picture_url || userData.profilePictureUrl,
+        phoneNumber: userData.phone_number || userData.phoneNumber,
+        bio: userData.bio,
+        sport: userData.sport,
+        resultsPublic: userData.results_public !== undefined ? userData.results_public : (userData.resultsPublic !== undefined ? userData.resultsPublic : false),
+        results_public: userData.results_public !== undefined ? userData.results_public : (userData.resultsPublic !== undefined ? userData.resultsPublic : false)
+      };
+      
+      // Remove duplicate fields to keep only normalized versions
+      delete normalizedUser.phone_number;
+      delete normalizedUser.profile_picture_url;
+      delete normalizedUser.charter_accepted;
+      
+      // Store user and token separately
+      localStorage.setItem('triathlonUser', JSON.stringify(normalizedUser));
+      localStorage.setItem('triathlonToken', token);
+      localStorage.setItem('triathlonLastLogin', Date.now().toString());
+      console.log('💾 User and token stored in localStorage');
+      
+      setCurrentUser(normalizedUser);
+      console.log('👤 Current user state set to:', normalizedUser);
+      
+      // Register for push notifications (if on native platform)
+      registerForPushNotifications(normalizedUser.id).catch(error => {
+        console.error('❌ Error registering for push notifications:', error);
+      });
+      
+      return normalizedUser;
+    } catch (error) {
+      console.error('❌ Token login error:', error);
       throw error;
     }
   };
@@ -446,6 +508,7 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     signup,
     login,
+    loginWithToken,
     logout,
     loading,
     isAdmin,

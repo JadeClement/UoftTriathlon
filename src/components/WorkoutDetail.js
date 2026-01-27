@@ -9,6 +9,8 @@ import { normalizeProfileImageUrl } from '../utils/imageUtils';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import { getFieldsForSport } from '../config/sportFields';
+import { Capacitor } from '@capacitor/core';
+import { addWorkoutToCalendar, hasWorkoutInCalendar } from '../services/calendarService';
 import './WorkoutDetail.css';
 
 const WorkoutDetail = () => {
@@ -24,7 +26,6 @@ const WorkoutDetail = () => {
     waitlist: cachedWaitlist,
     loading: workoutLoading,
     fromCache: workoutFromCache,
-    isOffline: workoutOffline,
     refresh: refreshWorkout
   } = useWorkout(id);
   
@@ -39,6 +40,8 @@ const WorkoutDetail = () => {
   const [isSignedUp, setIsSignedUp] = useState(false);
   const [isOnWaitlist, setIsOnWaitlist] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isInCalendar, setIsInCalendar] = useState(false);
+  const [checkingCalendar, setCheckingCalendar] = useState(false);
   const [attendance, setAttendance] = useState({});
   const [lateStatus, setLateStatus] = useState({});
   const [attendanceSaved, setAttendanceSaved] = useState(false);
@@ -294,6 +297,7 @@ const WorkoutDetail = () => {
     }
   }, [API_BASE_URL, id, currentUser]);
 
+  // eslint-disable-next-line no-unused-vars
   const isWorkoutArchived = () => {
     try {
       const workoutToCheck = displayWorkout || workout;
@@ -431,6 +435,7 @@ const WorkoutDetail = () => {
       lastWorkoutIdRef.current = id;
       loadWorkoutDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, navigate, isMember, id, cachedWorkout, loadWorkoutDetails]); // Removed 'workout' from deps to prevent infinite loop
 
   // Listen for profile updates to refresh profile pictures
@@ -448,6 +453,7 @@ const WorkoutDetail = () => {
     };
   }, [refreshWorkout, loadWorkoutDetails]);
 
+  // eslint-disable-next-line no-unused-vars
   const loadWorkoutDetails_legacy = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -848,6 +854,119 @@ const WorkoutDetail = () => {
     setShowCancelModal(false);
   };
 
+  const handleAddToCalendar = async () => {
+    if (!displayWorkout) {
+      showError('Workout information not available');
+      return;
+    }
+
+    if (!displayWorkout.workout_date || !displayWorkout.workout_time) {
+      showError('Workout date or time is missing');
+      return;
+    }
+
+    const isIOS = Capacitor.getPlatform() === 'ios';
+    if (!isIOS) {
+      showError('Calendar feature is only available on iOS');
+      return;
+    }
+
+    if (checkingCalendar) {
+      return; // Prevent multiple clicks
+    }
+
+    setCheckingCalendar(true);
+
+    try {
+      const result = await addWorkoutToCalendar({
+        id: displayWorkout.id,
+        title: displayWorkout.title,
+        workout_type: displayWorkout.workout_type,
+        workout_date: displayWorkout.workout_date,
+        workout_time: displayWorkout.workout_time,
+        description: displayWorkout.content,
+        capacity: displayWorkout.capacity
+      });
+      
+      if (result.success) {
+        setIsInCalendar(true);
+        // Store in localStorage to persist across page reloads
+        const calendarEvents = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
+        if (!calendarEvents.includes(displayWorkout.id)) {
+          calendarEvents.push(displayWorkout.id);
+          localStorage.setItem('calendarEvents', JSON.stringify(calendarEvents));
+        }
+        showSuccess('Workout added to calendar!');
+      }
+    } catch (error) {
+      console.error('Error adding workout to calendar:', error);
+      showError(error.message || 'Failed to add workout to calendar');
+    } finally {
+      setCheckingCalendar(false);
+    }
+  };
+
+  // Check if workout is in calendar on load
+  useEffect(() => {
+    const checkCalendarStatus = async () => {
+      try {
+        if (!displayWorkout || !displayWorkout.workout_date || !displayWorkout.workout_time) {
+          return;
+        }
+
+        const isIOS = Capacitor.getPlatform() === 'ios';
+        if (!isIOS) {
+          return;
+        }
+
+        // First check localStorage for quick check
+        try {
+          const calendarEvents = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
+          if (calendarEvents.includes(displayWorkout.id)) {
+            setIsInCalendar(true);
+            return;
+          }
+        } catch (e) {
+          // localStorage error - ignore
+        }
+
+        // Then check actual calendar (only if plugin is available)
+        // This will gracefully fail if plugin isn't registered yet
+        try {
+          const hasEvent = await hasWorkoutInCalendar({
+            id: displayWorkout.id,
+            title: displayWorkout.title,
+            workout_type: displayWorkout.workout_type,
+            workout_date: displayWorkout.workout_date,
+            workout_time: displayWorkout.workout_time
+          });
+          
+          if (hasEvent) {
+            setIsInCalendar(true);
+            // Update localStorage
+            try {
+              const events = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
+              if (!events.includes(displayWorkout.id)) {
+                events.push(displayWorkout.id);
+                localStorage.setItem('calendarEvents', JSON.stringify(events));
+              }
+            } catch (e) {
+              // localStorage error - ignore
+            }
+          }
+        } catch (error) {
+          // Calendar plugin not available - this is fine, just don't check
+          // Don't log as error since plugin might not be set up yet
+        }
+      } catch (error) {
+        // Catch any unexpected errors to prevent component crash
+        console.error('Error in checkCalendarStatus:', error);
+      }
+    };
+
+    checkCalendarStatus();
+  }, [displayWorkout]);
+
   const handleAttendanceChange = (userId, isPresent) => {
     console.log('📝 Attendance change:', { userId, isPresent, type: typeof userId });
     if (!userId) {
@@ -1236,6 +1355,11 @@ const WorkoutDetail = () => {
   const displaySignups = signups.length > 0 ? signups : (cachedSignups || []);
   const displayWaitlist = waitlist.length > 0 ? waitlist : (cachedWaitlist || []);
 
+  // Safety check - don't render if no workout data
+  if (!displayWorkout) {
+    return null;
+  }
+
   return (
     <div className="workout-detail-container">
       <div className="container">
@@ -1499,6 +1623,22 @@ const WorkoutDetail = () => {
                     {`You're ${formatOrdinal(getWaitlistPosition())} on the waitlist`}
                   </span>
                 )}
+              </div>
+              
+            </div>
+          )}
+          
+          {/* Add to Calendar button - iOS only, show if workout has date and time */}
+          {Capacitor.getPlatform() === 'ios' && displayWorkout && displayWorkout.workout_date && displayWorkout.workout_time && (
+            <div className="workout-actions">
+              <div className="calendar-button-container">
+                <button 
+                  onClick={handleAddToCalendar}
+                  className={`calendar-btn ${isInCalendar ? 'added-to-calendar' : ''}`}
+                  disabled={checkingCalendar}
+                >
+                  {checkingCalendar ? 'Adding...' : isInCalendar ? '✓ Added to Calendar' : '📅 Add to Calendar'}
+                </button>
               </div>
             </div>
           )}

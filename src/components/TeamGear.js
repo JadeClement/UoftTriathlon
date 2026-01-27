@@ -89,8 +89,6 @@ const TeamGear = () => {
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
   const [gearItems, setGearItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   // State to track current image index for each gear item
   const [currentImageIndex, setCurrentImageIndex] = useState({});
@@ -310,7 +308,7 @@ const TeamGear = () => {
         throw new Error(errorData.error || `Failed to remove image (${res.status})`);
       }
       
-      const result = await res.json();
+      await res.json();
       
       // Update local state
       setCurrentImages(prev => prev.filter(img => img !== imageUrl));
@@ -622,7 +620,7 @@ const TeamGear = () => {
         }
       }
 
-      const result = await response.json();
+      await response.json();
       
       // Show success modal with order details
       setOrderSuccessData({
@@ -1028,7 +1026,7 @@ const TeamGear = () => {
                     <div key={index} className="gear-image-item">
                       <img 
                         src={normalizeImageUrl(imageUrl)} 
-                        alt={`Image ${index + 1}`}
+                        alt={`${index + 1}`}
                         className="gear-image-preview"
                         onError={(e) => { e.target.src = '/images/placeholder-gear.svg'; }}
                       />
