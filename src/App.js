@@ -15,8 +15,6 @@ import WorkoutDetail from './components/WorkoutDetail';
 import EventDetail from './components/EventDetail';
 import RaceDetail from './components/RaceDetail';
 import Profile from './components/Profile';
-// Settings is iOS-only, use lazy loading to avoid bundling for web builds
-const Settings = lazy(() => import('./components/Settings'));
 import FAQ from './components/FAQ';
 import Resources from './components/Resources';
 import TeamGear from './components/TeamGear';
@@ -32,6 +30,9 @@ import RoleChangeNotification from './components/RoleChangeNotification';
 import SimpleNotification from './components/SimpleNotification';
 import { setNavigationFunction, getPendingNavigation } from './utils/notificationNavigation';
 import { startPeriodicSync, stopPeriodicSync } from './services/calendarSyncService';
+
+// Settings is iOS-only, use lazy loading to avoid bundling for web builds
+const Settings = lazy(() => import('./components/Settings'));
 
 // Scroll to top on route change
 const ScrollToTop = () => {
