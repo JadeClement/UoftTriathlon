@@ -151,7 +151,7 @@ const Profile = () => {
     };
 
     loadNotificationPrefs();
-  }, [isUserProfile, currentUser?.id, isMember]);
+  }, [isUserProfile, currentUser, isMember]);
 
   // Save notification preferences
   const saveNotificationPrefs = async (newPrefs) => {
@@ -297,7 +297,7 @@ const Profile = () => {
     };
 
     loadUserRecords();
-  }, [isUserProfile, currentUser?.id]);
+  }, [isUserProfile, currentUser, isMember]);
 
   // Load test events for dropdown
   useEffect(() => {

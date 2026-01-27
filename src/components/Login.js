@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import {
   checkBiometricAvailability,
-  authenticateWithBiometrics,
   saveBiometricCredentials,
   isBiometricEnabled,
   performBiometricLogin,
@@ -155,8 +154,8 @@ const Login = () => {
           setLoading(false);
           return;
         }
-        const user = await login(email, password);
-        console.log('🔐 Login: Login successful, user:', user);
+        await login(email, password);
+        console.log('🔐 Login: Login successful');
         
         // If biometric is available and user wants to enable it, save credentials
         if (enableBiometricAfterLogin && biometricAvailable && user) {
@@ -355,7 +354,7 @@ const Login = () => {
 
       // Use the token to login
       if (loginWithToken) {
-        const user = await loginWithToken(credentials.token);
+        await loginWithToken(credentials.token);
         console.log('✅ Biometric login successful');
         navigate('/');
       } else {

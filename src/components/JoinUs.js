@@ -5,7 +5,6 @@ const JoinUs = () => {
   const [isSticky, setIsSticky] = useState(false);
   const navRef = useRef(null);
   const navInitialTopRef = useRef(null);
-  const titleRefs = useRef({});
 
   useEffect(() => {
     const nav = navRef.current;

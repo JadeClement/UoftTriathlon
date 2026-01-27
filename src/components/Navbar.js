@@ -454,10 +454,6 @@ const Navbar = () => {
     setIsHamburgerOpen(false);
   };
 
-  const closeProfileMenu = () => {
-    setIsProfileOpen(false);
-  };
-
   const isActive = (path) => {
     return window.location.pathname === path;
   };
