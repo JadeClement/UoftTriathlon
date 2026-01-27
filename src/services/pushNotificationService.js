@@ -36,7 +36,6 @@ function setupEarlyNotificationListeners() {
     console.log('👆 Full notification object:', JSON.stringify(notification, null, 2));
     
     // Store for later processing if navigation isn't ready
-    pendingNotificationAction = notification;
     if (typeof window !== 'undefined') {
       window.pendingNotificationAction = notification;
     }
