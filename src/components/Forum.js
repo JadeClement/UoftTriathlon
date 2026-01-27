@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import { useForumPosts, useOnlineStatus } from '../hooks/useOfflineData';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
@@ -12,7 +11,7 @@ import { hapticImpact } from '../utils/haptics';
 import './Forum.css';
 
 const Forum = () => {
-  const { currentUser, isMember, isExec, isCoach, getUserRole } = useAuth();
+  const { currentUser, isMember, isExec, isCoach } = useAuth();
   const cachedUser = React.useMemo(() => {
     try {
       const raw = localStorage.getItem('triathlonUser');
@@ -23,14 +22,11 @@ const Forum = () => {
     }
   }, []);
   const effectiveUser = currentUser || cachedUser;
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('workouts');
   const [workoutPosts, setWorkoutPosts] = useState([]);
   const [allLoadedWorkouts, setAllLoadedWorkouts] = useState([]); // Store all loaded workouts from backend
   const [workoutsFullyLoaded, setWorkoutsFullyLoaded] = useState(false); // Track if we've loaded all workouts
   const [lastWorkoutFilter, setLastWorkoutFilter] = useState('all'); // Track last filter to detect changes
-  const [newWorkout, setNewWorkout] = useState('');
-  const [newEvent, setNewEvent] = useState('');
   const [loading, setLoading] = useState(true);
   
   // Offline data hooks
@@ -50,7 +46,6 @@ const Forum = () => {
   const [workoutFilter, setWorkoutFilter] = useState('all');
   const [timeFilter, setTimeFilter] = useState('upcoming'); // 'upcoming' | 'past'
   const [pastPage, setPastPage] = useState(1);
-  const [pastPagination, setPastPagination] = useState({ currentPage: 1, totalPages: 1, totalPosts: 0, hasMore: false });
   const [workoutForm, setWorkoutForm] = useState({
     title: '',
     type: 'swim',
@@ -275,6 +270,8 @@ const Forum = () => {
     saveWorkout 
   } = useWorkoutEdit(API_BASE_URL);
 
+  // ESLint: loadForumPosts is stable and we only want to rerun when effectiveUser or membership changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     console.log('🧭 Forum mount/useEffect: user', effectiveUser?.id, 'role', effectiveUser?.role);
     if (!effectiveUser) {
@@ -296,6 +293,8 @@ const Forum = () => {
   }, [effectiveUser, isMember]);
 
   // Listen for profile updates to refresh profile pictures
+  // ESLint: loadForumPosts is stable; this effect is intentionally only mounted once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const handleProfileUpdate = (event) => {
       console.log('🔄 Profile updated event received in Forum, refreshing posts...');
@@ -635,6 +634,7 @@ const Forum = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const loadEventRsvps = async (events) => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -718,6 +718,7 @@ const Forum = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleWorkoutSignUp = async (workoutId) => {
     // Check if offline - workout signups require online connection
     if (!navigator.onLine) {
