@@ -158,7 +158,7 @@ const Login = () => {
         console.log('🔐 Login: Login successful');
         
         // If biometric is available and user wants to enable it, save credentials
-        if (enableBiometricAfterLogin && biometricAvailable && user) {
+        if (enableBiometricAfterLogin && biometricAvailable) {
           const token = localStorage.getItem('triathlonToken');
           if (token) {
             try {
