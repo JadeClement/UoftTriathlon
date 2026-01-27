@@ -18,9 +18,6 @@ let isRegistered = false;
 let listenersSetup = false;
 let currentUserId = null;
 
-// Store pending notification for when app launches from notification
-let pendingNotificationAction = null;
-
 /**
  * Set up notification listeners immediately on module load
  * This ensures listeners are ready even if app launches from notification
@@ -627,6 +624,7 @@ async function showLocalNotification(notification) {
  * @deprecated Use handleNotificationNavigation from notificationNavigation.js instead
  * Kept as fallback for error handling
  */
+// eslint-disable-next-line no-unused-vars
 function handleNotificationAction(notification) {
   console.log('👆 Fallback handleNotificationAction called:', notification);
   

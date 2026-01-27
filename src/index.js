@@ -123,7 +123,6 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
     }
     
     // Prevent any new registrations by overriding the register method
-    const originalRegister = navigator.serviceWorker.register;
     navigator.serviceWorker.register = function() {
       console.log('🚫 Service worker registration blocked in development mode');
       return Promise.reject(new Error('Service worker disabled in development'));

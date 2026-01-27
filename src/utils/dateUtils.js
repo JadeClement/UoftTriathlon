@@ -3,7 +3,7 @@
  * IMPORTANT: Workout dates/times are in America/Toronto timezone (EST/EDT)
  * User action timestamps (signups, cancellations) are in UTC (no timezone assumption)
  */
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { fromZonedTime } from 'date-fns-tz';
 
 const TORONTO_TIMEZONE = 'America/Toronto';
 

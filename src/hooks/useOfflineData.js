@@ -5,7 +5,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { syncForumPosts, syncWorkout, syncRaces } from '../services/dataSync';
-import { isOnline } from '../utils/offlineCheck';
 
 /**
  * Hook for forum posts with offline support
@@ -51,7 +50,8 @@ export function useForumPosts(params = {}) {
     } finally {
       setLoading(false);
     }
-  }, [enabled, JSON.stringify(params)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {
