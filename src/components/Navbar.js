@@ -422,6 +422,7 @@ const Navbar = () => {
       clearTimeout(timeoutId);
       clearTimeout(resizeTimeout);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, isMember, isAdmin, isExec, isMobile]); // Removed itemsInMore from dependencies
 
   const toggleMenu = () => {

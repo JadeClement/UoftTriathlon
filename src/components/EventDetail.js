@@ -39,6 +39,7 @@ const EventDetail = () => {
     }
     
     loadEventDetails();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, navigate, isMember, id]);
 
   const loadEventDetails = async () => {

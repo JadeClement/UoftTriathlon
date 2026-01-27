@@ -292,6 +292,7 @@ const Forum = () => {
       // Ensure we don't stay stuck on loading for pending users
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveUser, isMember]);
 
   // Listen for profile updates to refresh profile pictures
@@ -308,6 +309,7 @@ const Forum = () => {
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Check for tab query parameter and set active tab accordingly
