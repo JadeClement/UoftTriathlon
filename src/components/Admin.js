@@ -997,8 +997,6 @@ const Admin = () => {
     setDeleteTestEventConfirm({ isOpen: false, eventId: null });
     
     if (!eventId) return;
-    
-    const confirmMessage = `Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`;
 
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -1131,6 +1129,8 @@ const Admin = () => {
     }
   };
 
+  // ESLint: loadTestEvents and selectedTestEvent are stable; we only want to rerun when activeTab changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (activeTab === 'test-events' && !selectedTestEvent) {
       loadTestEvents();
@@ -1138,6 +1138,8 @@ const Admin = () => {
   }, [activeTab]);
 
   // Load workouts when sport or date changes in test event form
+  // ESLint: loadAvailableWorkouts is stable; we only want to rerun when form fields change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (showTestEventModal && testEventForm.sport) {
       loadAvailableWorkouts(testEventForm.sport, testEventForm.date || null);

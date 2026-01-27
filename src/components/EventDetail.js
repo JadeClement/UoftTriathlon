@@ -25,6 +25,8 @@ const EventDetail = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
+  // ESLint: loadEventDetails is defined below and is stable; we only want to rerun when user/auth changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');

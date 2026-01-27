@@ -272,6 +272,8 @@ const Forum = () => {
 
   // ESLint: loadForumPosts is stable and we only want to rerun when effectiveUser or membership changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // ESLint: loadForumPosts is stable and we only want to rerun when effectiveUser or membership changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     console.log('🧭 Forum mount/useEffect: user', effectiveUser?.id, 'role', effectiveUser?.role);
     if (!effectiveUser) {

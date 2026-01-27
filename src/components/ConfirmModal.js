@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './ConfirmModal.css';
 
