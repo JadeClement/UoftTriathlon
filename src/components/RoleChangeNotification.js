@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { showError, showSuccess } from './SimpleNotification';
+import { showSuccess } from './SimpleNotification';
 import './RoleChangeNotification.css';
 
 const RoleChangeNotification = ({ currentUser }) => {

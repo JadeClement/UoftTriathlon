@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import './Schedule.css';
 
 const Schedule = () => {
-  const { currentUser } = useAuth();
   const [activeSeason, setActiveSeason] = useState('Spring');
 
 

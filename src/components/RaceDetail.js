@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
@@ -17,21 +17,7 @@ const RaceDetail = () => {
   const [signupLoading, setSignupLoading] = useState(false);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
-  useEffect(() => {
-    if (!currentUser) {
-      navigate('/login');
-      return;
-    }
-    
-    if (!isMember(currentUser)) {
-      navigate('/login');
-      return;
-    }
-    
-    loadRaceDetails();
-  }, [currentUser, navigate, isMember, id]);
-
-  const loadRaceDetails = async () => {
+  const loadRaceDetails = useCallback(async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -88,7 +74,21 @@ const RaceDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE_URL, id, navigate]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+    
+    if (!isMember(currentUser)) {
+      navigate('/login');
+      return;
+    }
+    
+    loadRaceDetails();
+  }, [currentUser, navigate, isMember, loadRaceDetails]);
 
   const handleSignup = async () => {
     if (signupLoading) return;

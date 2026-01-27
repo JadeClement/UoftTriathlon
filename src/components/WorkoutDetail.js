@@ -387,6 +387,7 @@ const WorkoutDetail = () => {
   };
 
   // Sync cached workout data to state
+  /* eslint-disable no-use-before-define */
   useEffect(() => {
     if (cachedWorkout) {
       setWorkout(cachedWorkout);
@@ -966,6 +967,7 @@ const WorkoutDetail = () => {
 
     checkCalendarStatus();
   }, [displayWorkout]);
+  /* eslint-enable no-use-before-define */
 
   const handleAttendanceChange = (userId, isPresent) => {
     console.log('📝 Attendance change:', { userId, isPresent, type: typeof userId });
