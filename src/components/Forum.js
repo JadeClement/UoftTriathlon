@@ -755,6 +755,7 @@ const Forum = () => {
       });
 
       if (response.ok) {
+        // eslint-disable-next-line no-unused-vars
         const result = await response.json();
         
         // Reload signup data from backend to ensure accuracy
@@ -777,6 +778,7 @@ const Forum = () => {
     return signups.some(signup => signup && signup.user_id === currentUser.id);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const isWorkoutFull = (workoutId) => {
     if (!workoutId) return false;
     const workout = workoutPosts.find(w => w && w.id === workoutId);
@@ -785,6 +787,7 @@ const Forum = () => {
     return currentSignups >= workout.capacity;
   };
 
+  // eslint-disable-next-line no-unused-vars
   const isWorkoutArchived = (post) => {
     if (!post || !post.workout_date) return false;
     try {
@@ -805,12 +808,14 @@ const Forum = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const isUserOnWaitlist = (workoutId) => {
     if (!workoutId) return false;
     return workoutWaitlists[workoutId]?.some(waitlist => waitlist && waitlist.user_id === currentUser.id) || false;
   };
 
   // Returns 1-based position or null if not on waitlist
+  // eslint-disable-next-line no-unused-vars
   const getWaitlistPosition = (workoutId) => {
     if (!workoutId) return null;
     const list = workoutWaitlists[workoutId] || [];
@@ -818,6 +823,7 @@ const Forum = () => {
     return idx === -1 ? null : idx + 1;
   };
 
+  // eslint-disable-next-line no-unused-vars
   const formatOrdinal = (n) => {
     if (n == null) return '';
     const s = ["th","st","nd","rd"], v = n % 100;
@@ -825,6 +831,7 @@ const Forum = () => {
   };
 
   // Event RSVP functions
+  // eslint-disable-next-line no-unused-vars
   const handleEventRsvp = async (eventId, status) => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -884,6 +891,7 @@ const Forum = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const getUserRsvpStatus = (eventId) => {
     if (!eventId) return null;
     const rsvps = eventRsvps[eventId] || [];
@@ -891,6 +899,7 @@ const Forum = () => {
     return userRsvp ? userRsvp.status : null;
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleWaitlistJoin = async (workoutId) => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -919,6 +928,7 @@ const Forum = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleWaitlistLeave = async (workoutId) => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -947,6 +957,7 @@ const Forum = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleCancelClick = (workoutId) => {
     setWorkoutToCancel(workoutId);
     setShowCancelModal(true);
@@ -991,6 +1002,7 @@ const Forum = () => {
   };
 
   // Check if user was promoted from waitlist after data refresh
+  // eslint-disable-next-line no-unused-vars
   const checkForWaitlistPromotion = (workoutId) => {
             const wasOnWaitlist = workoutWaitlists[workoutId]?.some(w => w.user_id === currentUser.id);
         const isNowSignedUp = workoutSignups[workoutId]?.some(s => s.user_id === currentUser.id);
@@ -1142,6 +1154,7 @@ const Forum = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleLike = async (postId) => {
     try {
       const token = localStorage.getItem('triathlonToken');
