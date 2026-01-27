@@ -182,6 +182,7 @@ const Admin = () => {
     page: 1
   });
   const [attendancePagination, setAttendancePagination] = useState({});
+  // eslint-disable-next-line no-unused-vars
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [attendanceDetails, setAttendanceDetails] = useState(null);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
@@ -275,6 +276,7 @@ const Admin = () => {
 
     loadAdminData();
     loadTerms();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, isAdmin]);
 
   // Load attendance data when filters change
@@ -284,6 +286,7 @@ const Admin = () => {
     }
 
     loadAttendanceData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attendanceFilters, currentUser, isAdmin]);
 
   const loadBannerData = async () => {
