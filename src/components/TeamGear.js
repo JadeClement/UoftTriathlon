@@ -163,7 +163,6 @@ const TeamGear = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        setLoading(true);
         const res = await fetch(`${API_BASE}/gear`);
         if (!res.ok) throw new Error('Failed to load gear');
         const data = await res.json();
@@ -173,10 +172,7 @@ const TeamGear = () => {
         }));
         setGearItems(items);
       } catch (e) {
-        setError('Failed to load team gear');
-        console.error(e);
-      } finally {
-        setLoading(false);
+        console.error('Failed to load team gear:', e);
       }
     };
     load();
