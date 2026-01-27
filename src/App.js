@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -15,7 +15,8 @@ import WorkoutDetail from './components/WorkoutDetail';
 import EventDetail from './components/EventDetail';
 import RaceDetail from './components/RaceDetail';
 import Profile from './components/Profile';
-import Settings from './components/Settings';
+// Settings is iOS-only, use lazy loading to avoid bundling for web builds
+const Settings = lazy(() => import('./components/Settings'));
 import FAQ from './components/FAQ';
 import Resources from './components/Resources';
 import TeamGear from './components/TeamGear';
@@ -246,7 +247,11 @@ function AppContent() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:role/:name" element={<Profile />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={
+            <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>}>
+              <Settings />
+            </Suspense>
+          } />
           <Route path="/login" element={<Login />} />
           <Route path="/logout" element={<Logout />} />
           <Route path="/reset-password" element={<ResetPassword />} />

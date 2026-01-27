@@ -245,6 +245,55 @@
   margin-left: 0.75rem;
   display: inline-block;
 }
+
+/* Calendar button styling */
+.calendar-button-container {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.calendar-btn {
+  padding: 0.75rem 1.5rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.calendar-btn:active {
+  transform: translateY(0);
+}
+
+.calendar-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.calendar-btn.added-to-calendar {
+  background: #10b981;
+  cursor: default;
+}
+
+.calendar-btn.added-to-calendar:hover {
+  background: #10b981;
+  transform: none;
+  box-shadow: none;
+}
+
 .signups-section {
   background: white;
   padding: 2rem;

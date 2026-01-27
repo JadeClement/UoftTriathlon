@@ -262,6 +262,9 @@
 .sponsors {
   padding: 80px 0;
   background: #ffffff;
+  min-height: 300px;
+  display: block;
+  width: 100%;
 }
 
 .sponsors .section-title {
