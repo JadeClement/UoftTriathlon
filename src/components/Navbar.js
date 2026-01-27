@@ -261,6 +261,10 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Responsive navbar: calculate which items fit and move overflow to More dropdown
+  // ESLint: getNavItems and itemsInMore are stable across renders and intentionally omitted
+  // to avoid infinite recalculation loops; dependencies below are sufficient.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const calculateResponsiveLayout = () => {
       // Prevent re-entrancy

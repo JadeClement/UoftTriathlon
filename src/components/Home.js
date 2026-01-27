@@ -1,10 +1,8 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
 const Home = () => {
-  const { currentUser, isAdmin, promoteToAdmin } = useAuth();
   const [currentSlide, setCurrentSlide] = React.useState(0);
 
 
@@ -42,19 +40,19 @@ const Home = () => {
               <div className={`slide ${currentSlide === 0 ? 'active' : ''}`}>
                 <img 
                   src="/images/team-photo1.jpeg" 
-                  alt="UofT Triathlon Team - Photo 1"
+                  alt="UofT Triathlon Team 1"
                 />
               </div>
               <div className={`slide ${currentSlide === 1 ? 'active' : ''}`}>
                 <img 
                   src="/images/team-photo2.jpeg" 
-                  alt="UofT Triathlon Team - Photo 2"
+                  alt="UofT Triathlon Team 2"
                 />
               </div>
               <div className={`slide ${currentSlide === 2 ? 'active' : ''}`}>
                 <img 
                   src="/images/team-photo3.jpeg" 
-                  alt="UofT Triathlon Team - Photo 3"
+                  alt="UofT Triathlon Team 3"
                 />
               </div>
             </div>
@@ -119,7 +117,7 @@ const Home = () => {
       </section>
 
       {/* Sponsors Section */}
-      <section className="sponsors section">
+      <section className="sponsors section" style={{ backgroundColor: '#ffffff', padding: '80px 0', width: '100%', display: 'block' }}>
         <div className="container">
           <h2 className="section-title">Our Sponsors</h2>
           <div className="sponsors-content">

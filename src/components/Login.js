@@ -324,9 +324,9 @@ const Login = () => {
     const savedUser = localStorage.getItem('triathlonUser');
     if (savedUser) {
       try {
-        const user = JSON.parse(savedUser);
-        // Update auth context by triggering a re-initialization
-        // The AuthContext will detect offline mode and use cached login
+        // Validate that savedUser is valid JSON; auth context will reinitialize on reload
+        JSON.parse(savedUser);
+        // Trigger a reload so AuthContext picks up cached login
         window.location.reload();
       } catch (error) {
         console.error('Error parsing cached user:', error);
