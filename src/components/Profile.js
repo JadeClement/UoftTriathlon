@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getFieldsForSport } from '../config/sportFields';
 import ConfirmModal from './ConfirmModal';
 import './Profile.css';
+import { Capacitor } from '@capacitor/core';
 
 const Profile = () => {
   const params = useParams();
   const { role, name } = params;
+  const navigate = useNavigate();
   const { currentUser, updateUser, isMember } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
@@ -25,21 +26,13 @@ const Profile = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPauseConfirm, setShowPauseConfirm] = useState(false);
   
-  // Results section state
-  const [userRecords, setUserRecords] = useState([]);
-  const [testEvents, setTestEvents] = useState([]);
-  const [showRecordModal, setShowRecordModal] = useState(false);
-  const [editingRecordId, setEditingRecordId] = useState(null);
-  const [deleteRecordConfirm, setDeleteRecordConfirm] = useState({ isOpen: false, recordId: null });
-  const [expandedRecordIds, setExpandedRecordIds] = useState(new Set()); // Track which records are expanded
-  const [recordForm, setRecordForm] = useState({
-    test_event_id: '',
-    result: '',
-    description: '',
-    result_fields: {}
-  });
   const [resultsPublic, setResultsPublic] = useState(false); // User's privacy setting for all results
   const [loading, setLoading] = useState(true);
+  const isIOS = Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
+
+  // Swipe-to-go-back gesture for coach/exec bios on iOS
+  const touchStartXRef = useRef(null);
+  const touchStartYRef = useRef(null);
   
   
   console.log('🔍 All URL params:', params);
@@ -55,6 +48,44 @@ const Profile = () => {
     console.log('🧮 isUserProfile calculated:', { role, result });
     return result;
   }, [role]);
+
+  const handleTouchStart = useCallback((e) => {
+    // Only enable swipe back for team/coach/exec bios on iOS
+    if (!isIOS || !role) return;
+    if (!e.touches || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+  }, [isIOS, role]);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (!isIOS || !role) return;
+    if (touchStartXRef.current == null || touchStartYRef.current == null) return;
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartXRef.current;
+    const deltaY = touch.clientY - touchStartYRef.current;
+
+    // Reset for next gesture
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    // Only trigger if swipe starts near left edge and is mostly horizontal
+    const EDGE_THRESHOLD = 40; // px from left edge
+    const SWIPE_THRESHOLD = 80; // minimum horizontal distance
+    const MAX_VERTICAL_DEVIATION = 60; // allow some vertical movement
+
+    if (touch.clientX <= 0) return;
+
+    const startedNearEdge = (touch.clientX - deltaX) <= EDGE_THRESHOLD;
+    const isHorizontal = Math.abs(deltaY) < MAX_VERTICAL_DEVIATION;
+    const isRightSwipe = deltaX > SWIPE_THRESHOLD;
+
+    if (startedNearEdge && isHorizontal && isRightSwipe) {
+      navigate('/coaches-exec');
+    }
+  }, [isIOS, role, navigate]);
 
   // Load team members from backend API
   useEffect(() => {
@@ -844,7 +875,9 @@ const Profile = () => {
 
   if (loading || teamLoading) {
     return (
-      <div className="profile-container">
+      <div
+        className="profile-container"
+      >
         <div className="container">
           <div className="loading-state">
             <h2>Loading profile...</h2>
@@ -856,7 +889,11 @@ const Profile = () => {
 
   if (!userProfile) {
     return (
-      <div className="profile-container">
+      <div
+        className="profile-container"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="container">
           <div className="error-state">
             <h2>Profile Not Found</h2>
@@ -871,7 +908,11 @@ const Profile = () => {
 
 
   return (
-    <div className="profile-container">
+    <div
+      className="profile-container"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="container">
         {isUserProfile ? (
           <Link to="/dashboard" className="back-link">← Back to Dashboard</Link>

@@ -454,11 +454,6 @@ const Results = () => {
                         resultFields = record.result_fields;
                       }
                     }
-                    const hasFields =
-                      Object.keys(resultFields).length > 0 &&
-                      Object.values(resultFields).some(
-                        (v) => v !== null && v !== undefined && v !== ''
-                      );
                     const isExpanded = expandedRecordIds.has(record.id);
                     const sport = record.test_event_sport || record.sport;
                     const fields = sport ? getFieldsForSport(sport) : [];

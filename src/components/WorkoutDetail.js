@@ -11,7 +11,7 @@ import { showSuccess, showError, showWarning } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import { getFieldsForSport } from '../config/sportFields';
 import { Capacitor } from '@capacitor/core';
-import { addWorkoutToCalendar, hasWorkoutInCalendar } from '../services/calendarService';
+import { addWorkoutToCalendar } from '../services/calendarService';
 import './WorkoutDetail.css';
 
 const WorkoutDetail = () => {
