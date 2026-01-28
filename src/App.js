@@ -15,6 +15,7 @@ import WorkoutDetail from './components/WorkoutDetail';
 import EventDetail from './components/EventDetail';
 import RaceDetail from './components/RaceDetail';
 import Profile from './components/Profile';
+import Results from './components/Results';
 import FAQ from './components/FAQ';
 import Resources from './components/Resources';
 import TeamGear from './components/TeamGear';
@@ -248,6 +249,7 @@ function AppContent() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:role/:name" element={<Profile />} />
+          <Route path="/results" element={<Results />} />
           <Route path="/settings" element={
             <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>}>
               <Settings />

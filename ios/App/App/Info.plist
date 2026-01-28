@@ -94,5 +94,11 @@
 	<string>We need access to your camera to take profile pictures.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need access to your photo library to select profile pictures.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>We use Face ID to securely sign you into your account.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>We need access to your calendar to add workout events.</string>
+	<key>NSCalendarsWriteOnlyUsageDescription</key>
+	<string>We need access to add workout events to your calendar.</string>
 </dict>
 </plist>

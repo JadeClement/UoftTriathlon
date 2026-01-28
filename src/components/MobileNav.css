@@ -8,12 +8,12 @@
   justify-content: space-between;
   align-items: center;
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
-  padding: 0.5rem 1rem; /* Added horizontal padding */
-  gap: 0.25rem; /* Space between items */
+  padding: 0.375rem 1rem 0.125rem 1rem; /* Further reduced padding */
+  gap: 0.25rem;
   z-index: 10000 !important; /* Higher than navbar (1010) */
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  /* Safe area for devices with notches */
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  /* Safe area for devices with home indicator - shift down but keep original size */
+  padding-bottom: max(0.125rem, env(safe-area-inset-bottom));
   padding-left: max(1rem, env(safe-area-inset-left) + 0.5rem);
   padding-right: max(1rem, env(safe-area-inset-right) + 0.5rem);
 }
@@ -23,8 +23,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.5rem; /* Reduced horizontal padding */
+  gap: 0.2rem; /* Slightly reduced gap */
+  padding: 0.375rem 0.5rem 0.125rem 0.5rem; /* Further reduced padding, especially bottom */
   background: none;
   border: none;
   cursor: pointer;
@@ -34,7 +34,7 @@
   transition: all 0.2s ease;
   flex: 1; /* Allow items to grow equally */
   min-width: 0; /* Allow flex shrinking */
-  min-height: 60px; /* Ensure touch target is at least 44x44px */
+  min-height: 45px; /* Further reduced to make nav bar shorter */
   -webkit-tap-highlight-color: transparent;
   position: relative;
 }
@@ -142,11 +142,11 @@
 /* Adjust main content padding to account for bottom nav */
 @media (max-width: 768px) {
   body {
-    padding-bottom: 70px;
+    padding-bottom: 55px; /* Further reduced to match shorter nav */
   }
   
   .App {
-    padding-bottom: 70px;
+    padding-bottom: 55px; /* Further reduced to match shorter nav */
   }
 }
 

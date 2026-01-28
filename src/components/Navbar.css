@@ -1,6 +1,6 @@
 :root {
   --navbar-height: 70px;
-  --navbar-height-mobile: 100px; /* Taller on mobile to accommodate buttons below status bar */
+  --navbar-height-mobile: 50px; /* Compact height for mobile, safe area inset handles status bar spacing */
   --banner-offset: 0px;
 }
 

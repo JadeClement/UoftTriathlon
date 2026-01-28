@@ -19,7 +19,9 @@ import { combineDateTime } from '../utils/dateUtils';
  * @returns {Promise<{success: boolean, eventId?: string}>}
  */
 export async function addWorkoutToCalendar(workout) {
+  console.log('📅 addWorkoutToCalendar called with workout:', workout);
   const isIOS = Capacitor.getPlatform() === 'ios';
+  console.log('📅 Platform check - isIOS:', isIOS);
   
   if (!isIOS) {
     throw new Error('Calendar service is only available on iOS');
@@ -51,17 +53,53 @@ export async function addWorkoutToCalendar(workout) {
 
   // Call the native iOS plugin
   try {
-    // Get the plugin from Capacitor
-    const plugin = Capacitor.getPlugin('Calendar');
+    // Log all available plugins for debugging
+    console.log('📅 All available plugins:', window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins) : 'none');
+    console.log('📅 Full Capacitor.Plugins object:', window.Capacitor?.Plugins);
     
-    if (!plugin) {
-      // Plugin not registered yet - show helpful error message
-      throw new Error('Calendar plugin not registered. Please add CalendarPlugin.swift to your Xcode project. See IOS_CALENDAR_PLUGIN_SETUP.md for instructions.');
+    // Get the plugin from Capacitor - try multiple methods and names
+    // The plugin might be registered as "Calendar" or "CalendarPlugin"
+    let plugin;
+    
+    // Method 1: Try accessing directly via Plugins object (most reliable)
+    // Try both "Calendar" and "CalendarPlugin" names
+    plugin = window.Capacitor?.Plugins?.Calendar || window.Capacitor?.Plugins?.CalendarPlugin;
+    
+    // Method 2: Try Capacitor.getPlugin with both names
+    if (!plugin || (typeof plugin === 'object' && Object.keys(plugin).length === 0)) {
+      try {
+        plugin = Capacitor.getPlugin('Calendar') || Capacitor.getPlugin('CalendarPlugin');
+        console.log('📅 Plugin from Capacitor.getPlugin:', plugin);
+      } catch (e) {
+        console.warn('Capacitor.getPlugin failed, trying alternative method:', e);
+      }
     }
+    
+    // Method 3: Try accessing via Capacitor global
+    if ((!plugin || (typeof plugin === 'object' && Object.keys(plugin).length === 0)) && window.Capacitor?.getPlugin) {
+      try {
+        plugin = window.Capacitor.getPlugin('Calendar') || window.Capacitor.getPlugin('CalendarPlugin');
+        console.log('📅 Plugin from window.Capacitor.getPlugin:', plugin);
+      } catch (e) {
+        console.warn('window.Capacitor.getPlugin failed:', e);
+      }
+    }
+    
+    // Check if plugin is valid (not empty object)
+    if (!plugin || (typeof plugin === 'object' && Object.keys(plugin).length === 0)) {
+      // Plugin not registered yet - show helpful error message
+      console.error('📅 Calendar plugin not found. Available plugins:', window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins) : 'none');
+      throw new Error('Calendar plugin not registered. Please rebuild the app in Xcode after adding CalendarPlugin.swift. See IOS_CALENDAR_PLUGIN_SETUP.md for instructions.');
+    }
+    
+    console.log('📅 Using plugin:', plugin);
+    console.log('📅 Plugin methods:', Object.getOwnPropertyNames(plugin));
 
     // Check if addEvent method exists
+    console.log('📅 Checking for addEvent method, plugin methods:', Object.getOwnPropertyNames(plugin));
     if (typeof plugin.addEvent !== 'function') {
-      throw new Error('Calendar plugin addEvent method not available. Make sure CalendarPlugin.swift is properly registered.');
+      console.error('📅 Plugin exists but addEvent is not a function. Plugin:', plugin);
+      throw new Error('Calendar plugin addEvent method not available. Make sure CalendarPlugin.swift is properly registered and the app is rebuilt in Xcode.');
     }
 
     const result = await plugin.addEvent({
@@ -76,7 +114,10 @@ export async function addWorkoutToCalendar(workout) {
   } catch (error) {
     console.error('❌ Error adding event to calendar:', error);
     // Re-throw with helpful message
-    throw error;
+    if (error.message && error.message.includes('plugin')) {
+      throw error; // Already has helpful message
+    }
+    throw new Error(`Failed to add event to calendar: ${error.message || 'Unknown error'}`);
   }
 }
 
@@ -101,7 +142,13 @@ export async function hasWorkoutInCalendar(workout) {
   // Plugin not registered yet - return false gracefully
   // This prevents errors when the plugin hasn't been added to Xcode
   try {
-    const plugin = Capacitor.getPlugin('Calendar');
+    // Try accessing directly via Plugins object first (try both names)
+    let plugin = window.Capacitor?.Plugins?.Calendar || window.Capacitor?.Plugins?.CalendarPlugin;
+    
+    // Fallback to Capacitor.getPlugin (try both names)
+    if (!plugin || (typeof plugin === 'object' && Object.keys(plugin).length === 0)) {
+      plugin = Capacitor.getPlugin('Calendar') || Capacitor.getPlugin('CalendarPlugin');
+    }
     
     if (!plugin || typeof plugin.hasEvent !== 'function') {
       // Plugin not available - this is fine, just return false

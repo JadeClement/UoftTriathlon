@@ -17,6 +17,20 @@
   animation: slideInRight 0.3s ease-out;
 }
 
+/* iOS safe area support - move notifications down to avoid camera hole/notch */
+@supports (padding: max(0px)) {
+  .simple-notification {
+    top: max(20px, env(safe-area-inset-top, 20px) + 20px);
+  }
+}
+
+/* iOS-specific positioning for devices with Dynamic Island/notch */
+@supports (-webkit-touch-callout: none) {
+  .simple-notification {
+    top: calc(env(safe-area-inset-top, 0px) + 60px);
+  }
+}
+
 @keyframes slideInRight {
   from {
     opacity: 0;
@@ -82,5 +96,18 @@
     left: 10px;
     min-width: 0;
     max-width: none;
+  }
+  
+  /* iOS safe area support on mobile */
+  @supports (padding: max(0px)) {
+    .simple-notification {
+      top: max(10px, env(safe-area-inset-top, 10px) + 50px);
+    }
+  }
+  
+  @supports (-webkit-touch-callout: none) {
+    .simple-notification {
+      top: calc(env(safe-area-inset-top, 0px) + 60px);
+    }
   }
 }

@@ -4,9 +4,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import {
   checkBiometricAvailability,
+  authenticateWithBiometrics,
   saveBiometricCredentials,
   isBiometricEnabled,
   performBiometricLogin,
+  getBiometricCredentials,
 } from '../services/biometricAuth';
 import './Login.css';
 
@@ -75,15 +77,80 @@ const Login = () => {
 
   // Check biometric availability on mount
   useEffect(() => {
+    // Log to both console and show alert for debugging (remove alert later)
+    console.log('🔐 Login: Component mounted, starting biometric check...');
+    if (Capacitor.isNativePlatform()) {
+      console.log('🔐 Login: ✅ On native iOS platform');
+    }
+    
     const checkBiometric = async () => {
-      if (Capacitor.isNativePlatform()) {
-        const availability = await checkBiometricAvailability();
+      if (!Capacitor.isNativePlatform()) {
+        console.log('🔐 Login: Not on native platform, skipping biometric check');
+        return;
+      }
+      
+      console.log('🔐 Login: On native platform, checking biometrics...');
+      
+      // Wait for Capacitor to fully initialize and plugins to register
+      // Try multiple times with increasing delays in case plugin loads slowly
+      let availability = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 500 + (attempt * 500)));
+        
+        console.log(`🔐 Login: Checking biometric availability (attempt ${attempt + 1})...`);
+        try {
+          availability = await checkBiometricAvailability();
+          console.log('🔐 Login: Biometric availability result:', availability);
+          
+          if (availability.available) {
+            break; // Success, exit retry loop
+          }
+        } catch (error) {
+          console.warn(`🔐 Login: Attempt ${attempt + 1} failed:`, error);
+          if (attempt === 2) {
+            console.error('🔐 Login: All attempts failed to check biometric availability');
+          }
+        }
+      }
+      
+      if (availability) {
         setBiometricAvailable(availability.available);
         setBiometricType(availability.biometryType);
         
-        if (availability.available) {
-          const enabled = await isBiometricEnabled();
-          setBiometricEnabled(enabled);
+          if (availability.available) {
+            const enabled = await isBiometricEnabled();
+            console.log('🔐 Login: Biometric enabled:', enabled);
+            console.log('🔐 Login: Biometric type:', availability.biometryType);
+            setBiometricEnabled(enabled);
+            
+            // Debug: Check if credentials exist and pre-fill email
+            if (enabled) {
+              const credentials = await getBiometricCredentials();
+              console.log('🔐 Login: Saved credentials found:', !!credentials);
+              if (credentials) {
+                console.log('🔐 Login: Credentials email:', credentials.email);
+                console.log('🔐 Login: Face ID button should be visible');
+                
+                // Pre-fill email field for better UX
+                if (credentials.email) {
+                  setEmail(credentials.email);
+                  console.log('🔐 Login: Email field pre-filled:', credentials.email);
+                }
+              } else {
+                console.warn('⚠️ Login: Enabled but no credentials found - this is a problem!');
+              }
+            } else {
+              console.log('🔐 Login: Biometric not enabled - user needs to enable it first');
+            }
+          } else {
+          console.warn('🔐 Login: Biometric not available.');
+          console.warn('⚠️ NOTE: Face ID/Touch ID does NOT work on iOS Simulator!');
+          console.warn('⚠️ You must test on a real iOS device to use Face ID.');
+          console.warn('Possible reasons:');
+          console.warn('  - Running on iOS Simulator (no biometric hardware)');
+          console.warn('  - Face ID/Touch ID not set up on device');
+          console.warn('  - Device doesn\'t support biometrics');
+          console.warn('  - Biometric authentication disabled in device settings');
         }
       }
     };
@@ -157,19 +224,54 @@ const Login = () => {
         await login(email, password);
         console.log('🔐 Login: Login successful');
         
-        // If biometric is available and user wants to enable it, save credentials
+        // If biometric is available and user wants to enable it, prompt Face ID first
         if (enableBiometricAfterLogin && biometricAvailable) {
           const token = localStorage.getItem('triathlonToken');
+          console.log('🔐 Login: User wants to enable Face ID');
+          console.log('🔐 Login: Email:', email);
+          console.log('🔐 Login: Token available:', !!token);
+          
           if (token) {
             try {
-              await saveBiometricCredentials(email, token);
-              setBiometricEnabled(true);
-              console.log('✅ Biometric login enabled');
+              // Prompt Face ID to verify user wants to enable it
+              console.log('🔐 Login: Prompting Face ID to enable biometric login...');
+              const authenticated = await authenticateWithBiometrics('Enable Face ID login for faster access');
+              
+              if (authenticated) {
+                // Only save credentials if Face ID authentication succeeded
+                await saveBiometricCredentials(email, token);
+                
+                // Verify it was saved
+                const enabled = await isBiometricEnabled();
+                const verifyCredentials = await getBiometricCredentials();
+                console.log('🔐 Login: Biometric enabled after save:', enabled);
+                console.log('🔐 Login: Credentials verified:', !!verifyCredentials);
+                
+                // Update state - this will trigger the auto-trigger useEffect
+                setBiometricEnabled(enabled);
+                console.log('✅ Face ID login enabled successfully');
+                console.log('🔐 Login: State updated - biometricEnabled set to:', enabled);
+                
+                // Show success message
+                setError(''); // Clear any errors
+                // Could show a toast here if you have one
+              } else {
+                console.warn('⚠️ Face ID authentication failed or was cancelled - not enabling');
+                setError('Face ID authentication was cancelled or failed. Please try again if you want to enable Face ID login.');
+              }
             } catch (error) {
-              console.error('Error saving biometric credentials:', error);
-              // Don't fail the login if biometric save fails
+              console.error('❌ Error enabling Face ID:', error);
+              setError('Failed to enable Face ID login. Please try again.');
+              // Don't fail the login if biometric setup fails
             }
+          } else {
+            console.warn('⚠️ No token available to save for biometric login');
           }
+        } else {
+          console.log('🔐 Login: Not enabling biometric login:', {
+            enableBiometricAfterLogin,
+            biometricAvailable
+          });
         }
       } else {
           // Check if offline - signup requires internet connection
@@ -337,10 +439,22 @@ const Login = () => {
   
   // Handle biometric login
   const handleBiometricLogin = async () => {
+    console.log('═══════════════════════════════════════');
+    console.log('🔐 HANDLE BIOMETRIC LOGIN CALLED');
+    console.log('═══════════════════════════════════════');
+    
     if (!Capacitor.isNativePlatform()) {
+      console.log('🔐 ❌ Not on native platform');
       return;
     }
 
+    // Prevent multiple simultaneous attempts
+    if (biometricLoading) {
+      console.log('🔐 ⚠️ Already in progress');
+      return;
+    }
+
+    console.log('🔐 ✅ Starting biometric login...');
     setBiometricLoading(true);
     setError('');
 
@@ -348,11 +462,20 @@ const Login = () => {
       const credentials = await performBiometricLogin();
       
       if (!credentials) {
+        console.log('🔐 handleBiometricLogin: No credentials returned');
         setBiometricLoading(false);
         return;
       }
 
-      // Use the token to login
+      console.log('🔐 handleBiometricLogin: Got credentials, logging in...');
+      console.log('🔐 handleBiometricLogin: Email from credentials:', credentials.email);
+      
+      // Fill in the email field for visual feedback
+      if (credentials.email) {
+        setEmail(credentials.email);
+      }
+      
+      // Use the token to login (more secure than email/password)
       if (loginWithToken) {
         await loginWithToken(credentials.token);
         console.log('✅ Biometric login successful');
@@ -363,12 +486,78 @@ const Login = () => {
         setErrorAndScroll('Biometric login failed. Please use email and password.');
       }
     } catch (error) {
-      console.error('Biometric login error:', error);
+      console.error('❌ Biometric login error:', error);
       setErrorAndScroll('Biometric authentication failed. Please try again or use email and password.');
     } finally {
       setBiometricLoading(false);
     }
   };
+
+  // Auto-trigger Face ID when biometric is enabled and available
+  useEffect(() => {
+    console.log('═══════════════════════════════════════');
+    console.log('🔐 AUTO-TRIGGER useEffect running');
+    console.log('🔐 Current State:', {
+      isLogin,
+      biometricAvailable,
+      biometricEnabled,
+      loading,
+      biometricLoading
+    });
+    console.log('═══════════════════════════════════════');
+    
+    // Only auto-trigger if all conditions are met
+    const shouldAutoTrigger = isLogin && 
+                              biometricAvailable && 
+                              biometricEnabled && 
+                              !loading && 
+                              !biometricLoading;
+    
+    console.log('🔐 Should auto-trigger?', shouldAutoTrigger);
+    
+    if (shouldAutoTrigger) {
+      console.log('🔐 ✅✅✅ ALL CONDITIONS MET - WILL AUTO-TRIGGER IN 1.5 SECONDS');
+      
+      // Wait a moment for UI to settle, then auto-trigger Face ID
+      const timer = setTimeout(() => {
+        console.log('🔐 ⏰ TIMER FIRED - Checking conditions again...');
+        
+        // Re-check conditions (they might have changed)
+        const stillShouldTrigger = isLogin && 
+                                   biometricAvailable && 
+                                   biometricEnabled && 
+                                   !loading && 
+                                   !biometricLoading;
+        
+        if (stillShouldTrigger) {
+          console.log('🔐 ✅✅✅✅✅ AUTO-TRIGGERING FACE ID NOW! ✅✅✅✅✅');
+          handleBiometricLogin();
+        } else {
+          console.log('🔐 ❌ Conditions changed, NOT triggering:', {
+            isLogin,
+            biometricAvailable,
+            biometricEnabled,
+            loading,
+            biometricLoading
+          });
+        }
+      }, 1500); // 1.5 second delay
+
+      return () => {
+        console.log('🔐 Cleaning up auto-trigger timer');
+        clearTimeout(timer);
+      };
+    } else {
+      console.log('🔐 ❌ Conditions NOT met for auto-trigger. Missing:', {
+        isLogin: !isLogin ? '❌' : '✅',
+        biometricAvailable: !biometricAvailable ? '❌' : '✅',
+        biometricEnabled: !biometricEnabled ? '❌' : '✅',
+        loading: loading ? '❌ (still loading)' : '✅',
+        biometricLoading: biometricLoading ? '❌ (already authenticating)' : '✅'
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLogin, biometricAvailable, biometricEnabled, loading, biometricLoading]);
 
   // Check if in Capacitor app for styling
   const isNativeApp = Capacitor.isNativePlatform();
@@ -424,7 +613,10 @@ const Login = () => {
           <div className="biometric-login-container">
             <button
               type="button"
-              onClick={handleBiometricLogin}
+              onClick={() => {
+                console.log('🔐 Face ID button clicked manually');
+                handleBiometricLogin();
+              }}
               disabled={biometricLoading}
               className="biometric-login-btn"
             >
@@ -443,6 +635,22 @@ const Login = () => {
             <div className="biometric-divider">
               <span>or</span>
             </div>
+          </div>
+        )}
+        
+        {/* Debug info - remove this later */}
+        {isLogin && Capacitor.isNativePlatform() && (
+          <div style={{ 
+            fontSize: '10px', 
+            color: '#666', 
+            marginTop: '10px',
+            padding: '5px',
+            background: '#f0f0f0',
+            borderRadius: '4px'
+          }}>
+            Debug: Available={biometricAvailable ? '✅' : '❌'} | 
+            Enabled={biometricEnabled ? '✅' : '❌'} | 
+            Type={biometricType || 'none'}
           </div>
         )}
 

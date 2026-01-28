@@ -88,7 +88,7 @@ main {
   }
   main {
     padding-top: 0; /* no extra padding needed on mobile */
-    padding-bottom: 70px; /* Space for bottom navigation */
+    padding-bottom: 55px; /* Space for bottom navigation */
   }
   
   .section-title {

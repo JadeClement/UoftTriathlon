@@ -9,6 +9,20 @@
   pointer-events: none;
 }
 
+/* iOS safe area support - move notifications down to avoid camera hole/notch */
+@supports (padding: max(0px)) {
+  .toast-container {
+    top: max(20px, env(safe-area-inset-top, 20px) + 20px);
+  }
+}
+
+/* iOS-specific positioning for devices with Dynamic Island/notch */
+@supports (-webkit-touch-callout: none) {
+  .toast-container {
+    top: calc(env(safe-area-inset-top, 0px) + 60px);
+  }
+}
+
 .toast {
   background: white;
   border-radius: 8px;
@@ -106,6 +120,19 @@
     min-width: auto;
     max-width: none;
     width: 100%;
+  }
+  
+  /* iOS safe area support on mobile */
+  @supports (padding: max(0px)) {
+    .toast-container {
+      top: max(10px, env(safe-area-inset-top, 10px) + 50px);
+    }
+  }
+  
+  @supports (-webkit-touch-callout: none) {
+    .toast-container {
+      top: calc(env(safe-area-inset-top, 0px) + 60px);
+    }
   }
 }
 

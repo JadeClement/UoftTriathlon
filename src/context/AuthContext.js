@@ -104,19 +104,24 @@ export const AuthProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle token expiration/invalidation
-  const handleTokenExpired = (reason = 'session_expired') => {
-    console.log('🔒 Handling token expiration:', reason);
-    
-    // Unregister from push notifications on logout
-    unregisterFromPushNotifications().catch(error => {
-      console.error('❌ Error unregistering from push notifications:', error);
-    });
-    
-    // Clear biometric credentials on logout
-    clearBiometricCredentials().catch(error => {
-      console.error('❌ Error clearing biometric credentials:', error);
-    });
+    // Handle token expiration/invalidation
+    const handleTokenExpired = (reason = 'session_expired') => {
+      console.log('🔒 Handling token expiration:', reason);
+      
+      // Unregister from push notifications on logout
+      unregisterFromPushNotifications().catch(error => {
+        console.error('❌ Error unregistering from push notifications:', error);
+      });
+
+      // Only clear biometric credentials for real auth failures,
+      // NOT for a normal, user-initiated logout.
+      if (reason !== 'user_logout') {
+        clearBiometricCredentials().catch(error => {
+          console.error('❌ Error clearing biometric credentials:', error);
+        });
+      } else {
+        console.log('🔐 Skipping clearBiometricCredentials on user_logout to preserve Face ID login');
+      }
     
     localStorage.removeItem('triathlonUser');
     localStorage.removeItem('triathlonToken');

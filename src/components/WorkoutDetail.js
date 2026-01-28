@@ -18,6 +18,7 @@ const WorkoutDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser, isMember } = useAuth();
+  const isIOS = Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
   
   // Offline data hooks
   const isOnline = useOnlineStatus();
@@ -71,6 +72,48 @@ const WorkoutDetail = () => {
   const [recordUserSearchResults, setRecordUserSearchResults] = useState([]);
   const [showRecordUserDropdown, setShowRecordUserDropdown] = useState(false);
   const [selectedRecordUser, setSelectedRecordUser] = useState(null);
+
+  // Swipe-to-go-back gesture (iOS only)
+  const touchStartXRef = useRef(null);
+  const touchStartYRef = useRef(null);
+
+  const handleTouchStart = useCallback((e) => {
+    if (!isIOS) return;
+    if (!e.touches || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+  }, [isIOS]);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (!isIOS) return;
+    if (touchStartXRef.current == null || touchStartYRef.current == null) return;
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartXRef.current;
+    const deltaY = touch.clientY - touchStartYRef.current;
+
+    // Reset for next gesture
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    // Only trigger if swipe starts near left edge and is mostly horizontal
+    const EDGE_THRESHOLD = 40; // px from left edge
+    const SWIPE_THRESHOLD = 80; // minimum horizontal distance
+    const MAX_VERTICAL_DEVIATION = 60; // allow some vertical movement
+
+    if (touch.clientX <= 0) return; // ignore weird events
+
+    const startedNearEdge = (touch.clientX - deltaX) <= EDGE_THRESHOLD;
+    const isHorizontal = Math.abs(deltaY) < MAX_VERTICAL_DEVIATION;
+    const isRightSwipe = deltaX > SWIPE_THRESHOLD;
+
+    if (startedNearEdge && isHorizontal && isRightSwipe) {
+      // Use the same navigation as the Back button
+      navigate('/forum');
+    }
+  }, [isIOS, navigate]);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
@@ -857,6 +900,9 @@ const WorkoutDetail = () => {
   };
 
   const handleAddToCalendar = async () => {
+    console.log('🔘 handleAddToCalendar called');
+    console.log('🔘 displayWorkout:', displayWorkout);
+    
     if (!displayWorkout) {
       showError('Workout information not available');
       return;
@@ -902,15 +948,21 @@ const WorkoutDetail = () => {
       }
     } catch (error) {
       console.error('Error adding workout to calendar:', error);
-      showError(error.message || 'Failed to add workout to calendar');
+      // Show user-friendly error message
+      const errorMessage = error.message || 'Failed to add workout to calendar';
+      if (errorMessage.includes('not registered') || errorMessage.includes('plugin')) {
+        showError('Calendar feature is not set up. Please contact support or check IOS_CALENDAR_PLUGIN_SETUP.md for setup instructions.');
+      } else {
+        showError(errorMessage);
+      }
     } finally {
       setCheckingCalendar(false);
     }
   };
 
-  // Check if workout is in calendar on load
+  // Check if workout is in calendar on load (only check localStorage, don't request permissions)
   useEffect(() => {
-    const checkCalendarStatus = async () => {
+    const checkCalendarStatus = () => {
       try {
         // Use workout || cachedWorkout directly since displayWorkout is defined later
         const currentWorkout = workout || cachedWorkout;
@@ -923,44 +975,15 @@ const WorkoutDetail = () => {
           return;
         }
 
-        // First check localStorage for quick check
+        // Only check localStorage - don't check actual calendar to avoid permission prompt
+        // The actual calendar check will happen when user clicks "Add to Calendar"
         try {
           const calendarEvents = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
           if (calendarEvents.includes(currentWorkout.id)) {
             setIsInCalendar(true);
-            return;
           }
         } catch (e) {
           // localStorage error - ignore
-        }
-
-        // Then check actual calendar (only if plugin is available)
-        // This will gracefully fail if plugin isn't registered yet
-        try {
-          const hasEvent = await hasWorkoutInCalendar({
-            id: currentWorkout.id,
-            title: currentWorkout.title,
-            workout_type: currentWorkout.workout_type,
-            workout_date: currentWorkout.workout_date,
-            workout_time: currentWorkout.workout_time
-          });
-          
-          if (hasEvent) {
-            setIsInCalendar(true);
-            // Update localStorage
-            try {
-              const events = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
-              if (!events.includes(currentWorkout.id)) {
-                events.push(currentWorkout.id);
-                localStorage.setItem('calendarEvents', JSON.stringify(events));
-              }
-            } catch (e) {
-              // localStorage error - ignore
-            }
-          }
-        } catch (error) {
-          // Calendar plugin not available - this is fine, just don't check
-          // Don't log as error since plugin might not be set up yet
         }
       } catch (error) {
         // Catch any unexpected errors to prevent component crash
@@ -1366,7 +1389,11 @@ const WorkoutDetail = () => {
   }
 
   return (
-    <div className="workout-detail-container">
+    <div
+      className="workout-detail-container"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="container">
         <button className="back-btn" onClick={() => navigate('/forum')}>
           ← Back to Forum
@@ -1640,7 +1667,7 @@ const WorkoutDetail = () => {
                 <button 
                   onClick={handleAddToCalendar}
                   className={`calendar-btn ${isInCalendar ? 'added-to-calendar' : ''}`}
-                  disabled={checkingCalendar}
+                  disabled={checkingCalendar || isInCalendar}
                 >
                   {checkingCalendar ? 'Adding...' : isInCalendar ? '✓ Added to Calendar' : '📅 Add to Calendar'}
                 </button>
@@ -1934,8 +1961,12 @@ const WorkoutDetail = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h2 style={{ margin: 0, color: '#374151' }}>Test Results</h2>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {/* Show "Create Test Event" button for coaches/admins only if no test event exists */}
-              {!testEvent && currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator') && (
+              {/* Show "Create Test Event" button for coaches/admins only if no test event exists (iOS native app only) */}
+              {!testEvent &&
+                currentUser &&
+                (currentUser.role === 'coach' || currentUser.role === 'administrator') &&
+                Capacitor.isNativePlatform() &&
+                Capacitor.getPlatform() === 'ios' && (
                 <button 
                   className="new-post-btn" 
                   onClick={openTestEventModal}

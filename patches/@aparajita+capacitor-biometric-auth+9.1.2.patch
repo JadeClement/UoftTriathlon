@@ -1,0 +1,75 @@
+diff --git a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/base.js b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/base.js
+index 2cb10f0..d96f3db 100644
+--- a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/base.js
++++ b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/base.js
+@@ -1,6 +1,6 @@
+ import { App } from '@capacitor/app';
+ import { CapacitorException, WebPlugin } from '@capacitor/core';
+-import { BiometryError, isBiometryErrorType } from './definitions';
++import { BiometryError, isBiometryErrorType } from './definitions.js';
+ export class BiometricAuthBase extends WebPlugin {
+     async authenticate(options) {
+         try {
+diff --git a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/index.js b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/index.js
+index e633a52..50e5c7b 100644
+--- a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/index.js
++++ b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/index.js
+@@ -1,18 +1,18 @@
+ import { registerPlugin } from '@capacitor/core';
+ const proxy = registerPlugin('BiometricAuthNative', {
+     web: async () => {
+-        const module = await import('./web');
++        const module = await import('./web.js');
+         return new module.BiometricAuthWeb();
+     },
+     ios: async () => {
+-        const module = await import('./native');
++        const module = await import('./native.js');
+         return new module.BiometricAuthNative(proxy);
+     },
+     android: async () => {
+-        const module = await import('./native');
++        const module = await import('./native.js');
+         return new module.BiometricAuthNative(proxy);
+     },
+ });
+-export * from './definitions';
+-export * from './web-utils';
++export * from './definitions.js';
++export * from './web-utils.js';
+ export { proxy as BiometricAuth };
+diff --git a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/native.js b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/native.js
+index fd419ab..c777898 100644
+--- a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/native.js
++++ b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/native.js
+@@ -1,5 +1,5 @@
+-import { BiometricAuthBase } from './base';
+-import { BiometryErrorType, BiometryType } from './definitions';
++import { BiometricAuthBase } from './base.js';
++import { BiometryErrorType, BiometryType } from './definitions.js';
+ /* eslint-disable @typescript-eslint/class-methods-use-this, @typescript-eslint/require-await */
+ export class BiometricAuthNative extends BiometricAuthBase {
+     constructor(capProxy) {
+diff --git a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/web-utils.js b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/web-utils.js
+index 125cab2..2164ac3 100644
+--- a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/web-utils.js
++++ b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/web-utils.js
+@@ -1,4 +1,4 @@
+-import { BiometryType } from './definitions';
++import { BiometryType } from './definitions.js';
+ const kBiometryTypeNameMap = {
+     [BiometryType.none]: '',
+     [BiometryType.touchId]: 'Touch ID',
+diff --git a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/web.js b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/web.js
+index 34f206b..ae90c21 100644
+--- a/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/web.js
++++ b/node_modules/@aparajita/capacitor-biometric-auth/dist/esm/web.js
+@@ -1,6 +1,6 @@
+ import { BiometricAuthBase } from './base';
+-import { BiometryError, BiometryErrorType, BiometryType } from './definitions';
+-import { getBiometryName } from './web-utils';
++import { BiometryError, BiometryErrorType, BiometryType } from './definitions.js';
++import { getBiometryName } from './web-utils.js';
+ /* eslint-disable @typescript-eslint/require-await */
+ export class BiometricAuthWeb extends BiometricAuthBase {
+     constructor() {

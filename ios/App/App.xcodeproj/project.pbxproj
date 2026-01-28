@@ -16,6 +16,9 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		B91572A42F02F12B000302CD /* UoftTriathlonuofttriclubappAppStore.mobileprovision in Resources */ = {isa = PBXBuildFile; fileRef = B91572A32F02F12B000302CD /* UoftTriathlonuofttriclubappAppStore.mobileprovision */; };
+		B990067D2F2952E000A8DD0F /* CalendarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B990067C2F2952E000A8DD0F /* CalendarPlugin.swift */; };
+		B990067F2F2952EF00A8DD0F /* BiometricAuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B990067E2F2952EF00A8DD0F /* BiometricAuthPlugin.swift */; };
+		B99006832F295A2A00A8DD0F /* AppViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B99006822F295A2A00A8DD0F /* AppViewController.swift */; };
 		B9C7FA302F0AE41F0057CADE /* UoftTriathlon_AppStore_2026.mobileprovision in Resources */ = {isa = PBXBuildFile; fileRef = B9C7FA2F2F0AE41F0057CADE /* UoftTriathlon_AppStore_2026.mobileprovision */; };
 /* End PBXBuildFile section */
 
@@ -32,6 +35,9 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		B91572A32F02F12B000302CD /* UoftTriathlonuofttriclubappAppStore.mobileprovision */ = {isa = PBXFileReference; lastKnownFileType = file; path = UoftTriathlonuofttriclubappAppStore.mobileprovision; sourceTree = "<group>"; };
 		B92B5C782F02E85100EB8A1C /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		B990067C2F2952E000A8DD0F /* CalendarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPlugin.swift; sourceTree = "<group>"; };
+		B990067E2F2952EF00A8DD0F /* BiometricAuthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthPlugin.swift; sourceTree = "<group>"; };
+		B99006822F295A2A00A8DD0F /* AppViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewController.swift; sourceTree = "<group>"; };
 		B9C7FA2F2F0AE41F0057CADE /* UoftTriathlon_AppStore_2026.mobileprovision */ = {isa = PBXFileReference; lastKnownFileType = file; path = UoftTriathlon_AppStore_2026.mobileprovision; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -70,6 +76,9 @@
 			isa = PBXGroup;
 			children = (
 				B92B5C782F02E85100EB8A1C /* App.entitlements */,
+				B99006822F295A2A00A8DD0F /* AppViewController.swift */,
+				B990067E2F2952EF00A8DD0F /* BiometricAuthPlugin.swift */,
+				B990067C2F2952E000A8DD0F /* CalendarPlugin.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -164,6 +173,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B990067F2F2952EF00A8DD0F /* BiometricAuthPlugin.swift in Sources */,
+				B990067D2F2952E000A8DD0F /* CalendarPlugin.swift in Sources */,
+				B99006832F295A2A00A8DD0F /* AppViewController.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

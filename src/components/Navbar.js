@@ -694,6 +694,30 @@ const Navbar = () => {
                       >
                         Profile
                       </Link>
+                      {isIOS && (
+                        <>
+                          <Link 
+                            to="/results" 
+                            className="profile-menu-item"
+                            onClick={() => {
+                              setIsProfileOpen(false);
+                              closeMenu();
+                            }}
+                          >
+                            Results
+                          </Link>
+                          <Link 
+                            to="/settings" 
+                            className="profile-menu-item"
+                            onClick={() => {
+                              setIsProfileOpen(false);
+                              closeMenu();
+                            }}
+                          >
+                            Settings
+                          </Link>
+                        </>
+                      )}
                       <button 
                         className="profile-menu-item logout-btn"
                         onClick={() => {
@@ -762,6 +786,30 @@ const Navbar = () => {
                     >
                       Profile
                     </Link>
+                    {isIOS && (
+                      <>
+                        <Link 
+                          to="/results" 
+                          className="profile-menu-item"
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            closeMenu();
+                          }}
+                        >
+                          Results
+                        </Link>
+                        <Link 
+                          to="/settings" 
+                          className="profile-menu-item"
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            closeMenu();
+                          }}
+                        >
+                          Settings
+                        </Link>
+                      </>
+                    )}
                     <button 
                       className="profile-menu-item logout-btn"
                       onClick={() => {
@@ -827,6 +875,28 @@ const Navbar = () => {
                   >
                     Profile
                   </Link>
+                  {isIOS && (
+                    <>
+                      <Link 
+                        to="/results" 
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                        }}
+                      >
+                        Results
+                      </Link>
+                      <Link 
+                        to="/settings" 
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                        }}
+                      >
+                        Settings
+                      </Link>
+                    </>
+                  )}
                   {currentUser && (isAdmin(currentUser) || isExec(currentUser)) && (
                     <Link
                       to="/admin"

@@ -8,6 +8,7 @@
     "@capacitor/core": "^8.0.0",
     "@capacitor/ios": "^8.0.0",
     "@capacitor/local-notifications": "^8.0.0",
+    "@capacitor/preferences": "^8.0.0",
     "@capacitor/push-notifications": "^8.0.0",
     "@sendgrid/mail": "^8.1.5",
     "@testing-library/jest-dom": "^5.16.4",
@@ -29,7 +30,8 @@
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
     "cap:open:android": "npx cap open android",
-    "cap:build": "npm run build && npx cap sync"
+    "cap:build": "npm run build && npx cap sync",
+    "postinstall": "patch-package"
   },
   "eslintConfig": {
     "extends": [
@@ -48,5 +50,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "customize-cra": "^1.0.0",
+    "patch-package": "^8.0.1",
+    "react-app-rewired": "^2.2.1"
   }
 }
