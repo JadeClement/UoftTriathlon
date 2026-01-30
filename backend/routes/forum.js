@@ -162,7 +162,7 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
 // Create new forum post
 router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async (req, res) => {
   try {
-    const { title, content, type, workoutType, workoutDate, workoutTime, capacity, eventDate } = req.body;
+    const { title, content, type, workoutType, workoutDate, workoutTime, capacity, eventDate, intervals } = req.body;
     const userId = req.user.id;
 
     if (!content || !type) {
@@ -175,18 +175,35 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
       capacityValue = parseInt(capacity, 10);
     }
 
+    // Validate intervals (optional, iOS: array of { title, description })
+    let intervalsJson = null;
+    if (intervals && Array.isArray(intervals) && intervals.length > 0) {
+      const valid = intervals.every(
+        (i) => i && typeof i === 'object' && (typeof i.title === 'string' || typeof i.description === 'string')
+      );
+      if (valid) {
+        const cleaned = intervals.map((i) => ({
+          title: (i.title || '').trim(),
+          description: (i.description || '').trim()
+        })).filter((i) => i.title || i.description);
+        if (cleaned.length > 0) {
+          intervalsJson = JSON.stringify(cleaned);
+        }
+      }
+    }
+
     console.log('🔍 Create post parameters:', {
       title, content, type, workoutType, workoutDate, workoutTime, 
-      capacity: capacity, capacityValue, eventDate
+      capacity: capacity, capacityValue, eventDate, hasIntervals: !!intervalsJson
     });
 
     const result = await pool.query(`
       INSERT INTO forum_posts (
         user_id, title, content, type, workout_type, workout_date, 
-        workout_time, capacity, event_date, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+        workout_time, capacity, event_date, intervals, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [userId, title, content, type, workoutType, workoutDate, workoutTime, capacityValue, eventDate]);
+    `, [userId, title, content, type, workoutType, workoutDate, workoutTime, capacityValue, eventDate, intervalsJson]);
 
     console.log('✅ Post created successfully, ID:', result.rows[0].id);
     
@@ -236,18 +253,21 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
 
 // Update forum post
 router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
+  let client;
   try {
+    client = await pool.connect();
     const { id } = req.params;
     const { title, content, workoutType, workoutDate, workoutTime, capacity, eventDate } = req.body;
     const userId = req.user.id;
 
-    // Check if user can edit this post (author or admin/exec)
-    const postResult = await pool.query(
-      'SELECT user_id, type FROM forum_posts WHERE id = $1 AND is_deleted = false', 
+    // Check if user can edit this post (author or admin/exec), and get type/capacity for waitlist logic
+    const postResult = await client.query(
+      'SELECT user_id, type, capacity FROM forum_posts WHERE id = $1 AND is_deleted = false',
       [id]
     );
 
     if (postResult.rows.length === 0) {
+      client.release();
       return res.status(404).json({ error: 'Post not found' });
     }
 
@@ -255,6 +275,7 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
 
     // Only author or admin/exec can edit
     if (post.user_id !== userId && !['administrator', 'exec'].includes(req.user.role)) {
+      client.release();
       return res.status(403).json({ error: 'Not authorized to edit this post' });
     }
 
@@ -265,20 +286,94 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
     }
 
     console.log('🔍 Update post parameters:', {
-      title, content, workoutType, workoutDate, workoutTime, 
+      title, content, workoutType, workoutDate, workoutTime,
       capacity: capacity, capacityValue, eventDate, id
     });
 
-    await pool.query(`
-      UPDATE forum_posts 
-      SET title = $1, content = $2, workout_type = $3, workout_date = $4, 
+    await client.query('BEGIN');
+
+    await client.query(`
+      UPDATE forum_posts
+      SET title = $1, content = $2, workout_type = $3, workout_date = $4,
           workout_time = $5, capacity = $6, event_date = $7
       WHERE id = $8
     `, [title, content, workoutType, workoutDate, workoutTime, capacityValue, eventDate, id]);
 
+    const promoted = [];
+    if (post.type === 'workout' && capacityValue != null && capacityValue > 0) {
+      const signupCountResult = await client.query(
+        'SELECT COUNT(*)::int AS cnt FROM workout_signups WHERE post_id = $1',
+        [id]
+      );
+      const signupCount = signupCountResult.rows[0].cnt;
+      const slotsAvailable = Math.max(0, capacityValue - signupCount);
+
+      if (slotsAvailable > 0) {
+        let promotedCount = 0;
+        while (promotedCount < slotsAvailable) {
+          const waitlistResult = await client.query(
+            `SELECT ww.id, ww.user_id, u.name AS user_name, u.email, u.phone_number
+             FROM workout_waitlist ww
+             JOIN users u ON u.id = ww.user_id
+             WHERE ww.post_id = $1
+             ORDER BY ww.joined_at ASC
+             FOR UPDATE SKIP LOCKED
+             LIMIT 1`,
+            [id]
+          );
+          if (waitlistResult.rows.length === 0) break;
+
+          const w = waitlistResult.rows[0];
+          await client.query('DELETE FROM workout_waitlist WHERE id = $1', [w.id]);
+          await client.query(
+            'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+            [w.user_id, id]
+          );
+          promoted.push({
+            id: w.user_id,
+            email: w.email,
+            phone_number: w.phone_number || null,
+            name: w.user_name
+          });
+          promotedCount++;
+          console.log('✅ Capacity increase: promoted waitlist user:', { workoutId: id, waitlistUserId: w.user_id, waitlistUserName: w.user_name });
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    client.release();
+
+    // Notifications are best-effort after commit
+    if (promoted.length > 0) {
+      const workoutDetailsResult = await pool.query(
+        'SELECT title, workout_date AS workout_date, workout_time AS workout_time FROM forum_posts WHERE id = $1',
+        [id]
+      );
+      const workoutData = workoutDetailsResult.rows[0]
+        ? { id, title: workoutDetailsResult.rows[0].title, workoutDate: workoutDetailsResult.rows[0].workout_date, workoutTime: workoutDetailsResult.rows[0].workout_time }
+        : { id, title, workoutDate: workoutDate, workoutTime: workoutTime };
+      setImmediate(async () => {
+        for (const userData of promoted) {
+          try {
+            await notificationService.notifyWaitlistPromotion(
+              { id: userData.id, email: userData.email, phone: userData.phone_number, name: userData.name },
+              workoutData
+            );
+          } catch (e) {
+            console.log('Waitlist promotion notification error:', e.message);
+          }
+        }
+      });
+    }
+
     console.log('✅ Post updated successfully');
     res.json({ message: 'Post updated successfully' });
   } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) { /* ignore */ }
+    if (client) client.release();
     console.error('Update post error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
