@@ -773,7 +773,7 @@ router.delete('/profile', authenticateToken, allowOwnProfile(), async (req, res)
     await client.query('DELETE FROM post_likes WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM event_rsvps WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM user_popup_views WHERE user_id = $1', [userId]);
-    await client.query('DELETE FROM records WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM interval_results WHERE user_id = $1', [userId]);
     
     // Soft delete forum posts (mark as deleted instead of hard delete to preserve thread structure)
     await client.query('UPDATE forum_posts SET is_deleted = true WHERE user_id = $1', [userId]);

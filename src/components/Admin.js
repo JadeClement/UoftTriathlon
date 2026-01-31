@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import { getFieldsForSport } from '../config/sportFields';
 import { formatSignupTimeForDisplay } from '../utils/dateUtils';
@@ -1141,10 +1142,8 @@ const Admin = () => {
   // ESLint: loadTestEvents and selectedTestEvent are stable; we only want to rerun when activeTab changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (activeTab === 'test-events' && !selectedTestEvent) {
-      loadTestEvents();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Interval Results tab - no API to load (test events replaced by intervals)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Load workouts when sport or date changes in test event form
@@ -1564,16 +1563,12 @@ const Admin = () => {
             Merch Orders
           </button>
         )}
-        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && (
+        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios' && (
           <button 
             className={`tab-button ${activeTab === 'test-events' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('test-events');
-              setSelectedTestEvent(null);
-              loadTestEvents();
-            }}
+            onClick={() => setActiveTab('test-events')}
           >
-            Test Events
+            Interval Results
           </button>
         )}
       </div>
@@ -2864,197 +2859,19 @@ const Admin = () => {
         )}
 
         {/* Test Events Tab */}
-        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && activeTab === 'test-events' && (
+        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios' && activeTab === 'test-events' && (
           <div className="test-events-section" style={{ padding: '2rem' }}>
-            {!selectedTestEvent ? (
-              // Test Events List View
-              <>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '16px'}}>
-                  <h2>Test Events</h2>
-                  <button className="btn btn-primary" onClick={() => {
-                    setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
-                    setTestEventRecordCount(0);
-                    setAvailableWorkouts([]);
-                    setShowTestEventModal(true);
-                  }}>+ New</button>
-                </div>
-                <div className="test-events-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Title</th>
-                        <th>Sport</th>
-                        <th>Date</th>
-                        <th>Workout</th>
-                        <th>Created By</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {testEvents.map(te => (
-                        <tr 
-                          key={te.id} 
-                          style={{cursor: 'pointer'}}
-                          onClick={() => loadTestEventRecords(te.id)}
-                        >
-                          <td>{te.title}</td>
-                          <td><span className={`sport-badge ${te.sport}`}>{te.sport}</span></td>
-                          <td>{new Date(te.date).toLocaleDateString()}</td>
-                          <td>{te.workout}</td>
-                          <td>{te.created_by_name || '-'}</td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <button className="action-btn small" onClick={async () => {
-                              setTestEventForm(te);
-                              setShowTestEventModal(true);
-                              if (te.id) {
-                                await loadTestEventRecordCount(te.id);
-                              }
-                              if (te.sport && te.date) {
-                                await loadAvailableWorkouts(te.sport, te.date);
-                              }
-                            }}>Edit</button>
-                          </td>
-                        </tr>
-                      ))}
-                      {testEvents.length === 0 && (
-                        <tr><td colSpan="6" style={{textAlign:'center', color:'#6b7280'}}>No test events yet</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              // Records Detail View
-              <>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '16px'}}>
-                  <div>
-                    <button className="btn btn-secondary" onClick={() => {
-                      setSelectedTestEvent(null);
-                      setTestEventRecords([]);
-                    }} style={{marginRight: '12px'}}>← Back</button>
-                    <h2 style={{display: 'inline', marginLeft: '12px'}}>{selectedTestEvent.title}</h2>
-                  </div>
-                  <button className="btn btn-primary" onClick={() => {
-                    setRecordForm({ title: selectedTestEvent.title || '', result: '', description: '', user_id: null, result_fields: {} });
-                    setUserSearchQuery('');
-                    setSelectedUser(null);
-                    setShowUserDropdown(false);
-                    setShowRecordModal(true);
-                  }}>+ New Record</button>
-                </div>
-                <div style={{marginBottom: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px'}}>
-                  <p><strong>Sport:</strong> <span className={`sport-badge ${selectedTestEvent.sport}`}>{selectedTestEvent.sport}</span></p>
-                  <p><strong>Date:</strong> {new Date(selectedTestEvent.date).toLocaleDateString()}</p>
-                  <p><strong>Workout:</strong> {selectedTestEvent.workout}</p>
-                  {selectedTestEvent.workout_post_title && (
-                    <p><strong>Linked Workout:</strong> {selectedTestEvent.workout_post_title}</p>
-                  )}
-                </div>
-                <div className="records-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>User</th>
-                        <th>Title</th>
-                        <th>Result</th>
-                        <th>Notes</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {testEventRecords.map(r => {
-                        // Parse result_fields if available
-                        let resultFields = {};
-                        if (r.result_fields) {
-                          try {
-                            resultFields = typeof r.result_fields === 'string' 
-                              ? JSON.parse(r.result_fields) 
-                              : r.result_fields;
-                          } catch (e) {
-                            resultFields = {};
-                          }
-                        }
-                        const sport = selectedTestEvent?.sport;
-                        const fields = sport ? getFieldsForSport(sport) : [];
-                        const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
-                        
-                        const isExpanded = expandedRecordIds.has(r.id);
-                        
-                        return (
-                          <React.Fragment key={r.id}>
-                            <tr>
-                              <td>{r.user_name || r.user_email}</td>
-                              <td>{r.title}</td>
-                              <td>{r.result || '-'}</td>
-                              <td style={{maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{r.description || r.notes || '-'}</td>
-                              <td>{new Date(r.created_at).toLocaleDateString()}</td>
-                              <td>
-                                {hasFields && (
-                                  <button
-                                    onClick={() => {
-                                      const newExpanded = new Set(expandedRecordIds);
-                                      if (isExpanded) {
-                                        newExpanded.delete(r.id);
-                                      } else {
-                                        newExpanded.add(r.id);
-                                      }
-                                      setExpandedRecordIds(newExpanded);
-                                    }}
-                                    style={{
-                                      background: isExpanded ? '#6b7280' : '#3b82f6',
-                                      color: 'white',
-                                      border: 'none',
-                                      padding: '0.375rem 0.75rem',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer',
-                                      fontSize: '0.875rem',
-                                      fontWeight: 500
-                                    }}
-                                  >
-                                    {isExpanded ? '▼ Collapse' : '▶ Expand'}
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                            {isExpanded && hasFields && (
-                              <tr style={{ background: '#f8fafc' }}>
-                                <td colSpan="6" style={{ padding: '1rem' }}>
-                                  <div style={{ padding: '1rem', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                                    <h4 style={{ margin: '0 0 0.75rem 0', color: '#374151', fontSize: '0.875rem', fontWeight: 600 }}>
-                                      {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
-                                    </h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                      {fields.map(field => {
-                                        const value = resultFields[field.key];
-                                        if (value === null || value === undefined || value === '') return null;
-                                        return (
-                                          <div key={field.key} style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px' }}>
-                                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                                              {field.label}:
-                                            </div>
-                                            <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
-                                              {Array.isArray(value) ? value.join(', ') : value}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                      {testEventRecords.length === 0 && (
-                        <tr><td colSpan="6" style={{textAlign:'center', color:'#6b7280'}}>No records yet</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
+            <h2>Interval Results</h2>
+            <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb', color: '#374151' }}>
+              <p style={{ margin: '0 0 0.5rem 0' }}>
+                <strong>Test events have been replaced by interval results.</strong>
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                <li>Coaches add intervals when creating a workout post (iOS app → Add Intervals)</li>
+                <li>Users add their interval times from the workout detail page</li>
+                <li>View interval results on each workout&apos;s detail page or on the Results page (iOS)</li>
+              </ul>
+            </div>
           </div>
         )}
 

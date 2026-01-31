@@ -364,49 +364,37 @@ async function initializeDatabase() {
     `);
     console.log('✅ user_popup_views table created');
 
-    // Create test_events table (coaches create test events)
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS test_events (
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        sport VARCHAR(20) NOT NULL CHECK(sport IN ('swim', 'bike', 'run')),
-        date DATE NOT NULL,
-        workout TEXT NOT NULL,
-        workout_post_id INTEGER REFERENCES forum_posts(id) ON DELETE SET NULL,
-        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log('✅ Test events table created');
+    // Migration: Replace test_events/records with workout_intervals/interval_results
+    await pool.query('DROP TABLE IF EXISTS records CASCADE');
+    await pool.query('DROP TABLE IF EXISTS test_events CASCADE');
+    console.log('✅ Dropped records and test_events tables');
 
-    // Create records table (users/coaches add their results to test events)
+    // Create workout_intervals table (coach-defined intervals per workout)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS records (
+      CREATE TABLE IF NOT EXISTS workout_intervals (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        test_event_id INTEGER NOT NULL REFERENCES test_events(id) ON DELETE CASCADE,
+        post_id INTEGER NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
         title VARCHAR(255) NOT NULL,
-        result TEXT,
         description TEXT,
-        result_fields JSONB,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Records table created');
+    console.log('✅ Workout intervals table created');
 
-    // Add result_fields column if it doesn't exist (migration for existing databases)
-    try {
-      await pool.query(`
-        ALTER TABLE records
-        ADD COLUMN IF NOT EXISTS result_fields JSONB
-      `);
-      console.log('✅ result_fields column added to records table (or already exists)');
-    } catch (error) {
-      console.log('ℹ️  result_fields column may already exist in records table');
-    }
+    // Create interval_results table (user times per interval)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS interval_results (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
+        interval_id INTEGER NOT NULL REFERENCES workout_intervals(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        time VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(post_id, interval_id, user_id)
+      )
+    `);
+    console.log('✅ Interval results table created');
 
     // Add results_public column to users table if it doesn't exist (migration for existing databases)
     try {
@@ -417,17 +405,6 @@ async function initializeDatabase() {
       console.log('✅ results_public column added to users table (or already exists)');
     } catch (error) {
       console.log('ℹ️  results_public column may already exist in users table');
-    }
-
-    // Remove is_public from records table if it exists (migration - privacy is now per-user)
-    try {
-      await pool.query(`
-        ALTER TABLE records
-        DROP COLUMN IF EXISTS is_public
-      `);
-      console.log('✅ Removed is_public column from records table (privacy is now per-user)');
-    } catch (error) {
-      console.log('ℹ️  is_public column does not exist in records table');
     }
 
     // Create merch_orders table
@@ -459,12 +436,9 @@ async function initializeDatabase() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_post_likes_user_id ON post_likes(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_post_id ON event_rsvps(post_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_event_rsvps_user_id ON event_rsvps(user_id)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_test_events_date ON test_events(date)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_test_events_sport ON test_events(sport)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_test_events_created_by ON test_events(created_by)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_test_events_workout_post_id ON test_events(workout_post_id)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_records_user_id ON records(user_id)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_records_test_event_id ON records(test_event_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_workout_intervals_post_id ON workout_intervals(post_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_interval_results_post_id ON interval_results(post_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_interval_results_user_id ON interval_results(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_created_at ON merch_orders(created_at)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_email ON merch_orders(email)');
     
@@ -491,21 +465,14 @@ async function initializeDatabase() {
       console.error('❌ Error creating archived index:', error.message);
     }
 
-    // Add intervals column to forum_posts (iOS interval times for charts)
+    // Drop intervals JSONB from forum_posts (replaced by workout_intervals table)
     try {
-      await pool.query(`
-        ALTER TABLE forum_posts
-        ADD COLUMN IF NOT EXISTS intervals JSONB
-      `);
-      console.log('✅ Intervals column added to forum_posts table');
+      await pool.query(`ALTER TABLE forum_posts DROP COLUMN IF EXISTS intervals`);
+      console.log('✅ Dropped intervals column from forum_posts (using workout_intervals)');
     } catch (error) {
-      if (error.code === '42701') {
-        console.log('✅ Intervals column already exists in forum_posts table');
-      } else {
-        console.error('❌ Error adding intervals column:', error.message);
-      }
+      console.log('ℹ️  intervals column may not exist in forum_posts');
     }
-    
+
     console.log('✅ Database indexes created');
 
     // Add sport column to users table if it doesn't exist

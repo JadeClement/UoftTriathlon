@@ -9,7 +9,6 @@ import { combineDateTime, getHoursUntil, isWithinHours, formatSignupDateForDispl
 import { normalizeProfileImageUrl } from '../utils/imageUtils';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
-import { getFieldsForSport } from '../config/sportFields';
 import { Capacitor } from '@capacitor/core';
 import { addWorkoutToCalendar } from '../services/calendarService';
 import './WorkoutDetail.css';
@@ -18,7 +17,7 @@ const WorkoutDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser, isMember } = useAuth();
-  const isIOS = Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
+  const isIOS = Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
   
   // Offline data hooks
   const isOnline = useOnlineStatus();
@@ -51,27 +50,10 @@ const WorkoutDetail = () => {
   const [editingAttendance, setEditingAttendance] = useState(false);
   const [swimMembers, setSwimMembers] = useState([]);
   const [isSwimWorkout, setIsSwimWorkout] = useState(false);
-  const [testEvent, setTestEvent] = useState(null);
-  const [testEventRecords, setTestEventRecords] = useState([]);
-  const [showTestEventModal, setShowTestEventModal] = useState(false);
-  const [showRecordModal, setShowRecordModal] = useState(false);
-  const [testEventForm, setTestEventForm] = useState({
-    title: '',
-    sport: 'run',
-    date: '',
-    workout: ''
-  });
-  const [recordForm, setRecordForm] = useState({
-    result: '',
-    notes: '',
-    user_id: null,
-    result_fields: {}
-  });
-  // User selection state for coaches/admins when adding a result
-  const [recordUserSearchQuery, setRecordUserSearchQuery] = useState('');
-  const [recordUserSearchResults, setRecordUserSearchResults] = useState([]);
-  const [showRecordUserDropdown, setShowRecordUserDropdown] = useState(false);
-  const [selectedRecordUser, setSelectedRecordUser] = useState(null);
+  const [workoutIntervals, setWorkoutIntervals] = useState([]);
+  const [intervalResults, setIntervalResults] = useState([]);
+  const [showIntervalResultModal, setShowIntervalResultModal] = useState(false);
+  const [intervalResultForm, setIntervalResultForm] = useState({}); // { interval_id: time }
 
   // Swipe-to-go-back gesture (iOS only)
   const touchStartXRef = useRef(null);
@@ -315,17 +297,20 @@ const WorkoutDetail = () => {
         setComments([]);
       }
 
-      // Load test event for this workout
-      const testEventResponse = await fetch(`${API_BASE_URL}/test-events/by-workout/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // Load intervals and interval results for this workout (iOS only)
+      if (Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios') {
+        const [intervalsRes, resultsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/forum/workouts/${id}/intervals`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/forum/workouts/${id}/interval-results`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        if (intervalsRes.ok) {
+          const intervalsData = await intervalsRes.json();
+          setWorkoutIntervals(intervalsData.intervals || []);
         }
-      });
-
-      if (testEventResponse.ok) {
-        const testEventData = await testEventResponse.json();
-        setTestEvent(testEventData.testEvent);
-        setTestEventRecords(testEventData.records || []);
+        if (resultsRes.ok) {
+          const resultsData = await resultsRes.json();
+          setIntervalResults(resultsData.intervalResults || []);
+        }
       }
 
       setLoading(false);
@@ -1114,171 +1099,49 @@ const WorkoutDetail = () => {
     }
   };
 
-  // User search helpers for coaches/admins when adding a result
-  const searchRecordUsers = async (query) => {
-    if (!query || query.length < 2) {
-      setRecordUserSearchResults([]);
+  // Interval Results
+  const handleSubmitIntervalResults = async () => {
+    const results = workoutIntervals
+      .map((inv) => ({ interval_id: inv.id, time: intervalResultForm[inv.id] || '' }))
+      .filter((r) => r.time && String(r.time).trim());
+    if (results.length === 0) {
+      showError('Please enter at least one interval time');
       return;
     }
 
     try {
       const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(
-        `${API_BASE_URL}/admin/members?search=${encodeURIComponent(query)}&limit=10`,
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setRecordUserSearchResults(data.members || []);
-      }
-    } catch (error) {
-      console.error('Error searching users for test result:', error);
-    }
-  };
-
-  const handleRecordUserSearchChange = (e) => {
-    const query = e.target.value;
-    setRecordUserSearchQuery(query);
-    if (query) {
-      searchRecordUsers(query);
-      setShowRecordUserDropdown(true);
-    } else {
-      setRecordUserSearchResults([]);
-      setShowRecordUserDropdown(false);
-      setSelectedRecordUser(null);
-      setRecordForm((prev) => ({ ...prev, user_id: null }));
-    }
-  };
-
-  const selectRecordUser = (user) => {
-    setSelectedRecordUser(user);
-    setRecordUserSearchQuery(user.name || user.email);
-    setRecordForm((prev) => ({ ...prev, user_id: user.id }));
-    setShowRecordUserDropdown(false);
-    setRecordUserSearchResults([]);
-  };
-
-  // Test Event functions
-  const handleCreateTestEvent = async () => {
-    if (!testEventForm.title || !testEventForm.sport || !testEventForm.date || !testEventForm.workout) {
-      showError('Please fill in all required fields');
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/test-events`, {
+      const response = await fetch(`${API_BASE_URL}/forum/workouts/${id}/interval-results`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...testEventForm,
-          workout_post_id: parseInt(id)
-        })
+        body: JSON.stringify({ results })
       });
 
       if (response.ok) {
-        const data = await response.json().catch(() => null);
-
-        // Optimistically update local state so the UI reflects the new test event
-        if (data && data.testEvent) {
-          setTestEvent(data.testEvent);
-          setTestEventRecords([]);
-        }
-
-        showSuccess('Test event created successfully!');
-        setShowTestEventModal(false);
-        setTestEventForm({ title: '', sport: 'run', date: '', workout: '' });
-        // Also reload from the backend to stay in sync
+        showSuccess('Interval results saved!');
+        setShowIntervalResultModal(false);
+        setIntervalResultForm({});
         loadWorkoutDetails();
       } else {
-        const error = await response.json();
-        showError(`Failed to create test event: ${error.error}`);
+        const err = await response.json();
+        showError(err.error || 'Failed to save results');
       }
     } catch (error) {
-      console.error('Error creating test event:', error);
-      showError('Error creating test event');
+      console.error('Error saving interval results:', error);
+      showError('Error saving interval results');
     }
   };
 
-  const handleAddRecord = async () => {
-    if (!recordForm.result) {
-      showError('Please enter a result');
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('triathlonToken');
-      const payload = {
-        test_event_id: testEvent.id,
-        title: testEvent.title,
-        result: recordForm.result,
-        notes: recordForm.notes,
-        result_fields: recordForm.result_fields || {}
-      };
-
-      // Only allow coaches/admins to specify a different user_id
-      if (isCoachOrAdmin && recordForm.user_id) {
-        payload.user_id = recordForm.user_id;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/records`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        showSuccess('Result added successfully!');
-        setShowRecordModal(false);
-        setRecordForm({ result: '', notes: '', user_id: null, result_fields: {} });
-        setSelectedRecordUser(null);
-        setRecordUserSearchQuery('');
-        setRecordUserSearchResults([]);
-        setShowRecordUserDropdown(false);
-        loadWorkoutDetails();
-      } else {
-        const error = await response.json();
-        // Check for duplicate record error
-        if (error.error === 'duplicate_record') {
-          showError(error.message || 'Whoops! You already have a result for this test event. Please edit that one instead.');
-        } else {
-          showError(`Failed to add result: ${error.error}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error adding record:', error);
-      showError('Error adding result');
-    }
-  };
-
-  const openTestEventModal = () => {
-    // Pre-fill form with workout info
-    const workoutToCheck = displayWorkout || workout;
-    const workoutDate = workoutToCheck.workout_date ? workoutToCheck.workout_date.split('T')[0] : '';
-    const sportMap = {
-      'swim': 'swim',
-      'spin': 'bike',
-      'outdoor-ride': 'bike',
-      'brick': 'bike',
-      'run': 'run'
-    };
-    const mappedSport = sportMap[workoutToCheck.workout_type] || 'run';
-    
-    setTestEventForm({
-      title: workoutToCheck.title || '',
-      sport: mappedSport,
-      date: workoutDate,
-      workout: workoutToCheck.content || ''
-    });
-    setShowTestEventModal(true);
+  const openIntervalResultModal = () => {
+    const existing = {};
+    intervalResults
+      .filter((r) => r.user_id === currentUser?.id)
+      .forEach((r) => { existing[r.interval_id] = r.time; });
+    setIntervalResultForm(existing);
+    setShowIntervalResultModal(true);
   };
 
   if (loading || workoutLoading) {
@@ -1956,195 +1819,86 @@ const WorkoutDetail = () => {
           </div>
         )}
 
-        {/* Test Event / Results Section */}
+        {/* Interval Results Section - iOS only */}
+        {isIOS && (
         <div className="test-event-section" style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ margin: 0, color: '#374151' }}>Test Results</h2>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {/* Show "Create Test Event" button for coaches/admins only if no test event exists (iOS native app only) */}
-              {!testEvent &&
-                currentUser &&
-                (currentUser.role === 'coach' || currentUser.role === 'administrator') &&
-                Capacitor.isNativePlatform() &&
-                Capacitor.getPlatform() === 'ios' && (
-                <button 
-                  className="new-post-btn" 
-                  onClick={openTestEventModal}
-                >
-                  +<span className="btn-text"> Create Test Event</span>
-                </button>
-              )}
-              {/* Show \"Add Test Result\" button if test event exists and user is a member/coach/admin */}
-              {testEvent && currentUser && (currentUser.role === 'member' || currentUser.role === 'coach' || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
-                <button 
-                  className="btn btn-primary" 
-                  onClick={() => {
-                    setShowRecordModal(true);
-                    setRecordForm({ result: '', notes: '', user_id: null, result_fields: {} });
-                    setSelectedRecordUser(null);
-                    setRecordUserSearchQuery('');
-                    setRecordUserSearchResults([]);
-                    setShowRecordUserDropdown(false);
-                  }}
-                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                >
-                  + Add Test Result
-                </button>
-              )}
-            </div>
+            <h2 style={{ margin: 0, color: '#374151' }}>Interval Results</h2>
+            {currentUser && workoutIntervals.length > 0 && (
+              <button
+                className="btn btn-primary"
+                onClick={openIntervalResultModal}
+                style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+              >
+                + Add Interval Results
+              </button>
+            )}
           </div>
 
-          {!testEvent ? (
+          {workoutIntervals.length === 0 ? (
             <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
-              {currentUser && (currentUser.role === 'coach' || currentUser.role === 'administrator')
-                ? 'No test event linked to this workout. Click "Create Test Event" to add one.'
-                : 'No test event linked to this workout.'}
+              No intervals defined for this workout. Coaches can add intervals when creating a workout post (iOS app).
             </p>
           ) : (
             <>
               <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
-                <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>{testEvent.title}</h3>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Intervals</h3>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: '#6b7280' }}>
-                  <span><strong>Sport:</strong> <span className={`sport-badge ${testEvent.sport}`} style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 500, textTransform: 'capitalize' }}>{testEvent.sport}</span></span>
-                  <span><strong>Date:</strong> {new Date(testEvent.date).toLocaleDateString()}</span>
-                  <span><strong>Workout:</strong> {testEvent.workout}</span>
+                  {workoutIntervals.map((inv, idx) => (
+                    <span key={inv.id}>
+                      <strong>{inv.title || `Interval ${idx + 1}`}</strong>
+                      {inv.description ? `: ${inv.description}` : ''}
+                    </span>
+                  ))}
                 </div>
               </div>
 
-              {currentUser && (
-                <>
-                  {isCoachOrAdmin ? (
-                    // Coaches/admins see all results
-                    <>
-                      {testEventRecords.length > 0 ? (
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {testEventRecords.map(record => {
-                                // Parse result_fields if available
-                                let resultFields = {};
-                                if (record.result_fields) {
-                                  try {
-                                    resultFields = typeof record.result_fields === 'string' 
-                                      ? JSON.parse(record.result_fields) 
-                                      : record.result_fields;
-                                  } catch (e) {
-                                    resultFields = {};
-                                  }
-                                }
-                                const sport = testEvent?.sport;
-                                const fields = sport ? getFieldsForSport(sport) : [];
-                                const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
-                                
-                                return (
-                                  <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{record.user_name}</td>
-                                    <td style={{ padding: '0.75rem', color: '#475569' }}>
-                                      {record.result || '-'}
-                                      {hasFields && (
-                                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
-                                          {fields.map(field => {
-                                            const value = resultFields[field.key];
-                                            if (value === null || value === undefined || value === '') return null;
-                                            return (
-                                              <div key={field.key} style={{ marginTop: '0.25rem' }}>
-                                                <strong>{field.label}:</strong> {Array.isArray(value) ? value.join(', ') : value}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </td>
-                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
-                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>No results yet. Be the first to add one!</p>
-                      )}
-                    </>
-                  ) : (
-                    // Regular members/execs see public results + their own results (already filtered by backend)
-                    <>
-                      {testEventRecords.length > 0 ? (
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Result</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Notes</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Date</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {testEventRecords.map(record => {
-                                // Parse result_fields if available
-                                let resultFields = {};
-                                if (record.result_fields) {
-                                  try {
-                                    resultFields = typeof record.result_fields === 'string' 
-                                      ? JSON.parse(record.result_fields) 
-                                      : record.result_fields;
-                                  } catch (e) {
-                                    resultFields = {};
-                                  }
-                                }
-                                const sport = testEvent?.sport;
-                                const fields = sport ? getFieldsForSport(sport) : [];
-                                const hasFields = fields.length > 0 && Object.keys(resultFields).length > 0;
-                                
-                                return (
-                                  <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{record.user_name}</td>
-                                    <td style={{ padding: '0.75rem', color: '#475569' }}>
-                                      {record.result || '-'}
-                                      {hasFields && (
-                                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
-                                          {fields.map(field => {
-                                            const value = resultFields[field.key];
-                                            if (value === null || value === undefined || value === '') return null;
-                                            return (
-                                              <div key={field.key} style={{ marginTop: '0.25rem' }}>
-                                                <strong>{field.label}:</strong> {Array.isArray(value) ? value.join(', ') : value}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </td>
-                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{record.notes || '-'}</td>
-                                    <td style={{ padding: '0.75rem', color: '#475569' }}>{new Date(record.created_at).toLocaleDateString()}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>
-                          No result recorded yet. Click "Add Test Result" to add yours.
-                        </p>
-                      )}
-                    </>
-                  )}
-                </>
+              {intervalResults.length > 0 ? (
+                (() => {
+                  const byUser = {};
+                  intervalResults.forEach((r) => {
+                    if (!byUser[r.user_id]) byUser[r.user_id] = { user_name: r.user_name, times: {} };
+                    byUser[r.user_id].times[r.interval_id] = r.time;
+                  });
+                  const users = Object.entries(byUser);
+                  return (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
+                            {workoutIntervals.map((inv) => (
+                              <th key={inv.id} style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>
+                                {inv.title || inv.interval_title || 'Interval'}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users.map(([uid, data]) => (
+                            <tr key={uid} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.75rem', color: '#475569' }}>{data.user_name}</td>
+                              {workoutIntervals.map((inv) => (
+                                <td key={inv.id} style={{ padding: '0.75rem', color: '#475569' }}>
+                                  {data.times[inv.id] || '-'}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()
+              ) : (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
+                  No interval results yet. Click &quot;Add Interval Results&quot; to add yours.
+                </p>
               )}
             </>
           )}
         </div>
+        )}
 
         <div className="comments-section">
           <h2>Comments ({comments.length})</h2>
@@ -2213,256 +1967,32 @@ const WorkoutDetail = () => {
           )}
         </div>
 
-        {/* Create Test Event Modal */}
-        {showTestEventModal && (
+        {/* Add Interval Results Modal - iOS only */}
+        {isIOS && showIntervalResultModal && workoutIntervals.length > 0 && (
           <div className="modal-overlay">
             <div className="modal">
-              <h2>Create Test Event</h2>
-              <form onSubmit={(e) => { e.preventDefault(); handleCreateTestEvent(); }}>
-                <div className="form-group">
-                  <label>Title:</label>
-                  <input
-                    type="text"
-                    value={testEventForm.title}
-                    onChange={(e) => setTestEventForm({...testEventForm, title: e.target.value})}
-                    required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Sport:</label>
-                  <select
-                    value={testEventForm.sport}
-                    onChange={(e) => setTestEventForm({...testEventForm, sport: e.target.value})}
-                    required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                  >
-                    <option value="swim">Swim</option>
-                    <option value="bike">Bike</option>
-                    <option value="run">Run</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Date:</label>
-                  <input
-                    type="date"
-                    value={testEventForm.date}
-                    onChange={(e) => setTestEventForm({...testEventForm, date: e.target.value})}
-                    required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Workout Description:</label>
-                  <textarea
-                    rows="3"
-                    value={testEventForm.workout}
-                    onChange={(e) => setTestEventForm({...testEventForm, workout: e.target.value})}
-                    placeholder="e.g., 5 400ms fast on the track"
-                    required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button type="button" className="btn btn-secondary" onClick={() => {
-                    setShowTestEventModal(false);
-                    setTestEventForm({ title: '', sport: 'run', date: '', workout: '' });
-                  }}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Create Test Event
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Add Record Modal */}
-        {showRecordModal && testEvent && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h2>Add My Result</h2>
-              <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
-                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#374151' }}>{testEvent.title}</h3>
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{testEvent.workout}</p>
-              </div>
-              <form onSubmit={(e) => { e.preventDefault(); handleAddRecord(); }}>
-                {isCoachOrAdmin && (
-                  <div className="form-group">
-                    <label>Athlete:</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type="text"
-                        value={recordUserSearchQuery}
-                        onChange={handleRecordUserSearchChange}
-                        placeholder="Search members by name or email"
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                      />
-                      {showRecordUserDropdown && recordUserSearchResults.length > 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          background: 'white',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '0.5rem',
-                          marginTop: '0.25rem',
-                          maxHeight: '200px',
-                          overflowY: 'auto',
-                          zIndex: 10,
-                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
-                        }}>
-                          {recordUserSearchResults.map(user => (
-                            <button
-                              key={user.id}
-                              type="button"
-                              onClick={() => selectRecordUser(user)}
-                              style={{
-                                display: 'block',
-                                width: '100%',
-                                textAlign: 'left',
-                                padding: '0.5rem 0.75rem',
-                                border: 'none',
-                                background: selectedRecordUser && selectedRecordUser.id === user.id ? '#eff6ff' : 'white',
-                                cursor: 'pointer',
-                                fontSize: '0.875rem'
-                              }}
-                            >
-                              <div style={{ fontWeight: 500, color: '#111827' }}>{user.name || user.email}</div>
-                              {user.name && user.email && (
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{user.email}</div>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <small style={{ color: '#6b7280' }}>Leave blank to use your own name.</small>
+              <h2>Add Interval Results</h2>
+              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Enter your time for each interval (e.g., 2:15, 4:32, 1:58)
+              </p>
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmitIntervalResults(); }}>
+                {workoutIntervals.map((inv) => (
+                  <div key={inv.id} className="form-group">
+                    <label>{inv.title || 'Interval'} {inv.description ? `(${inv.description})` : ''}</label>
+                    <input
+                      type="text"
+                      value={intervalResultForm[inv.id] || ''}
+                      onChange={(e) => setIntervalResultForm((prev) => ({ ...prev, [inv.id]: e.target.value }))}
+                      placeholder="e.g., 2:15"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                    />
                   </div>
-                )}
-                
-                {/* Sport-specific fields */}
-                {testEvent && (() => {
-                  const sport = testEvent.sport;
-                  const sportFields = sport ? getFieldsForSport(sport) : [];
-                  
-                  if (sportFields.length > 0) {
-                    return (
-                      <div className="form-group" style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <label style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#374151', display: 'block' }}>
-                          {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
-                        </label>
-                        {sportFields.map(field => (
-                          <div key={field.key} style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
-                              {field.label}:
-                            </label>
-                            {field.type === 'array' ? (
-                              <input
-                                type="text"
-                                value={Array.isArray(recordForm.result_fields?.[field.key]) 
-                                  ? recordForm.result_fields[field.key].join(', ') 
-                                  : (recordForm.result_fields?.[field.key] || '')}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  const arrayValue = value ? value.split(',').map(v => v.trim()).filter(v => v) : [];
-                                  setRecordForm({
-                                    ...recordForm,
-                                    result_fields: {
-                                      ...recordForm.result_fields,
-                                      [field.key]: arrayValue.length > 0 ? arrayValue : null
-                                    }
-                                  });
-                                }}
-                                placeholder={field.placeholder}
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                              />
-                            ) : field.type === 'number' ? (
-                              <input
-                                type="number"
-                                value={recordForm.result_fields?.[field.key] || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value === '' ? null : parseFloat(e.target.value);
-                                  setRecordForm({
-                                    ...recordForm,
-                                    result_fields: {
-                                      ...recordForm.result_fields,
-                                      [field.key]: value
-                                    }
-                                  });
-                                }}
-                                placeholder={field.placeholder}
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                              />
-                            ) : (
-                              <input
-                                type="text"
-                                value={recordForm.result_fields?.[field.key] || ''}
-                                onChange={(e) => {
-                                  setRecordForm({
-                                    ...recordForm,
-                                    result_fields: {
-                                      ...recordForm.result_fields,
-                                      [field.key]: e.target.value || null
-                                    }
-                                  });
-                                }}
-                                placeholder={field.placeholder}
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                              />
-                            )}
-                            {field.helpText && (
-                              <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem', fontSize: '0.75rem' }}>
-                                {field.helpText}
-                              </small>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-                
-                <div className="form-group">
-                  <label>Result:</label>
-                  <textarea
-                    rows="3"
-                    value={recordForm.result}
-                    onChange={(e) => setRecordForm({...recordForm, result: e.target.value})}
-                    placeholder="e.g., 1:20, 1:18, 1:19, 1:17, 1:16"
-                    required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                  />
-                  <small style={{ color: '#6b7280' }}>Text description of times/results</small>
-                </div>
-                <div className="form-group">
-                  <label>Notes (optional):</label>
-                  <textarea
-                    rows="3"
-                    value={recordForm.notes}
-                    onChange={(e) => setRecordForm({...recordForm, notes: e.target.value})}
-                    placeholder="Additional notes..."
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                  />
-                </div>
+                ))}
                 <div className="modal-actions">
-                  <button type="button" className="btn btn-secondary" onClick={() => {
-                    setShowRecordModal(false);
-                    setRecordForm({ result: '', notes: '', user_id: null, result_fields: {} });
-                    setSelectedRecordUser(null);
-                    setRecordUserSearchQuery('');
-                    setRecordUserSearchResults([]);
-                    setShowRecordUserDropdown(false);
-                  }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => { setShowIntervalResultModal(false); setIntervalResultForm({}); }}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary">
-                    Add Result
-                  </button>
+                  <button type="submit" className="btn btn-primary">Save Results</button>
                 </div>
               </form>
             </div>

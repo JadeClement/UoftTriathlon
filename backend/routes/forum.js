@@ -175,63 +175,51 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
       capacityValue = parseInt(capacity, 10);
     }
 
-    // Validate intervals (optional, iOS: array of { title, description })
-    let intervalsJson = null;
+    // Validate intervals (optional, iOS: array of { title, description }) -> stored in workout_intervals
+    let intervalsToInsert = [];
     if (intervals && Array.isArray(intervals) && intervals.length > 0) {
       const valid = intervals.every(
         (i) => i && typeof i === 'object' && (typeof i.title === 'string' || typeof i.description === 'string')
       );
       if (valid) {
-        const cleaned = intervals.map((i) => ({
-          title: (i.title || '').trim(),
-          description: (i.description || '').trim()
-        })).filter((i) => i.title || i.description);
-        if (cleaned.length > 0) {
-          intervalsJson = JSON.stringify(cleaned);
-        }
+        intervalsToInsert = intervals
+          .map((i, idx) => ({
+            title: (i.title || '').trim(),
+            description: (i.description || '').trim()
+          }))
+          .filter((i) => i.title || i.description)
+          .map((i, idx) => ({ ...i, sort_order: idx }));
       }
     }
 
     console.log('🔍 Create post parameters:', {
-      title, content, type, workoutType, workoutDate, workoutTime, 
-      capacity: capacity, capacityValue, eventDate, hasIntervals: !!intervalsJson
+      title, content, type, workoutType, workoutDate, workoutTime,
+      capacity: capacity, capacityValue, eventDate, intervalCount: intervalsToInsert.length
     });
 
     const insertParams = [userId, title, content, type, workoutType, workoutDate, workoutTime, capacityValue, eventDate];
-    let result;
+    const result = await pool.query(`
+      INSERT INTO forum_posts (
+        user_id, title, content, type, workout_type, workout_date,
+        workout_time, capacity, event_date, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+      RETURNING *
+    `, insertParams);
 
-    if (intervalsJson) {
-      try {
-        // Try INSERT with intervals (column may not exist in production yet)
-        result = await pool.query(`
-          INSERT INTO forum_posts (
-            user_id, title, content, type, workout_type, workout_date,
-            workout_time, capacity, event_date, intervals, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
-          RETURNING *
-        `, [...insertParams, intervalsJson]);
-      } catch (intervalsErr) {
-        // Fallback: intervals column doesn't exist yet - create post without intervals
-        console.warn('Intervals column not available, creating post without intervals:', intervalsErr.message);
-        result = await pool.query(`
-          INSERT INTO forum_posts (
-            user_id, title, content, type, workout_type, workout_date,
-            workout_time, capacity, event_date, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
-          RETURNING *
-        `, insertParams);
+    const postId = result.rows[0].id;
+    console.log('✅ Post created successfully, ID:', postId);
+
+    // Insert intervals into workout_intervals (for workout posts)
+    if (type === 'workout' && intervalsToInsert.length > 0) {
+      for (let i = 0; i < intervalsToInsert.length; i++) {
+        const inv = intervalsToInsert[i];
+        await pool.query(`
+          INSERT INTO workout_intervals (post_id, title, description, sort_order)
+          VALUES ($1, $2, $3, $4)
+        `, [postId, inv.title, inv.description, inv.sort_order]);
       }
-    } else {
-      result = await pool.query(`
-        INSERT INTO forum_posts (
-          user_id, title, content, type, workout_type, workout_date,
-          workout_time, capacity, event_date, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
-        RETURNING *
-      `, insertParams);
+      console.log('✅ Inserted', intervalsToInsert.length, 'intervals');
     }
-
-    console.log('✅ Post created successfully, ID:', result.rows[0].id);
     
     // Get the full post with user information
     const fullPostResult = await pool.query(`
@@ -239,8 +227,8 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
       FROM forum_posts fp
       JOIN users u ON fp.user_id = u.id
       WHERE fp.id = $1
-    `, [result.rows[0].id]);
-    
+    `, [postId]);
+
     const post = fullPostResult.rows[0];
     
     // Send notifications based on post type (non-blocking)
@@ -850,6 +838,122 @@ router.get('/workouts/:id/waitlist', authenticateToken, requireMember, async (re
     res.json({ waitlist: waitlistResult.rows || [] });
   } catch (error) {
     console.error('Get workout waitlist error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get workout intervals (coach-defined)
+router.get('/workouts/:id/intervals', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT id, post_id, title, description, sort_order
+      FROM workout_intervals
+      WHERE post_id = $1
+      ORDER BY sort_order ASC, id ASC
+    `, [id]);
+    res.json({ intervals: result.rows || [] });
+  } catch (error) {
+    console.error('Get workout intervals error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get interval results for a workout (coaches see all, members see public + own)
+router.get('/workouts/:id/interval-results', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const isCoachOrAdmin = ['coach', 'administrator', 'exec'].includes(req.user.role || '');
+
+    const result = await pool.query(`
+      SELECT 
+        ir.id, ir.post_id, ir.interval_id, ir.user_id, ir.time, ir.created_at,
+        u.name as user_name,
+        wi.title as interval_title, wi.description as interval_description
+      FROM interval_results ir
+      JOIN users u ON ir.user_id = u.id
+      JOIN workout_intervals wi ON ir.interval_id = wi.id
+      WHERE ir.post_id = $1
+        AND (${isCoachOrAdmin ? '1=1' : 'u.results_public = true OR ir.user_id = $2'})
+      ORDER BY ir.user_id, wi.sort_order, wi.id
+    `, isCoachOrAdmin ? [id] : [id, userId]);
+
+    res.json({ intervalResults: result.rows || [] });
+  } catch (error) {
+    console.error('Get interval results error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Submit interval results for a workout (upsert per user)
+router.post('/workouts/:id/interval-results', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { results } = req.body; // [{ interval_id, time }, ...]
+    const userId = req.user.id;
+
+    if (!results || !Array.isArray(results) || results.length === 0) {
+      return res.status(400).json({ error: 'results array with interval_id and time is required' });
+    }
+
+    // Verify workout exists
+    const workoutCheck = await pool.query(
+      'SELECT id FROM forum_posts WHERE id = $1 AND type = \'workout\' AND is_deleted = false',
+      [id]
+    );
+    if (workoutCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+
+    // Verify all intervals belong to this workout
+    const intervalIds = results.map((r) => r.interval_id).filter(Boolean);
+    if (intervalIds.length === 0) {
+      return res.status(400).json({ error: 'At least one interval_id required' });
+    }
+
+    const intervalCheck = await pool.query(
+      'SELECT id FROM workout_intervals WHERE post_id = $1 AND id = ANY($2)',
+      [id, intervalIds]
+    );
+    if (intervalCheck.rows.length !== intervalIds.length) {
+      return res.status(400).json({ error: 'Invalid interval_id(s) for this workout' });
+    }
+
+    for (const r of results) {
+      if (!r.interval_id || r.time == null || r.time === '') continue;
+      await pool.query(`
+        INSERT INTO interval_results (post_id, interval_id, user_id, time)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (post_id, interval_id, user_id) DO UPDATE SET time = $4
+      `, [id, r.interval_id, userId, String(r.time).trim()]);
+    }
+
+    res.json({ message: 'Interval results saved', success: true });
+  } catch (error) {
+    console.error('Submit interval results error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get current user's interval results (for Results page)
+router.get('/interval-results/me', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(`
+      SELECT 
+        ir.id, ir.post_id, ir.interval_id, ir.user_id, ir.time, ir.created_at,
+        fp.title as workout_title, fp.workout_date, fp.workout_time, fp.workout_type,
+        wi.title as interval_title, wi.description as interval_description, wi.sort_order
+      FROM interval_results ir
+      JOIN forum_posts fp ON ir.post_id = fp.id
+      JOIN workout_intervals wi ON ir.interval_id = wi.id
+      WHERE ir.user_id = $1
+      ORDER BY fp.workout_date DESC, fp.workout_time DESC NULLS LAST, wi.sort_order, wi.id
+    `, [userId]);
+    res.json({ intervalResults: result.rows || [] });
+  } catch (error) {
+    console.error('Get my interval results error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

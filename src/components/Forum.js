@@ -56,7 +56,7 @@ const Forum = () => {
     capacity: ''
   });
   // iOS only: intervals for workout post (e.g. interval times for charts)
-  const isIOS = Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
+  const isIOS = Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
   const [showIntervalsSection, setShowIntervalsSection] = useState(false);
   const [workoutIntervals, setWorkoutIntervals] = useState([{ title: '', description: '' }]);
   const [eventForm, setEventForm] = useState({
