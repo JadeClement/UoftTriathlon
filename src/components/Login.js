@@ -637,23 +637,6 @@ const Login = () => {
             </div>
           </div>
         )}
-        
-        {/* Debug info - remove this later */}
-        {isLogin && Capacitor.isNativePlatform() && (
-          <div style={{ 
-            fontSize: '10px', 
-            color: '#666', 
-            marginTop: '10px',
-            padding: '5px',
-            background: '#f0f0f0',
-            borderRadius: '4px'
-          }}>
-            Debug: Available={biometricAvailable ? '✅' : '❌'} | 
-            Enabled={biometricEnabled ? '✅' : '❌'} | 
-            Type={biometricType || 'none'}
-          </div>
-        )}
-
         {error && (
           <div className="error-message">
             <div className="error-text">{error}</div>

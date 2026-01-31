@@ -1895,12 +1895,12 @@ const WorkoutDetail = () => {
             <>
               <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
                 <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Intervals</h3>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
                   {workoutIntervals.map((inv, idx) => (
-                    <span key={inv.id}>
+                    <div key={inv.id}>
                       <strong>{inv.title || `Interval ${idx + 1}`}</strong>
                       {inv.description ? `: ${inv.description}` : ''}
-                    </span>
+                    </div>
                   ))}
                 </div>
               </div>
