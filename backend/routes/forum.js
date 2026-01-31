@@ -973,6 +973,23 @@ router.post('/workouts/:id/interval-results', authenticateToken, requireMember, 
   }
 });
 
+// Get workouts that have intervals (for Results page add form dropdown)
+router.get('/workouts-with-intervals', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT fp.id, fp.title, fp.workout_date, fp.workout_time, fp.workout_type
+      FROM forum_posts fp
+      INNER JOIN workout_intervals wi ON fp.id = wi.post_id
+      WHERE fp.type = 'workout' AND fp.is_deleted = false
+      ORDER BY fp.workout_date DESC NULLS LAST, fp.workout_time DESC NULLS LAST, fp.id DESC
+    `);
+    res.json({ workouts: result.rows || [] });
+  } catch (error) {
+    console.error('Get workouts with intervals error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get current user's interval results (for Results page)
 router.get('/interval-results/me', authenticateToken, requireMember, async (req, res) => {
   try {

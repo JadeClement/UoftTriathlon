@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { showSuccess, showError } from './SimpleNotification';
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -14,6 +15,17 @@ const Results = () => {
   const [intervalResults, setIntervalResults] = useState([]);
   const [resultsPublic, setResultsPublic] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [workouts, setWorkouts] = useState([]);
+  const [intervals, setIntervals] = useState([]);
+  const [addForm, setAddForm] = useState({
+    workoutId: '',
+    intervalId: '',
+    time: ''
+  });
+  const [workoutsLoading, setWorkoutsLoading] = useState(false);
+  const [intervalsLoading, setIntervalsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const v = currentUser?.results_public ?? currentUser?.resultsPublic ?? false;
@@ -42,38 +54,110 @@ const Results = () => {
     load();
   }, [currentUser]);
 
-  // Group by workout (post_id)
-  const byWorkout = React.useMemo(() => {
-    const map = {};
-    intervalResults.forEach((r) => {
-      const key = r.post_id;
-      if (!map[key]) {
-        map[key] = {
-          post_id: key,
-          workout_title: r.workout_title,
-          workout_date: r.workout_date,
-          workout_time: r.workout_time,
-          workout_type: r.workout_type,
-          intervals: [],
-        };
+  useEffect(() => {
+    if (!showAddForm || !currentUser?.id) return;
+    const loadWorkouts = async () => {
+      setWorkoutsLoading(true);
+      try {
+        const token = localStorage.getItem('triathlonToken');
+        const res = await fetch(`${API_BASE}/forum/workouts-with-intervals`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setWorkouts(data.workouts || []);
+        }
+      } catch (err) {
+        console.error('Error loading workouts:', err);
+      } finally {
+        setWorkoutsLoading(false);
       }
-      map[key].intervals.push({
-        interval_id: r.interval_id,
-        interval_title: r.interval_title,
-        interval_description: r.interval_description,
-        sort_order: r.sort_order,
-        time: r.time,
+    };
+    loadWorkouts();
+  }, [showAddForm, currentUser?.id]);
+
+  useEffect(() => {
+    if (!addForm.workoutId) {
+      setIntervals([]);
+      setAddForm((f) => ({ ...f, intervalId: '', time: '' }));
+      return;
+    }
+    const loadIntervals = async () => {
+      setIntervalsLoading(true);
+      try {
+        const token = localStorage.getItem('triathlonToken');
+        const res = await fetch(`${API_BASE}/forum/workouts/${addForm.workoutId}/intervals`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIntervals(data.intervals || []);
+        }
+      } catch (err) {
+        console.error('Error loading intervals:', err);
+      } finally {
+        setIntervalsLoading(false);
+      }
+    };
+    loadIntervals();
+  }, [addForm.workoutId]);
+
+  const handleSaveAddResult = async () => {
+    if (!addForm.workoutId || !addForm.intervalId || !addForm.time?.trim()) {
+      showError('Please select a workout, interval, and enter your time');
+      return;
+    }
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(
+        `${API_BASE}/forum/workouts/${addForm.workoutId}/interval-results`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            results: [{ interval_id: parseInt(addForm.intervalId, 10), time: addForm.time.trim() }],
+          }),
+        }
+      );
+      if (res.ok) {
+        showSuccess('Interval result saved!');
+        setAddForm({ workoutId: '', intervalId: '', time: '' });
+        setShowAddForm(false);
+        setIntervals([]);
+        const refresh = await fetch(`${API_BASE}/forum/interval-results/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (refresh.ok) {
+          const data = await refresh.json();
+          setIntervalResults(data.intervalResults || []);
+        }
+      } else {
+        const err = await res.json();
+        showError(err.error || 'Failed to save');
+      }
+    } catch (err) {
+      showError('Failed to save interval result');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Flatten to table rows: workout date | interval title | interval time | interval description
+  const tableRows = React.useMemo(() => {
+    return [...intervalResults]
+      .sort((a, b) => {
+        const da = a.workout_date || '';
+        const db = b.workout_date || '';
+        if (da !== db) return db.localeCompare(da);
+        const ta = a.workout_time || '';
+        const tb = b.workout_time || '';
+        if (ta !== tb) return tb.localeCompare(ta);
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0);
       });
-    });
-    return Object.values(map).map((w) => ({
-      ...w,
-      intervals: w.intervals.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-    })).sort((a, b) => {
-      const da = a.workout_date || '';
-      const db = b.workout_date || '';
-      if (da !== db) return db.localeCompare(da);
-      return (b.workout_time || '').localeCompare(a.workout_time || '');
-    });
   }, [intervalResults]);
 
   return (
@@ -111,10 +195,20 @@ const Results = () => {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   marginBottom: '1rem',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
                 }}
               >
                 <h2 style={{ margin: 0, color: '#374151' }}>Interval Results</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                  >
+                    {showAddForm ? 'Cancel' : '+ Add Interval Result'}
+                  </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <label className="toggle-switch">
                       <input
@@ -163,67 +257,117 @@ const Results = () => {
               </div>
 
               <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-                Add interval results from the workout detail page after completing a workout.
+                Add interval results below or from the workout detail page after completing a workout.
               </p>
+
+              {showAddForm && (
+                <div
+                  style={{
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    background: '#f8fafc',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                  }}
+                >
+                  <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', color: '#374151' }}>
+                    Add Interval Result
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '400px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                        Workout
+                      </label>
+                      <select
+                        value={addForm.workoutId}
+                        onChange={(e) => setAddForm({ ...addForm, workoutId: e.target.value, intervalId: '', time: '' })}
+                        disabled={workoutsLoading}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '0.875rem' }}
+                      >
+                        <option value="">Select a workout...</option>
+                        {workouts.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.title}
+                            {w.workout_date ? ` (${new Date(w.workout_date).toLocaleDateString()})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                        Interval
+                      </label>
+                      <select
+                        value={addForm.intervalId}
+                        onChange={(e) => setAddForm({ ...addForm, intervalId: e.target.value })}
+                        disabled={!addForm.workoutId || intervalsLoading}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '0.875rem' }}
+                      >
+                        <option value="">Select an interval...</option>
+                        {intervals.map((inv) => (
+                          <option key={inv.id} value={inv.id}>
+                            {inv.title || 'Interval'} {inv.description ? `(${inv.description})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                        Time
+                      </label>
+                      <input
+                        type="text"
+                        value={addForm.time}
+                        onChange={(e) => setAddForm({ ...addForm, time: e.target.value })}
+                        placeholder="e.g., 2:15, 4:32"
+                        disabled={!addForm.intervalId}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '0.875rem' }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleSaveAddResult}
+                      disabled={saving || !addForm.workoutId || !addForm.intervalId || !addForm.time?.trim()}
+                      style={{ alignSelf: 'flex-start', fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                    >
+                      {saving ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {loading ? (
                 <p style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>Loading...</p>
-              ) : byWorkout.length > 0 ? (
+              ) : tableRows.length > 0 ? (
                 <div style={{ overflowX: 'auto' }}>
-                  {byWorkout.map((workout) => (
-                    <div
-                      key={workout.post_id}
-                      style={{
-                        marginBottom: '1.5rem',
-                        padding: '1rem',
-                        background: '#f8fafc',
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => navigate(`/forum/workouts/${workout.post_id}`)}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: '0.75rem',
-                        }}
-                      >
-                        <h3 style={{ margin: 0, color: '#374151', fontSize: '1rem' }}>
-                          {workout.workout_title}
-                        </h3>
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                          {workout.workout_date
-                            ? new Date(workout.workout_date).toLocaleDateString()
-                            : '-'}
-                          {workout.workout_time ? (
-                            <span> • {String(workout.workout_time).slice(0, 5)}</span>
-                          ) : null}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '0.5rem 1.5rem',
-                          fontSize: '0.875rem',
-                          color: '#475569',
-                        }}
-                      >
-                        {workout.intervals.map((inv) => (
-                          <span key={inv.interval_id}>
-                            <strong>{inv.interval_title || 'Interval'}:</strong> {inv.time}
-                            {inv.interval_description ? ` (${inv.interval_description})` : ''}
-                          </span>
-                        ))}
-                      </div>
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-                        Tap to view workout & edit results →
-                      </div>
-                    </div>
-                  ))}
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Workout Date</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Title</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Time</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableRows.map((r) => (
+                        <tr
+                          key={r.id || `${r.post_id}-${r.interval_id}`}
+                          style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                          onClick={() => navigate(`/forum/workouts/${r.post_id}`)}
+                        >
+                          <td style={{ padding: '0.75rem', color: '#475569' }}>
+                            {r.workout_date ? new Date(r.workout_date).toLocaleDateString() : '-'}
+                            {r.workout_time ? ` ${String(r.workout_time).slice(0, 5)}` : ''}
+                          </td>
+                          <td style={{ padding: '0.75rem', color: '#475569' }}>{r.interval_title || '-'}</td>
+                          <td style={{ padding: '0.75rem', color: '#475569' }}>{r.time || '-'}</td>
+                          <td style={{ padding: '0.75rem', color: '#475569' }}>{r.interval_description || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <p
