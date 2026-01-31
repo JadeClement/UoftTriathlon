@@ -407,6 +407,17 @@ async function initializeDatabase() {
       console.log('ℹ️  results_public column may already exist in users table');
     }
 
+    // Add races_public column to users table if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS races_public BOOLEAN DEFAULT FALSE
+      `);
+      console.log('✅ races_public column added to users table (or already exists)');
+    } catch (error) {
+      console.log('ℹ️  races_public column may already exist in users table');
+    }
+
     // Create merch_orders table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS merch_orders (

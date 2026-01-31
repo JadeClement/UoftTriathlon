@@ -9,7 +9,7 @@ const Profile = () => {
   const params = useParams();
   const { role, name } = params;
   const navigate = useNavigate();
-  const { currentUser, updateUser, isMember } = useAuth();
+  const { currentUser, updateUser } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -25,8 +25,6 @@ const Profile = () => {
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPauseConfirm, setShowPauseConfirm] = useState(false);
-  
-  const [resultsPublic, setResultsPublic] = useState(false); // User's privacy setting for all results
   const [loading, setLoading] = useState(true);
   const isIOS = Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
 
@@ -133,15 +131,6 @@ const Profile = () => {
     loadTeamMembers();
   }, []);
   
-  // Load user's results_public setting (only for members)
-  useEffect(() => {
-    if (!isUserProfile || !currentUser?.id || !isMember(currentUser)) return;
-    // Check both possible field names (normalized and original)
-    const resultsPublicValue = currentUser.results_public || currentUser.resultsPublic || false;
-    setResultsPublic(resultsPublicValue);
-  }, [isUserProfile, currentUser, isMember]);
-
-
   const handlePauseAccount = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
@@ -151,9 +140,7 @@ const Profile = () => {
       }
       const resp = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile/pause`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await resp.json();
       if (resp.ok) {
@@ -181,9 +168,7 @@ const Profile = () => {
       }
       const resp = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await resp.json();
       if (resp.ok) {
@@ -200,7 +185,6 @@ const Profile = () => {
       setShowDeleteConfirm(false);
     }
   };
-
 
   // Phone number formatting functions (same as Login.js)
   const validatePhoneNumber = (phone) => {
@@ -779,23 +763,6 @@ const Profile = () => {
                     />
                   </div>
                   
-                  <div className="form-group">
-                    <label className="form-label">Make results public?</label>
-                    <div className="toggle-wrapper">
-                      <label className="toggle-switch">
-                        <input 
-                          type="checkbox" 
-                          checked={resultsPublic} 
-                          onChange={(e) => setResultsPublic(e.target.checked)} 
-                        />
-                        <span className="toggle-slider"></span>
-                      </label>
-                      <span className="toggle-label">
-                        Allow my race results to be shown publicly on my profile
-                      </span>
-                    </div>
-                  </div>
-
                   <div className="edit-actions">
                     <button 
                       className="btn btn-primary" 
@@ -825,7 +792,7 @@ const Profile = () => {
                         Pause Account
                       </button>
                       <p className="danger-help" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                        This will move your account to pending status. Your data will be preserved, but you'll need to be approved again to regain access.
+                        This will move your account to pending status. Your data will be preserved, but you&apos;ll need to be approved again to regain access.
                       </p>
                       <button
                         type="button"
@@ -836,7 +803,7 @@ const Profile = () => {
                         Delete Account
                       </button>
                       <p className="danger-help">
-                        This will permanently remove your account and all associated data. To regain access, you'll need to create a new account.
+                        This will permanently remove your account and all associated data. To regain access, you&apos;ll need to create a new account.
                       </p>
                     </div>
                   </div>
@@ -861,39 +828,25 @@ const Profile = () => {
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
               <h2>Delete Account</h2>
               <p style={{ marginBottom: '1rem' }}>
-                Are you sure you want to permanently delete your account? All details, signups, and associated data will be permanently removed. If you want access again, you'll need to create a new account.
+                Are you sure you want to permanently delete your account? All details, signups, and associated data will be permanently removed. If you want access again, you&apos;ll need to create a new account.
               </p>
               <p style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', color: '#0369a1' }}>
-                <strong>💡 Instead of deleting, you can pause your account</strong> to preserve all your progress and data. You'll need to be approved again to regain access, but nothing will be lost.
+                <strong>Instead of deleting, you can pause your account</strong> to preserve all your progress and data. You&apos;ll need to be approved again to regain access, but nothing will be lost.
               </p>
               <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={handlePauseAccount}
-                  disabled={saving}
-                >
+                <button className="btn btn-secondary" onClick={handlePauseAccount} disabled={saving}>
                   Pause Account Instead
                 </button>
-                <button
-                  className="btn btn-danger"
-                  onClick={handleDeleteAccount}
-                  disabled={saving}
-                >
+                <button className="btn btn-danger" onClick={handleDeleteAccount} disabled={saving}>
                   Delete Permanently
                 </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={saving}
-                >
+                <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(false)} disabled={saving}>
                   Cancel
                 </button>
               </div>
             </div>
           </div>
         )}
-
-
       </div>
     </div>
   );

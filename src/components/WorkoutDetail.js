@@ -140,8 +140,6 @@ const WorkoutDetail = () => {
         return;
       }
 
-      console.log(`🔍 Loading workout details for ID: ${id}`);
-
       // Load workout details
       const workoutResponse = await fetch(`${API_BASE_URL}/forum/workouts/${id}`, {
         headers: {
@@ -151,9 +149,7 @@ const WorkoutDetail = () => {
 
       if (workoutResponse.ok) {
         const workoutData = await workoutResponse.json();
-        console.log('🔍 Workout details loaded:', workoutData);
-        console.log('🖼️ Author profile picture URL:', workoutData.workout?.authorProfilePictureUrl);
-        
+
         if (!workoutData.workout) {
           throw new Error('Workout data not found in response');
         }
@@ -179,7 +175,6 @@ const WorkoutDetail = () => {
             
             if (swimMembersResponse.ok) {
               const swimMembersData = await swimMembersResponse.json();
-              console.log('🏊‍♂️ Swim members loaded:', swimMembersData);
               setSwimMembers(swimMembersData.members || []);
             } else {
               console.error('❌ Failed to load swim members:', swimMembersResponse.status);
@@ -217,10 +212,7 @@ const WorkoutDetail = () => {
 
       if (attendanceResponse.ok) {
         const attendanceData = await attendanceResponse.json();
-        console.log('🔍 Attendance data loaded:', attendanceData);
-        // If there are any attendance records, attendance has been submitted
         setAttendanceSaved(attendanceData.attendance && attendanceData.attendance.length > 0);
-        console.log('📊 Attendance saved status:', attendanceData.attendance && attendanceData.attendance.length > 0);
         
         // Process attendance and late status
         if (attendanceData.attendance && attendanceData.attendance.length > 0) {
@@ -234,7 +226,6 @@ const WorkoutDetail = () => {
           setLateStatus(lateMap);
         }
       } else {
-        console.log('ℹ️ No attendance data found or error loading attendance');
         setAttendanceSaved(false);
       }
 
@@ -247,18 +238,6 @@ const WorkoutDetail = () => {
 
       if (signupsResponse.ok) {
         const signupsData = await signupsResponse.json();
-        console.log('📋 Signups data received:', signupsData);
-        console.log('👥 Individual signups:', signupsData.signups);
-        
-        // Debug profile picture URLs
-        signupsData.signups.forEach((signup, index) => {
-          console.log(`👤 Signup ${index + 1}:`, {
-            name: signup.user_name,
-            profilePictureUrl: signup.userProfilePictureUrl,
-            hasProfilePicture: !!signup.userProfilePictureUrl
-          });
-        });
-        
         setSignups(signupsData.signups);
         
         // Check if current user is signed up
@@ -360,11 +339,6 @@ const WorkoutDetail = () => {
     try {
       const workoutToCheck = displayWorkout || workout;
       if (!workoutToCheck || !workoutToCheck.workout_date || !workoutToCheck.workout_time) {
-        console.log('🔍 isWorkoutStarted: Missing workout data', { 
-          hasWorkout: !!workoutToCheck, 
-          workout_date: workoutToCheck?.workout_date, 
-          workout_time: workoutToCheck?.workout_time 
-        });
         return false;
       }
       
@@ -377,31 +351,12 @@ const WorkoutDetail = () => {
       // Use combineDateTime to get the workout datetime in EST/EDT
       const workoutDateTime = combineDateTime(dateStr, workoutToCheck.workout_time);
       if (!workoutDateTime) {
-        console.log('🔍 isWorkoutStarted: Failed to create workout datetime', { 
-          dateStr, 
-          workout_time: workoutToCheck.workout_time 
-        });
         return false;
       }
       
       // Compare workout datetime to current time
       const now = new Date();
-      const hasStarted = workoutDateTime < now;
-      
-      console.log('🔍 isWorkoutStarted check:', {
-        workout_date: workoutToCheck.workout_date,
-        dateStr,
-        workout_time: workoutToCheck.workout_time,
-        workoutDateTimeISO: workoutDateTime.toISOString(),
-        workoutDateTimeLocal: workoutDateTime.toString(),
-        nowISO: now.toISOString(),
-        nowLocal: now.toString(),
-        diffMs: workoutDateTime - now,
-        diffHours: (workoutDateTime - now) / (1000 * 60 * 60),
-        hasStarted
-      });
-      
-      return hasStarted;
+      return workoutDateTime < now;
     } catch (error) {
       console.error('Error checking if workout started:', error);
       return false;
@@ -466,7 +421,6 @@ const WorkoutDetail = () => {
     const shouldLoad = workoutIdChanged || (!hasLoadedRef.current && hasWorkoutData);
     
     if (shouldLoad && hasWorkoutData) {
-      console.log('🔄 Loading workout details (ID changed or first load)');
       hasLoadedRef.current = true;
       lastWorkoutIdRef.current = id;
       loadWorkoutDetails();
@@ -476,8 +430,7 @@ const WorkoutDetail = () => {
 
   // Listen for profile updates to refresh profile pictures
   useEffect(() => {
-    const handleProfileUpdate = (event) => {
-      console.log('🔄 Profile updated event received, refreshing workout details...');
+    const handleProfileUpdate = () => {
       refreshWorkout();
       loadWorkoutDetails();
     };
@@ -507,7 +460,6 @@ const WorkoutDetail = () => {
 
       if (workoutResponse.ok) {
         const workoutData = await workoutResponse.json();
-        console.log('🔍 Workout details loaded:', workoutData);
         setWorkout(workoutData.workout);
         setSignups(workoutData.signups || []);
         setWaitlist(workoutData.waitlist || []);
@@ -527,7 +479,6 @@ const WorkoutDetail = () => {
           
           if (swimMembersResponse.ok) {
             const swimMembersData = await swimMembersResponse.json();
-            console.log('🏊‍♂️ Swim members loaded:', swimMembersData);
             setSwimMembers(swimMembersData.members || []);
           } else {
             console.error('❌ Failed to load swim members:', swimMembersResponse.status);
@@ -548,10 +499,7 @@ const WorkoutDetail = () => {
 
       if (attendanceResponse.ok) {
         const attendanceData = await attendanceResponse.json();
-        console.log('🔍 Attendance data loaded:', attendanceData);
-        // If there are any attendance records, attendance has been submitted
         setAttendanceSaved(attendanceData.attendance && attendanceData.attendance.length > 0);
-        console.log('📊 Attendance saved status:', attendanceData.attendance && attendanceData.attendance.length > 0);
         
         // Process attendance and late status
         if (attendanceData.attendance && attendanceData.attendance.length > 0) {
@@ -565,7 +513,6 @@ const WorkoutDetail = () => {
           setLateStatus(lateMap);
         }
       } else {
-        console.log('ℹ️ No attendance data found or error loading attendance');
         setAttendanceSaved(false);
       }
 
@@ -578,18 +525,6 @@ const WorkoutDetail = () => {
 
       if (signupsResponse.ok) {
         const signupsData = await signupsResponse.json();
-        console.log('📋 Signups data received:', signupsData);
-        console.log('👥 Individual signups:', signupsData.signups);
-        
-        // Debug profile picture URLs
-        signupsData.signups.forEach((signup, index) => {
-          console.log(`👤 Signup ${index + 1}:`, {
-            name: signup.user_name,
-            profilePictureUrl: signup.userProfilePictureUrl,
-            hasProfilePicture: !!signup.userProfilePictureUrl
-          });
-        });
-        
         setSignups(signupsData.signups);
         
         // Check if current user is signed up
@@ -891,9 +826,7 @@ const WorkoutDetail = () => {
   };
 
   const handleAddToCalendar = async () => {
-    console.log('🔘 handleAddToCalendar called');
-    console.log('🔘 displayWorkout:', displayWorkout);
-    
+
     if (!displayWorkout) {
       showError('Workout information not available');
       return;
@@ -987,7 +920,6 @@ const WorkoutDetail = () => {
   /* eslint-enable no-use-before-define */
 
   const handleAttendanceChange = (userId, isPresent) => {
-    console.log('📝 Attendance change:', { userId, isPresent, type: typeof userId });
     if (!userId) {
       console.error('❌ Invalid user ID:', userId);
       return;
@@ -999,7 +931,6 @@ const WorkoutDetail = () => {
   };
 
   const handleLateChange = (userId, isLate) => {
-    console.log('📝 Late status change:', { userId, isLate, type: typeof userId });
     if (!userId) {
       console.error('❌ Invalid user ID:', userId);
       return;
@@ -1036,9 +967,7 @@ const WorkoutDetail = () => {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        console.log('Attendance saved successfully:', result.message);
-        // Exit edit mode after successful submission
+        await response.json();
         setEditingAttendance(false);
       } else {
         const errorData = await response.json();
@@ -1361,9 +1290,7 @@ const WorkoutDetail = () => {
             <div className="workout-author">
               <div className="author-info">
                 {(() => {
-                  console.log('🖼️ Display workout authorProfilePictureUrl:', displayWorkout.authorProfilePictureUrl);
                   const url = normalizeProfileImageUrl(displayWorkout.authorProfilePictureUrl);
-                  console.log('🖼️ Normalized URL:', url);
                   return url ? (
                     <img 
                       src={url}
@@ -1415,11 +1342,9 @@ const WorkoutDetail = () => {
               <button
                 className="edit-btn"
                 onClick={() => {
-                  console.log('🔍 Edit button clicked, workout:', displayWorkout);
                   if (displayWorkout) {
                     startEdit(displayWorkout);
                     setEditMode(true);
-                    console.log('✅ Edit mode activated, editForm should be:', editForm);
                   } else {
                     console.error('❌ Workout is null or undefined');
                   }
@@ -1637,7 +1562,6 @@ const WorkoutDetail = () => {
                             id={`attendance-${member.user_id}`}
                             checked={attendance[member.user_id] || false}
                             onChange={(e) => {
-                              console.log('🔍 Checkbox change for member:', member);
                               handleAttendanceChange(member.user_id, e.target.checked);
                               // Clear late status if attendance is unchecked
                               if (!e.target.checked) {
@@ -1661,7 +1585,6 @@ const WorkoutDetail = () => {
                               id={`late-${member.user_id}`}
                               checked={lateStatus[member.user_id] || false}
                               onChange={(e) => {
-                                console.log('🔍 Late checkbox change for member:', member);
                                 handleLateChange(member.user_id, e.target.checked);
                               }}
                               disabled={attendanceSaved && !editingAttendance}
@@ -1752,7 +1675,6 @@ const WorkoutDetail = () => {
                             id={`attendance-${signup.user_id}`}
                             checked={attendance[signup.user_id] || false}
                             onChange={(e) => {
-                              console.log('🔍 Checkbox change for signup:', signup);
                               handleAttendanceChange(signup.user_id, e.target.checked);
                             }}
                             disabled={attendanceSaved && !editingAttendance}
@@ -2189,42 +2111,17 @@ const WorkoutDetail = () => {
 
         {/* Cancel Confirmation Modal */}
         {showCancelModal && displayWorkout && (() => {
-          // Calculate hours until workout
-          console.log('🔍 Cancel modal calculation:', {
-            workout_date: workout.workout_date,
-            workout_time: workout.workout_time,
-            workout_date_type: typeof workout.workout_date,
-            workout: workout
-          });
-          
-          // Extract just the date part if workout_date is an ISO string
           let dateStr = workout.workout_date;
           if (typeof dateStr === 'string' && dateStr.includes('T')) {
             dateStr = dateStr.split('T')[0];
-            console.log('🔍 Extracted date from ISO string:', { original: workout.workout_date, extracted: dateStr });
           }
           
-          const workoutDateTime = dateStr && workout.workout_time 
+          const workoutDateTime = dateStr && workout.workout_time
             ? combineDateTime(dateStr, workout.workout_time)
             : null;
-          
-          console.log('🔍 Workout datetime result:', { 
-            workoutDateTime,
-            workoutDateTimeISO: workoutDateTime?.toISOString(),
-            workoutDateTimeLocal: workoutDateTime?.toString()
-          });
-          
           const hoursUntil = workoutDateTime ? getHoursUntil(workoutDateTime) : null;
           const within12Hours = workoutDateTime ? isWithinHours(workoutDateTime, 12) : false;
-          
-          console.log('🔍 Final calculation:', { 
-            hoursUntil, 
-            within12Hours,
-            nowISO: new Date().toISOString(),
-            nowLocal: new Date().toString(),
-            workoutIsInPast: hoursUntil !== null && hoursUntil <= 0
-          });
-          
+
           return (
             <div className="modal-overlay">
               <div className="modal">

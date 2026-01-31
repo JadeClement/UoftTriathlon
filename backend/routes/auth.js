@@ -158,7 +158,8 @@ router.post('/login', async (req, res) => {
         profile_picture_url: user.profile_picture_url,
         phone_number: user.phone_number,
         sport: user.sport,
-        results_public: user.results_public || false
+        results_public: user.results_public || false,
+        races_public: user.races_public || false
       },
       token
     });

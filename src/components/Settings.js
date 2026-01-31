@@ -3,13 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import { showSuccess, showError } from './SimpleNotification';
-import { syncWorkoutsToCalendar } from '../services/calendarSyncService';
+import ConfirmModal from './ConfirmModal';
 import './Settings.css';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { currentUser, isMember } = useAuth();
+  const { currentUser, isMember, updateUser } = useAuth();
   const isIOS = Capacitor.getPlatform() === 'ios';
+
+  const [resultsPublic, setResultsPublic] = useState(false);
+  const [racesPublic, setRacesPublic] = useState(false);
+  const [privacyLoading, setPrivacyLoading] = useState(false);
+  const [showPauseConfirm, setShowPauseConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accountActionLoading, setAccountActionLoading] = useState(false);
 
   // Notification preferences state
   const [notificationPrefs, setNotificationPrefs] = useState({
@@ -21,16 +28,6 @@ const Settings = () => {
     waitlistPromotions: false
   });
   const [notificationPrefsLoading, setNotificationPrefsLoading] = useState(false);
-
-  // Calendar preferences state (iOS only)
-  const [calendarPrefs, setCalendarPrefs] = useState({
-    tuesdaySwim: false,
-    tuesdayTrack: false,
-    thursdaySwim: false,
-    thursdayRun: false,
-    sundaySwim: false
-  });
-  const [calendarPrefsLoading, setCalendarPrefsLoading] = useState(false);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -52,7 +49,8 @@ const Settings = () => {
     }
 
     loadNotificationPrefs();
-    loadCalendarPrefs();
+    setResultsPublic(currentUser?.results_public ?? currentUser?.resultsPublic ?? false);
+    setRacesPublic(currentUser?.races_public ?? currentUser?.racesPublic ?? false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, navigate, isMember]);
 
@@ -78,33 +76,6 @@ const Settings = () => {
       }
     } catch (error) {
       console.error('Error loading notification preferences:', error);
-    }
-  };
-
-  // Load calendar preferences (iOS only)
-  const loadCalendarPrefs = async () => {
-    try {
-      const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/users/calendar-preferences`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.preferences) {
-          setCalendarPrefs({
-            tuesdaySwim: data.preferences.tuesday_swim || false,
-            tuesdayTrack: data.preferences.tuesday_track || false,
-            thursdaySwim: data.preferences.thursday_swim || false,
-            thursdayRun: data.preferences.thursday_run || false,
-            sundaySwim: data.preferences.sunday_swim || false
-          });
-        }
-      } else if (response.status === 404) {
-        // No preferences exist yet, that's fine
-        console.log('No calendar preferences found, using defaults');
-      }
-    } catch (error) {
-      console.error('Error loading calendar preferences:', error);
     }
   };
 
@@ -144,79 +115,101 @@ const Settings = () => {
     }
   };
 
-  // Save calendar preferences (iOS only)
-  const saveCalendarPrefs = async (newPrefs, wasEnabled = false) => {
+  const savePrivacyPref = async (field, value) => {
     try {
-      setCalendarPrefsLoading(true);
+      setPrivacyLoading(true);
       const token = localStorage.getItem('triathlonToken');
-      
-      const url = `${API_BASE_URL}/users/calendar-preferences`;
       const body = {
-        preferences: {
-          tuesday_swim: newPrefs.tuesdaySwim,
-          tuesday_track: newPrefs.tuesdayTrack,
-          thursday_swim: newPrefs.thursdaySwim,
-          thursday_run: newPrefs.thursdayRun,
-          sunday_swim: newPrefs.sundaySwim
-        }
+        name: currentUser?.name,
+        email: currentUser?.email,
+        phone_number: currentUser?.phone_number || currentUser?.phoneNumber,
+        bio: currentUser?.bio,
+        [field]: value
       };
-      
-      console.log('📅 Frontend: Attempting to save calendar preferences');
-      console.log('📅 Frontend: URL:', url);
-      console.log('📅 Frontend: Method: PUT');
-      console.log('📅 Frontend: Body:', JSON.stringify(body));
-      console.log('📅 Frontend: Token present:', !!token);
-      
-      const response = await fetch(url, {
+      const res = await fetch(`${API_BASE_URL}/users/profile`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
       });
-      
-      console.log('📅 Frontend: Response status:', response.status);
-      console.log('📅 Frontend: Response ok:', response.ok);
-      
-      const responseText = await response.text();
-      console.log('📅 Frontend: Response text:', responseText);
-      
-      if (response.ok) {
-        const responseData = JSON.parse(responseText);
-        console.log('📅 Frontend: Response data:', responseData);
-        setCalendarPrefs(newPrefs);
-        showSuccess('Calendar preferences saved!');
-        
-        // If a preference was just enabled, sync existing matching workouts
-        if (wasEnabled) {
-          try {
-            const result = await syncWorkoutsToCalendar();
-            if (result.synced > 0) {
-              showSuccess(`Added ${result.synced} workout(s) to your calendar!`);
-            }
-          } catch (error) {
-            console.error('Error syncing workouts:', error);
-            // Don't show error to user, just log it
-          }
-        }
+      if (res.ok) {
+        if (field === 'results_public') setResultsPublic(value);
+        if (field === 'races_public') setRacesPublic(value);
+        updateUser({
+          ...currentUser,
+          results_public: field === 'results_public' ? value : (currentUser?.results_public ?? currentUser?.resultsPublic),
+          resultsPublic: field === 'results_public' ? value : (currentUser?.results_public ?? currentUser?.resultsPublic),
+          races_public: field === 'races_public' ? value : (currentUser?.races_public ?? currentUser?.racesPublic),
+          racesPublic: field === 'races_public' ? value : (currentUser?.races_public ?? currentUser?.racesPublic)
+        });
+        showSuccess('Privacy setting saved!');
       } else {
-        let errorData;
-        try {
-          errorData = JSON.parse(responseText);
-        } catch (e) {
-          errorData = { error: responseText || 'Unknown error' };
-        }
-        console.error('📅 Frontend: Failed to save calendar preferences');
-        console.error('📅 Frontend: Status:', response.status);
-        console.error('📅 Frontend: Error data:', errorData);
-        showError(errorData.error || 'Failed to save calendar preferences');
+        const err = await res.json();
+        showError(err.error || 'Failed to save');
       }
-    } catch (error) {
-      console.error('Error saving calendar preferences:', error);
-      showError(error.message || 'Error saving calendar preferences');
+    } catch (err) {
+      showError('Failed to save privacy setting');
     } finally {
-      setCalendarPrefsLoading(false);
+      setPrivacyLoading(false);
+    }
+  };
+
+  const handlePauseAccount = async () => {
+    try {
+      setAccountActionLoading(true);
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) {
+        showError('Not authenticated');
+        return;
+      }
+      const resp = await fetch(`${API_BASE_URL}/users/profile/pause`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        localStorage.removeItem('triathlonUser');
+        localStorage.removeItem('triathlonToken');
+        window.location.href = '/login';
+      } else {
+        showError(data.error || 'Failed to pause account');
+      }
+    } catch (err) {
+      showError(err.message || 'Failed to pause account');
+    } finally {
+      setAccountActionLoading(false);
+      setShowPauseConfirm(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setAccountActionLoading(true);
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) {
+        showError('Not authenticated');
+        return;
+      }
+      const resp = await fetch(`${API_BASE_URL}/users/profile`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        localStorage.removeItem('triathlonUser');
+        localStorage.removeItem('triathlonToken');
+        window.location.href = '/login';
+      } else {
+        showError(data.error || 'Failed to delete account');
+      }
+    } catch (err) {
+      showError(err.message || 'Failed to delete account');
+    } finally {
+      setAccountActionLoading(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -321,125 +314,100 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Calendar Preferences Section - iOS only */}
-          {isIOS && (
-            <div className="settings-section">
-              <h2 className="settings-section-title">Calendar Settings</h2>
-              <p className="settings-section-description">
-                Automatically add these recurring workouts to your calendar.
-              </p>
+          {/* Privacy Section */}
+          <div className="settings-section">
+            <h2 className="settings-section-title">Privacy</h2>
+            <p className="settings-section-description">
+              Control what others can see on your profile.
+            </p>
+            <div className="settings-preferences">
+              <label className="settings-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={resultsPublic}
+                  onChange={(e) => savePrivacyPref('results_public', e.target.checked)}
+                  disabled={privacyLoading}
+                />
+                <span>Show my interval results publicly</span>
+              </label>
+              <label className="settings-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={racesPublic}
+                  onChange={(e) => savePrivacyPref('races_public', e.target.checked)}
+                  disabled={privacyLoading}
+                />
+                <span>Show my race signups publicly</span>
+              </label>
+            </div>
+          </div>
 
-              <div className="settings-preferences">
-                <label className="settings-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={calendarPrefs.tuesdaySwim}
-                    onChange={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const wasEnabled = calendarPrefs.tuesdaySwim;
-                      const newPrefs = { ...calendarPrefs, tuesdaySwim: e.target.checked };
-                      saveCalendarPrefs(newPrefs, !wasEnabled && e.target.checked);
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    disabled={calendarPrefsLoading}
-                  />
-                  <span onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}>Tuesday Swim</span>
-                </label>
-                <label className="settings-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={calendarPrefs.tuesdayTrack}
-                    onChange={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const wasEnabled = calendarPrefs.tuesdayTrack;
-                      const newPrefs = { ...calendarPrefs, tuesdayTrack: e.target.checked };
-                      saveCalendarPrefs(newPrefs, !wasEnabled && e.target.checked);
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    disabled={calendarPrefsLoading}
-                  />
-                  <span onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}>Tuesday Track</span>
-                </label>
-                <label className="settings-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={calendarPrefs.thursdaySwim}
-                    onChange={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const wasEnabled = calendarPrefs.thursdaySwim;
-                      const newPrefs = { ...calendarPrefs, thursdaySwim: e.target.checked };
-                      saveCalendarPrefs(newPrefs, !wasEnabled && e.target.checked);
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    disabled={calendarPrefsLoading}
-                  />
-                  <span onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}>Thursday Swim</span>
-                </label>
-                <label className="settings-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={calendarPrefs.thursdayRun}
-                    onChange={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const wasEnabled = calendarPrefs.thursdayRun;
-                      const newPrefs = { ...calendarPrefs, thursdayRun: e.target.checked };
-                      saveCalendarPrefs(newPrefs, !wasEnabled && e.target.checked);
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    disabled={calendarPrefsLoading}
-                  />
-                  <span onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}>Thursday Run</span>
-                </label>
-                <label className="settings-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={calendarPrefs.sundaySwim}
-                    onChange={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const wasEnabled = calendarPrefs.sundaySwim;
-                      const newPrefs = { ...calendarPrefs, sundaySwim: e.target.checked };
-                      saveCalendarPrefs(newPrefs, !wasEnabled && e.target.checked);
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    disabled={calendarPrefsLoading}
-                  />
-                  <span onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}>Sunday Swim</span>
-                </label>
+          {/* Account Section */}
+          <div className="settings-section">
+            <h2 className="settings-section-title">Account</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center' }}>
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowPauseConfirm(true)}
+                  disabled={accountActionLoading}
+                  style={{ marginBottom: '0.5rem' }}
+                >
+                  Pause Account
+                </button>
+                <p className="settings-section-description" style={{ margin: 0, fontSize: '0.875rem' }}>
+                  Move your account to pending status. Your data will be preserved, but you&apos;ll need to be approved again to regain access.
+                </p>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={accountActionLoading}
+                  style={{ backgroundColor: '#dc2626', color: 'white', borderColor: '#dc2626' }}
+                >
+                  Delete Account
+                </button>
+                <p className="settings-section-description" style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
+                  Permanently remove your account and all associated data.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <ConfirmModal
+            isOpen={showPauseConfirm}
+            title="Pause Account"
+            message="Are you sure you want to pause your account? Your account will be moved to pending status and you'll need to be approved again to regain access. All your data will be preserved."
+            confirmText={accountActionLoading ? 'Pausing...' : 'Pause Account'}
+            cancelText="Cancel"
+            onConfirm={handlePauseAccount}
+            onCancel={() => setShowPauseConfirm(false)}
+          />
+
+          {showDeleteConfirm && (
+            <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem' }}>
+              <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', background: 'white', borderRadius: '12px', padding: '1.5rem' }}>
+                <h2>Delete Account</h2>
+                <p style={{ marginBottom: '1rem' }}>
+                  Are you sure you want to permanently delete your account? All details, signups, and associated data will be permanently removed.
+                </p>
+                <p style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', color: '#0369a1', fontSize: '0.9rem' }}>
+                  <strong>Instead of deleting, you can pause your account</strong> to preserve all your progress and data.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <button className="btn btn-secondary" onClick={handlePauseAccount} disabled={accountActionLoading}>
+                    Pause Account Instead
+                  </button>
+                  <button className="btn btn-danger" onClick={handleDeleteAccount} disabled={accountActionLoading} style={{ backgroundColor: '#dc2626', color: 'white', borderColor: '#dc2626' }}>
+                    Delete Permanently
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(false)} disabled={accountActionLoading}>
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}

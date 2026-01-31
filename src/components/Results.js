@@ -3,16 +3,16 @@ import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import { showSuccess, showError } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
+import './Results.css';
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
 const Results = () => {
-  const { currentUser, isMember, updateUser } = useAuth();
+  const { currentUser, isMember } = useAuth();
 
   const isIOSNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
 
   const [intervalResults, setIntervalResults] = useState([]);
-  const [resultsPublic, setResultsPublic] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [workouts, setWorkouts] = useState([]);
@@ -30,11 +30,6 @@ const Results = () => {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, row: null });
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    const v = currentUser?.results_public ?? currentUser?.resultsPublic ?? false;
-    setResultsPublic(v);
-  }, [currentUser]);
 
   useEffect(() => {
     const load = async () => {
@@ -321,60 +316,20 @@ const Results = () => {
                 }}
               >
                 <h2 style={{ margin: 0, color: '#374151' }}>Interval Results</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={() => setShowAddForm(!showAddForm)}
-                    style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                  >
-                    {showAddForm ? 'Cancel' : '+ Add Interval Result'}
-                  </button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <label className="toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={resultsPublic}
-                        onChange={async (e) => {
-                          const newValue = e.target.checked;
-                          setResultsPublic(newValue);
-                          try {
-                            const token = localStorage.getItem('triathlonToken');
-                            const res = await fetch(`${API_BASE}/users/profile`, {
-                              method: 'PUT',
-                              headers: {
-                                Authorization: `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({
-                                name: currentUser.name,
-                                email: currentUser.email,
-                                phone_number: currentUser.phone_number || currentUser.phoneNumber,
-                                bio: currentUser.bio,
-                                results_public: newValue,
-                              }),
-                            });
-                            if (res.ok) {
-                              updateUser({
-                                ...currentUser,
-                                results_public: newValue,
-                                resultsPublic: newValue,
-                              });
-                            } else {
-                              setResultsPublic(!newValue);
-                            }
-                          } catch (err) {
-                            setResultsPublic(!newValue);
-                          }
-                        }}
-                      />
-                      <span className="toggle-slider" />
-                    </label>
-                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                      {resultsPublic ? 'Public' : 'Private'}
-                    </span>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (showAddForm) {
+                      setAddForm({ workoutId: '', intervalId: '', time: '' });
+                      setIntervals([]);
+                    }
+                    setShowAddForm(!showAddForm);
+                  }}
+                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                >
+                  {showAddForm ? 'Cancel' : '+ Add Interval Result'}
+                </button>
               </div>
 
               <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
@@ -405,7 +360,9 @@ const Results = () => {
                         disabled={workoutsLoading}
                         style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
                       >
-                        <option value="">Select a workout...</option>
+                        <option value="">
+                          {workoutsLoading ? 'Loading...' : workouts.length === 0 ? 'No workouts with intervals' : 'Select a workout...'}
+                        </option>
                         {workouts.map((w) => (
                           <option key={w.id} value={w.id}>
                             {w.title}
@@ -516,10 +473,10 @@ const Results = () => {
 
               {editModalRow && (
                 <div
-                  className="modal-overlay"
+                  className="results-modal-overlay"
                   onClick={closeEditModal}
                 >
-                  <div className="modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="results-modal" onClick={(e) => e.stopPropagation()}>
                     <h2>Edit Interval Result</h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div>

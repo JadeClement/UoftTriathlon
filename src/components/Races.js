@@ -12,6 +12,7 @@ const Races = () => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showAddRace, setShowAddRace] = useState(false);
   const [filterMode, setFilterMode] = useState('all'); // 'all' or 'going'
   const [addRaceForm, setAddRaceForm] = useState({
@@ -47,6 +48,7 @@ const Races = () => {
   const loadRaces = async () => {
     try {
       setLoading(true);
+      setError(null);
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/races`, {
         headers: {
@@ -58,10 +60,12 @@ const Races = () => {
         const data = await response.json();
         setRaces(data.races || []);
       } else {
-        console.error('Failed to load races');
+        const errMsg = `Failed to load races: ${response.status}`;
+        setError(errMsg);
       }
-    } catch (error) {
-      console.error('Error loading races:', error);
+    } catch (err) {
+      console.error('Error loading races:', err);
+      setError(`Failed to load races: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -287,6 +291,63 @@ const Races = () => {
     return (
       <div className="races-container">
         <div className="loading">Loading races...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    const isOffline = !navigator.onLine || /network error|load failed|failed to fetch|failed to connect/i.test(error);
+    if (isOffline) {
+      return (
+        <div className="races-container">
+          <div className="races-content">
+            <div style={{
+              textAlign: 'center',
+              padding: '3rem 2rem',
+              maxWidth: '400px',
+              margin: '0 auto'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📴</div>
+              <h2 style={{ color: '#374151', marginBottom: '0.75rem' }}>You&apos;re Offline</h2>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                The Races page needs an internet connection to load. Check your connection and try again when you&apos;re back online.
+              </p>
+              <button
+                className="btn btn-primary"
+                onClick={() => { setError(null); loadRaces(); }}
+                disabled={!navigator.onLine}
+              >
+                Try Again
+              </button>
+              {!navigator.onLine && (
+                <p style={{ fontSize: '0.875rem', color: '#9ca3af', marginTop: '1rem' }}>
+                  Waiting for connection...
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="races-container">
+        <div className="races-content">
+          <h1>Races</h1>
+          <div style={{
+            textAlign: 'center',
+            padding: '2rem',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            color: '#991b1b'
+          }}>
+            <h2 style={{ marginBottom: '0.5rem' }}>Error loading races</h2>
+            <p style={{ marginBottom: '1rem' }}>{error}</p>
+            <button className="btn btn-primary" onClick={() => { setError(null); loadRaces(); }}>
+              Try Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

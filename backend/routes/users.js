@@ -64,7 +64,7 @@ router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     const userId = req.user.id;
 
     const userResult = await pool.query(`
-      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, results_public
+      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, results_public, races_public
       FROM users 
       WHERE id = $1 AND is_active = true
     `, [userId]);
@@ -90,7 +90,7 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     console.log('🔍 Backend received request body:', req.body);
     console.log('🔍 Backend received headers:', req.headers);
     
-    const { name, email, phone_number, bio, results_public } = req.body;
+    const { name, email, phone_number, bio, results_public, races_public } = req.body;
     console.log('🔍 Profile update route: Extracted data:', { name, email, phone_number, bio });
 
     if (!name || !email) {
@@ -138,6 +138,11 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     if (results_public !== undefined) {
       updates.push(`results_public = $${++paramCount}`);
       values.push(results_public === true || results_public === 'true');
+    }
+
+    if (races_public !== undefined) {
+      updates.push(`races_public = $${++paramCount}`);
+      values.push(races_public === true || races_public === 'true');
     }
 
     updates.push(`id = $${++paramCount}`);

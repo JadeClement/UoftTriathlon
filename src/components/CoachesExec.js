@@ -6,7 +6,8 @@ import './CoachesExec.css';
 
 const CoachesExec = () => {
   const location = useLocation();
-  const { currentUser, isAdmin, isExec } = useAuth();
+  const { currentUser, isAdmin, isExec, isCoach } = useAuth();
+  const isCoachOrExec = currentUser && (isAdmin(currentUser) || isExec(currentUser) || isCoach(currentUser));
   const [teamMembers, setTeamMembers] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -262,6 +263,39 @@ const CoachesExec = () => {
   }
 
   if (error) {
+    const isOffline = !navigator.onLine || /network error|load failed|failed to fetch|failed to connect/i.test(error);
+    if (isCoachOrExec && isOffline) {
+      return (
+        <div className="coaches-exec-container">
+          <div className="container">
+            <div className="offline-state" style={{
+              textAlign: 'center',
+              padding: '3rem 2rem',
+              maxWidth: '400px',
+              margin: '0 auto'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📴</div>
+              <h2 style={{ color: '#374151', marginBottom: '0.75rem' }}>You&apos;re Offline</h2>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                The Team page needs an internet connection to load. Check your connection and try again when you&apos;re back online.
+              </p>
+              <button
+                className="btn btn-primary"
+                onClick={() => window.location.reload()}
+                disabled={!navigator.onLine}
+              >
+                Try Again
+              </button>
+              {!navigator.onLine && (
+                <p style={{ fontSize: '0.875rem', color: '#9ca3af', marginTop: '1rem' }}>
+                  Waiting for connection...
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="coaches-exec-container">
         <div className="container">
