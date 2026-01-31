@@ -859,6 +859,43 @@ router.get('/workouts/:id/intervals', authenticateToken, requireMember, async (r
   }
 });
 
+// Add interval to workout (coach/admin/exec only)
+router.post('/workouts/:id/intervals', authenticateToken, requireCoach, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description } = req.body;
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Interval title is required' });
+    }
+
+    const workoutCheck = await pool.query(
+      'SELECT id FROM forum_posts WHERE id = $1 AND type = \'workout\' AND is_deleted = false',
+      [id]
+    );
+    if (workoutCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+
+    const maxOrder = await pool.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 as next_order FROM workout_intervals WHERE post_id = $1',
+      [id]
+    );
+    const sortOrder = maxOrder.rows[0]?.next_order ?? 0;
+
+    const result = await pool.query(`
+      INSERT INTO workout_intervals (post_id, title, description, sort_order)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, post_id, title, description, sort_order
+    `, [id, String(title).trim(), description ? String(description).trim() : null, sortOrder]);
+
+    res.status(201).json({ interval: result.rows[0], message: 'Interval added' });
+  } catch (error) {
+    console.error('Add workout interval error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get interval results for a workout (coaches see all, members see public + own)
 router.get('/workouts/:id/interval-results', authenticateToken, requireMember, async (req, res) => {
   try {

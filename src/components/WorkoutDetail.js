@@ -54,6 +54,8 @@ const WorkoutDetail = () => {
   const [intervalResults, setIntervalResults] = useState([]);
   const [showIntervalResultModal, setShowIntervalResultModal] = useState(false);
   const [intervalResultForm, setIntervalResultForm] = useState({}); // { interval_id: time }
+  const [showAddIntervalModal, setShowAddIntervalModal] = useState(false);
+  const [addIntervalForm, setAddIntervalForm] = useState({ title: '', description: '' });
 
   // Swipe-to-go-back gesture (iOS only)
   const touchStartXRef = useRef(null);
@@ -297,19 +299,21 @@ const WorkoutDetail = () => {
         setComments([]);
       }
 
-      // Load intervals and interval results for this workout (iOS only)
-      if (Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios') {
-        const [intervalsRes, resultsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/forum/workouts/${id}/intervals`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/forum/workouts/${id}/interval-results`, { headers: { Authorization: `Bearer ${token}` } })
-        ]);
+      // Load intervals (coaches/admins + iOS); interval results only on iOS
+      const isIOSLoad = Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
+      const isCoachOrAdminLoad = currentUser && ['coach', 'administrator', 'exec'].includes(currentUser.role || '');
+      if (isIOSLoad || isCoachOrAdminLoad) {
+        const intervalsRes = await fetch(`${API_BASE_URL}/forum/workouts/${id}/intervals`, { headers: { Authorization: `Bearer ${token}` } });
         if (intervalsRes.ok) {
           const intervalsData = await intervalsRes.json();
           setWorkoutIntervals(intervalsData.intervals || []);
         }
-        if (resultsRes.ok) {
-          const resultsData = await resultsRes.json();
-          setIntervalResults(resultsData.intervalResults || []);
+        if (isIOSLoad) {
+          const resultsRes = await fetch(`${API_BASE_URL}/forum/workouts/${id}/interval-results`, { headers: { Authorization: `Bearer ${token}` } });
+          if (resultsRes.ok) {
+            const resultsData = await resultsRes.json();
+            setIntervalResults(resultsData.intervalResults || []);
+          }
         }
       }
 
@@ -1144,6 +1148,41 @@ const WorkoutDetail = () => {
     setShowIntervalResultModal(true);
   };
 
+  const handleAddInterval = async () => {
+    if (!addIntervalForm.title || !addIntervalForm.title.trim()) {
+      showError('Interval title is required');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/forum/workouts/${id}/intervals`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: addIntervalForm.title.trim(),
+          description: addIntervalForm.description?.trim() || null
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWorkoutIntervals((prev) => [...prev, data.interval].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+        setShowAddIntervalModal(false);
+        setAddIntervalForm({ title: '', description: '' });
+        showSuccess('Interval added!');
+        loadWorkoutDetails();
+      } else {
+        const err = await response.json();
+        showError(err.error || 'Failed to add interval');
+      }
+    } catch (error) {
+      console.error('Error adding interval:', error);
+      showError('Error adding interval');
+    }
+  };
+
   if (loading || workoutLoading) {
     return (
       <div className="workout-detail-container">
@@ -1819,25 +1858,38 @@ const WorkoutDetail = () => {
           </div>
         )}
 
-        {/* Interval Results Section - iOS only */}
-        {isIOS && (
+        {/* Interval Results Section - iOS for full results; coaches/admins can add intervals on any platform */}
+        {(isIOS || isCoachOrAdmin) && (
         <div className="test-event-section" style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h2 style={{ margin: 0, color: '#374151' }}>Interval Results</h2>
-            {currentUser && workoutIntervals.length > 0 && (
-              <button
-                className="btn btn-primary"
-                onClick={openIntervalResultModal}
-                style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-              >
-                + Add Interval Results
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {isCoachOrAdmin && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => { setAddIntervalForm({ title: '', description: '' }); setShowAddIntervalModal(true); }}
+                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                >
+                  + Add Interval
+                </button>
+              )}
+              {isIOS && currentUser && workoutIntervals.length > 0 && (
+                <button
+                  className="btn btn-primary"
+                  onClick={openIntervalResultModal}
+                  style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                >
+                  + Add Interval Results
+                </button>
+              )}
+            </div>
           </div>
 
           {workoutIntervals.length === 0 ? (
             <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
-              No intervals defined for this workout. Coaches can add intervals when creating a workout post (iOS app).
+              {isCoachOrAdmin
+                ? 'No intervals defined yet. Click "Add Interval" to add intervals for this workout.'
+                : 'No intervals defined for this workout. Coaches can add intervals when creating a workout post (iOS app).'}
             </p>
           ) : (
             <>
@@ -1853,47 +1905,49 @@ const WorkoutDetail = () => {
                 </div>
               </div>
 
-              {intervalResults.length > 0 ? (
-                (() => {
-                  const byUser = {};
-                  intervalResults.forEach((r) => {
-                    if (!byUser[r.user_id]) byUser[r.user_id] = { user_name: r.user_name, times: {} };
-                    byUser[r.user_id].times[r.interval_id] = r.time;
-                  });
-                  const users = Object.entries(byUser);
-                  return (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
-                            {workoutIntervals.map((inv) => (
-                              <th key={inv.id} style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>
-                                {inv.title || inv.interval_title || 'Interval'}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {users.map(([uid, data]) => (
-                            <tr key={uid} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '0.75rem', color: '#475569' }}>{data.user_name}</td>
+              {isIOS && (
+                intervalResults.length > 0 ? (
+                  (() => {
+                    const byUser = {};
+                    intervalResults.forEach((r) => {
+                      if (!byUser[r.user_id]) byUser[r.user_id] = { user_name: r.user_name, times: {} };
+                      byUser[r.user_id].times[r.interval_id] = r.time;
+                    });
+                    const users = Object.entries(byUser);
+                    return (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Name</th>
                               {workoutIntervals.map((inv) => (
-                                <td key={inv.id} style={{ padding: '0.75rem', color: '#475569' }}>
-                                  {data.times[inv.id] || '-'}
-                                </td>
+                                <th key={inv.id} style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>
+                                  {inv.title || inv.interval_title || 'Interval'}
+                                </th>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()
-              ) : (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
-                  No interval results yet. Click &quot;Add Interval Results&quot; to add yours.
-                </p>
+                          </thead>
+                          <tbody>
+                            {users.map(([uid, data]) => (
+                              <tr key={uid} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '0.75rem', color: '#475569' }}>{data.user_name}</td>
+                                {workoutIntervals.map((inv) => (
+                                  <td key={inv.id} style={{ padding: '0.75rem', color: '#475569' }}>
+                                    {data.times[inv.id] || '-'}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
+                    No interval results yet. Click &quot;Add Interval Results&quot; to add yours.
+                  </p>
+                )
               )}
             </>
           )}
@@ -1966,6 +2020,46 @@ const WorkoutDetail = () => {
             </div>
           )}
         </div>
+
+        {/* Add Interval Modal - coaches/admins */}
+        {showAddIntervalModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>Add Interval</h2>
+              <form onSubmit={(e) => { e.preventDefault(); handleAddInterval(); }}>
+                <div className="form-group">
+                  <label>Interval title</label>
+                  <input
+                    type="text"
+                    value={addIntervalForm.title}
+                    onChange={(e) => setAddIntervalForm((p) => ({ ...p, title: e.target.value }))}
+                    placeholder="e.g., 200m, 1km, Lap 1"
+                    maxLength="80"
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Description (optional)</label>
+                  <input
+                    type="text"
+                    value={addIntervalForm.description}
+                    onChange={(e) => setAddIntervalForm((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="e.g., 2:15 target time"
+                    maxLength="120"
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => { setShowAddIntervalModal(false); setAddIntervalForm({ title: '', description: '' }); }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">Add Interval</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Add Interval Results Modal - iOS only */}
         {isIOS && showIntervalResultModal && workoutIntervals.length > 0 && (

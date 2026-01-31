@@ -231,11 +231,11 @@ const Settings = () => {
         <div className="settings-content">
           <h1 className="settings-title">Settings</h1>
 
-          {/* Notification Preferences Section */}
+          {/* Notification Preferences Section - iOS push only; no email opt-out exists */}
           <div className="settings-section">
-            <h2 className="settings-section-title">Notification Preferences</h2>
+            <h2 className="settings-section-title">Push Notification Preferences</h2>
             <p className="settings-section-description">
-              Choose which types of notifications you'd like to receive.
+              Choose which push notifications you&apos;d like to receive in the iOS app. Emails (e.g. waitlist promotions, role changes) are always sent and cannot be turned off here.
             </p>
 
             <div className="settings-preferences">

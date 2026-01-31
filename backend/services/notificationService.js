@@ -6,10 +6,10 @@ const { sendPushNotification, sendBulkPushNotifications } = require('./pushSende
 
 /**
  * Notification Service
- * 
- * This service handles checking user notification preferences and sending notifications
- * when events occur (workouts posted, events posted, forum replies, waitlist promotions).
- * 
+ *
+ * User notification preferences (Settings) control iOS/Android PUSH notifications only.
+ * They do NOT affect emails (e.g. waitlist "you're in" emails are always sent).
+ *
  * Push notifications are implemented using native push (FCM for Android, APNs for iOS).
  * FCM/APNs configuration is required for push notifications to work.
  */
@@ -96,14 +96,14 @@ async function getUserNotificationPreferences(userId) {
     );
 
     if (result.rows.length === 0) {
-      // Return default preferences (all false)
+      // Return default preferences (waitlist promotions true so users get "you're in" emails unless they opt out)
       return {
         spinBrickWorkouts: false,
         swimWorkouts: false,
         runWorkouts: false,
         events: false,
         forumReplies: false,
-        waitlistPromotions: false
+        waitlistPromotions: true
       };
     }
 
@@ -118,14 +118,14 @@ async function getUserNotificationPreferences(userId) {
     };
   } catch (error) {
     console.error('❌ Error fetching notification preferences:', error);
-    // Return default preferences on error
+    // Return default preferences on error (waitlist promotions true so we don't drop "you're in" emails)
     return {
       spinBrickWorkouts: false,
       swimWorkouts: false,
       runWorkouts: false,
       events: false,
       forumReplies: false,
-      waitlistPromotions: false
+      waitlistPromotions: true
     };
   }
 }
@@ -331,23 +331,17 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
 }
 
 /**
- * Send waitlist promotion notification (already has email/SMS, but we should check preferences)
+ * Send waitlist promotion notification
+ * Email/SMS: Always sent (user must know they got in)
+ * Push: Only if user has waitlist_promotions preference enabled (Settings controls iOS push only)
  * @param {Object} userData - { id, email, phone, name }
  * @param {Object} workoutData - { id, title, workoutDate, workoutTime }
  */
 async function notifyWaitlistPromotion(userData, workoutData) {
   try {
-    // Check if user has waitlist promotion preference enabled
-    const preferences = await getUserNotificationPreferences(userData.id);
-    
-    if (!preferences.waitlistPromotions) {
-      console.log(`📢 User ${userData.id} has waitlist promotion notifications disabled, skipping`);
-      return;
-    }
-
     console.log(`📢 Notifying user ${userData.name} about waitlist promotion for: ${workoutData.title}`);
 
-    // Send email/SMS notification (already implemented)
+    // Always send email/SMS - user needs to know they got in (not controlled by app preferences)
     await sendWaitlistPromotionNotification(
       userData.email,
       userData.phone,
@@ -357,12 +351,15 @@ async function notifyWaitlistPromotion(userData, workoutData) {
       workoutData.workoutTime
     );
 
-    // Send push notification
-    await sendPushNotificationToUser(userData.id, {
-      title: `You're in! ${workoutData.title}`,
-      body: `You've been promoted from the waitlist for this workout.`,
-      data: { type: 'workout', workoutId: workoutData.id }
-    });
+    // Push notification: only if user has waitlist promotions enabled in Settings (iOS push prefs)
+    const preferences = await getUserNotificationPreferences(userData.id);
+    if (preferences.waitlistPromotions) {
+      await sendPushNotificationToUser(userData.id, {
+        title: `You're in! ${workoutData.title}`,
+        body: `You've been promoted from the waitlist for this workout.`,
+        data: { type: 'workout', workoutId: workoutData.id }
+      });
+    }
   } catch (error) {
     console.error('❌ Error sending waitlist promotion notification:', error);
   }
