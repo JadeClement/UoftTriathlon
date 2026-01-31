@@ -490,6 +490,21 @@ async function initializeDatabase() {
     } catch (error) {
       console.error('❌ Error creating archived index:', error.message);
     }
+
+    // Add intervals column to forum_posts (iOS interval times for charts)
+    try {
+      await pool.query(`
+        ALTER TABLE forum_posts
+        ADD COLUMN IF NOT EXISTS intervals JSONB
+      `);
+      console.log('✅ Intervals column added to forum_posts table');
+    } catch (error) {
+      if (error.code === '42701') {
+        console.log('✅ Intervals column already exists in forum_posts table');
+      } else {
+        console.error('❌ Error adding intervals column:', error.message);
+      }
+    }
     
     console.log('✅ Database indexes created');
 

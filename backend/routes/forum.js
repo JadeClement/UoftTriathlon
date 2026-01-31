@@ -197,13 +197,39 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
       capacity: capacity, capacityValue, eventDate, hasIntervals: !!intervalsJson
     });
 
-    const result = await pool.query(`
-      INSERT INTO forum_posts (
-        user_id, title, content, type, workout_type, workout_date, 
-        workout_time, capacity, event_date, intervals, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
-      RETURNING *
-    `, [userId, title, content, type, workoutType, workoutDate, workoutTime, capacityValue, eventDate, intervalsJson]);
+    const insertParams = [userId, title, content, type, workoutType, workoutDate, workoutTime, capacityValue, eventDate];
+    let result;
+
+    if (intervalsJson) {
+      try {
+        // Try INSERT with intervals (column may not exist in production yet)
+        result = await pool.query(`
+          INSERT INTO forum_posts (
+            user_id, title, content, type, workout_type, workout_date,
+            workout_time, capacity, event_date, intervals, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+          RETURNING *
+        `, [...insertParams, intervalsJson]);
+      } catch (intervalsErr) {
+        // Fallback: intervals column doesn't exist yet - create post without intervals
+        console.warn('Intervals column not available, creating post without intervals:', intervalsErr.message);
+        result = await pool.query(`
+          INSERT INTO forum_posts (
+            user_id, title, content, type, workout_type, workout_date,
+            workout_time, capacity, event_date, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+          RETURNING *
+        `, insertParams);
+      }
+    } else {
+      result = await pool.query(`
+        INSERT INTO forum_posts (
+          user_id, title, content, type, workout_type, workout_date,
+          workout_time, capacity, event_date, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+        RETURNING *
+      `, insertParams);
+    }
 
     console.log('✅ Post created successfully, ID:', result.rows[0].id);
     

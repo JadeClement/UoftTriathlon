@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import { useForumPosts, useOnlineStatus } from '../hooks/useOfflineData';
@@ -54,6 +55,10 @@ const Forum = () => {
     content: '',
     capacity: ''
   });
+  // iOS only: intervals for workout post (e.g. interval times for charts)
+  const isIOS = Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
+  const [showIntervalsSection, setShowIntervalsSection] = useState(false);
+  const [workoutIntervals, setWorkoutIntervals] = useState([{ title: '', description: '' }]);
   const [eventForm, setEventForm] = useState({
     title: '',
     date: '',
@@ -1045,21 +1050,30 @@ const Forum = () => {
         return;
       }
 
+      const payload = {
+        title: workoutForm.title.trim(),
+        workoutType: workoutForm.type,
+        workoutDate: workoutForm.date,
+        workoutTime: workoutForm.time,
+        content: workoutForm.content.trim(),
+        capacity: workoutForm.capacity ? parseInt(workoutForm.capacity) : null,
+        type: 'workout',
+        intervals:
+          isIOS && showIntervalsSection && workoutIntervals.length > 0
+            ? workoutIntervals
+                .filter((i) => i.title.trim() || i.description.trim())
+                .map((i) => ({ title: i.title.trim(), description: i.description.trim() }))
+            : undefined
+      };
+      console.log('📤 Create workout request:', { url: `${API_BASE_URL}/forum/posts`, payload });
+
       const response = await fetch(`${API_BASE_URL}/forum/posts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          title: workoutForm.title.trim(),
-          workoutType: workoutForm.type,
-          workoutDate: workoutForm.date,
-          workoutTime: workoutForm.time,
-          content: workoutForm.content.trim(),
-          capacity: workoutForm.capacity ? parseInt(workoutForm.capacity) : null,
-          type: 'workout'
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
@@ -1090,12 +1104,34 @@ const Forum = () => {
           content: '',
           capacity: ''
         });
+        setShowIntervalsSection(false);
+        setWorkoutIntervals([{ title: '', description: '' }]);
         setShowWorkoutForm(false);
       } else {
-        console.error('Failed to create workout post');
+        const responseText = await response.text();
+        let errorBody;
+        try {
+          errorBody = JSON.parse(responseText);
+        } catch (_) {
+          errorBody = responseText;
+        }
+        console.error('❌ Failed to create workout post:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody,
+          url: `${API_BASE_URL}/forum/posts`
+        });
+        showError(
+          errorBody?.error || `Failed to create workout (${response.status}): ${response.statusText}`
+        );
       }
     } catch (error) {
-        console.error('Error creating workout post:', error);
+      console.error('❌ Error creating workout post:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+      showError(`Failed to create workout: ${error?.message || 'Network or server error'}`);
     }
   };
 
@@ -2218,9 +2254,87 @@ const Forum = () => {
                   <small>Maximum number of people who can sign up. Leave empty for unlimited spots.</small>
                 </div>
 
+                {isIOS && (
+                  <>
+                    {!showIntervalsSection ? (
+                      <div className="form-group">
+                        <button
+                          type="button"
+                          className="btn btn-secondary forum-add-intervals-btn"
+                          onClick={() => {
+                            hapticImpact('light');
+                            setShowIntervalsSection(true);
+                          }}
+                        >
+                          Add Intervals
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="forum-intervals-section">
+                        <h3 className="forum-intervals-heading">Intervals</h3>
+                        {workoutIntervals.map((interval, index) => (
+                          <div key={index} className="forum-interval-block">
+                            <div className="form-group">
+                              <label>Interval {index + 1} title</label>
+                              <input
+                                type="text"
+                                value={interval.title}
+                                onChange={(e) => {
+                                  const next = [...workoutIntervals];
+                                  next[index] = { ...next[index], title: e.target.value };
+                                  setWorkoutIntervals(next);
+                                }}
+                                placeholder="e.g., 200m, 1km, Lap 1"
+                                maxLength="80"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Interval {index + 1} description</label>
+                              <input
+                                type="text"
+                                value={interval.description}
+                                onChange={(e) => {
+                                  const next = [...workoutIntervals];
+                                  next[index] = { ...next[index], description: e.target.value };
+                                  setWorkoutIntervals(next);
+                                }}
+                                placeholder="e.g., 2:15, 4:32"
+                                maxLength="120"
+                              />
+                            </div>
+                            {index === workoutIntervals.length - 1 && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary forum-add-interval-plus"
+                                onClick={() => {
+                                  hapticImpact('light');
+                                  setWorkoutIntervals([...workoutIntervals, { title: '', description: '' }]);
+                                }}
+                                aria-label="Add another interval"
+                              >
+                                +
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
                 <div className="modal-actions">
                   <button type="submit" className="btn btn-primary">Post Workout</button>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowWorkoutForm(false)}>Cancel</button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowIntervalsSection(false);
+                      setWorkoutIntervals([{ title: '', description: '' }]);
+                      setShowWorkoutForm(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </form>
             </div>

@@ -56,6 +56,44 @@
   font-size: 14px;
 }
 
+/* iOS only: Add Intervals section in create workout modal */
+.forum-add-intervals-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.forum-intervals-section {
+  margin-top: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid #e9ecef;
+}
+
+.forum-intervals-heading {
+  font-size: 1rem;
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.forum-interval-block {
+  position: relative;
+  padding: 1rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.forum-interval-block:last-of-type {
+  border-bottom: none;
+}
+
+.forum-add-interval-plus {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  border-radius: 50%;
+  margin-top: 0.5rem;
+}
+
 .posts-list {
   display: flex;
   flex-direction: column;
