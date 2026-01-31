@@ -14,11 +14,11 @@ const Admin = () => {
   const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState('members');
   
-  // Test Events state
-  const [testEvents, setTestEvents] = useState([]);
+  // Test Events state (legacy - Interval Results tab replaced this)
+  const [testEvents, setTestEvents] = useState([]); // eslint-disable-line no-unused-vars
   const [selectedTestEvent, setSelectedTestEvent] = useState(null);
-  const [testEventRecords, setTestEventRecords] = useState([]);
-  const [expandedRecordIds, setExpandedRecordIds] = useState(new Set()); // Track which records are expanded
+  const [testEventRecords, setTestEventRecords] = useState([]); // eslint-disable-line no-unused-vars
+  const [expandedRecordIds, setExpandedRecordIds] = useState(new Set()); // eslint-disable-line no-unused-vars
   const [showTestEventModal, setShowTestEventModal] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [testEventForm, setTestEventForm] = useState({
@@ -975,23 +975,6 @@ const Admin = () => {
       setAvailableWorkouts([]);
     } finally {
       setLoadingWorkouts(false);
-    }
-  };
-
-  // Load record count for a test event
-  const loadTestEventRecordCount = async (testEventId) => {
-    try {
-      const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/records?test_event_id=${testEventId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTestEventRecordCount(data.records?.length || 0);
-      }
-    } catch (error) {
-      console.error('Error loading record count:', error);
-      setTestEventRecordCount(0);
     }
   };
 
