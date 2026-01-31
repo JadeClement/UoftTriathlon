@@ -973,6 +973,26 @@ router.post('/workouts/:id/interval-results', authenticateToken, requireMember, 
   }
 });
 
+// Delete current user's interval result
+router.delete('/workouts/:id/interval-results/:intervalId', authenticateToken, requireMember, async (req, res) => {
+  try {
+    const { id: postId, intervalId } = req.params;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      'DELETE FROM interval_results WHERE post_id = $1 AND interval_id = $2 AND user_id = $3 RETURNING id',
+      [postId, intervalId, userId]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Interval result not found or not authorized' });
+    }
+    res.json({ message: 'Interval result deleted', success: true });
+  } catch (error) {
+    console.error('Delete interval result error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get workouts that have intervals (for Results page add form dropdown)
 router.get('/workouts-with-intervals', authenticateToken, requireMember, async (req, res) => {
   try {

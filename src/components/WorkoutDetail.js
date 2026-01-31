@@ -56,6 +56,8 @@ const WorkoutDetail = () => {
   const [intervalResultForm, setIntervalResultForm] = useState({}); // { interval_id: time }
   const [showAddIntervalModal, setShowAddIntervalModal] = useState(false);
   const [addIntervalForm, setAddIntervalForm] = useState({ title: '', description: '' });
+  const [deleteIntervalConfirm, setDeleteIntervalConfirm] = useState({ isOpen: false, intervalId: null });
+  const [deletingIntervalId, setDeletingIntervalId] = useState(null);
 
   // Swipe-to-go-back gesture (iOS only)
   const touchStartXRef = useRef(null);
@@ -1148,6 +1150,36 @@ const WorkoutDetail = () => {
     setShowIntervalResultModal(true);
   };
 
+  const handleDeleteIntervalResult = async () => {
+    const intervalId = deleteIntervalConfirm.intervalId;
+    if (!intervalId) return;
+    setDeletingIntervalId(intervalId);
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(
+        `${API_BASE_URL}/forum/workouts/${id}/interval-results/${intervalId}`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        showSuccess('Interval result deleted');
+        setIntervalResultForm((prev) => {
+          const next = { ...prev };
+          delete next[intervalId];
+          return next;
+        });
+        setIntervalResults((prev) => prev.filter((r) => !(r.interval_id === intervalId && r.user_id === currentUser?.id)));
+        setDeleteIntervalConfirm({ isOpen: false, intervalId: null });
+      } else {
+        const err = await res.json();
+        showError(err.error || 'Failed to delete');
+      }
+    } catch (err) {
+      showError('Failed to delete interval result');
+    } finally {
+      setDeletingIntervalId(null);
+    }
+  };
+
   const handleAddInterval = async () => {
     if (!addIntervalForm.title || !addIntervalForm.title.trim()) {
       showError('Interval title is required');
@@ -1893,7 +1925,19 @@ const WorkoutDetail = () => {
             </p>
           ) : (
             <>
-              <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => isIOS && currentUser && openIntervalResultModal()}
+                onKeyDown={(e) => isIOS && currentUser && (e.key === 'Enter' || e.key === ' ') && openIntervalResultModal()}
+                style={{
+                  marginBottom: '1rem',
+                  padding: '1rem',
+                  background: '#f8fafc',
+                  borderRadius: '8px',
+                  cursor: isIOS && currentUser ? 'pointer' : 'default',
+                }}
+              >
                 <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Intervals</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
                   {workoutIntervals.map((inv, idx) => (
@@ -1903,6 +1947,11 @@ const WorkoutDetail = () => {
                     </div>
                   ))}
                 </div>
+                {isIOS && currentUser && (
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+                    Tap to edit your interval results
+                  </p>
+                )}
               </div>
 
               {isIOS && (
@@ -1915,7 +1964,13 @@ const WorkoutDetail = () => {
                     });
                     const users = Object.entries(byUser);
                     return (
-                      <div style={{ overflowX: 'auto' }}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={openIntervalResultModal}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openIntervalResultModal()}
+                        style={{ overflowX: 'auto', cursor: 'pointer' }}
+                      >
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                           <thead>
                             <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
@@ -1940,6 +1995,9 @@ const WorkoutDetail = () => {
                             ))}
                           </tbody>
                         </table>
+                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+                          Tap to edit your interval results
+                        </p>
                       </div>
                     );
                   })()
@@ -2061,25 +2119,50 @@ const WorkoutDetail = () => {
           </div>
         )}
 
-        {/* Add Interval Results Modal - iOS only */}
+        {/* Edit Interval Results Modal - iOS only */}
         {isIOS && showIntervalResultModal && workoutIntervals.length > 0 && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h2>Add Interval Results</h2>
-              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                Enter your time for each interval (e.g., 2:15, 4:32, 1:58)
-              </p>
+          <div className="modal-overlay" onClick={() => { setShowIntervalResultModal(false); setIntervalResultForm({}); }}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <h2>Edit Interval Results</h2>
+              <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Workout</div>
+                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#374151' }}>{displayWorkout?.title || 'Workout'}</div>
+              </div>
               <form onSubmit={(e) => { e.preventDefault(); handleSubmitIntervalResults(); }}>
-                {workoutIntervals.map((inv) => (
-                  <div key={inv.id} className="form-group">
-                    <label>{inv.title || 'Interval'} {inv.description ? `(${inv.description})` : ''}</label>
-                    <input
-                      type="text"
-                      value={intervalResultForm[inv.id] || ''}
-                      onChange={(e) => setIntervalResultForm((prev) => ({ ...prev, [inv.id]: e.target.value }))}
-                      placeholder="e.g., 2:15"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                    />
+                {workoutIntervals.map((inv, idx) => (
+                  <div
+                    key={inv.id}
+                    style={{
+                      marginBottom: '1.25rem',
+                      padding: '1rem',
+                      background: '#f8fafc',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Interval {idx + 1}</div>
+                    <div style={{ fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>{inv.title || `Interval ${idx + 1}`}</div>
+                    {inv.description && (
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>{inv.description}</div>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        value={intervalResultForm[inv.id] || ''}
+                        onChange={(e) => setIntervalResultForm((prev) => ({ ...prev, [inv.id]: e.target.value }))}
+                        placeholder="e.g., 2:15"
+                        style={{ flex: 1, minWidth: '80px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => setDeleteIntervalConfirm({ isOpen: true, intervalId: inv.id })}
+                        disabled={!intervalResultForm[inv.id]}
+                        style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: intervalResultForm[inv.id] ? 'pointer' : 'not-allowed', opacity: intervalResultForm[inv.id] ? 1 : 0.5 }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <div className="modal-actions">
@@ -2092,6 +2175,17 @@ const WorkoutDetail = () => {
             </div>
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={deleteIntervalConfirm.isOpen}
+          onConfirm={handleDeleteIntervalResult}
+          onCancel={() => setDeleteIntervalConfirm({ isOpen: false, intervalId: null })}
+          title="Delete Interval Result"
+          message="Are you sure you want to delete this interval result?"
+          confirmText={deletingIntervalId ? 'Deleting...' : 'Delete'}
+          cancelText="Cancel"
+          confirmDanger
+        />
 
         {/* Cancel Confirmation Modal */}
         {showCancelModal && displayWorkout && (() => {
