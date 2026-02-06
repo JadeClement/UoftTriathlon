@@ -309,7 +309,30 @@
   font-weight: 600;
 }
 
+.swim-attendance-search {
+  margin-bottom: 1rem;
+}
 
+.swim-attendance-search-input {
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  font-size: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E") no-repeat 0.6rem center;
+  background-size: 1.25rem;
+}
+
+.swim-attendance-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.swim-attendance-search-input:focus {
+  outline: none;
+  border-color: #4169E1;
+  box-shadow: 0 0 0 2px rgba(65, 105, 225, 0.2);
+}
 
 .no-signups {
   color: #6b7280;

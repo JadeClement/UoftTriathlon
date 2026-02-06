@@ -49,6 +49,7 @@ const WorkoutDetail = () => {
   const [submittingAttendance, setSubmittingAttendance] = useState(false);
   const [editingAttendance, setEditingAttendance] = useState(false);
   const [swimMembers, setSwimMembers] = useState([]);
+  const [swimAttendanceSearch, setSwimAttendanceSearch] = useState('');
   const [isSwimWorkout, setIsSwimWorkout] = useState(false);
   const [workoutIntervals, setWorkoutIntervals] = useState([]);
   const [intervalResults, setIntervalResults] = useState([]);
@@ -1551,8 +1552,31 @@ const WorkoutDetail = () => {
               <p className="no-signups">Loading members...</p>
             ) : (
               <>
+                <div className="swim-attendance-search">
+                  <label htmlFor="swim-attendance-search-input" className="sr-only">Search members by name</label>
+                  <input
+                    type="search"
+                    id="swim-attendance-search-input"
+                    placeholder="Search members by name..."
+                    value={swimAttendanceSearch}
+                    onChange={(e) => setSwimAttendanceSearch(e.target.value)}
+                    className="swim-attendance-search-input"
+                    aria-label="Search members by name"
+                  />
+                </div>
                 <div className="signups-list">
-                  {swimMembers.map(member => (
+                  {(() => {
+                    const filteredMembers = swimMembers.filter(member =>
+                      !swimAttendanceSearch.trim() || (member.user_name || '').toLowerCase().includes(swimAttendanceSearch.trim().toLowerCase())
+                    );
+                    if (filteredMembers.length === 0) {
+                      return (
+                        <p className="no-signups">
+                          {swimAttendanceSearch.trim() ? 'No members match your search.' : 'No members.'}
+                        </p>
+                      );
+                    }
+                    return filteredMembers.map(member => (
                     <div key={member.user_id} className="signup-item">
                       {/* Attendance and Late checkboxes for executives and administrators */}
                       <div className="attendance-controls">
@@ -1611,7 +1635,8 @@ const WorkoutDetail = () => {
                         {member.is_signed_up && '📅 Signed up'}
                       </span>
                     </div>
-                  ))}
+                  ));
+                  })()}
                 </div>
                 
                 {/* Submit attendance button for executives and administrators */}

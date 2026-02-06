@@ -9,7 +9,7 @@ const Profile = () => {
   const params = useParams();
   const { role, name } = params;
   const navigate = useNavigate();
-  const { currentUser, updateUser } = useAuth();
+  const { currentUser, updateUser, isMember } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -623,6 +623,11 @@ const Profile = () => {
               <h2 className="profile-role">{userProfile.role}</h2>
               {isUserProfile && (
                 <div className="profile-actions">
+                  {currentUser && isMember(currentUser) && (
+                    <Link to="/results" className="btn btn-secondary" style={{ marginRight: '0.5rem' }}>
+                      View Results
+                    </Link>
+                  )}
                   <button 
                     className="btn btn-edit" 
                     onClick={handleEdit}
