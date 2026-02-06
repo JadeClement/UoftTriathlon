@@ -2254,22 +2254,21 @@ const Forum = () => {
                   <small>Maximum number of people who can sign up. Leave empty for unlimited spots.</small>
                 </div>
 
-                {isIOS && (
-                  <>
-                    {!showIntervalsSection ? (
-                      <div className="form-group">
-                        <button
-                          type="button"
-                          className="btn btn-secondary forum-add-intervals-btn"
-                          onClick={() => {
-                            hapticImpact('light');
-                            setShowIntervalsSection(true);
-                          }}
-                        >
-                          Add Intervals
-                        </button>
-                      </div>
-                    ) : (
+                <>
+                  {!showIntervalsSection ? (
+                    <div className="form-group">
+                      <button
+                        type="button"
+                        className="btn btn-secondary forum-add-intervals-btn"
+                        onClick={() => {
+                          hapticImpact('light');
+                          setShowIntervalsSection(true);
+                        }}
+                      >
+                        Add Intervals
+                      </button>
+                    </div>
+                  ) : (
                       <div className="forum-intervals-section">
                         <h3 className="forum-intervals-heading">Intervals</h3>
                         {workoutIntervals.map((interval, index) => (
@@ -2319,8 +2318,7 @@ const Forum = () => {
                         ))}
                       </div>
                     )}
-                  </>
-                )}
+                </>
 
                 <div className="modal-actions">
                   <button type="submit" className="btn btn-primary">Post Workout</button>

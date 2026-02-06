@@ -1546,7 +1546,7 @@ const Admin = () => {
             Merch Orders
           </button>
         )}
-        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios' && (
+        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && (
           <button 
             className={`tab-button ${activeTab === 'test-events' ? 'active' : ''}`}
             onClick={() => setActiveTab('test-events')}
@@ -2842,7 +2842,7 @@ const Admin = () => {
         )}
 
         {/* Test Events Tab */}
-        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios' && activeTab === 'test-events' && (
+        {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && activeTab === 'test-events' && (
           <div className="test-events-section" style={{ padding: '2rem' }}>
             <h2>Interval Results</h2>
             <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb', color: '#374151' }}>
@@ -2850,9 +2850,9 @@ const Admin = () => {
                 <strong>Test events have been replaced by interval results.</strong>
               </p>
               <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                <li>Coaches add intervals when creating a workout post (iOS app → Add Intervals)</li>
+                <li>Coaches add intervals when creating a workout post (Add Intervals)</li>
                 <li>Users add their interval times from the workout detail page</li>
-                <li>View interval results on each workout&apos;s detail page or on the Results page (iOS)</li>
+                <li>View interval results on each workout&apos;s detail page or on the Results page</li>
               </ul>
             </div>
           </div>

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import { showSuccess, showError } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
@@ -9,8 +8,6 @@ const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/ap
 
 const Results = () => {
   const { currentUser, isMember } = useAuth();
-
-  const isIOSNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
 
   const [intervalResults, setIntervalResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -288,11 +285,6 @@ const Results = () => {
           <div>
             <h2>Your interval results</h2>
             <p>Results are only available for full members.</p>
-          </div>
-        ) : !isIOSNative ? (
-          <div>
-            <h2>Your interval results</h2>
-            <p>This page is only available in the iOS app.</p>
           </div>
         ) : (
           <>

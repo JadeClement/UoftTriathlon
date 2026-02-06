@@ -280,21 +280,21 @@ const WorkoutDetail = () => {
         setComments([]);
       }
 
-      // Load intervals (coaches/admins + iOS); interval results only on iOS
-      const isIOSLoad = Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
-      const isCoachOrAdminLoad = currentUser && ['coach', 'administrator', 'exec'].includes(currentUser.role || '');
-      if (isIOSLoad || isCoachOrAdminLoad) {
+      // Load intervals and interval results for all members (web + iOS)
+      const shouldLoadIntervals = !!currentUser;
+      const shouldLoadIntervalResults = currentUser && (isMember(currentUser) || ['coach', 'administrator', 'exec'].includes(currentUser.role || ''));
+      if (shouldLoadIntervals) {
         const intervalsRes = await fetch(`${API_BASE_URL}/forum/workouts/${id}/intervals`, { headers: { Authorization: `Bearer ${token}` } });
         if (intervalsRes.ok) {
           const intervalsData = await intervalsRes.json();
           setWorkoutIntervals(intervalsData.intervals || []);
         }
-        if (isIOSLoad) {
-          const resultsRes = await fetch(`${API_BASE_URL}/forum/workouts/${id}/interval-results`, { headers: { Authorization: `Bearer ${token}` } });
-          if (resultsRes.ok) {
-            const resultsData = await resultsRes.json();
-            setIntervalResults(resultsData.intervalResults || []);
-          }
+      }
+      if (shouldLoadIntervalResults) {
+        const resultsRes = await fetch(`${API_BASE_URL}/forum/workouts/${id}/interval-results`, { headers: { Authorization: `Bearer ${token}` } });
+        if (resultsRes.ok) {
+          const resultsData = await resultsRes.json();
+          setIntervalResults(resultsData.intervalResults || []);
         }
       }
 
@@ -309,7 +309,7 @@ const WorkoutDetail = () => {
       }
       setLoading(false);
     }
-  }, [API_BASE_URL, id, currentUser]);
+  }, [API_BASE_URL, id, currentUser, isMember]);
 
   // eslint-disable-next-line no-unused-vars
   const isWorkoutArchived = () => {
@@ -1812,8 +1812,8 @@ const WorkoutDetail = () => {
           </div>
         )}
 
-        {/* Interval Results Section - iOS for full results; coaches/admins can add intervals on any platform */}
-        {(isIOS || isCoachOrAdmin) && (
+        {/* Interval Results Section - available on web and iOS for all members */}
+        {((workoutIntervals.length > 0 || isCoachOrAdmin) && currentUser) && (
         <div className="test-event-section" style={{ marginTop: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h2 style={{ margin: 0, color: '#374151' }}>Interval Results</h2>
@@ -1827,7 +1827,7 @@ const WorkoutDetail = () => {
                   + Add Interval
                 </button>
               )}
-              {isIOS && currentUser && workoutIntervals.length > 0 && (
+              {currentUser && workoutIntervals.length > 0 && (
                 <button
                   className="btn btn-primary"
                   onClick={openIntervalResultModal}
@@ -1843,21 +1843,21 @@ const WorkoutDetail = () => {
             <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
               {isCoachOrAdmin
                 ? 'No intervals defined yet. Click "Add Interval" to add intervals for this workout.'
-                : 'No intervals defined for this workout. Coaches can add intervals when creating a workout post (iOS app).'}
+                : 'No intervals defined for this workout. Coaches can add intervals when creating a workout post.'}
             </p>
           ) : (
             <>
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => isIOS && currentUser && openIntervalResultModal()}
-                onKeyDown={(e) => isIOS && currentUser && (e.key === 'Enter' || e.key === ' ') && openIntervalResultModal()}
+                onClick={() => currentUser && openIntervalResultModal()}
+                onKeyDown={(e) => currentUser && (e.key === 'Enter' || e.key === ' ') && openIntervalResultModal()}
                 style={{
                   marginBottom: '1rem',
                   padding: '1rem',
                   background: '#f8fafc',
                   borderRadius: '8px',
-                  cursor: isIOS && currentUser ? 'pointer' : 'default',
+                  cursor: currentUser ? 'pointer' : 'default',
                 }}
               >
                 <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Intervals</h3>
@@ -1869,15 +1869,14 @@ const WorkoutDetail = () => {
                     </div>
                   ))}
                 </div>
-                {isIOS && currentUser && (
+                {currentUser && (
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                    Tap to edit your interval results
+                    Tap or click to edit your interval results
                   </p>
                 )}
               </div>
 
-              {isIOS && (
-                intervalResults.length > 0 ? (
+              {intervalResults.length > 0 ? (
                   (() => {
                     const byUser = {};
                     intervalResults.forEach((r) => {
@@ -1927,8 +1926,7 @@ const WorkoutDetail = () => {
                   <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
                     No interval results yet. Click &quot;Add Interval Results&quot; to add yours.
                   </p>
-                )
-              )}
+                )}
             </>
           )}
         </div>
@@ -2041,8 +2039,8 @@ const WorkoutDetail = () => {
           </div>
         )}
 
-        {/* Edit Interval Results Modal - iOS only */}
-        {isIOS && showIntervalResultModal && workoutIntervals.length > 0 && (
+        {/* Edit Interval Results Modal */}
+        {showIntervalResultModal && workoutIntervals.length > 0 && (
           <div className="modal-overlay" onClick={() => { setShowIntervalResultModal(false); setIntervalResultForm({}); }}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <h2>Edit Interval Results</h2>
