@@ -396,6 +396,21 @@ async function initializeDatabase() {
     `);
     console.log('✅ Interval results table created');
 
+    // Add average_hr and average_sc columns to interval_results (optional)
+    try {
+      await pool.query(`
+        ALTER TABLE interval_results
+        ADD COLUMN IF NOT EXISTS average_hr VARCHAR(20)
+      `);
+      await pool.query(`
+        ALTER TABLE interval_results
+        ADD COLUMN IF NOT EXISTS average_sc VARCHAR(20)
+      `);
+      console.log('✅ average_hr and average_sc columns added to interval_results (or already exist)');
+    } catch (error) {
+      console.log('ℹ️  average_hr/average_sc columns may already exist in interval_results');
+    }
+
     // Add results_public column to users table if it doesn't exist (migration for existing databases)
     try {
       await pool.query(`

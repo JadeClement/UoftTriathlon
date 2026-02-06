@@ -905,7 +905,7 @@ router.get('/workouts/:id/interval-results', authenticateToken, requireMember, a
 
     const result = await pool.query(`
       SELECT 
-        ir.id, ir.post_id, ir.interval_id, ir.user_id, ir.time, ir.created_at,
+        ir.id, ir.post_id, ir.interval_id, ir.user_id, ir.time, ir.average_hr, ir.average_sc, ir.created_at,
         u.name as user_name,
         wi.title as interval_title, wi.description as interval_description
       FROM interval_results ir
@@ -927,7 +927,7 @@ router.get('/workouts/:id/interval-results', authenticateToken, requireMember, a
 router.post('/workouts/:id/interval-results', authenticateToken, requireMember, async (req, res) => {
   try {
     const { id } = req.params;
-    const { results } = req.body; // [{ interval_id, time }, ...]
+    const { results } = req.body; // [{ interval_id, time, average_hr?, average_sc? }, ...]
     const userId = req.user.id;
 
     if (!results || !Array.isArray(results) || results.length === 0) {
@@ -959,11 +959,13 @@ router.post('/workouts/:id/interval-results', authenticateToken, requireMember, 
 
     for (const r of results) {
       if (!r.interval_id || r.time == null || r.time === '') continue;
+      const avgHr = r.average_hr != null && String(r.average_hr).trim() !== '' ? String(r.average_hr).trim() : null;
+      const avgSc = r.average_sc != null && String(r.average_sc).trim() !== '' ? String(r.average_sc).trim() : null;
       await pool.query(`
-        INSERT INTO interval_results (post_id, interval_id, user_id, time)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (post_id, interval_id, user_id) DO UPDATE SET time = $4
-      `, [id, r.interval_id, userId, String(r.time).trim()]);
+        INSERT INTO interval_results (post_id, interval_id, user_id, time, average_hr, average_sc)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (post_id, interval_id, user_id) DO UPDATE SET time = $4, average_hr = $5, average_sc = $6
+      `, [id, r.interval_id, userId, String(r.time).trim(), avgHr, avgSc]);
     }
 
     res.json({ message: 'Interval results saved', success: true });
@@ -1016,7 +1018,7 @@ router.get('/interval-results/me', authenticateToken, requireMember, async (req,
     const userId = req.user.id;
     const result = await pool.query(`
       SELECT 
-        ir.id, ir.post_id, ir.interval_id, ir.user_id, ir.time, ir.created_at,
+        ir.id, ir.post_id, ir.interval_id, ir.user_id, ir.time, ir.average_hr, ir.average_sc, ir.created_at,
         fp.title as workout_title, fp.workout_date, fp.workout_time, fp.workout_type,
         wi.title as interval_title, wi.description as interval_description, wi.sort_order
       FROM interval_results ir

@@ -17,13 +17,17 @@ const Results = () => {
   const [addForm, setAddForm] = useState({
     workoutId: '',
     intervalId: '',
-    time: ''
+    time: '',
+    averageHr: '',
+    averageSc: '',
   });
   const [workoutsLoading, setWorkoutsLoading] = useState(false);
   const [intervalsLoading, setIntervalsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editModalRow, setEditModalRow] = useState(null);
   const [editModalTime, setEditModalTime] = useState('');
+  const [editModalAvgHr, setEditModalAvgHr] = useState('');
+  const [editModalAvgSc, setEditModalAvgSc] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, row: null });
   const [deleting, setDeleting] = useState(false);
@@ -78,7 +82,7 @@ const Results = () => {
     if (!addForm.workoutId) {
       setIntervals([]);
       setExistingResultsForWorkout([]);
-      setAddForm((f) => ({ ...f, intervalId: '', time: '' }));
+      setAddForm((f) => ({ ...f, intervalId: '', time: '', averageHr: '', averageSc: '' }));
       return;
     }
     const loadIntervals = async () => {
@@ -137,13 +141,18 @@ const Results = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            results: [{ interval_id: parseInt(addForm.intervalId, 10), time: addForm.time.trim() }],
+            results: [{
+              interval_id: parseInt(addForm.intervalId, 10),
+              time: addForm.time.trim(),
+              average_hr: addForm.averageHr?.trim() || null,
+              average_sc: addForm.averageSc?.trim() || null,
+            }],
           }),
         }
       );
       if (res.ok) {
         showSuccess('Interval result saved!');
-        setAddForm({ workoutId: '', intervalId: '', time: '' });
+        setAddForm({ workoutId: '', intervalId: '', time: '', averageHr: '', averageSc: '' });
         setShowAddForm(false);
         setIntervals([]);
         const refresh = await fetch(`${API_BASE}/forum/interval-results/me`, {
@@ -167,11 +176,15 @@ const Results = () => {
   const openEditModal = (r) => {
     setEditModalRow(r);
     setEditModalTime(r.time || '');
+    setEditModalAvgHr(r.average_hr || '');
+    setEditModalAvgSc(r.average_sc || '');
   };
 
   const closeEditModal = () => {
     setEditModalRow(null);
     setEditModalTime('');
+    setEditModalAvgHr('');
+    setEditModalAvgSc('');
   };
 
   useEffect(() => {
@@ -201,7 +214,12 @@ const Results = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            results: [{ interval_id: editModalRow.interval_id, time: editModalTime.trim() }],
+            results: [{
+              interval_id: editModalRow.interval_id,
+              time: editModalTime.trim(),
+              average_hr: editModalAvgHr?.trim() || null,
+              average_sc: editModalAvgSc?.trim() || null,
+            }],
           }),
         }
       );
@@ -210,7 +228,7 @@ const Results = () => {
         setIntervalResults((prev) =>
           prev.map((p) =>
             p.post_id === editModalRow.post_id && p.interval_id === editModalRow.interval_id
-              ? { ...p, time: editModalTime.trim() }
+              ? { ...p, time: editModalTime.trim(), average_hr: editModalAvgHr?.trim() || null, average_sc: editModalAvgSc?.trim() || null }
               : p
           )
         );
@@ -313,7 +331,7 @@ const Results = () => {
                   className="btn btn-primary"
                   onClick={() => {
                     if (showAddForm) {
-                      setAddForm({ workoutId: '', intervalId: '', time: '' });
+                      setAddForm({ workoutId: '', intervalId: '', time: '', averageHr: '', averageSc: '' });
                       setIntervals([]);
                     }
                     setShowAddForm(!showAddForm);
@@ -348,7 +366,7 @@ const Results = () => {
                       </label>
                       <select
                         value={addForm.workoutId}
-                        onChange={(e) => setAddForm({ ...addForm, workoutId: e.target.value, intervalId: '', time: '' })}
+                        onChange={(e) => setAddForm({ ...addForm, workoutId: e.target.value, intervalId: '', time: '', averageHr: '', averageSc: '' })}
                         disabled={workoutsLoading}
                         style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
                       >
@@ -402,6 +420,34 @@ const Results = () => {
                         style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
                       />
                     </div>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '120px' }}>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                          Avg HR (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={addForm.averageHr}
+                          onChange={(e) => setAddForm({ ...addForm, averageHr: e.target.value })}
+                          placeholder="e.g., 145"
+                          disabled={!addForm.intervalId}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: '120px' }}>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                          Avg SC (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={addForm.averageSc}
+                          onChange={(e) => setAddForm({ ...addForm, averageSc: e.target.value })}
+                          placeholder="e.g., 18"
+                          disabled={!addForm.intervalId}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
+                        />
+                      </div>
+                    </div>
                     <button
                       type="button"
                       className="btn btn-primary"
@@ -426,6 +472,8 @@ const Results = () => {
                         <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Sport</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Title</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Time</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Avg HR</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Avg SC</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Description</th>
                       </tr>
                     </thead>
@@ -444,6 +492,8 @@ const Results = () => {
                           </td>
                           <td style={{ padding: '0.75rem', color: '#475569' }}>{r.interval_title || '-'}</td>
                           <td style={{ padding: '0.75rem', color: '#475569' }}>{r.time || '-'}</td>
+                          <td style={{ padding: '0.75rem', color: '#475569' }}>{r.average_hr || '-'}</td>
+                          <td style={{ padding: '0.75rem', color: '#475569' }}>{r.average_sc || '-'}</td>
                           <td style={{ padding: '0.75rem', color: '#475569' }}>{r.interval_description || '-'}</td>
                         </tr>
                       ))}
@@ -504,6 +554,30 @@ const Results = () => {
                           value={editModalTime}
                           onChange={(e) => setEditModalTime(e.target.value)}
                           placeholder="e.g., 2:15, 4:32"
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                          Avg HR (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={editModalAvgHr}
+                          onChange={(e) => setEditModalAvgHr(e.target.value)}
+                          placeholder="e.g., 145"
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                          Avg SC (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={editModalAvgSc}
+                          onChange={(e) => setEditModalAvgSc(e.target.value)}
+                          placeholder="e.g., 18"
                           style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
                         />
                       </div>

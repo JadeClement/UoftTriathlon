@@ -1038,7 +1038,18 @@ const WorkoutDetail = () => {
   // Interval Results
   const handleSubmitIntervalResults = async () => {
     const results = workoutIntervals
-      .map((inv) => ({ interval_id: inv.id, time: intervalResultForm[inv.id] || '' }))
+      .map((inv) => {
+        const f = intervalResultForm[inv.id];
+        const time = (typeof f === 'object' ? f?.time : f) || '';
+        const avgHr = (typeof f === 'object' && f?.avg_hr) ? String(f.avg_hr).trim() : null;
+        const avgSc = (typeof f === 'object' && f?.avg_sc) ? String(f.avg_sc).trim() : null;
+        return {
+          interval_id: inv.id,
+          time,
+          average_hr: avgHr || null,
+          average_sc: avgSc || null,
+        };
+      })
       .filter((r) => r.time && String(r.time).trim());
     if (results.length === 0) {
       showError('Please enter at least one interval time');
@@ -1075,7 +1086,13 @@ const WorkoutDetail = () => {
     const existing = {};
     intervalResults
       .filter((r) => r.user_id === currentUser?.id)
-      .forEach((r) => { existing[r.interval_id] = r.time; });
+      .forEach((r) => {
+        existing[r.interval_id] = {
+          time: r.time || '',
+          avg_hr: r.average_hr || '',
+          avg_sc: r.average_sc || '',
+        };
+      });
     setIntervalResultForm(existing);
     setShowIntervalResultModal(true);
   };
@@ -1906,7 +1923,11 @@ const WorkoutDetail = () => {
                     const byUser = {};
                     intervalResults.forEach((r) => {
                       if (!byUser[r.user_id]) byUser[r.user_id] = { user_name: r.user_name, times: {} };
-                      byUser[r.user_id].times[r.interval_id] = r.time;
+                      byUser[r.user_id].times[r.interval_id] = {
+                        time: r.time,
+                        avg_hr: r.average_hr,
+                        avg_sc: r.average_sc,
+                      };
                     });
                     const users = Object.entries(byUser);
                     return (
@@ -1932,11 +1953,20 @@ const WorkoutDetail = () => {
                             {users.map(([uid, data]) => (
                               <tr key={uid} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                 <td style={{ padding: '0.75rem', color: '#475569' }}>{data.user_name}</td>
-                                {workoutIntervals.map((inv) => (
-                                  <td key={inv.id} style={{ padding: '0.75rem', color: '#475569' }}>
-                                    {data.times[inv.id] || '-'}
-                                  </td>
-                                ))}
+                                {workoutIntervals.map((inv) => {
+                                  const cell = data.times[inv.id];
+                                  if (!cell) return <td key={inv.id} style={{ padding: '0.75rem', color: '#475569' }}>-</td>;
+                                  const t = typeof cell === 'object' ? cell.time : cell;
+                                  const hr = typeof cell === 'object' ? cell.avg_hr : null;
+                                  const sc = typeof cell === 'object' ? cell.avg_sc : null;
+                                  const extras = [hr && `HR: ${hr}`, sc && `SC: ${sc}`].filter(Boolean).join(', ');
+                                  return (
+                                    <td key={inv.id} style={{ padding: '0.75rem', color: '#475569' }}>
+                                      <div>{t || '-'}</div>
+                                      {extras && <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>{extras}</div>}
+                                    </td>
+                                  );
+                                })}
                               </tr>
                             ))}
                           </tbody>
@@ -2090,25 +2120,56 @@ const WorkoutDetail = () => {
                     {inv.description && (
                       <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>{inv.description}</div>
                     )}
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <input
-                        type="text"
-                        value={intervalResultForm[inv.id] || ''}
-                        onChange={(e) => setIntervalResultForm((prev) => ({ ...prev, [inv.id]: e.target.value }))}
-                        placeholder="e.g., 2:15"
-                        style={{ flex: 1, minWidth: '80px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
-                      />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input
+                          type="text"
+                          value={typeof intervalResultForm[inv.id] === 'object' ? (intervalResultForm[inv.id]?.time ?? '') : (intervalResultForm[inv.id] ?? '')}
+                          onChange={(e) => setIntervalResultForm((prev) => ({
+                            ...prev,
+                            [inv.id]: typeof prev[inv.id] === 'object'
+                              ? { ...prev[inv.id], time: e.target.value }
+                              : { time: e.target.value, avg_hr: '', avg_sc: '' },
+                          }))}
+                          placeholder="Time (e.g., 2:15)"
+                          style={{ flex: 1, minWidth: '80px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
+                        />
+                        <input
+                          type="text"
+                          value={typeof intervalResultForm[inv.id] === 'object' ? (intervalResultForm[inv.id]?.avg_hr ?? '') : ''}
+                          onChange={(e) => setIntervalResultForm((prev) => ({
+                            ...prev,
+                            [inv.id]: typeof prev[inv.id] === 'object'
+                              ? { ...prev[inv.id], avg_hr: e.target.value }
+                              : { time: prev[inv.id] ?? '', avg_hr: e.target.value, avg_sc: '' },
+                          }))}
+                          placeholder="Avg HR (optional)"
+                          style={{ width: '100px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
+                        />
+                        <input
+                          type="text"
+                          value={typeof intervalResultForm[inv.id] === 'object' ? (intervalResultForm[inv.id]?.avg_sc ?? '') : ''}
+                          onChange={(e) => setIntervalResultForm((prev) => ({
+                            ...prev,
+                            [inv.id]: typeof prev[inv.id] === 'object'
+                              ? { ...prev[inv.id], avg_sc: e.target.value }
+                              : { time: prev[inv.id] ?? '', avg_hr: '', avg_sc: e.target.value },
+                          }))}
+                          placeholder="Avg SC (optional)"
+                          style={{ width: '100px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '16px' }}
+                        />
                       <button
                         type="button"
                         className="btn btn-danger"
                         onClick={() => setDeleteIntervalConfirm({ isOpen: true, intervalId: inv.id })}
-                        disabled={!intervalResultForm[inv.id]}
-                        style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: intervalResultForm[inv.id] ? 'pointer' : 'not-allowed', opacity: intervalResultForm[inv.id] ? 1 : 0.5 }}
+                        disabled={!(typeof intervalResultForm[inv.id] === 'object' ? intervalResultForm[inv.id]?.time : intervalResultForm[inv.id])}
+                        style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: (typeof intervalResultForm[inv.id] === 'object' ? intervalResultForm[inv.id]?.time : intervalResultForm[inv.id]) ? 'pointer' : 'not-allowed', opacity: (typeof intervalResultForm[inv.id] === 'object' ? intervalResultForm[inv.id]?.time : intervalResultForm[inv.id]) ? 1 : 0.5 }}
                       >
                         Delete
                       </button>
                     </div>
                   </div>
+                </div>
                 ))}
                 <div className="modal-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => { setShowIntervalResultModal(false); setIntervalResultForm({}); }}>
