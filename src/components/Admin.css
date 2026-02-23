@@ -1,9 +1,12 @@
 .admin-container {
-  max-width: 1200px;
+  width: 100%;
+  /* Use most of viewport width, cap at 1800px for very wide screens */
+  max-width: min(1800px, calc(100vw - 3rem));
   margin: 0 auto;
   padding: 2rem;
   min-height: 100vh;
   background: #f8fafc;
+  box-sizing: border-box;
 }
 
 .admin-header {
