@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getFieldsForSport } from '../config/sportFields';
 import { formatSignupTimeForDisplay } from '../utils/dateUtils';
 import { showError, showSuccess } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
+import AdminContext from '../context/AdminContext';
+import { AdminLayout, AdminMembers, AdminPending, AdminEmail, AdminBanner, AdminAttendance, AdminOrders, AdminIntervalResults } from './admin';
 import './Admin.css';
 
 const Admin = () => {
@@ -17,6 +20,9 @@ const Admin = () => {
   const [selectedIntervalUser, setSelectedIntervalUser] = useState(null);
   const [selectedUserResults, setSelectedUserResults] = useState([]);
   const [selectedUserResultsLoading, setSelectedUserResultsLoading] = useState(false);
+  const [intervalDateFilter, setIntervalDateFilter] = useState({ startDate: '', endDate: '' });
+  const [selectedIntervalUserIds, setSelectedIntervalUserIds] = useState(new Set());
+  const [downloadingAllIntervalExports, setDownloadingAllIntervalExports] = useState(false);
   
   // Test Events state (legacy - Interval Results tab replaced this)
   const [testEvents, setTestEvents] = useState([]); // eslint-disable-line no-unused-vars
@@ -1126,14 +1132,22 @@ const Admin = () => {
     }
   };
 
-  // Load Interval Results users list when Interval Results tab is active
+  const buildIntervalQueryString = () => {
+    const params = [];
+    if (intervalDateFilter.startDate) params.push(`startDate=${intervalDateFilter.startDate}`);
+    if (intervalDateFilter.endDate) params.push(`endDate=${intervalDateFilter.endDate}`);
+    return params.length ? `?${params.join('&')}` : '';
+  };
+
+  // Load Interval Results users list when Interval Results tab or date filter changes
   useEffect(() => {
     const loadIntervalUsers = async () => {
       if (activeTab !== 'test-events') return;
       setIntervalUsersLoading(true);
       try {
         const token = localStorage.getItem('triathlonToken');
-        const response = await fetch(`${API_BASE_URL}/admin/interval-results/users`, {
+        const qs = buildIntervalQueryString();
+        const response = await fetch(`${API_BASE_URL}/admin/interval-results/users${qs}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -1151,7 +1165,7 @@ const Admin = () => {
       }
     };
     loadIntervalUsers();
-  }, [activeTab, API_BASE_URL]);
+  }, [activeTab, API_BASE_URL, intervalDateFilter.startDate, intervalDateFilter.endDate]);
 
   // Load workouts when sport or date changes in test event form
   // ESLint: loadAvailableWorkouts is stable; we only want to rerun when form fields change.
@@ -2876,7 +2890,33 @@ const Admin = () => {
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
               {/* Users list */}
               <div style={{ flex: '1 1 260px', minWidth: 260 }}>
-                <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>Members with Interval Results</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem', color: '#374151' }}>Members with Interval Results</h3>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.15rem', color: '#6b7280' }}>From</label>
+                      <input
+                        type="date"
+                        value={intervalDateFilter.startDate}
+                        onChange={(e) =>
+                          setIntervalDateFilter((prev) => ({ ...prev, startDate: e.target.value || '' }))
+                        }
+                        style={{ padding: '0.3rem 0.4rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.15rem', color: '#6b7280' }}>To</label>
+                      <input
+                        type="date"
+                        value={intervalDateFilter.endDate}
+                        onChange={(e) =>
+                          setIntervalDateFilter((prev) => ({ ...prev, endDate: e.target.value || '' }))
+                        }
+                        style={{ padding: '0.3rem 0.4rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                  </div>
+                </div>
                 {intervalUsersLoading ? (
                   <p style={{ color: '#6b7280' }}>Loading…</p>
                 ) : intervalUsers.length === 0 ? (
@@ -2886,6 +2926,7 @@ const Admin = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
                         <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.5rem 0.75rem' }}></th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#374151', fontWeight: 600 }}>Name</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#374151', fontWeight: 600 }}>Email</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: '#374151', fontWeight: 600 }}>Results</th>
@@ -2906,7 +2947,8 @@ const Admin = () => {
                               setSelectedUserResultsLoading(true);
                               try {
                                 const token = localStorage.getItem('triathlonToken');
-                                const resp = await fetch(`${API_BASE_URL}/admin/interval-results/${u.id}`, {
+                                const qs = buildIntervalQueryString();
+                                const resp = await fetch(`${API_BASE_URL}/admin/interval-results/${u.id}${qs}`, {
                                   headers: {
                                     Authorization: `Bearer ${token}`,
                                   },
@@ -2926,6 +2968,27 @@ const Admin = () => {
                               }
                             }}
                           >
+                            <td style={{ padding: '0.5rem 0.75rem', width: '2.5rem' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedIntervalUserIds.has(u.id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedIntervalUserIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(u.id)) {
+                                      next.delete(u.id);
+                                    } else {
+                                      next.add(u.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ cursor: 'pointer' }}
+                                aria-label={`Select ${u.name || 'member'} for bulk export`}
+                              />
+                            </td>
                             <td style={{ padding: '0.5rem 0.75rem', color: '#374151' }}>{u.name || '-'}</td>
                             <td style={{ padding: '0.5rem 0.75rem', color: '#6b7280' }}>{u.email || '-'}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: '#374151' }}>
@@ -2958,8 +3021,9 @@ const Admin = () => {
                         onClick={async () => {
                           try {
                             const token = localStorage.getItem('triathlonToken');
+                            const qs = buildIntervalQueryString();
                             const resp = await fetch(
-                              `${API_BASE_URL}/admin/interval-results/${selectedIntervalUser.id}/export`,
+                              `${API_BASE_URL}/admin/interval-results/${selectedIntervalUser.id}/export${qs}`,
                               {
                                 headers: {
                                   Authorization: `Bearer ${token}`,
@@ -2990,6 +3054,55 @@ const Admin = () => {
                       >
                         Download Excel
                       </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        disabled={downloadingAllIntervalExports || selectedIntervalUserIds.size === 0}
+                        onClick={async () => {
+                          if (selectedIntervalUserIds.size === 0) return;
+                          setDownloadingAllIntervalExports(true);
+                          try {
+                            const token = localStorage.getItem('triathlonToken');
+                            const qs = buildIntervalQueryString();
+                            const ids = Array.from(selectedIntervalUserIds);
+                            for (const id of ids) {
+                              const user = intervalUsers.find((u) => u.id === id) || {};
+                              const resp = await fetch(
+                                `${API_BASE_URL}/admin/interval-results/${id}/export${qs}`,
+                                {
+                                  headers: {
+                                    Authorization: `Bearer ${token}`,
+                                  },
+                                }
+                              );
+                              if (!resp.ok) {
+                                const text = await resp.text().catch(() => '');
+                                console.error('Failed to export interval results for user', id, text);
+                                continue;
+                              }
+                              const blob = await resp.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              const dateStr = new Date().toISOString().split('T')[0];
+                              const safeName = (user.name || 'user').replace(/[^a-zA-Z0-9_-]+/g, '_');
+                              a.href = url;
+                              a.download = `interval_results_${safeName}_${dateStr}.xlsx`;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                              window.URL.revokeObjectURL(url);
+                            }
+                          } catch (err) {
+                            console.error('Download all interval exports error:', err);
+                            showError(err.message || 'Failed to download all interval exports');
+                          } finally {
+                            setDownloadingAllIntervalExports(false);
+                          }
+                        }}
+                        style={{ fontSize: '0.875rem', padding: '0.45rem 0.9rem' }}
+                      >
+                        {downloadingAllIntervalExports ? 'Downloading…' : 'Download All (selected)'}
+                      </button>
                     </div>
 
                     {selectedUserResultsLoading ? (
@@ -3001,11 +3114,14 @@ const Admin = () => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                           <thead>
                             <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Sport</th>
                               <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Workout Date</th>
                               <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Workout Title</th>
                               <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Title</th>
                               <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Description</th>
                               <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Value</th>
+                              <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Avg HR</th>
+                              <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Avg SC</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -3022,12 +3138,21 @@ const Admin = () => {
                               .map((r) => (
                                 <tr key={r.id || `${r.post_id}-${r.interval_id}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                   <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>
+                                    {r.workout_type
+                                      ? String(r.workout_type)
+                                          .replace(/-/g, ' ')
+                                          .replace(/\b\w/g, (c) => c.toUpperCase())
+                                      : '-'}
+                                  </td>
+                                  <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>
                                     {r.workout_date ? new Date(r.workout_date).toLocaleDateString() : '-'}
                                   </td>
                                   <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.workout_title || '-'}</td>
                                   <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.interval_title || '-'}</td>
                                   <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.interval_description || '-'}</td>
                                   <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.time || '-'}</td>
+                                  <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.average_hr || '-'}</td>
+                                  <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.average_sc || '-'}</td>
                                 </tr>
                               ))}
                           </tbody>

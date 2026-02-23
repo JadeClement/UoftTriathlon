@@ -1497,20 +1497,26 @@ router.get('/interval-results/:userId/export', authenticateToken, requireAdmin, 
     const worksheet = workbook.addWorksheet('Interval Results');
 
     worksheet.columns = [
+      { header: 'Sport', key: 'sport', width: 16 },
       { header: 'Workout Title', key: 'workout_title', width: 32 },
       { header: 'Workout Date', key: 'workout_date', width: 16 },
       { header: 'Interval Title', key: 'interval_title', width: 24 },
       { header: 'Interval Description', key: 'interval_description', width: 32 },
       { header: 'Interval Value', key: 'time', width: 16 },
+      { header: 'Avg HR', key: 'average_hr', width: 12 },
+      { header: 'Avg SC', key: 'average_sc', width: 12 },
     ];
 
     for (const row of rows) {
       worksheet.addRow({
+        sport: row.workout_type || '',
         workout_title: row.workout_title || '',
         workout_date: row.workout_date || null,
         interval_title: row.interval_title || '',
         interval_description: row.interval_description || '',
         time: row.time || '',
+        average_hr: row.average_hr || '',
+        average_sc: row.average_sc || '',
       });
     }
 
