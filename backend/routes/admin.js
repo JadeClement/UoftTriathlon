@@ -1429,12 +1429,12 @@ router.post('/test-push-notification', authenticateToken, requireAdmin, async (r
   }
 });
 
-// Interval results - admin views and export
-router.get('/interval-results/users', authenticateToken, requireAdmin, async (req, res) => {
+// Interval results - admin/coach/exec views and export
+router.get('/interval-results/users', authenticateToken, requireCoach, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const whereParts = [];
+    const whereParts = ["fp.type = 'workout'"];
     const params = [];
 
     if (startDate) {
@@ -1455,11 +1455,8 @@ router.get('/interval-results/users', authenticateToken, requireAdmin, async (re
       FROM interval_results ir
       JOIN users u ON ir.user_id = u.id
       JOIN forum_posts fp ON ir.post_id = fp.id
+      WHERE ${whereParts.join(' AND ')}
     `;
-
-    if (whereParts.length) {
-      query += ` WHERE ${whereParts.join(' AND ')}`;
-    }
 
     query += `
       GROUP BY u.id, u.name, u.email
@@ -1475,7 +1472,7 @@ router.get('/interval-results/users', authenticateToken, requireAdmin, async (re
 });
 
 // Export a single user's interval results to Excel
-router.get('/interval-results/:userId/export', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/interval-results/:userId/export', authenticateToken, requireCoach, async (req, res) => {
   try {
     const { userId } = req.params;
     const { startDate, endDate } = req.query;
@@ -1484,7 +1481,7 @@ router.get('/interval-results/:userId/export', authenticateToken, requireAdmin, 
       return res.status(400).json({ error: 'Invalid user id' });
     }
 
-    const whereParts = ['ir.user_id = $1'];
+    const whereParts = ['ir.user_id = $1', "fp.type = 'workout'"];
     const params = [id];
 
     if (startDate) {
@@ -1571,8 +1568,8 @@ router.get('/interval-results/:userId/export', authenticateToken, requireAdmin, 
   }
 });
 
-// Get all interval results for a specific user (admin view)
-router.get('/interval-results/:userId', authenticateToken, requireAdmin, async (req, res) => {
+// Get all interval results for a specific user (admin/coach/exec view)
+router.get('/interval-results/:userId', authenticateToken, requireCoach, async (req, res) => {
   try {
     const { userId } = req.params;
     const { startDate, endDate } = req.query;
@@ -1581,7 +1578,7 @@ router.get('/interval-results/:userId', authenticateToken, requireAdmin, async (
       return res.status(400).json({ error: 'Invalid user id' });
     }
 
-    const whereParts = ['ir.user_id = $1'];
+    const whereParts = ['ir.user_id = $1', "fp.type = 'workout'"];
     const params = [id];
 
     if (startDate) {
