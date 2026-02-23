@@ -1432,7 +1432,21 @@ router.post('/test-push-notification', authenticateToken, requireAdmin, async (r
 // Interval results - admin views and export
 router.get('/interval-results/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { startDate, endDate } = req.query;
+
+    const whereParts = [];
+    const params = [];
+
+    if (startDate) {
+      params.push(startDate);
+      whereParts.push(`fp.workout_date >= $${params.length}`);
+    }
+    if (endDate) {
+      params.push(endDate);
+      whereParts.push(`fp.workout_date <= $${params.length}`);
+    }
+
+    let query = `
       SELECT 
         u.id,
         u.name,
@@ -1440,9 +1454,19 @@ router.get('/interval-results/users', authenticateToken, requireAdmin, async (re
         COUNT(ir.*) AS result_count
       FROM interval_results ir
       JOIN users u ON ir.user_id = u.id
+      JOIN forum_posts fp ON ir.post_id = fp.id
+    `;
+
+    if (whereParts.length) {
+      query += ` WHERE ${whereParts.join(' AND ')}`;
+    }
+
+    query += `
       GROUP BY u.id, u.name, u.email
       ORDER BY u.name ASC
-    `);
+    `;
+
+    const result = await pool.query(query, params);
     res.json({ users: result.rows || [] });
   } catch (error) {
     console.error('Admin interval results users error:', error);
@@ -1454,9 +1478,22 @@ router.get('/interval-results/users', authenticateToken, requireAdmin, async (re
 router.get('/interval-results/:userId/export', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
+    const { startDate, endDate } = req.query;
     const id = parseInt(userId, 10);
     if (!id || Number.isNaN(id)) {
       return res.status(400).json({ error: 'Invalid user id' });
+    }
+
+    const whereParts = ['ir.user_id = $1'];
+    const params = [id];
+
+    if (startDate) {
+      params.push(startDate);
+      whereParts.push(`fp.workout_date >= $${params.length}`);
+    }
+    if (endDate) {
+      params.push(endDate);
+      whereParts.push(`fp.workout_date <= $${params.length}`);
     }
 
     const result = await pool.query(`
@@ -1482,9 +1519,9 @@ router.get('/interval-results/:userId/export', authenticateToken, requireAdmin, 
       JOIN forum_posts fp ON ir.post_id = fp.id
       JOIN workout_intervals wi ON ir.interval_id = wi.id
       JOIN users u ON ir.user_id = u.id
-      WHERE ir.user_id = $1
+      WHERE ${whereParts.join(' AND ')}
       ORDER BY fp.workout_date DESC, fp.workout_time DESC NULLS LAST, wi.sort_order, wi.id
-    `, [id]);
+    `, params);
 
     const rows = result.rows || [];
     if (rows.length === 0) {
@@ -1538,9 +1575,22 @@ router.get('/interval-results/:userId/export', authenticateToken, requireAdmin, 
 router.get('/interval-results/:userId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
+    const { startDate, endDate } = req.query;
     const id = parseInt(userId, 10);
     if (!id || Number.isNaN(id)) {
       return res.status(400).json({ error: 'Invalid user id' });
+    }
+
+    const whereParts = ['ir.user_id = $1'];
+    const params = [id];
+
+    if (startDate) {
+      params.push(startDate);
+      whereParts.push(`fp.workout_date >= $${params.length}`);
+    }
+    if (endDate) {
+      params.push(endDate);
+      whereParts.push(`fp.workout_date <= $${params.length}`);
     }
 
     const result = await pool.query(`
@@ -1563,9 +1613,9 @@ router.get('/interval-results/:userId', authenticateToken, requireAdmin, async (
       FROM interval_results ir
       JOIN forum_posts fp ON ir.post_id = fp.id
       JOIN workout_intervals wi ON ir.interval_id = wi.id
-      WHERE ir.user_id = $1
+      WHERE ${whereParts.join(' AND ')}
       ORDER BY fp.workout_date DESC, fp.workout_time DESC NULLS LAST, wi.sort_order, wi.id
-    `, [id]);
+    `, params);
 
     res.json({ intervalResults: result.rows || [] });
   } catch (error) {
