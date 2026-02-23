@@ -32,6 +32,7 @@ body {
 
 main {
   flex: 1 0 auto; /* Allow main to grow beyond viewport */
+  width: 100%;
   padding-top: 0; /* no extra padding needed */
   background: transparent; /* Ensure no background overlay */
   position: relative; /* Normal positioning */
