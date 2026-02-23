@@ -1429,6 +1429,145 @@ router.post('/test-push-notification', authenticateToken, requireAdmin, async (r
   }
 });
 
+// Interval results - admin views and export
+router.get('/interval-results/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        COUNT(ir.*) AS result_count
+      FROM interval_results ir
+      JOIN users u ON ir.user_id = u.id
+      GROUP BY u.id, u.name, u.email
+      ORDER BY u.name ASC
+    `);
+    res.json({ users: result.rows || [] });
+  } catch (error) {
+    console.error('Admin interval results users error:', error);
+    res.status(500).json({ error: 'Failed to load interval results users' });
+  }
+});
+
+// Export a single user's interval results to Excel
+router.get('/interval-results/:userId/export', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const id = parseInt(userId, 10);
+    if (!id || Number.isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        ir.id,
+        ir.post_id,
+        ir.interval_id,
+        ir.user_id,
+        ir.time,
+        ir.average_hr,
+        ir.average_sc,
+        ir.created_at,
+        fp.title as workout_title,
+        fp.workout_date,
+        fp.workout_time,
+        fp.workout_type,
+        wi.title as interval_title,
+        wi.description as interval_description,
+        wi.sort_order,
+        u.name as user_name,
+        u.email as user_email
+      FROM interval_results ir
+      JOIN forum_posts fp ON ir.post_id = fp.id
+      JOIN workout_intervals wi ON ir.interval_id = wi.id
+      JOIN users u ON ir.user_id = u.id
+      WHERE ir.user_id = $1
+      ORDER BY fp.workout_date DESC, fp.workout_time DESC NULLS LAST, wi.sort_order, wi.id
+    `, [id]);
+
+    const rows = result.rows || [];
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No interval results found for this user' });
+    }
+
+    const userName = rows[0].user_name || 'user';
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Interval Results');
+
+    worksheet.columns = [
+      { header: 'Workout Title', key: 'workout_title', width: 32 },
+      { header: 'Workout Date', key: 'workout_date', width: 16 },
+      { header: 'Interval Title', key: 'interval_title', width: 24 },
+      { header: 'Interval Description', key: 'interval_description', width: 32 },
+      { header: 'Interval Value', key: 'time', width: 16 },
+    ];
+
+    for (const row of rows) {
+      worksheet.addRow({
+        workout_title: row.workout_title || '',
+        workout_date: row.workout_date || null,
+        interval_title: row.interval_title || '',
+        interval_description: row.interval_description || '',
+        time: row.time || '',
+      });
+    }
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    const safeName = String(userName).replace(/[^a-zA-Z0-9_-]+/g, '_');
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="interval_results_${safeName}_${dateStr}.xlsx"`);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error('Admin interval results export error:', error);
+    return res.status(500).json({ error: 'Failed to generate interval results export' });
+  }
+});
+
+// Get all interval results for a specific user (admin view)
+router.get('/interval-results/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const id = parseInt(userId, 10);
+    if (!id || Number.isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        ir.id,
+        ir.post_id,
+        ir.interval_id,
+        ir.user_id,
+        ir.time,
+        ir.average_hr,
+        ir.average_sc,
+        ir.created_at,
+        fp.title as workout_title,
+        fp.workout_date,
+        fp.workout_time,
+        fp.workout_type,
+        wi.title as interval_title,
+        wi.description as interval_description,
+        wi.sort_order
+      FROM interval_results ir
+      JOIN forum_posts fp ON ir.post_id = fp.id
+      JOIN workout_intervals wi ON ir.interval_id = wi.id
+      WHERE ir.user_id = $1
+      ORDER BY fp.workout_date DESC, fp.workout_time DESC NULLS LAST, wi.sort_order, wi.id
+    `, [id]);
+
+    res.json({ intervalResults: result.rows || [] });
+  } catch (error) {
+    console.error('Admin interval results error:', error);
+    res.status(500).json({ error: 'Failed to load interval results' });
+  }
+});
+
 module.exports = router;
 
 // Merch export endpoint - must be defined before module export (moved above if needed)

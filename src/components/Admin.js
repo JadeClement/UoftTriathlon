@@ -12,6 +12,11 @@ const Admin = () => {
   const [pendingMembers, setPendingMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState('members');
+  const [intervalUsers, setIntervalUsers] = useState([]);
+  const [intervalUsersLoading, setIntervalUsersLoading] = useState(false);
+  const [selectedIntervalUser, setSelectedIntervalUser] = useState(null);
+  const [selectedUserResults, setSelectedUserResults] = useState([]);
+  const [selectedUserResultsLoading, setSelectedUserResultsLoading] = useState(false);
   
   // Test Events state (legacy - Interval Results tab replaced this)
   const [testEvents, setTestEvents] = useState([]); // eslint-disable-line no-unused-vars
@@ -1121,12 +1126,32 @@ const Admin = () => {
     }
   };
 
-  // ESLint: loadTestEvents and selectedTestEvent are stable; we only want to rerun when activeTab changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Load Interval Results users list when Interval Results tab is active
   useEffect(() => {
-    // Interval Results tab - no API to load (test events replaced by intervals)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+    const loadIntervalUsers = async () => {
+      if (activeTab !== 'test-events') return;
+      setIntervalUsersLoading(true);
+      try {
+        const token = localStorage.getItem('triathlonToken');
+        const response = await fetch(`${API_BASE_URL}/admin/interval-results/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIntervalUsers(data.users || []);
+        } else {
+          console.error('Failed to load interval users');
+        }
+      } catch (error) {
+        console.error('Error loading interval users:', error);
+      } finally {
+        setIntervalUsersLoading(false);
+      }
+    };
+    loadIntervalUsers();
+  }, [activeTab, API_BASE_URL]);
 
   // Load workouts when sport or date changes in test event form
   // ESLint: loadAvailableWorkouts is stable; we only want to rerun when form fields change.
@@ -2840,19 +2865,182 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Test Events Tab */}
+        {/* Interval Results Tab */}
         {(isCoach(currentUser) || isExec(currentUser) || isAdmin(currentUser)) && activeTab === 'test-events' && (
           <div className="test-events-section" style={{ padding: '2rem' }}>
             <h2>Interval Results</h2>
-            <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb', color: '#374151' }}>
-              <p style={{ margin: '0 0 0.5rem 0' }}>
-                <strong>Test events have been replaced by interval results.</strong>
-              </p>
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                <li>Coaches add intervals when creating a workout post (Add Intervals)</li>
-                <li>Users add their interval times from the workout detail page</li>
-                <li>View interval results on each workout&apos;s detail page or on the Results page</li>
-              </ul>
+            <p style={{ marginTop: '0.5rem', marginBottom: '1.5rem', color: '#6b7280', fontSize: '0.9rem' }}>
+              View members who have interval results and export a per-user Excel file.
+            </p>
+
+            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+              {/* Users list */}
+              <div style={{ flex: '1 1 260px', minWidth: 260 }}>
+                <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>Members with Interval Results</h3>
+                {intervalUsersLoading ? (
+                  <p style={{ color: '#6b7280' }}>Loading…</p>
+                ) : intervalUsers.length === 0 ? (
+                  <p style={{ color: '#6b7280' }}>No interval results recorded yet.</p>
+                ) : (
+                  <div style={{ maxHeight: '360px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#374151', fontWeight: 600 }}>Name</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#374151', fontWeight: 600 }}>Email</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: '#374151', fontWeight: 600 }}>Results</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {intervalUsers.map((u) => (
+                          <tr
+                            key={u.id}
+                            style={{
+                              borderBottom: '1px solid #f3f4f6',
+                              cursor: 'pointer',
+                              background:
+                                selectedIntervalUser && selectedIntervalUser.id === u.id ? '#eff6ff' : 'transparent',
+                            }}
+                            onClick={async () => {
+                              setSelectedIntervalUser(u);
+                              setSelectedUserResultsLoading(true);
+                              try {
+                                const token = localStorage.getItem('triathlonToken');
+                                const resp = await fetch(`${API_BASE_URL}/admin/interval-results/${u.id}`, {
+                                  headers: {
+                                    Authorization: `Bearer ${token}`,
+                                  },
+                                });
+                                if (resp.ok) {
+                                  const data = await resp.json();
+                                  setSelectedUserResults(data.intervalResults || []);
+                                } else {
+                                  console.error('Failed to load interval results for user');
+                                  setSelectedUserResults([]);
+                                }
+                              } catch (err) {
+                                console.error('Error loading interval results for user:', err);
+                                setSelectedUserResults([]);
+                              } finally {
+                                setSelectedUserResultsLoading(false);
+                              }
+                            }}
+                          >
+                            <td style={{ padding: '0.5rem 0.75rem', color: '#374151' }}>{u.name || '-'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', color: '#6b7280' }}>{u.email || '-'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: '#374151' }}>
+                              {u.result_count || 0}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Selected user results */}
+              <div style={{ flex: '2 1 400px', minWidth: 320 }}>
+                {selectedIntervalUser ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '1rem', color: '#374151' }}>
+                          {selectedIntervalUser.name || 'Member'}&apos;s Interval Results
+                        </h3>
+                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                          {selectedIntervalUser.email || ''}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('triathlonToken');
+                            const resp = await fetch(
+                              `${API_BASE_URL}/admin/interval-results/${selectedIntervalUser.id}/export`,
+                              {
+                                headers: {
+                                  Authorization: `Bearer ${token}`,
+                                },
+                              }
+                            );
+                            if (!resp.ok) {
+                              const text = await resp.text().catch(() => '');
+                              throw new Error(text || 'Failed to export interval results');
+                            }
+                            const blob = await resp.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            const dateStr = new Date().toISOString().split('T')[0];
+                            const safeName = (selectedIntervalUser.name || 'user')
+                              .replace(/[^a-zA-Z0-9_-]+/g, '_');
+                            a.href = url;
+                            a.download = `interval_results_${safeName}_${dateStr}.xlsx`;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            window.URL.revokeObjectURL(url);
+                          } catch (err) {
+                            showError(err.message || 'Failed to export interval results');
+                          }
+                        }}
+                        style={{ fontSize: '0.875rem', padding: '0.45rem 0.9rem' }}
+                      >
+                        Download Excel
+                      </button>
+                    </div>
+
+                    {selectedUserResultsLoading ? (
+                      <p style={{ color: '#6b7280' }}>Loading results…</p>
+                    ) : selectedUserResults.length === 0 ? (
+                      <p style={{ color: '#6b7280' }}>No interval results found for this member.</p>
+                    ) : (
+                      <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Workout Date</th>
+                              <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Workout Title</th>
+                              <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Title</th>
+                              <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Description</th>
+                              <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Interval Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...selectedUserResults]
+                              .sort((a, b) => {
+                                const da = a.workout_date || '';
+                                const db = b.workout_date || '';
+                                if (da !== db) return db.localeCompare(da);
+                                const ta = a.workout_time || '';
+                                const tb = b.workout_time || '';
+                                if (ta !== tb) return tb.localeCompare(ta);
+                                return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+                              })
+                              .map((r) => (
+                                <tr key={r.id || `${r.post_id}-${r.interval_id}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>
+                                    {r.workout_date ? new Date(r.workout_date).toLocaleDateString() : '-'}
+                                  </td>
+                                  <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.workout_title || '-'}</td>
+                                  <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.interval_title || '-'}</td>
+                                  <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.interval_description || '-'}</td>
+                                  <td style={{ padding: '0.6rem 0.75rem', color: '#475569' }}>{r.time || '-'}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p style={{ color: '#6b7280' }}>
+                    Select a member on the left to view their interval results and export them.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
