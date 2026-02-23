@@ -406,6 +406,16 @@ const Results = () => {
                           </option>
                         ))}
                       </select>
+                      {addForm.intervalId && (() => {
+                        const selected = intervals.find((inv) => String(inv.id) === String(addForm.intervalId));
+                        if (!selected) return null;
+                        return (
+                          <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                            <strong>{selected.title || 'Interval'}</strong>
+                            {selected.description ? ` — ${selected.description}` : ''}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
