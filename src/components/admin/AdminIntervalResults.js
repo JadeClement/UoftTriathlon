@@ -210,10 +210,44 @@ const AdminIntervalResults = () => {
                     disabled={downloadingAllIntervalExports || selectedIntervalUserIds.size === 0}
                     onClick={async () => {
                       if (selectedIntervalUserIds.size === 0) return;
-                      // Note: downloadingAllIntervalExports and the bulk download logic
-                      // would need to be handled in Admin.js - this is a simplified version
-                      // The full implementation uses setDownloadingAllIntervalExports from context
-                      showError('Bulk download: use Download All from parent');
+                      setDownloadingAllIntervalExports(true);
+                      try {
+                        const token = localStorage.getItem('triathlonToken');
+                        const qs = buildIntervalQueryString();
+                        const ids = Array.from(selectedIntervalUserIds);
+                        for (const id of ids) {
+                          const user = intervalUsers.find((u) => u.id === id) || {};
+                          const resp = await fetch(
+                            `${API_BASE_URL}/admin/interval-results/${id}/export${qs}`,
+                            {
+                              headers: {
+                                Authorization: `Bearer ${token}`,
+                              },
+                            }
+                          );
+                          if (!resp.ok) {
+                            const text = await resp.text().catch(() => '');
+                            console.error('Failed to export interval results for user', id, text);
+                            continue;
+                          }
+                          const blob = await resp.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          const dateStr = new Date().toISOString().split('T')[0];
+                          const safeName = (user.name || 'user').replace(/[^a-zA-Z0-9_-]+/g, '_');
+                          a.href = url;
+                          a.download = `interval_results_${safeName}_${dateStr}.xlsx`;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          window.URL.revokeObjectURL(url);
+                        }
+                      } catch (err) {
+                        console.error('Download all interval exports error:', err);
+                        showError(err.message || 'Failed to download all interval exports');
+                      } finally {
+                        setDownloadingAllIntervalExports(false);
+                      }
                     }}
                     style={{ fontSize: '0.875rem', padding: '0.45rem 0.9rem' }}
                   >

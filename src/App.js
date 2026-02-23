@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
@@ -10,6 +10,7 @@ import JoinUs from './components/JoinUs';
 import Races from './components/Races';
 import CoachesExec from './components/CoachesExec';
 import Admin from './components/Admin';
+import { AdminMembers, AdminPending, AdminEmail, AdminBanner, AdminAttendance, AdminOrders, AdminIntervalResults } from './components/admin/index';
 import Login from './components/Login';
 import WorkoutDetail from './components/WorkoutDetail';
 import EventDetail from './components/EventDetail';
@@ -246,7 +247,16 @@ function AppContent() {
           <Route path="/team-gear" element={<TeamGear />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/support" element={<Support />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin" element={<Admin />}>
+            <Route index element={<Navigate to="members" replace />} />
+            <Route path="members" element={<AdminMembers />} />
+            <Route path="pending" element={<AdminPending />} />
+            <Route path="email" element={<AdminEmail />} />
+            <Route path="banner" element={<AdminBanner />} />
+            <Route path="attendance" element={<AdminAttendance />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="interval-results" element={<AdminIntervalResults />} />
+          </Route>
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:role/:name" element={<Profile />} />
           <Route path="/results" element={<Results />} />
