@@ -24,6 +24,7 @@ import Footer from './components/Footer';
 import ResetPassword from './components/ResetPassword';
 import Logout from './components/Logout';
 import MobileNav from './components/MobileNav';
+import RAGChatWidget from './components/RAGChatWidget';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import Support from './components/Support';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -275,6 +276,7 @@ function AppContent() {
       </main>
       <Footer />
       <MobileNav />
+      <RAGChatWidget />
     </>
   );
 }
