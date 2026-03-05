@@ -128,27 +128,22 @@ app.use('/api/gear', gearRoutes);
 app.use('/api/merch-orders', merchRoutes);
 app.use('/api/rag', ragRoutes);
 
-// 404 handler for API routes (must be after all routes)
-app.use('/api/*', (req, res) => {
-  console.log(`❌ 404: Route not found - ${req.method} ${req.path}`);
-  console.log('❌ Full URL:', req.url);
-  console.log('❌ Base URL:', req.baseUrl);
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// Health check endpoint
+// Health check (must be before /api/* 404 handler)
 app.get('/api/health', async (req, res) => {
   try {
     // Check database health
     await checkDatabaseHealth();
     
+    const hasPinecone = !!(process.env.PINECONE_API_KEY?.trim());
+    const hasOpenAI = !!process.env.OPENAI_API_KEY;
     res.json({ 
       status: 'OK', 
       message: 'UofT Triathlon Club API is running',
       timestamp: new Date().toISOString(),
       database: 'Connected',
       uptime: process.uptime(),
-      memory: process.memoryUsage()
+      memory: process.memoryUsage(),
+      rag: { ready: hasPinecone && hasOpenAI, hasPinecone, hasOpenAI }
     });
   } catch (error) {
     console.error('🚨 Health check failed:', error);
@@ -160,6 +155,12 @@ app.get('/api/health', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  console.log(`❌ 404: Route not found - ${req.method} ${req.path}`);
+  res.status(404).json({ error: 'Route not found' });
 });
 
 // Database backup endpoints (admin only) - Commented out during PostgreSQL migration

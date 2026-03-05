@@ -32,10 +32,20 @@ const RAGChatWidget = () => {
         body: JSON.stringify({ question: q }),
       });
       const data = await res.json();
-      setAnswer(data.answer || "I can't answer that, email us instead!");
+      if (!res.ok) {
+        console.error('[RAG] API error:', res.status, data);
+        if (res.status === 503 && data.error) {
+          setAnswer("The Q&A service is not fully set up yet. Please email info@uoft-tri.club for help.");
+        } else {
+          setAnswer(data.answer || "Something went wrong. Please email info@uoft-tri.club instead.");
+        }
+      } else {
+        setAnswer(data.answer || "I can't answer that, email us instead!");
+      }
       setSources(data.sources || []);
     } catch (err) {
-      setAnswer("Something went wrong. Please email info@uoft-tri.club instead.");
+      console.error('[RAG] Fetch error:', err);
+      setAnswer("Could not reach the server. Make sure the backend is running, or email info@uoft-tri.club.");
       setSources([]);
     } finally {
       setLoading(false);

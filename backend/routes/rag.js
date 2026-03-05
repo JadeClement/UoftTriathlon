@@ -38,6 +38,19 @@ function getOpenAIClient() {
   return openaiClient;
 }
 
+// Diagnostic endpoint - check if RAG is configured (no secrets exposed)
+router.get('/status', (req, res) => {
+  const hasPinecone = !!(process.env.PINECONE_API_KEY?.trim());
+  const hasOpenAI = !!process.env.OPENAI_API_KEY;
+  const indexName = process.env.PINECONE_INDEX || 'uofttri-website-rag';
+  res.json({
+    ready: hasPinecone && hasOpenAI,
+    hasPinecone,
+    hasOpenAI,
+    indexName,
+  });
+});
+
 router.post('/ask', async (req, res) => {
   try {
     const { question } = req.body;
@@ -76,16 +89,15 @@ router.post('/ask', async (req, res) => {
     const topHit = hits[0];
     const score = topHit?._score ?? topHit?.score ?? 0;
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[RAG] Query:', trimmed.substring(0, 50) + (trimmed.length > 50 ? '...' : ''));
-      console.log('[RAG] Hits:', hits.length, 'Top score:', score);
-    }
+    console.log('[RAG] Hits:', hits.length, 'Top score:', score);
 
     if (hits.length === 0) {
+      console.log('[RAG] Fallback: no hits from Pinecone (index may be empty - run npm run ingest-rag)');
       return res.json({ answer: FALLBACK_MESSAGE, sources: [] });
     }
 
     if (score < SCORE_THRESHOLD) {
+      console.log('[RAG] Fallback: score below threshold');
       return res.json({ answer: FALLBACK_MESSAGE, sources: [] });
     }
 

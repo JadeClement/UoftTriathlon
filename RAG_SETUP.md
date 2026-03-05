@@ -132,3 +132,20 @@ Admin pages (`/admin/*`), login, and user-specific pages are excluded.
 
 1. **Manual:** Edit `backend/data/website-content.json` and run `npm run ingest-rag`.
 2. **Automatic:** Run `npm run extract-website` (with site running or `SITE_BASE_URL` set) then `npm run ingest-rag`.
+
+## Production Deployment
+
+For the RAG to work on the live site, the **backend** (e.g. Railway) must have:
+
+1. **Environment variables** – Add to your hosting provider:
+   - `PINECONE_API_KEY`
+   - `PINECONE_INDEX=uofttri-website-rag`
+   - `OPENAI_API_KEY`
+
+2. **Indexed data** – The Pinecone index must contain content. Run ingest **before** or **after** deploy:
+   ```bash
+   cd backend && npm run ingest-rag
+   ```
+   Use the same `PINECONE_*` values as in production so you’re writing to the same index.
+
+If the widget always returns “I can’t answer that…” in production, check env vars and that you ran ingest. Local: backend must run with PINECONE_* and OPENAI_API_KEY. Connection failed: check REACT_APP_API_BASE_URL.
