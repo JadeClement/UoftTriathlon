@@ -147,12 +147,13 @@ Rules:
       return res.json({ answer: FALLBACK_MESSAGE, sources });
     }
 
-    const shouldFallback = answer.toLowerCase().includes("i can't") ||
-      answer.toLowerCase().includes("i don't have") ||
-      answer.toLowerCase().includes('email us');
+    // Only treat as fallback when LLM explicitly refuses. Avoid matching "email us" in helpful answers.
+    const lower = answer.toLowerCase();
+    const isShortRefusal = answer.length < 200 &&
+      (lower.includes("i can't") || lower.includes("i don't have"));
 
     return res.json({
-      answer: shouldFallback ? FALLBACK_MESSAGE : answer,
+      answer: isShortRefusal ? FALLBACK_MESSAGE : answer,
       sources: [...new Set(sources)],
     });
   } catch (err) {
