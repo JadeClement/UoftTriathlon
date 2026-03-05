@@ -183,9 +183,8 @@ const JoinUs = () => {
             <div className="step">
               <div className="step-number">4</div>
               <div className="step-content">
-                <h3>Join the Forum, Facebook Page and Google Groups</h3>
-                <p>The Forum is where the workouts, including locations, are posted, and where members sign up for indoor spin. For Forum access, please email <a href="mailto:info@uoft-triathlon.com">info@uoft-tri.club</a> with your registration receipt.</p>
-                <p>Joining the Google Group subscribes you to the weekly bulletin of updates and news about the club. You can find the group by searching "University of Toronto Triathlon" in the Google Groups function.</p>
+                <h3>Create an Account and Get Approved</h3>
+                <p>Create an account on this website and email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt to get approved as a member here. Then you will be able to sign up for spin and brick workouts on the forum.</p>
               </div>
             </div>
 

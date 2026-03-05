@@ -7,11 +7,14 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "init-db": "node database-pg.js",
+    "extract-website": "node scripts/extractWebsiteContent.js",
+    "ingest-rag": "node scripts/ingestToPinecone.js",
     "test": "NODE_ENV=test jest --coverage",
     "test:watch": "NODE_ENV=test jest --watch",
     "test:integration": "NODE_ENV=test jest --testPathPattern=integration"
   },
   "dependencies": {
+    "@pinecone-database/pinecone": "^5.0.0",
     "@aws-sdk/client-s3": "^3.883.0",
     "@aws-sdk/client-ses": "^3.883.0",
     "apn": "^2.2.0",
@@ -31,9 +34,11 @@
     "nodemailer": "^7.0.5",
     "pg": "^8.16.3",
     "sqlite3": "^5.1.6",
+    "openai": "^4.77.0",
     "twilio": "^5.8.0"
   },
   "devDependencies": {
+    "puppeteer": "^23.0.0",
     "@types/jest": "^29.5.11",
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
