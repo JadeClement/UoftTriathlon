@@ -108,12 +108,19 @@
 .rag-chat-answer {
   padding: 12px 16px 16px;
   border-top: 1px solid #eee;
+  max-height: 280px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.rag-chat-answer p {
+.rag-chat-answer-text {
   margin: 0 0 8px;
   line-height: 1.5;
-  white-space: pre-wrap;
+  font-size: 0.95rem;
+}
+
+.rag-chat-answer-text strong {
+  font-weight: 600;
 }
 
 .rag-chat-sources {

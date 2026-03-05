@@ -5,6 +5,16 @@ import './RAGChatWidget.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
+// Simple markdown: **bold** and newlines
+function formatAnswer(text) {
+  if (!text) return '';
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br />');
+}
+
 const RAGChatWidget = () => {
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -84,7 +94,10 @@ const RAGChatWidget = () => {
           </form>
           {answer && (
             <div className="rag-chat-answer">
-              <p>{answer}</p>
+              <div
+                className="rag-chat-answer-text"
+                dangerouslySetInnerHTML={{ __html: formatAnswer(answer) }}
+              />
               {sources.length > 0 && (
                 <p className="rag-chat-sources">
                   From: {sources.map((s) => s || '/').join(', ')}
