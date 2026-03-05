@@ -1453,7 +1453,7 @@ const Forum = () => {
             marginTop: '16px'
           }}>
             <p style={{margin: 0}}>
-              You don't have access to the forum yet. Please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration! You will have to log out and then log back in to see this page.
+              You don't have access to the forum. Please sign in. If you are already signed in, please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration.
             </p>
             <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
               <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!
@@ -1481,7 +1481,7 @@ const Forum = () => {
             marginTop: '16px'
           }}>
             <p style={{margin: 0}}>
-              You don't have access to the forum yet. Please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration! You will have to log out and then log back in to see this page.
+              You don't have access to the forum. Please sign in. If you are already signed in, please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration.
             </p>
             <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
               <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!
