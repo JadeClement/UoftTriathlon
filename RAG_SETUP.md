@@ -148,4 +148,4 @@ For the RAG to work on the live site, the **backend** (e.g. Railway) must have:
    ```
    Use the same `PINECONE_*` values as in production so you’re writing to the same index.
 
-If the widget always returns “I can’t answer that…” in production, check env vars and that you ran ingest. Local: backend must run with PINECONE_* and OPENAI_API_KEY. Connection failed: check REACT_APP_API_BASE_URL.
+If the widget always returns “I can’t answer that…” in production, run ingest with the SAME PINECONE_API_KEY as Railway. Copy it from Railway Settings, then: `PINECONE_API_KEY="<paste>" PINECONE_INDEX=uofttri-website-rag npm run ingest-rag`

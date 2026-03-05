@@ -67,9 +67,19 @@ router.post('/ask', async (req, res) => {
     const openai = getOpenAIClient();
 
     if (!index) {
+      console.log('[RAG] 503: PINECONE_API_KEY missing or invalid');
       return res.status(503).json({
         error: 'RAG service unavailable',
         answer: FALLBACK_MESSAGE,
+      });
+    }
+
+    if (!openai) {
+      console.log('[RAG] 503: OPENAI_API_KEY missing or invalid');
+      return res.status(503).json({
+        error: 'LLM service unavailable. Set OPENAI_API_KEY.',
+        answer: FALLBACK_MESSAGE,
+        sources: [],
       });
     }
 
@@ -108,14 +118,6 @@ router.post('/ask', async (req, res) => {
       .join('\n\n');
 
     const sources = hits.slice(0, TOP_K_RERANK).map((h) => h.fields?.source || '').filter(Boolean);
-
-    if (!openai) {
-      return res.status(503).json({
-        error: 'LLM service unavailable. Set OPENAI_API_KEY.',
-        answer: FALLBACK_MESSAGE,
-        sources: [],
-      });
-    }
 
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
