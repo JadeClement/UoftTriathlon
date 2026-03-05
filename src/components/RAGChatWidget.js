@@ -85,7 +85,7 @@ const RAGChatWidget = () => {
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. How do I join? Where are practices?"
+              placeholder="e.g. How do I join?"
               disabled={loading}
             />
             <button type="submit" disabled={loading}>
