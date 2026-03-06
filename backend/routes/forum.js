@@ -371,6 +371,26 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
            )`,
           [id]
         );
+      } else if (slotsAvailable < 0) {
+        // Capacity decreased: move last signups to waitlist (most recent first)
+        const overCapacity = -slotsAvailable;
+        const demotedResult = await client.query(
+          `SELECT ws.id, ws.user_id
+           FROM workout_signups ws
+           WHERE ws.post_id = $1
+           ORDER BY ws.signup_time DESC
+           LIMIT $2`,
+          [id, overCapacity]
+        );
+        for (const row of demotedResult.rows) {
+          await client.query('DELETE FROM workout_signups WHERE id = $1', [row.id]);
+          await client.query(
+            `INSERT INTO workout_waitlist (user_id, post_id) VALUES ($1, $2)
+             ON CONFLICT (user_id, post_id) DO NOTHING`,
+            [row.user_id, id]
+          );
+          console.log('✅ Capacity decrease: moved last signup to waitlist:', { workoutId: id, userId: row.user_id });
+        }
       }
     }
 
