@@ -339,19 +339,38 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
 
           const w = waitlistResult.rows[0];
           await client.query('DELETE FROM workout_waitlist WHERE id = $1', [w.id]);
-          await client.query(
-            'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+
+          // Only insert if not already signed up (avoid duplicates from race conditions)
+          const existingSignup = await client.query(
+            'SELECT 1 FROM workout_signups WHERE user_id = $1 AND post_id = $2',
             [w.user_id, id]
           );
-          promoted.push({
-            id: w.user_id,
-            email: w.email,
-            phone_number: w.phone_number || null,
-            name: w.user_name
-          });
-          promotedCount++;
-          console.log('✅ Capacity increase: promoted waitlist user:', { workoutId: id, waitlistUserId: w.user_id, waitlistUserName: w.user_name });
+          if (existingSignup.rows.length === 0) {
+            await client.query(
+              'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+              [w.user_id, id]
+            );
+            promoted.push({
+              id: w.user_id,
+              email: w.email,
+              phone_number: w.phone_number || null,
+              name: w.user_name
+            });
+            promotedCount++;
+            console.log('✅ Capacity increase: promoted waitlist user:', { workoutId: id, waitlistUserId: w.user_id, waitlistUserName: w.user_name });
+          } else {
+            console.log('✅ Capacity increase: removed duplicate from waitlist (already signed up):', { workoutId: id, userId: w.user_id });
+          }
         }
+
+        // Cleanup: remove any waitlist entries for users already in signups (no double names)
+        await client.query(
+          `DELETE FROM workout_waitlist ww
+           WHERE ww.post_id = $1 AND EXISTS (
+             SELECT 1 FROM workout_signups ws WHERE ws.post_id = ww.post_id AND ws.user_id = ww.user_id
+           )`,
+          [id]
+        );
       }
     }
 
@@ -634,9 +653,26 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         } else {
           // Outside 12 hours: Auto-promote waitlist person (existing behavior)
           await client.query('DELETE FROM workout_waitlist WHERE id = $1', [w.id]);
-          await client.query(
-            'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+
+          // Only insert if not already signed up (avoid duplicates)
+          const existingSignup = await client.query(
+            'SELECT 1 FROM workout_signups WHERE user_id = $1 AND post_id = $2',
             [w.user_id, id]
+          );
+          if (existingSignup.rows.length === 0) {
+            await client.query(
+              'INSERT INTO workout_signups (user_id, post_id, signup_time) VALUES ($1, $2, CURRENT_TIMESTAMP)',
+              [w.user_id, id]
+            );
+          }
+
+          // Cleanup: remove any other waitlist entries for users already in signups
+          await client.query(
+            `DELETE FROM workout_waitlist ww
+             WHERE ww.post_id = $1 AND EXISTS (
+               SELECT 1 FROM workout_signups ws WHERE ws.post_id = ww.post_id AND ws.user_id = ww.user_id
+             )`,
+            [id]
           );
           
           console.log(`✅ Auto-promoted waitlist user:`, {
@@ -776,7 +812,7 @@ router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) =
       ORDER BY ws.signup_time ASC
     `, [id]);
 
-    // Get waitlist
+    // Get waitlist (exclude anyone already in signups - no double names)
     const waitlistResult = await pool.query(`
       SELECT 
         ww.id, ww.user_id, ww.joined_at,
@@ -784,6 +820,7 @@ router.get('/workouts/:id', authenticateToken, requireMember, async (req, res) =
       FROM workout_waitlist ww
       JOIN users u ON ww.user_id = u.id
       WHERE ww.post_id = $1
+        AND NOT EXISTS (SELECT 1 FROM workout_signups ws WHERE ws.post_id = ww.post_id AND ws.user_id = ww.user_id)
       ORDER BY ww.joined_at ASC
     `, [id]);
 
@@ -820,7 +857,7 @@ router.get('/workouts/:id/signups', authenticateToken, requireMember, async (req
   }
 });
 
-// Get workout waitlist
+// Get workout waitlist (exclude anyone already in signups - no double names)
 router.get('/workouts/:id/waitlist', authenticateToken, requireMember, async (req, res) => {
   try {
     const { id } = req.params;
@@ -832,6 +869,7 @@ router.get('/workouts/:id/waitlist', authenticateToken, requireMember, async (re
       FROM workout_waitlist ww
       JOIN users u ON ww.user_id = u.id
       WHERE ww.post_id = $1
+        AND NOT EXISTS (SELECT 1 FROM workout_signups ws WHERE ws.post_id = ww.post_id AND ws.user_id = ww.user_id)
       ORDER BY ww.joined_at ASC
     `, [id]);
 
