@@ -600,6 +600,7 @@ const Races = () => {
                   <tr>
                     <th className="races-table-col-date">Date</th>
                     <th className="races-table-col-name">Race</th>
+                    <th className="races-table-col-event">Event</th>
                     <th className="races-table-col-loc">Location</th>
                     <th className="races-table-col-when">When</th>
                     {currentUser && isMember(currentUser) && (
@@ -629,6 +630,9 @@ const Races = () => {
                       <td className="races-table-col-date">{formatDateShort(race.date)}</td>
                       <td className="races-table-col-name">
                         <span className="races-table-name">{race.name}</span>
+                      </td>
+                      <td className="races-table-col-event">
+                        <span className="races-table-event">{race.event || '—'}</span>
                       </td>
                       <td className="races-table-col-loc">
                         <span className="races-table-muted">{race.location || '—'}</span>

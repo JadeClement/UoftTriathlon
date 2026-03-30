@@ -205,6 +205,18 @@
   max-width: 14rem;
 }
 
+.races-table-col-event {
+  min-width: 5.5rem;
+  max-width: 10rem;
+}
+
+.races-table-event {
+  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
 .races-table-name {
   font-weight: 600;
   color: #111827;
