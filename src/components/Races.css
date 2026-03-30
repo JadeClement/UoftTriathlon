@@ -46,18 +46,21 @@
 
 .view-toggle {
   display: flex;
+  flex-wrap: wrap;
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   position: relative;
   z-index: 11;
   overflow: hidden;
-  min-width: 320px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .toggle-btn {
-  flex: 1;
-  padding: 0.75rem 1.5rem;
+  flex: 1 1 auto;
+  min-width: 5.5rem;
+  padding: 0.65rem 0.85rem;
   border: none;
   background: transparent;
   color: #6b7280;
@@ -134,6 +137,151 @@
 .filter-btn.active {
   background: #10b981;
   color: white;
+}
+
+/* Table View */
+.races-table-shell {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.races-table-shell .no-races {
+  padding: 2.5rem 1.5rem;
+}
+
+.races-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+}
+
+.races-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.races-table thead th {
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid #e5e7eb;
+  background: #f9fafb;
+  white-space: nowrap;
+}
+
+.races-table tbody td {
+  padding: 0.4rem 0.65rem;
+  border-bottom: 1px solid #f3f4f6;
+  color: #1f2937;
+  vertical-align: middle;
+}
+
+.races-table-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.races-table-row:hover {
+  background: #f0f9ff;
+}
+
+.races-table-col-date {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #4b5563;
+  width: 1%;
+}
+
+.races-table-col-name {
+  min-width: 9rem;
+  max-width: 14rem;
+}
+
+.races-table-name {
+  font-weight: 600;
+  color: #111827;
+}
+
+.races-table-col-loc {
+  min-width: 6rem;
+  max-width: 12rem;
+}
+
+.races-table-muted {
+  color: #6b7280;
+}
+
+.races-table-col-when {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.races-table-badge {
+  display: inline-block;
+  background: #d1fae5;
+  color: #065f46;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.races-table-col-narrow {
+  text-align: center;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.races-table-num {
+  font-variant-numeric: tabular-nums;
+  color: #6b7280;
+}
+
+.races-table-yes {
+  color: #059669;
+  font-weight: 700;
+}
+
+.races-table-no {
+  color: #d1d5db;
+}
+
+.races-table-col-action {
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 0.5rem !important;
+}
+
+.races-table-btn {
+  padding: 0.3rem 0.55rem !important;
+  font-size: 0.75rem !important;
+  line-height: 1.2;
+}
+
+.races-table-col-admin {
+  width: 1%;
+  padding-left: 0.35rem !important;
+}
+
+.races-table-admin {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.races-table-icon-btn {
+  padding: 0.25rem 0.45rem !important;
+  font-size: 0.8rem !important;
+  line-height: 1;
+  min-height: auto;
 }
 
 /* List View Styles */
@@ -338,6 +486,22 @@
 
 /* Admin Actions */
 .race-actions-top { display: flex; gap: 0.5rem; }
+
+.edit-btn {
+  background: #3b82f6;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.edit-btn:hover {
+  background: #2563eb;
+}
 
 .delete-btn {
   background: #dc2626;

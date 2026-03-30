@@ -9,7 +9,7 @@ import './Races.css';
 const Races = () => {
   const { currentUser, isMember } = useAuth();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'table' | 'calendar'
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -287,6 +287,29 @@ const Races = () => {
     return grouped;
   };
 
+  const getRacesSortedByDate = () =>
+    [...getFilteredRaces()].sort((a, b) => {
+      const da = String(a.date).split('T')[0];
+      const db = String(b.date).split('T')[0];
+      return da.localeCompare(db);
+    });
+
+  const formatDateShort = (dateString) => {
+    try {
+      const base = String(dateString).split('T')[0];
+      const [y, m, d] = base.split('-').map(Number);
+      const date = new Date(Date.UTC(y, m - 1, d));
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'UTC'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   if (loading) {
     return (
       <div className="races-container">
@@ -389,18 +412,27 @@ const Races = () => {
       <div className="races-content">
         <div className="races-header">
           <h1>Races</h1>
-                  <div className="view-toggle">
-          <button 
+          <div className="view-toggle">
+          <button
+            type="button"
             className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
           >
-            📋 List View
+            📋 List
           </button>
-          <button 
+          <button
+            type="button"
+            className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+            onClick={() => setViewMode('table')}
+          >
+            📊 Table
+          </button>
+          <button
+            type="button"
             className={`toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
             onClick={() => setViewMode('calendar')}
           >
-            📅 Calendar View
+            📅 Calendar
           </button>
         </div>
           {currentUser && isMember(currentUser) && (
@@ -433,7 +465,7 @@ const Races = () => {
         </div>
       )}
 
-      {viewMode === 'list' ? (
+      {viewMode === 'list' && (
         <div className="races-list">
           {getFilteredRaces().length === 0 ? (
             <div className="no-races">
@@ -523,7 +555,138 @@ const Races = () => {
             ))
           )}
         </div>
-      ) : (
+      )}
+
+      {viewMode === 'table' && (
+        <div className="races-table-shell">
+          {getRacesSortedByDate().length === 0 ? (
+            <div className="no-races">
+              {filterMode === 'going' ? (
+                <>
+                  <p>You're not signed up for any races yet.</p>
+                  <p>Sign up for some races to see them here!</p>
+                </>
+              ) : (
+                <>
+                  <p>No races scheduled yet.</p>
+                  {currentUser && isMember(currentUser) && (
+                    <p>Be the first to add a race!</p>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="races-table-wrap">
+              <table className="races-table">
+                <thead>
+                  <tr>
+                    <th className="races-table-col-date">Date</th>
+                    <th className="races-table-col-name">Race</th>
+                    <th className="races-table-col-loc">Location</th>
+                    <th className="races-table-col-when">When</th>
+                    {currentUser && isMember(currentUser) && (
+                      <>
+                        <th className="races-table-col-narrow">#</th>
+                        <th className="races-table-col-narrow">You</th>
+                        <th className="races-table-col-action"> </th>
+                      </>
+                    )}
+                    {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
+                      <th className="races-table-col-admin"> </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {getRacesSortedByDate().map((race) => (
+                    <tr
+                      key={race.id}
+                      className="races-table-row"
+                      onClick={() => handleRaceClick(race.id)}
+                    >
+                      <td className="races-table-col-date">{formatDateShort(race.date)}</td>
+                      <td className="races-table-col-name">
+                        <span className="races-table-name">{race.name}</span>
+                      </td>
+                      <td className="races-table-col-loc">
+                        <span className="races-table-muted">{race.location || '—'}</span>
+                      </td>
+                      <td className="races-table-col-when">
+                        <span className="races-table-badge">{getDaysUntilRace(race.date)}</span>
+                      </td>
+                      {currentUser && isMember(currentUser) && (
+                        <>
+                          <td className="races-table-col-narrow races-table-num">
+                            {race.signups ? race.signups.length : 0}
+                          </td>
+                          <td className="races-table-col-narrow">
+                            {isUserSignedUp(race) ? (
+                              <span className="races-table-yes" title="You're signed up">✓</span>
+                            ) : (
+                              <span className="races-table-no" title="Not signed up">—</span>
+                            )}
+                          </td>
+                          <td className="races-table-col-action">
+                            {isUserSignedUp(race) ? (
+                              <button
+                                type="button"
+                                className="cancel-btn races-table-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelSignup(race.id);
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="signup-btn races-table-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSignUp(race.id);
+                                }}
+                              >
+                                Going?
+                              </button>
+                            )}
+                          </td>
+                        </>
+                      )}
+                      {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
+                        <td className="races-table-col-admin">
+                          <div className="races-table-admin">
+                            <button
+                              type="button"
+                              className="edit-btn races-table-icon-btn"
+                              title="Edit race"
+                              onClick={(e) => handleEditRace(race.id, e)}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              className="delete-btn races-table-icon-btn"
+                              title="Delete race"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRace(race.id);
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === 'calendar' && (
         <div className="races-calendar">
           {Object.entries(groupRacesByMonth()).map(([month, monthRaces]) => (
             <div key={month} className="month-section">

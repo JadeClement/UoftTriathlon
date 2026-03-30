@@ -676,7 +676,9 @@ router.get('/race-management', authenticateToken, requireAdmin, async (req, res)
   try {
     const racesResult = await pool.query(`
       SELECT 
-        r.id, r.name, r.date, r.location, r.description, r.created_at,
+        r.id, r.name, r.date, r.location, r.description,
+        r.age_group_qualifying, r.course_profile,
+        r.created_at,
         COUNT(rs.user_id) as signup_count
       FROM races r
       LEFT JOIN race_signups rs ON r.id = rs.race_id
