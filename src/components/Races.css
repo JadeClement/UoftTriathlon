@@ -224,6 +224,20 @@
   width: 1%;
 }
 
+.races-table-col-whos {
+  min-width: 7.5rem;
+  max-width: 16rem;
+  vertical-align: top;
+}
+
+.races-table-whos {
+  display: block;
+  color: #4b5563;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
 .races-table-badge {
   display: inline-block;
   background: #d1fae5;

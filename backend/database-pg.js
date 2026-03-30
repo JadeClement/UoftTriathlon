@@ -191,6 +191,7 @@ async function initializeDatabase() {
         description TEXT,
         age_group_qualifying TEXT,
         course_profile TEXT,
+        event VARCHAR(100),
         is_deleted BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -206,9 +207,13 @@ async function initializeDatabase() {
         ALTER TABLE races
         ADD COLUMN IF NOT EXISTS course_profile TEXT
       `);
-      console.log('✅ age_group_qualifying and course_profile columns on races (or already exist)');
+      await pool.query(`
+        ALTER TABLE races
+        ADD COLUMN IF NOT EXISTS event VARCHAR(100)
+      `);
+      console.log('✅ races optional columns (age_group_qualifying, course_profile, event) applied or already exist');
     } catch (error) {
-      console.log('ℹ️  races age_group_qualifying/course_profile migration:', error.message);
+      console.log('ℹ️  races column migration:', error.message);
     }
 
     // Create race_signups table

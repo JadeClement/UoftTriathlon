@@ -310,6 +310,24 @@ const Races = () => {
     }
   };
 
+  const getWhosGoingSummary = (race) => {
+    const signups = race.signups || [];
+    if (signups.length === 0) {
+      return { text: '—', full: 'No one signed up yet' };
+    }
+    const names = signups.map((s) => s.user_name || 'Member').filter(Boolean);
+    const joined = names.join(', ');
+    const maxNames = 3;
+    if (names.length <= maxNames) {
+      return { text: joined, full: joined };
+    }
+    const extra = names.length - maxNames;
+    return {
+      text: `${names.slice(0, maxNames).join(', ')} +${extra}`,
+      full: joined
+    };
+  };
+
   if (loading) {
     return (
       <div className="races-container">
@@ -585,6 +603,9 @@ const Races = () => {
                     <th className="races-table-col-loc">Location</th>
                     <th className="races-table-col-when">When</th>
                     {currentUser && isMember(currentUser) && (
+                      <th className="races-table-col-whos">Who&apos;s going</th>
+                    )}
+                    {currentUser && isMember(currentUser) && (
                       <>
                         <th className="races-table-col-narrow">#</th>
                         <th className="races-table-col-narrow">You</th>
@@ -597,7 +618,9 @@ const Races = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {getRacesSortedByDate().map((race) => (
+                  {getRacesSortedByDate().map((race) => {
+                    const whosGoing = getWhosGoingSummary(race);
+                    return (
                     <tr
                       key={race.id}
                       className="races-table-row"
@@ -613,6 +636,16 @@ const Races = () => {
                       <td className="races-table-col-when">
                         <span className="races-table-badge">{getDaysUntilRace(race.date)}</span>
                       </td>
+                      {currentUser && isMember(currentUser) && (
+                        <td
+                          className="races-table-col-whos"
+                          title={whosGoing.full}
+                        >
+                          <span className="races-table-whos">
+                            {whosGoing.text}
+                          </span>
+                        </td>
+                      )}
                       {currentUser && isMember(currentUser) && (
                         <>
                           <td className="races-table-col-narrow races-table-num">
@@ -678,7 +711,8 @@ const Races = () => {
                         </td>
                       )}
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>

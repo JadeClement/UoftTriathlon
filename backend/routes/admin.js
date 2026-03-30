@@ -677,7 +677,7 @@ router.get('/race-management', authenticateToken, requireAdmin, async (req, res)
     const racesResult = await pool.query(`
       SELECT 
         r.id, r.name, r.date, r.location, r.description,
-        r.age_group_qualifying, r.course_profile,
+        r.age_group_qualifying, r.course_profile, r.event,
         r.created_at,
         COUNT(rs.user_id) as signup_count
       FROM races r
