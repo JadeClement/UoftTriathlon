@@ -55,7 +55,10 @@ const Races = () => {
     end_date: '',
     location: '',
     description: '',
-    link: ''
+    event: '',
+    link: '',
+    age_group_qualifying: '',
+    course_profile: ''
   });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, raceId: null });
   const [showEditRace, setShowEditRace] = useState(false);
@@ -234,7 +237,17 @@ const Races = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(addRaceForm)
+        body: JSON.stringify({
+          name: addRaceForm.name,
+          date: addRaceForm.date,
+          end_date: addRaceForm.end_date || null,
+          location: addRaceForm.location || null,
+          description: addRaceForm.description || null,
+          event: addRaceForm.event || null,
+          link: addRaceForm.link || null,
+          age_group_qualifying: addRaceForm.age_group_qualifying || null,
+          course_profile: addRaceForm.course_profile || null
+        })
       });
 
       if (response.ok) {
@@ -246,7 +259,10 @@ const Races = () => {
           end_date: '',
           location: '',
           description: '',
-          link: ''
+          event: '',
+          link: '',
+          age_group_qualifying: '',
+          course_profile: ''
         });
       } else {
         const errorData = await response.json();
@@ -1060,50 +1076,67 @@ const Races = () => {
                   type="text"
                   id="raceName"
                   value={addRaceForm.name}
-                  onChange={(e) => setAddRaceForm({...addRaceForm, name: e.target.value})}
+                  onChange={(e) => setAddRaceForm({ ...addRaceForm, name: e.target.value })}
                   required
                   placeholder="Enter race name"
                 />
               </div>
-              
-              <div className="form-group">
-                <label htmlFor="raceDate">Race Date *</label>
-                <input
-                  type="date"
-                  id="raceDate"
-                  value={addRaceForm.date}
-                  onChange={(e) => setAddRaceForm({...addRaceForm, date: e.target.value})}
-                  required
-                />
+
+              <div className="modal-form-section">
+                <h3 className="modal-form-section-title">Dates</h3>
+                <div className="form-group">
+                  <label htmlFor="raceDate">Start date *</label>
+                  <input
+                    type="date"
+                    id="raceDate"
+                    value={addRaceForm.date}
+                    onChange={(e) => setAddRaceForm({ ...addRaceForm, date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="raceEndDate">End date (optional)</label>
+                  <p className="modal-form-hint">
+                    Leave blank for a single-day race. Use for multi-day events (must be on or after the start date).
+                  </p>
+                  <input
+                    type="date"
+                    id="raceEndDate"
+                    value={addRaceForm.end_date}
+                    min={addRaceForm.date || undefined}
+                    onChange={(e) => setAddRaceForm({ ...addRaceForm, end_date: e.target.value })}
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="raceEndDate">End date (optional)</label>
-                <input
-                  type="date"
-                  id="raceEndDate"
-                  value={addRaceForm.end_date}
-                  onChange={(e) => setAddRaceForm({ ...addRaceForm, end_date: e.target.value })}
-                />
-              </div>
-              
               <div className="form-group">
                 <label htmlFor="raceLocation">Location</label>
                 <input
                   type="text"
                   id="raceLocation"
                   value={addRaceForm.location}
-                  onChange={(e) => setAddRaceForm({...addRaceForm, location: e.target.value})}
+                  onChange={(e) => setAddRaceForm({ ...addRaceForm, location: e.target.value })}
                   placeholder="Enter race location"
                 />
               </div>
-              
+
+              <div className="form-group">
+                <label htmlFor="raceEvent">Event</label>
+                <input
+                  type="text"
+                  id="raceEvent"
+                  value={addRaceForm.event}
+                  onChange={(e) => setAddRaceForm({ ...addRaceForm, event: e.target.value })}
+                  placeholder="e.g. Sprint, Olympic, Ironman"
+                />
+              </div>
+
               <div className="form-group">
                 <label htmlFor="raceDescription">Description</label>
                 <textarea
                   id="raceDescription"
                   value={addRaceForm.description}
-                  onChange={(e) => setAddRaceForm({...addRaceForm, description: e.target.value})}
+                  onChange={(e) => setAddRaceForm({ ...addRaceForm, description: e.target.value })}
                   placeholder="Enter race description"
                   rows="3"
                 />
@@ -1119,7 +1152,33 @@ const Races = () => {
                   placeholder="Race website or registration URL"
                 />
               </div>
-              
+
+              <div className="form-group">
+                <label htmlFor="raceAgeGroup">Age group qualifying</label>
+                <input
+                  type="text"
+                  id="raceAgeGroup"
+                  value={addRaceForm.age_group_qualifying}
+                  onChange={(e) =>
+                    setAddRaceForm({ ...addRaceForm, age_group_qualifying: e.target.value })
+                  }
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="raceCourseProfile">Course profile</label>
+                <textarea
+                  id="raceCourseProfile"
+                  value={addRaceForm.course_profile}
+                  onChange={(e) =>
+                    setAddRaceForm({ ...addRaceForm, course_profile: e.target.value })
+                  }
+                  placeholder="Optional"
+                  rows="2"
+                />
+              </div>
+
               <div className="modal-actions">
                 <button type="submit" className="btn btn-primary">Add Race</button>
                 <button 
