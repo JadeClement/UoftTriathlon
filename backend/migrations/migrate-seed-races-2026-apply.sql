@@ -1,0 +1,14 @@
+-- migrate-seed-races-2026-apply — 2026 club race calendar (data migration)
+--
+-- Automatic: deploying the API runs this once via database-pg.js → migrateSeedRaces2026()
+-- (checks schema_migrations.seed-races-2026).
+--
+-- Manual apply (e.g. psql only):
+--   1) Ensure races.event and races.link exist (deploy API once or run initializeDatabase).
+--   2) psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f backend/migrations/seed-races-2026-onetime.sql
+--   3) Record migration so the app does not repeat:
+--      INSERT INTO schema_migrations (migration_name, applied_by, notes)
+--      VALUES ('seed-races-2026', current_user, 'manual psql')
+--      ON CONFLICT (migration_name) DO NOTHING;
+--
+-- Or from backend/: node scripts/run-seed-races-2026.js

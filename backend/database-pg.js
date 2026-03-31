@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const fs = require('fs');
 const path = require('path');
 
 // PostgreSQL connection configuration
@@ -40,6 +41,58 @@ pool.on('error', (err) => {
 
 // Set max listeners to prevent warning if we need to add more listeners elsewhere
 pool.setMaxListeners(20);
+
+/**
+ * One-time data migration: 2026 club race calendar rows (idempotent INSERTs).
+ * Record kept in schema_migrations so this does not run on every boot.
+ */
+async function migrateSeedRaces2026() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        id SERIAL PRIMARY KEY,
+        migration_name VARCHAR(255) NOT NULL UNIQUE,
+        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        applied_by VARCHAR(255),
+        execution_time_ms INTEGER,
+        rows_affected INTEGER,
+        notes TEXT
+      );
+    `);
+    const { rows: done } = await pool.query(
+      'SELECT 1 FROM schema_migrations WHERE migration_name = $1',
+      ['seed-races-2026']
+    );
+    if (done.length > 0) {
+      return;
+    }
+
+    const sqlPath = path.join(__dirname, 'migrations', 'seed-races-2026-onetime.sql');
+    const sql = fs.readFileSync(sqlPath, 'utf8');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(sql);
+      await client.query(
+        `INSERT INTO schema_migrations (migration_name, applied_by, notes)
+         VALUES ('seed-races-2026', current_user, '2026 calendar races (see migrations/seed-races-2026-onetime.sql)')`
+      );
+      await client.query('COMMIT');
+      console.log('✅ Migration seed-races-2026 applied (2026 race calendar)');
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (_) {
+        /* ignore */
+      }
+      console.log('ℹ️  Migration seed-races-2026 skipped or failed:', err.message);
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.log('ℹ️  Migration seed-races-2026:', err.message);
+  }
+}
 
 // Initialize database tables
 async function initializeDatabase() {
@@ -724,6 +777,8 @@ async function initializeDatabase() {
       console.error('❌ Error updating sport CHECK constraint:', error.message);
     }
 
+    await migrateSeedRaces2026();
+
     console.log('✅ PostgreSQL database initialization completed');
   } catch (error) {
     console.error('❌ Error initializing PostgreSQL database:', error);
@@ -800,6 +855,7 @@ module.exports = {
   pool,
   query: (text, params) => pool.query(text, params),
   initializeDatabase,
+  migrateSeedRaces2026,
   seedDatabase,
   checkDatabaseHealth
 };
