@@ -91,7 +91,6 @@ const Schedule = () => {
                   <h5>Tuesday</h5>
                   <div className="workout-item swim">Swim 7:00-9:00am</div>
                   <div className="workout-item run">Track Run 6:15pm</div>
-                  <div className="workout-item swim">Swim 7:00-9:00pm</div>
                 </div>
                 <div className="schedule-day">
                   <h5>Wednesday</h5>

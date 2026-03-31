@@ -21,6 +21,8 @@ SENDGRID_FROM_EMAIL=info@uoft-tri.club
 # JWT Configuration
 # Generate a secure random string for JWT signing
 JWT_SECRET=your_jwt_secret_here
+# How long login sessions last. Examples: 7d, 30d, 90d (default: 24h)
+JWT_EXPIRES_IN=30d
 
 # Frontend URL (for password reset links)
 FRONTEND_URL=http://localhost:3000
