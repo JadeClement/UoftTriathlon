@@ -299,18 +299,38 @@
 .races-table-col-action {
   width: 1%;
   white-space: nowrap;
-  padding-right: 0.5rem !important;
+  padding: 0.2rem 0.35rem !important;
+  vertical-align: middle;
+}
+
+.races-table-col-action .signup-btn,
+.races-table-col-action .cancel-btn {
+  display: inline-block;
+  width: auto;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .races-table-btn {
-  padding: 0.3rem 0.55rem !important;
-  font-size: 0.75rem !important;
-  line-height: 1.2;
+  padding: 0.18rem 0.45rem !important;
+  font-size: 0.65rem !important;
+  line-height: 1.15;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.races-table-col-edit {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+  padding-left: 0.35rem !important;
+  padding-right: 0.35rem !important;
 }
 
 .races-table-col-admin {
   width: 1%;
   padding-left: 0.35rem !important;
+  text-align: center;
 }
 
 .races-table-admin {

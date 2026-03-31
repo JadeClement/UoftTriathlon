@@ -23,6 +23,18 @@ const Races = () => {
     link: ''
   });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, raceId: null });
+  const [showEditRace, setShowEditRace] = useState(false);
+  const [editRaceId, setEditRaceId] = useState(null);
+  const [editRaceForm, setEditRaceForm] = useState({
+    name: '',
+    date: '',
+    location: '',
+    description: '',
+    event: '',
+    link: '',
+    age_group_qualifying: '',
+    course_profile: ''
+  });
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -72,6 +84,75 @@ const Races = () => {
     }
   };
 
+  const toDateInputValue = (dateString) => {
+    if (!dateString) return '';
+    return String(dateString).split('T')[0];
+  };
+
+  const openEditRaceModal = (race, e) => {
+    if (e) e.stopPropagation();
+    setShowAddRace(false);
+    setEditRaceId(race.id);
+    setEditRaceForm({
+      name: race.name || '',
+      date: toDateInputValue(race.date),
+      location: race.location || '',
+      description: race.description || '',
+      event: race.event || '',
+      link: race.link || '',
+      age_group_qualifying: race.age_group_qualifying || '',
+      course_profile: race.course_profile || ''
+    });
+    setShowEditRace(true);
+  };
+
+  const closeEditRaceModal = () => {
+    setShowEditRace(false);
+    setEditRaceId(null);
+  };
+
+  const submitEditRace = async (e) => {
+    e.preventDefault();
+    if (!editRaceForm.name || !editRaceForm.date) {
+      showError('Race name and date are required');
+      return;
+    }
+    if (!editRaceId) return;
+
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/races/${editRaceId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: editRaceForm.name,
+          date: editRaceForm.date,
+          location: editRaceForm.location || null,
+          description: editRaceForm.description || null,
+          event: editRaceForm.event || null,
+          link: editRaceForm.link || null,
+          age_group_qualifying: editRaceForm.age_group_qualifying || null,
+          course_profile: editRaceForm.course_profile || null
+        })
+      });
+
+      if (response.ok) {
+        await loadRaces();
+        closeEditRaceModal();
+        showSuccess('Race updated successfully!');
+      } else {
+        const errorData = await response.json();
+        showError(errorData.error || 'Failed to update race');
+      }
+    } catch (err) {
+      console.error('Error updating race:', err);
+      showError('Failed to update race');
+    }
+  };
+
   const handleAddRace = async (e) => {
     e.preventDefault();
     
@@ -81,6 +162,7 @@ const Races = () => {
     }
 
     try {
+      setShowEditRace(false);
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/races`, {
         method: 'POST',
@@ -207,11 +289,6 @@ const Races = () => {
   };
 
   const handleRaceClick = (raceId) => {
-    navigate(`/race/${raceId}`);
-  };
-
-  const handleEditRace = (raceId, e) => {
-    if (e) e.stopPropagation();
     navigate(`/race/${raceId}`);
   };
 
@@ -466,7 +543,10 @@ const Races = () => {
           {currentUser && isMember(currentUser) && (
             <button 
               className="add-race-btn"
-              onClick={() => setShowAddRace(true)}
+              onClick={() => {
+                closeEditRaceModal();
+                setShowAddRace(true);
+              }}
             >
               ➕ Add Race
             </button>
@@ -536,23 +616,29 @@ const Races = () => {
                       </div>
                     )}
                   </div>
-                  {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
+                  {currentUser && isMember(currentUser) && (
                     <div className="race-actions-top">
-                      <button 
+                      <button
+                        type="button"
                         className="edit-btn"
-                        onClick={(e) => handleEditRace(race.id, e)}
+                        title="Edit race"
+                        onClick={(e) => openEditRaceModal(race, e)}
                       >
                         ✏️
                       </button>
-                      <button 
-                        className="delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRace(race.id);
-                        }}
-                      >
-                        🗑️
-                      </button>
+                      {(currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                        <button
+                          type="button"
+                          className="delete-btn"
+                          title="Delete race"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRace(race.id);
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -636,6 +722,9 @@ const Races = () => {
                         <th className="races-table-col-narrow">You</th>
                         <th className="races-table-col-action"> </th>
                       </>
+                    )}
+                    {currentUser && isMember(currentUser) && (
+                      <th className="races-table-col-edit"> </th>
                     )}
                     {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
                       <th className="races-table-col-admin"> </th>
@@ -728,29 +817,31 @@ const Races = () => {
                           </td>
                         </>
                       )}
+                      {currentUser && isMember(currentUser) && (
+                        <td className="races-table-col-edit">
+                          <button
+                            type="button"
+                            className="edit-btn races-table-icon-btn"
+                            title="Edit race"
+                            onClick={(e) => openEditRaceModal(race, e)}
+                          >
+                            ✏️
+                          </button>
+                        </td>
+                      )}
                       {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
                         <td className="races-table-col-admin">
-                          <div className="races-table-admin">
-                            <button
-                              type="button"
-                              className="edit-btn races-table-icon-btn"
-                              title="Edit race"
-                              onClick={(e) => handleEditRace(race.id, e)}
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              type="button"
-                              className="delete-btn races-table-icon-btn"
-                              title="Delete race"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteRace(race.id);
-                              }}
-                            >
-                              🗑️
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            className="delete-btn races-table-icon-btn"
+                            title="Delete race"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteRace(race.id);
+                            }}
+                          >
+                            🗑️
+                          </button>
                         </td>
                       )}
                     </tr>
@@ -886,6 +977,115 @@ const Races = () => {
                   type="button" 
                   className="btn btn-secondary"
                   onClick={() => setShowAddRace(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditRace && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Edit Race</h2>
+            <form onSubmit={submitEditRace}>
+              <div className="form-group">
+                <label htmlFor="editRaceName">Race Name *</label>
+                <input
+                  type="text"
+                  id="editRaceName"
+                  value={editRaceForm.name}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, name: e.target.value })}
+                  required
+                  placeholder="Enter race name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRaceDate">Race Date *</label>
+                <input
+                  type="date"
+                  id="editRaceDate"
+                  value={editRaceForm.date}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, date: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRaceLocation">Location</label>
+                <input
+                  type="text"
+                  id="editRaceLocation"
+                  value={editRaceForm.location}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, location: e.target.value })}
+                  placeholder="Enter race location"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRaceEvent">Event</label>
+                <input
+                  type="text"
+                  id="editRaceEvent"
+                  value={editRaceForm.event}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, event: e.target.value })}
+                  placeholder="e.g. Sprint, Olympic, Ironman"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRaceDescription">Description</label>
+                <textarea
+                  id="editRaceDescription"
+                  value={editRaceForm.description}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, description: e.target.value })}
+                  placeholder="Enter race description"
+                  rows="3"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRaceLink">Link</label>
+                <input
+                  type="text"
+                  id="editRaceLink"
+                  value={editRaceForm.link}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, link: e.target.value })}
+                  placeholder="Race website or registration URL"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRaceAgeGroup">Age group qualifying</label>
+                <input
+                  type="text"
+                  id="editRaceAgeGroup"
+                  value={editRaceForm.age_group_qualifying}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, age_group_qualifying: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRaceCourseProfile">Course profile</label>
+                <textarea
+                  id="editRaceCourseProfile"
+                  value={editRaceForm.course_profile}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, course_profile: e.target.value })}
+                  placeholder="Optional"
+                  rows="2"
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="submit" className="btn btn-primary">Save</button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeEditRaceModal}
                 >
                   Cancel
                 </button>

@@ -143,11 +143,6 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
     const { name, date, location, description, age_group_qualifying, course_profile, event, link } = req.body;
     const userId = req.user.id;
 
-    // Check if user can edit this race (admin/exec only)
-    if (!['administrator', 'exec'].includes(req.user.role)) {
-      return res.status(403).json({ error: 'Not authorized to edit races' });
-    }
-
     const existing = await pool.query(
       `SELECT id, age_group_qualifying, course_profile, event, link FROM races WHERE id = $1 AND is_deleted = false`,
       [id]
