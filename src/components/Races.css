@@ -227,6 +227,22 @@
   max-width: 12rem;
 }
 
+.races-table-col-link {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.races-table-link {
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-decoration: none;
+}
+
+.races-table-link:hover {
+  text-decoration: underline;
+}
+
 .races-table-muted {
   color: #6b7280;
 }
@@ -363,6 +379,18 @@
 .race-main { flex: 1; display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
 .race-name { margin: 0; color: #1f2937; font-size: 1.75rem; font-weight: 700; text-align: left; }
 .race-meta { color: #6b7280; font-size: 0.95rem; margin-top: 0.25rem; text-align: left; }
+
+.race-link-row { margin-top: 0.35rem; }
+
+.race-external-link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.race-external-link:hover {
+  text-decoration: underline;
+}
 
 .race-location {
   margin: 0.5rem 0 0 0;

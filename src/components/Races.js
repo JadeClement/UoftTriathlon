@@ -9,7 +9,7 @@ import './Races.css';
 const Races = () => {
   const { currentUser, isMember } = useAuth();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState('list'); // 'list' | 'table' | 'calendar'
+  const [viewMode, setViewMode] = useState('table'); // 'list' | 'table' | 'calendar'
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,7 +19,8 @@ const Races = () => {
     name: '',
     date: '',
     location: '',
-    description: ''
+    description: '',
+    link: ''
   });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, raceId: null });
 
@@ -97,7 +98,8 @@ const Races = () => {
           name: '',
           date: '',
           location: '',
-          description: ''
+          description: '',
+          link: ''
         });
       } else {
         const errorData = await response.json();
@@ -310,6 +312,14 @@ const Races = () => {
     }
   };
 
+  const normalizeRaceLink = (raw) => {
+    if (!raw || typeof raw !== 'string') return '';
+    const t = raw.trim();
+    if (!t) return '';
+    if (/^https?:\/\//i.test(t)) return t;
+    return `https://${t}`;
+  };
+
   const getWhosGoingSummary = (race) => {
     const signups = race.signups || [];
     if (signups.length === 0) {
@@ -512,6 +522,19 @@ const Races = () => {
                     )}
                     <div className="race-meta">📅 {formatDate(race.date)}</div>
                     <div className="race-countdown inline">{getDaysUntilRace(race.date)}</div>
+                    {race.link && (
+                      <div className="race-meta race-link-row">
+                        <a
+                          href={normalizeRaceLink(race.link)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="race-external-link"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          🔗 Link
+                        </a>
+                      </div>
+                    )}
                   </div>
                   {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
                     <div className="race-actions-top">
@@ -602,6 +625,7 @@ const Races = () => {
                     <th className="races-table-col-name">Race</th>
                     <th className="races-table-col-event">Event</th>
                     <th className="races-table-col-loc">Location</th>
+                    <th className="races-table-col-link">Link</th>
                     <th className="races-table-col-when">When</th>
                     {currentUser && isMember(currentUser) && (
                       <th className="races-table-col-whos">Who&apos;s going</th>
@@ -636,6 +660,21 @@ const Races = () => {
                       </td>
                       <td className="races-table-col-loc">
                         <span className="races-table-muted">{race.location || '—'}</span>
+                      </td>
+                      <td className="races-table-col-link">
+                        {race.link ? (
+                          <a
+                            href={normalizeRaceLink(race.link)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="races-table-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Open
+                          </a>
+                        ) : (
+                          <span className="races-table-muted">—</span>
+                        )}
                       </td>
                       <td className="races-table-col-when">
                         <span className="races-table-badge">{getDaysUntilRace(race.date)}</span>
@@ -827,6 +866,17 @@ const Races = () => {
                   onChange={(e) => setAddRaceForm({...addRaceForm, description: e.target.value})}
                   placeholder="Enter race description"
                   rows="3"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="raceLink">Link</label>
+                <input
+                  type="text"
+                  id="raceLink"
+                  value={addRaceForm.link}
+                  onChange={(e) => setAddRaceForm({ ...addRaceForm, link: e.target.value })}
+                  placeholder="Race website or registration URL"
                 />
               </div>
               
