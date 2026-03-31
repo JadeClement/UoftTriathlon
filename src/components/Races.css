@@ -194,11 +194,11 @@
 }
 
 .races-table-col-date {
-  white-space: normal;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   color: #4b5563;
   width: 1%;
-  max-width: 10.5rem;
+  min-width: 12rem;
   line-height: 1.35;
 }
 
