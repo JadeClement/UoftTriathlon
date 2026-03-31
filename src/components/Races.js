@@ -742,7 +742,7 @@ const Races = () => {
                     )}
                     {currentUser && isMember(currentUser) && (
                       <>
-                        <th className="races-table-col-narrow races-table-col-count"># of people</th>
+                        <th className="races-table-col-narrow races-table-col-count">#ppl</th>
                         <th className="races-table-col-narrow">You</th>
                         <th className="races-table-col-action"> </th>
                       </>

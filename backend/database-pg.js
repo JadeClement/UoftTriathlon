@@ -94,6 +94,83 @@ async function migrateSeedRaces2026() {
   }
 }
 
+/**
+ * One-time data migration: set end_date for multi-day races (see migrations/migrate-races-multi-day-end-dates-onetime.sql).
+ * Idempotent via schema_migrations.migrate-races-multi-day-end-dates.
+ */
+async function migrateRacesMultiDayEndDates() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        id SERIAL PRIMARY KEY,
+        migration_name VARCHAR(255) NOT NULL UNIQUE,
+        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        applied_by VARCHAR(255),
+        execution_time_ms INTEGER,
+        rows_affected INTEGER,
+        notes TEXT
+      );
+    `);
+    const { rows: done } = await pool.query(
+      'SELECT 1 FROM schema_migrations WHERE migration_name = $1',
+      ['migrate-races-multi-day-end-dates']
+    );
+    if (done.length > 0) {
+      return;
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Keep in sync with migrations/migrate-races-multi-day-end-dates-onetime.sql (psql -f).
+      const hintRes = await client.query(`
+        UPDATE races
+        SET end_date = (date + INTERVAL '1 day')::date
+        WHERE is_deleted = false
+          AND end_date IS NULL
+          AND event IS NOT NULL
+          AND event ~* '2-day|two-day|two day|multi-day'
+      `);
+      const challengeRes = await client.query(`
+        UPDATE races
+        SET end_date = '2026-06-28'::date
+        WHERE is_deleted = false
+          AND end_date IS NULL
+          AND name = 'Challenge Quebec'
+          AND date = '2026-06-27'::date
+      `);
+      const total =
+        (hintRes.rowCount || 0) + (challengeRes.rowCount || 0);
+      await client.query(
+        `INSERT INTO schema_migrations (migration_name, applied_by, notes, rows_affected)
+         VALUES ('migrate-races-multi-day-end-dates', current_user,
+                 'Multi-day race end_date (event 2-day hint + Challenge Quebec); see migrate-races-multi-day-end-dates-onetime.sql',
+                 $1)`,
+        [total]
+      );
+      await client.query('COMMIT');
+      console.log(
+        '✅ Migration migrate-races-multi-day-end-dates applied (rows updated:',
+        total,
+        ')'
+      );
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (_) {
+        /* ignore */
+      }
+      console.error('❌ Migration migrate-races-multi-day-end-dates failed:', err.message);
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('❌ migrateRacesMultiDayEndDates:', err.message);
+    throw err;
+  }
+}
+
 // Initialize database tables
 async function initializeDatabase() {
   try {
@@ -783,6 +860,7 @@ async function initializeDatabase() {
     }
 
     await migrateSeedRaces2026();
+    await migrateRacesMultiDayEndDates();
 
     console.log('✅ PostgreSQL database initialization completed');
   } catch (error) {
@@ -861,6 +939,7 @@ module.exports = {
   query: (text, params) => pool.query(text, params),
   initializeDatabase,
   migrateSeedRaces2026,
+  migrateRacesMultiDayEndDates,
   seedDatabase,
   checkDatabaseHealth
 };
