@@ -67,6 +67,30 @@
   font-size: 1rem;
 }
 
+.race-link-block {
+  margin-top: 1.25rem;
+  text-align: center;
+}
+
+.race-link-block h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.race-external-link {
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.race-external-link:hover {
+  text-decoration: underline;
+}
+
 .race-date {
   background: #3b82f6;
   color: white;

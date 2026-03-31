@@ -1,3 +1,12 @@
+/** Ensure a pasted URL opens correctly (add https:// when missing). */
+export const normalizeRaceLink = (raw) => {
+  if (!raw || typeof raw !== 'string') return '';
+  const t = raw.trim();
+  if (!t) return '';
+  if (/^https?:\/\//i.test(t)) return t;
+  return `https://${t}`;
+};
+
 // Utility function to convert URLs in text to clickable links
 export const linkifyText = (text) => {
   if (!text) return text;

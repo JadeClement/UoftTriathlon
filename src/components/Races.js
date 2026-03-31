@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { linkifyText } from '../utils/linkUtils';
+import { linkifyText, normalizeRaceLink } from '../utils/linkUtils';
 import { showSuccess, showError } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './Races.css';
@@ -417,14 +417,6 @@ const Races = () => {
     const endKey = String(race.end_date).split('T')[0];
     if (!endKey || endKey <= startKey) return formatDate(race.date);
     return `${formatDate(race.date)} – ${formatDate(race.end_date)}`;
-  };
-
-  const normalizeRaceLink = (raw) => {
-    if (!raw || typeof raw !== 'string') return '';
-    const t = raw.trim();
-    if (!t) return '';
-    if (/^https?:\/\//i.test(t)) return t;
-    return `https://${t}`;
   };
 
   const getWhosGoingSummary = (race) => {
@@ -1061,25 +1053,31 @@ const Races = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="editRaceDate">Race Date *</label>
-                <input
-                  type="date"
-                  id="editRaceDate"
-                  value={editRaceForm.date}
-                  onChange={(e) => setEditRaceForm({ ...editRaceForm, date: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="editRaceEndDate">End date (optional)</label>
-                <input
-                  type="date"
-                  id="editRaceEndDate"
-                  value={editRaceForm.end_date}
-                  onChange={(e) => setEditRaceForm({ ...editRaceForm, end_date: e.target.value })}
-                />
+              <div className="modal-form-section">
+                <h3 className="modal-form-section-title">Dates</h3>
+                <div className="form-group">
+                  <label htmlFor="editRaceDate">Start date *</label>
+                  <input
+                    type="date"
+                    id="editRaceDate"
+                    value={editRaceForm.date}
+                    onChange={(e) => setEditRaceForm({ ...editRaceForm, date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="editRaceEndDate">End date (optional)</label>
+                  <p className="modal-form-hint">
+                    Leave blank for a single-day race. Use for multi-day events (must be on or after the start date).
+                  </p>
+                  <input
+                    type="date"
+                    id="editRaceEndDate"
+                    value={editRaceForm.end_date}
+                    min={editRaceForm.date || undefined}
+                    onChange={(e) => setEditRaceForm({ ...editRaceForm, end_date: e.target.value })}
+                  />
+                </div>
               </div>
 
               <div className="form-group">

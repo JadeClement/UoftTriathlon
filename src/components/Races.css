@@ -744,6 +744,28 @@
   font-size: 1.5rem;
 }
 
+.modal-form-section {
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-form-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.modal-form-hint {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
 .form-group {
   margin-bottom: 1.5rem;
 }

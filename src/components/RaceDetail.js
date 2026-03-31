@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { linkifyText } from '../utils/linkUtils';
+import { linkifyText, normalizeRaceLink } from '../utils/linkUtils';
 import { formatSignupDateForDisplay } from '../utils/dateUtils';
 import { showError } from './SimpleNotification';
 import './RaceDetail.css';
@@ -218,6 +218,11 @@ const RaceDetail = () => {
     );
   }
 
+  const raceLinkHref = normalizeRaceLink(race.link);
+  const raceLinkLabel = raceLinkHref
+    ? String(race.link).trim().replace(/^https?:\/\//i, '')
+    : '';
+
   return (
     <div className="race-detail-container">
       <div className="race-detail-content">
@@ -232,6 +237,19 @@ const RaceDetail = () => {
               <div className="race-location">
                 <h3>📍 Location</h3>
                 <p>{race.location}</p>
+              </div>
+            )}
+            {raceLinkHref && (
+              <div className="race-link-block">
+                <h3>🔗 Link</h3>
+                <a
+                  href={raceLinkHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="race-external-link"
+                >
+                  {raceLinkLabel}
+                </a>
               </div>
             )}
           </div>
