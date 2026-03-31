@@ -105,6 +105,42 @@
   justify-content: flex-start;
 }
 
+.filter-section-row {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.year-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.year-filter-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.year-filter-select {
+  min-width: 7.5rem;
+  padding: 0.45rem 2rem 0.45rem 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: white;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.year-filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 /* Filter Toggle Styles */
 .filter-toggle {
   display: flex;

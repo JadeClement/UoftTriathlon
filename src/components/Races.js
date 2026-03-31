@@ -1,10 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText, normalizeRaceLink } from '../utils/linkUtils';
 import { showSuccess, showError } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './Races.css';
+
+/** Race appears in calendar year `year` if start/end range overlaps that year (UTC date). */
+function raceTouchesYear(race, year) {
+  const start = String(race.date).split('T')[0];
+  const sy = parseInt(start.slice(0, 4), 10);
+  if (!Number.isFinite(sy)) return false;
+  if (!race.end_date) return sy === year;
+  const end = String(race.end_date).split('T')[0];
+  const ey = parseInt(end.slice(0, 4), 10);
+  if (!Number.isFinite(ey) || ey < sy) return sy === year;
+  return year >= sy && year <= ey;
+}
+
+function collectYearsFromRaces(raceList) {
+  const set = new Set();
+  for (const race of raceList) {
+    const start = String(race.date).split('T')[0];
+    const sy = parseInt(start.slice(0, 4), 10);
+    if (!Number.isFinite(sy)) continue;
+    if (!race.end_date) {
+      set.add(sy);
+    } else {
+      const end = String(race.end_date).split('T')[0];
+      const ey = parseInt(end.slice(0, 4), 10);
+      if (!Number.isFinite(ey) || ey < sy) {
+        set.add(sy);
+      } else {
+        for (let y = sy; y <= ey; y++) set.add(y);
+      }
+    }
+  }
+  return [...set].sort((a, b) => b - a);
+}
 
 const Races = () => {
   const { currentUser, isMember, isAdmin } = useAuth();
@@ -15,6 +48,7 @@ const Races = () => {
   const [error, setError] = useState(null);
   const [showAddRace, setShowAddRace] = useState(false);
   const [filterMode, setFilterMode] = useState('all'); // 'all' or 'going'
+  const [yearFilter, setYearFilter] = useState('all'); // 'all' | string year e.g. '2026'
   const [addRaceForm, setAddRaceForm] = useState({
     name: '',
     date: '',
@@ -59,6 +93,24 @@ const Races = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveUser]);
+
+  const availableYears = useMemo(() => collectYearsFromRaces(races), [races]);
+
+  useEffect(() => {
+    if (yearFilter === 'all') return;
+    const y = parseInt(yearFilter, 10);
+    if (!Number.isFinite(y)) {
+      setYearFilter('all');
+      return;
+    }
+    if (races.length === 0) {
+      setYearFilter('all');
+      return;
+    }
+    if (!races.some((r) => raceTouchesYear(r, y))) {
+      setYearFilter('all');
+    }
+  }, [races, yearFilter]);
 
   const loadRaces = async () => {
     try {
@@ -360,10 +412,17 @@ const Races = () => {
   };
 
   const getFilteredRaces = () => {
+    let list = races;
     if (filterMode === 'going') {
-      return races.filter(race => isUserSignedUp(race));
+      list = list.filter((race) => isUserSignedUp(race));
     }
-    return races;
+    if (yearFilter !== 'all') {
+      const y = parseInt(yearFilter, 10);
+      if (Number.isFinite(y)) {
+        list = list.filter((race) => raceTouchesYear(race, y));
+      }
+    }
+    return list;
   };
 
   const groupRacesByMonth = () => {
@@ -435,6 +494,52 @@ const Races = () => {
       text: `${names.slice(0, maxNames).join(', ')} +${extra}`,
       full: joined
     };
+  };
+
+  const renderEmptyRaces = () => {
+    const yearActive = yearFilter !== 'all';
+    const y = yearActive ? parseInt(yearFilter, 10) : null;
+
+    if (filterMode === 'going') {
+      return (
+        <div className="no-races">
+          {yearActive && Number.isFinite(y) ? (
+            <>
+              <p>You&apos;re not signed up for any races in {y}.</p>
+              <p>Try another year or switch to All Races.</p>
+            </>
+          ) : (
+            <>
+              <p>You&apos;re not signed up for any races yet.</p>
+              <p>Sign up for some races to see them here!</p>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="no-races">
+        {yearActive && Number.isFinite(y) ? (
+          <>
+            <p>No races in {y}.</p>
+            {races.length > 0 ? (
+              <p>Try All years or pick another year.</p>
+            ) : (
+              currentUser &&
+              isMember(currentUser) && <p>Be the first to add a race!</p>
+            )}
+          </>
+        ) : (
+          <>
+            <p>No races scheduled yet.</p>
+            {currentUser && isMember(currentUser) && (
+              <p>Be the first to add a race!</p>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -577,7 +682,7 @@ const Races = () => {
 
       {/* Filter Toggle - Above Content */}
       {currentUser && isMember(currentUser) && (
-        <div className="filter-section">
+        <div className="filter-section filter-section-row">
           <div className="filter-toggle">
             <button 
               className={`filter-btn ${filterMode === 'all' ? 'active' : ''}`}
@@ -592,27 +697,31 @@ const Races = () => {
               Races I'm Going To
             </button>
           </div>
+          <div className="year-filter">
+            <label htmlFor="race-year-filter" className="year-filter-label">
+              Year
+            </label>
+            <select
+              id="race-year-filter"
+              className="year-filter-select"
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+            >
+              <option value="all">All years</option>
+              {availableYears.map((yr) => (
+                <option key={yr} value={String(yr)}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
       {viewMode === 'list' && (
         <div className="races-list">
           {getFilteredRaces().length === 0 ? (
-            <div className="no-races">
-              {filterMode === 'going' ? (
-                <>
-                  <p>You're not signed up for any races yet.</p>
-                  <p>Sign up for some races to see them here!</p>
-                </>
-              ) : (
-                <>
-                  <p>No races scheduled yet.</p>
-                  {currentUser && isMember(currentUser) && (
-                    <p>Be the first to add a race!</p>
-                  )}
-                </>
-              )}
-            </div>
+            renderEmptyRaces()
           ) : (
             getFilteredRaces().map(race => (
               <div key={race.id} className="race-card" onClick={() => handleRaceClick(race.id)}>
@@ -709,21 +818,7 @@ const Races = () => {
       {viewMode === 'table' && (
         <div className="races-table-shell">
           {getRacesSortedByDate().length === 0 ? (
-            <div className="no-races">
-              {filterMode === 'going' ? (
-                <>
-                  <p>You're not signed up for any races yet.</p>
-                  <p>Sign up for some races to see them here!</p>
-                </>
-              ) : (
-                <>
-                  <p>No races scheduled yet.</p>
-                  {currentUser && isMember(currentUser) && (
-                    <p>Be the first to add a race!</p>
-                  )}
-                </>
-              )}
-            </div>
+            renderEmptyRaces()
           ) : (
             <div className="races-table-wrap">
               <table className="races-table">
@@ -895,6 +990,9 @@ const Races = () => {
       )}
 
       {viewMode === 'calendar' && (
+        getFilteredRaces().length === 0 ? (
+          renderEmptyRaces()
+        ) : (
         <div className="races-calendar">
           {Object.entries(groupRacesByMonth()).map(([month, monthRaces]) => (
             <div key={month} className="month-section">
@@ -947,6 +1045,7 @@ const Races = () => {
             </div>
           ))}
         </div>
+        )
       )}
 
       {/* Add Race Modal */}
