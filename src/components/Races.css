@@ -194,10 +194,12 @@
 }
 
 .races-table-col-date {
-  white-space: nowrap;
+  white-space: normal;
   font-variant-numeric: tabular-nums;
   color: #4b5563;
   width: 1%;
+  max-width: 10.5rem;
+  line-height: 1.35;
 }
 
 .races-table-col-name {
@@ -208,6 +210,27 @@
 .races-table-col-event {
   min-width: 5.5rem;
   max-width: 10rem;
+}
+
+.races-table-col-ag {
+  min-width: 5rem;
+  max-width: 9rem;
+  vertical-align: top;
+}
+
+.races-table-col-course {
+  min-width: 6rem;
+  max-width: 12rem;
+  vertical-align: top;
+}
+
+.races-table-clip {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .races-table-event {
@@ -280,6 +303,10 @@
   text-align: center;
   width: 1%;
   white-space: nowrap;
+}
+
+.races-table-col-count {
+  min-width: 5.25rem;
 }
 
 .races-table-num {

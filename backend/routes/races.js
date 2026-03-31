@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireMember } = require('../middleware/auth');
+const { authenticateToken, requireMember, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -14,7 +14,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
   try {
     const racesResult = await pool.query(`
       SELECT 
-        r.id, r.name, r.date, r.location, r.description,
+        r.id, r.name, r.date, r.end_date, r.location, r.description,
         r.age_group_qualifying, r.course_profile, r.event, r.link,
         r.created_at,
         COUNT(rs.user_id) as signup_count
@@ -59,7 +59,7 @@ router.get('/:id', authenticateToken, requireMember, async (req, res) => {
 
     const raceResult = await pool.query(`
       SELECT 
-        r.id, r.name, r.date, r.location, r.description,
+        r.id, r.name, r.date, r.end_date, r.location, r.description,
         r.age_group_qualifying, r.course_profile, r.event, r.link,
         r.created_at,
         COUNT(rs.user_id) as signup_count
@@ -103,20 +103,24 @@ router.get('/:id', authenticateToken, requireMember, async (req, res) => {
 // Create new race
 router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
-    const { name, date, location, description, age_group_qualifying, course_profile, event, link } = req.body;
+    const { name, date, end_date, location, description, age_group_qualifying, course_profile, event, link } = req.body;
     const userId = req.user.id;
 
     if (!name || !date) {
       return res.status(400).json({ error: 'Name and date are required' });
     }
+    if (end_date && String(end_date) < String(date).split('T')[0]) {
+      return res.status(400).json({ error: 'End date cannot be before start date' });
+    }
 
     const result = await pool.query(`
-      INSERT INTO races (name, date, location, description, age_group_qualifying, course_profile, event, link, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+      INSERT INTO races (name, date, end_date, location, description, age_group_qualifying, course_profile, event, link, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
       RETURNING id
     `, [
       name,
       date,
+      end_date || null,
       location || null,
       description || null,
       age_group_qualifying || null,
@@ -140,11 +144,11 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
 router.put('/:id', authenticateToken, requireMember, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, date, location, description, age_group_qualifying, course_profile, event, link } = req.body;
+    const { name, date, end_date, location, description, age_group_qualifying, course_profile, event, link } = req.body;
     const userId = req.user.id;
 
     const existing = await pool.query(
-      `SELECT id, age_group_qualifying, course_profile, event, link FROM races WHERE id = $1 AND is_deleted = false`,
+      `SELECT id, age_group_qualifying, course_profile, event, link, end_date FROM races WHERE id = $1 AND is_deleted = false`,
       [id]
     );
     if (existing.rows.length === 0) {
@@ -163,13 +167,21 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
     const lk = link !== undefined
       ? (link || null)
       : cur.link;
+    const ed = end_date !== undefined
+      ? (end_date || null)
+      : cur.end_date;
+    const startDay = String(date).split('T')[0];
+    const endDay = ed ? String(ed).split('T')[0] : null;
+    if (endDay && endDay < startDay) {
+      return res.status(400).json({ error: 'End date cannot be before start date' });
+    }
 
     const result = await pool.query(`
       UPDATE races 
       SET name = $1, date = $2, location = $3, description = $4,
-          age_group_qualifying = $5, course_profile = $6, event = $7, link = $8
-      WHERE id = $9 AND is_deleted = false
-    `, [name, date, location || null, description || null, ag, cp, ev, lk, id]);
+          age_group_qualifying = $5, course_profile = $6, event = $7, link = $8, end_date = $9
+      WHERE id = $10 AND is_deleted = false
+    `, [name, date, location || null, description || null, ag, cp, ev, lk, ed, id]);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Race not found' });
@@ -183,16 +195,10 @@ router.put('/:id', authenticateToken, requireMember, async (req, res) => {
   }
 });
 
-// Delete race (soft delete)
-router.delete('/:id', authenticateToken, requireMember, async (req, res) => {
+// Delete race (soft delete) — exec and administrator only
+router.delete('/:id', authenticateToken, requireMember, requireRole('exec'), async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
-
-    // Check if user can delete this race (admin/exec only)
-    if (!['administrator', 'exec'].includes(req.user.role)) {
-      return res.status(403).json({ error: 'Not authorized to delete races' });
-    }
 
     const result = await pool.query('UPDATE races SET is_deleted = true WHERE id = $1', [id]);
 

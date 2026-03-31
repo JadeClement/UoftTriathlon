@@ -240,6 +240,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         date DATE NOT NULL,
+        end_date DATE,
         location VARCHAR(255),
         description TEXT,
         age_group_qualifying TEXT,
@@ -269,7 +270,11 @@ async function initializeDatabase() {
         ALTER TABLE races
         ADD COLUMN IF NOT EXISTS link TEXT
       `);
-      console.log('✅ races optional columns (age_group_qualifying, course_profile, event, link) applied or already exist');
+      await pool.query(`
+        ALTER TABLE races
+        ADD COLUMN IF NOT EXISTS end_date DATE
+      `);
+      console.log('✅ races optional columns (age_group_qualifying, course_profile, event, link, end_date) applied or already exist');
     } catch (error) {
       console.log('ℹ️  races column migration:', error.message);
     }

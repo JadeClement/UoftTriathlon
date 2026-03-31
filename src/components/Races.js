@@ -7,7 +7,7 @@ import ConfirmModal from './ConfirmModal';
 import './Races.css';
 
 const Races = () => {
-  const { currentUser, isMember } = useAuth();
+  const { currentUser, isMember, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('table'); // 'list' | 'table' | 'calendar'
   const [races, setRaces] = useState([]);
@@ -18,6 +18,7 @@ const Races = () => {
   const [addRaceForm, setAddRaceForm] = useState({
     name: '',
     date: '',
+    end_date: '',
     location: '',
     description: '',
     link: ''
@@ -28,6 +29,7 @@ const Races = () => {
   const [editRaceForm, setEditRaceForm] = useState({
     name: '',
     date: '',
+    end_date: '',
     location: '',
     description: '',
     event: '',
@@ -96,6 +98,7 @@ const Races = () => {
     setEditRaceForm({
       name: race.name || '',
       date: toDateInputValue(race.date),
+      end_date: toDateInputValue(race.end_date),
       location: race.location || '',
       description: race.description || '',
       event: race.event || '',
@@ -117,6 +120,10 @@ const Races = () => {
       showError('Race name and date are required');
       return;
     }
+    if (editRaceForm.end_date && editRaceForm.end_date < editRaceForm.date) {
+      showError('End date cannot be before start date');
+      return;
+    }
     if (!editRaceId) return;
 
     try {
@@ -130,6 +137,7 @@ const Races = () => {
         body: JSON.stringify({
           name: editRaceForm.name,
           date: editRaceForm.date,
+          end_date: editRaceForm.end_date || null,
           location: editRaceForm.location || null,
           description: editRaceForm.description || null,
           event: editRaceForm.event || null,
@@ -160,6 +168,10 @@ const Races = () => {
       showError('Race name and date are required');
       return;
     }
+    if (addRaceForm.end_date && addRaceForm.end_date < addRaceForm.date) {
+      showError('End date cannot be before start date');
+      return;
+    }
 
     try {
       setShowEditRace(false);
@@ -179,6 +191,7 @@ const Races = () => {
         setAddRaceForm({
           name: '',
           date: '',
+          end_date: '',
           location: '',
           description: '',
           link: ''
@@ -387,6 +400,23 @@ const Races = () => {
     } catch {
       return dateString;
     }
+  };
+
+  const formatRaceTableDates = (race) => {
+    const start = formatDateShort(race.date);
+    if (!race.end_date) return start;
+    const startKey = String(race.date).split('T')[0];
+    const endKey = String(race.end_date).split('T')[0];
+    if (!endKey || endKey <= startKey) return start;
+    return `${start}–${formatDateShort(race.end_date)}`;
+  };
+
+  const formatRaceListDates = (race) => {
+    if (!race.end_date) return formatDate(race.date);
+    const startKey = String(race.date).split('T')[0];
+    const endKey = String(race.end_date).split('T')[0];
+    if (!endKey || endKey <= startKey) return formatDate(race.date);
+    return `${formatDate(race.date)} – ${formatDate(race.end_date)}`;
   };
 
   const normalizeRaceLink = (raw) => {
@@ -600,7 +630,7 @@ const Races = () => {
                     {race.location && (
                       <div className="race-meta">📍 {race.location}</div>
                     )}
-                    <div className="race-meta">📅 {formatDate(race.date)}</div>
+                    <div className="race-meta">📅 {formatRaceListDates(race)}</div>
                     <div className="race-countdown inline">{getDaysUntilRace(race.date)}</div>
                     {race.link && (
                       <div className="race-meta race-link-row">
@@ -626,7 +656,7 @@ const Races = () => {
                       >
                         ✏️
                       </button>
-                      {(currentUser.role === 'exec' || currentUser.role === 'administrator') && (
+                      {currentUser && isAdmin(currentUser) && (
                         <button
                           type="button"
                           className="delete-btn"
@@ -710,6 +740,8 @@ const Races = () => {
                     <th className="races-table-col-date">Date</th>
                     <th className="races-table-col-name">Race</th>
                     <th className="races-table-col-event">Event</th>
+                    <th className="races-table-col-ag">AG qual.</th>
+                    <th className="races-table-col-course">Course</th>
                     <th className="races-table-col-loc">Location</th>
                     <th className="races-table-col-link">Link</th>
                     <th className="races-table-col-when">When</th>
@@ -718,7 +750,7 @@ const Races = () => {
                     )}
                     {currentUser && isMember(currentUser) && (
                       <>
-                        <th className="races-table-col-narrow">#</th>
+                        <th className="races-table-col-narrow races-table-col-count"># of people</th>
                         <th className="races-table-col-narrow">You</th>
                         <th className="races-table-col-action"> </th>
                       </>
@@ -726,7 +758,7 @@ const Races = () => {
                     {currentUser && isMember(currentUser) && (
                       <th className="races-table-col-edit"> </th>
                     )}
-                    {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
+                    {(currentUser && isAdmin(currentUser)) && (
                       <th className="races-table-col-admin"> </th>
                     )}
                   </tr>
@@ -740,12 +772,28 @@ const Races = () => {
                       className="races-table-row"
                       onClick={() => handleRaceClick(race.id)}
                     >
-                      <td className="races-table-col-date">{formatDateShort(race.date)}</td>
+                      <td className="races-table-col-date">{formatRaceTableDates(race)}</td>
                       <td className="races-table-col-name">
                         <span className="races-table-name">{race.name}</span>
                       </td>
                       <td className="races-table-col-event">
                         <span className="races-table-event">{race.event || '—'}</span>
+                      </td>
+                      <td
+                        className="races-table-col-ag"
+                        title={race.age_group_qualifying || undefined}
+                      >
+                        <span className="races-table-muted races-table-clip">
+                          {race.age_group_qualifying || '—'}
+                        </span>
+                      </td>
+                      <td
+                        className="races-table-col-course"
+                        title={race.course_profile || undefined}
+                      >
+                        <span className="races-table-muted races-table-clip">
+                          {race.course_profile || '—'}
+                        </span>
                       </td>
                       <td className="races-table-col-loc">
                         <span className="races-table-muted">{race.location || '—'}</span>
@@ -829,7 +877,7 @@ const Races = () => {
                           </button>
                         </td>
                       )}
-                      {(currentUser && (currentUser.role === 'exec' || currentUser.role === 'administrator')) && (
+                      {(currentUser && isAdmin(currentUser)) && (
                         <td className="races-table-col-admin">
                           <button
                             type="button"
@@ -937,6 +985,16 @@ const Races = () => {
                   required
                 />
               </div>
+
+              <div className="form-group">
+                <label htmlFor="raceEndDate">End date (optional)</label>
+                <input
+                  type="date"
+                  id="raceEndDate"
+                  value={addRaceForm.end_date}
+                  onChange={(e) => setAddRaceForm({ ...addRaceForm, end_date: e.target.value })}
+                />
+              </div>
               
               <div className="form-group">
                 <label htmlFor="raceLocation">Location</label>
@@ -1011,6 +1069,16 @@ const Races = () => {
                   value={editRaceForm.date}
                   onChange={(e) => setEditRaceForm({ ...editRaceForm, date: e.target.value })}
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRaceEndDate">End date (optional)</label>
+                <input
+                  type="date"
+                  id="editRaceEndDate"
+                  value={editRaceForm.end_date}
+                  onChange={(e) => setEditRaceForm({ ...editRaceForm, end_date: e.target.value })}
                 />
               </div>
 

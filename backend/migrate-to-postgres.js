@@ -190,11 +190,12 @@ async function migrateData() {
     
     for (const race of races) {
       await pgPool.query(`
-        INSERT INTO races (id, name, date, location, description, age_group_qualifying, course_profile, event, link, is_deleted, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        INSERT INTO races (id, name, date, end_date, location, description, age_group_qualifying, course_profile, event, link, is_deleted, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           date = EXCLUDED.date,
+          end_date = EXCLUDED.end_date,
           location = EXCLUDED.location,
           description = EXCLUDED.description,
           age_group_qualifying = EXCLUDED.age_group_qualifying,
@@ -206,7 +207,8 @@ async function migrateData() {
       `, [
         race.id, 
         race.name, 
-        race.date, 
+        race.date,
+        race.end_date || null,
         race.location || null, 
         race.description || null,
         race.age_group_qualifying || null,

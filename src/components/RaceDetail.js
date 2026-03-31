@@ -175,6 +175,14 @@ const RaceDetail = () => {
     }
   };
 
+  const formatRaceDateHeading = (r) => {
+    if (!r?.end_date) return formatDate(r.date);
+    const a = String(r.date).split('T')[0];
+    const b = String(r.end_date).split('T')[0];
+    if (!b || b <= a) return formatDate(r.date);
+    return `${formatDate(r.date)} – ${formatDate(r.end_date)}`;
+  };
+
   if (loading) {
     return (
       <div className="race-detail-container">
@@ -219,7 +227,7 @@ const RaceDetail = () => {
           </button>
           <div className="race-title-section">
             <h1>{race.name}</h1>
-            <div className="race-date">{formatDate(race.date)}</div>
+            <div className="race-date">{formatRaceDateHeading(race)}</div>
             {race.location && (
               <div className="race-location">
                 <h3>📍 Location</h3>
