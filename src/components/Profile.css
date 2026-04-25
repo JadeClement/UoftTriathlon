@@ -61,12 +61,57 @@
   background-color: #f8fafc;
 }
 
+.profile-top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.profile-top-bar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-top-bar-left .back-link {
+  margin-bottom: 0;
+}
+
+.profile-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .profile-info-section {
   padding-left: 1rem;
 }
 
 .profile-header {
   margin-bottom: 2rem;
+}
+
+.profile-years {
+  margin: 0.35rem 0 0;
+  font-size: 1.05rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.profile-years-edit-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .profile-years-edit-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .profile-actions {

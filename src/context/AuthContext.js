@@ -165,7 +165,9 @@ export const AuthProvider = ({ children }) => {
         ...user,
         charterAccepted: user.charter_accepted || user.charterAccepted,
         phoneNumber: user.phone_number || user.phoneNumber,
-        sport: user.sport // Preserve sport field
+        sport: user.sport,
+        joined_year: user.joined_year,
+        end_year: user.end_year
       };
       
       // Remove duplicate fields to keep only normalized versions
@@ -238,7 +240,10 @@ export const AuthProvider = ({ children }) => {
         bio: user.bio,
         sport: user.sport, // Preserve sport field
         resultsPublic: user.results_public !== undefined ? user.results_public : (user.resultsPublic !== undefined ? user.resultsPublic : false),
-        results_public: user.results_public !== undefined ? user.results_public : (user.resultsPublic !== undefined ? user.resultsPublic : false)
+        results_public: user.results_public !== undefined ? user.results_public : (user.resultsPublic !== undefined ? user.resultsPublic : false),
+        joined_year: user.joined_year,
+        end_year: user.end_year,
+        created_at: user.created_at
       };
       
       // Remove duplicate fields to keep only normalized versions
@@ -295,7 +300,10 @@ export const AuthProvider = ({ children }) => {
         bio: userData.bio,
         sport: userData.sport,
         resultsPublic: userData.results_public !== undefined ? userData.results_public : (userData.resultsPublic !== undefined ? userData.resultsPublic : false),
-        results_public: userData.results_public !== undefined ? userData.results_public : (userData.resultsPublic !== undefined ? userData.resultsPublic : false)
+        results_public: userData.results_public !== undefined ? userData.results_public : (userData.resultsPublic !== undefined ? userData.resultsPublic : false),
+        joined_year: userData.joined_year,
+        end_year: userData.end_year,
+        created_at: userData.created_at
       };
       
       // Remove duplicate fields to keep only normalized versions
@@ -468,8 +476,12 @@ export const AuthProvider = ({ children }) => {
           profilePictureUrl: user.profile_picture_url || user.profilePictureUrl,
           phoneNumber: user.phone_number || user.phoneNumber,
           bio: user.bio,
+          sport: user.sport,
           resultsPublic: user.results_public || user.resultsPublic || false,
-          results_public: user.results_public !== undefined ? user.results_public : (user.resultsPublic !== undefined ? user.resultsPublic : false)
+          results_public: user.results_public !== undefined ? user.results_public : (user.resultsPublic !== undefined ? user.resultsPublic : false),
+          joined_year: user.joined_year,
+          end_year: user.end_year,
+          created_at: user.created_at
         };
         
         setCurrentUser(normalizedUser);

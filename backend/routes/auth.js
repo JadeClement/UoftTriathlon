@@ -51,12 +51,13 @@ router.post('/register', async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create user
+    const signupYear = new Date().getFullYear();
+    // Create user — joined_year = year they signed up; end_year defaults to current calendar year
     const result = await pool.query(`
-      INSERT INTO users (name, email, password_hash, phone_number, role, sport, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-      RETURNING id, name, email, phone_number, role, sport
-    `, [name, email, hashedPassword, normalizedPhone, 'pending', 'triathlon']);
+      INSERT INTO users (name, email, password_hash, phone_number, role, sport, created_at, joined_year, end_year)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7, $7)
+      RETURNING id, name, email, phone_number, role, sport, joined_year, end_year
+    `, [name, email, hashedPassword, normalizedPhone, 'pending', 'triathlon', signupYear]);
 
     const user = result.rows[0];
 
@@ -80,7 +81,9 @@ router.post('/register', async (req, res) => {
         email: user.email,
         phone_number: user.phone_number,
         role: user.role,
-        sport: user.sport
+        sport: user.sport,
+        joined_year: user.joined_year,
+        end_year: user.end_year
       },
       token
     });
@@ -161,7 +164,10 @@ router.post('/login', async (req, res) => {
         phone_number: user.phone_number,
         sport: user.sport,
         results_public: user.results_public || false,
-        races_public: user.races_public || false
+        races_public: user.races_public || false,
+        joined_year: user.joined_year,
+        end_year: user.end_year,
+        created_at: user.created_at
       },
       token
     });
@@ -175,7 +181,8 @@ router.post('/login', async (req, res) => {
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
     const userResult = await pool.query(`
-      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, bio
+      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, bio,
+        joined_year, end_year, results_public, races_public
       FROM users 
       WHERE id = $1 AND is_active = true
     `, [req.user.id]);

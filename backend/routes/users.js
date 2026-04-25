@@ -64,7 +64,8 @@ router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     const userId = req.user.id;
 
     const userResult = await pool.query(`
-      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, results_public, races_public
+      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, results_public, races_public,
+        bio, joined_year, end_year
       FROM users 
       WHERE id = $1 AND is_active = true
     `, [userId]);
@@ -90,12 +91,27 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     console.log('🔍 Backend received request body:', req.body);
     console.log('🔍 Backend received headers:', req.headers);
     
-    const { name, email, phone_number, bio, results_public, races_public } = req.body;
-    console.log('🔍 Profile update route: Extracted data:', { name, email, phone_number, bio });
+    const { name, email, phone_number, bio, results_public, races_public, joined_year, end_year } = req.body;
+    console.log('🔍 Profile update route: Extracted data:', { name, email, phone_number, bio, joined_year, end_year });
 
     if (!name || !email) {
       console.log('❌ Backend validation failed:', { name, email, phone_number, bio });
       return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    const hasYearUpdate = joined_year !== undefined && end_year !== undefined;
+    if (hasYearUpdate) {
+      const jy = parseInt(joined_year, 10);
+      const ey = parseInt(end_year, 10);
+      if (Number.isNaN(jy) || Number.isNaN(ey)) {
+        return res.status(400).json({ error: 'Joined year and end year must be valid numbers' });
+      }
+      if (jy < 1990 || jy > 2100 || ey < 1990 || ey > 2100) {
+        return res.status(400).json({ error: 'Years must be between 1990 and 2100' });
+      }
+      if (jy > ey) {
+        return res.status(400).json({ error: 'Joined year cannot be after end year' });
+      }
     }
 
     console.log('🔍 Profile update route: Validation passed, checking email and phone uniqueness...');
@@ -134,6 +150,13 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     
     updates.push(`bio = $${++paramCount}`);
     values.push(bio || null);
+
+    if (hasYearUpdate) {
+      updates.push(`joined_year = $${++paramCount}`);
+      values.push(parseInt(joined_year, 10));
+      updates.push(`end_year = $${++paramCount}`);
+      values.push(parseInt(end_year, 10));
+    }
 
     if (results_public !== undefined) {
       updates.push(`results_public = $${++paramCount}`);

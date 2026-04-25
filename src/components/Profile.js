@@ -9,7 +9,7 @@ const Profile = () => {
   const params = useParams();
   const { role, name } = params;
   const navigate = useNavigate();
-  const { currentUser, updateUser, isMember } = useAuth();
+  const { currentUser, updateUser, isMember, refreshUserData } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -18,6 +18,8 @@ const Profile = () => {
   const [editedEmail, setEditedEmail] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
   const [editedBio, setEditedBio] = useState('');
+  const [editedJoinedYear, setEditedJoinedYear] = useState('');
+  const [editedEndYear, setEditedEndYear] = useState('');
   const [editedImage, setEditedImage] = useState('');
   const [saving, setSaving] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
@@ -130,6 +132,13 @@ const Profile = () => {
 
     loadTeamMembers();
   }, []);
+
+  useEffect(() => {
+    if (isUserProfile && currentUser?.id) {
+      refreshUserData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh once when opening own profile
+  }, [isUserProfile, currentUser?.id]);
   
   const handlePauseAccount = async () => {
     try {
@@ -265,6 +274,13 @@ const Profile = () => {
       console.log('  - Using URL:', profilePictureUrl);
       console.log('  - Final URL:', profileImage);
       
+      const calendarYear = new Date().getFullYear();
+      const yearFromAccount = currentUser.created_at
+        ? new Date(currentUser.created_at).getFullYear()
+        : calendarYear;
+      const joinedYear = currentUser.joined_year ?? yearFromAccount;
+      const endYear = currentUser.end_year ?? calendarYear;
+
       setUserProfile({
         id: currentUser.id,
         name: currentUser.name,
@@ -272,7 +288,9 @@ const Profile = () => {
         phone: currentUser.phone_number || currentUser.phone || currentUser.phoneNumber || '',
         image: profileImage,
         role: currentUser.role,
-        bio: currentUser.bio || '' // Include bio from currentUser
+        bio: currentUser.bio || '',
+        joined_year: joinedYear,
+        end_year: endYear
       });
       setLoading(false);
     } else if (role && teamMembers[role]) {
@@ -310,7 +328,10 @@ const Profile = () => {
       setEditedName(userProfile.name || '');
       setEditedEmail(userProfile.email || '');
       setEditedPhone(userProfile.phone || '');
-      setEditedBio(userProfile.bio || ''); // Initialize bio
+      setEditedBio(userProfile.bio || '');
+      const y = new Date().getFullYear();
+      setEditedJoinedYear(String(userProfile.joined_year ?? y));
+      setEditedEndYear(String(userProfile.end_year ?? y));
       setEditedImage(userProfile.image || '/images/default_profile.png');
     } else {
       console.log('⏭️ Skipping form initialization:', {
@@ -327,7 +348,10 @@ const Profile = () => {
     setEditedName(userProfile.name || '');
     setEditedEmail(userProfile.email || '');
     setEditedPhone(userProfile.phone || '');
-    setEditedBio(userProfile.bio || ''); // Set bio for editing
+    setEditedBio(userProfile.bio || '');
+    const y = new Date().getFullYear();
+    setEditedJoinedYear(String(userProfile.joined_year ?? y));
+    setEditedEndYear(String(userProfile.end_year ?? y));
     setEditedImage(userProfile.image || '/images/default_profile.png');
     setEditMode(true);
     setShowEditModal(true);
@@ -344,12 +368,22 @@ const Profile = () => {
         throw new Error('No authentication token found');
       }
 
+      const jy = parseInt(editedJoinedYear, 10);
+      const ey = parseInt(editedEndYear, 10);
+      if (Number.isNaN(jy) || Number.isNaN(ey) || jy < 1990 || jy > 2100 || ey < 1990 || ey > 2100 || jy > ey) {
+        setError('Please enter valid years (1990–2100, with joined year on or before end year).');
+        setSaving(false);
+        return;
+      }
+
       // First, update the text fields (name, email, phone)
       const profileData = {
         name: editedName,
         email: editedEmail,
         phone_number: formatPhoneNumber(editedPhone), // Format phone number before sending
-        bio: editedBio
+        bio: editedBio,
+        joined_year: jy,
+        end_year: ey
       };
 
       console.log('📝 Sending profile data:', profileData);
@@ -456,7 +490,9 @@ const Profile = () => {
         email: editedEmail,
         phone: editedPhone,
         image: finalImage,
-        bio: editedBio // Include bio in the update
+        bio: editedBio,
+        joined_year: jy,
+        end_year: ey
       };
       
       setUserProfile(prev => ({
@@ -470,7 +506,9 @@ const Profile = () => {
         name: editedName,
         email: editedEmail,
         phone_number: formatPhoneNumber(editedPhone),  // Format phone number before updating auth context
-        bio: editedBio // Include bio in the auth context update
+        bio: editedBio,
+        joined_year: jy,
+        end_year: ey
       };
       
       // Always update profile_picture_url with the backend URL (if we got a new one)
@@ -544,7 +582,10 @@ const Profile = () => {
       setEditedName(userProfile?.name || '');
       setEditedEmail(userProfile?.email || '');
       setEditedPhone(userProfile?.phone || '');
-      setEditedBio(userProfile?.bio || ''); // Reset bio on cancel
+      setEditedBio(userProfile?.bio || '');
+      const y = new Date().getFullYear();
+      setEditedJoinedYear(String(userProfile?.joined_year ?? y));
+      setEditedEndYear(String(userProfile?.end_year ?? y));
       setEditedImage(userProfile?.image || '/images/default_profile.png');
     }
   };
@@ -590,11 +631,27 @@ const Profile = () => {
       onTouchEnd={handleTouchEnd}
     >
       <div className="container">
-        {isUserProfile ? (
-          <Link to="/dashboard" className="back-link">← Back to Dashboard</Link>
-        ) : (
-          <Link to="/coaches-exec" className="back-link">← Back to Team</Link>
-        )}
+        <div className="profile-top-bar">
+          <div className="profile-top-bar-left">
+            {isUserProfile ? (
+              <Link to="/dashboard" className="back-link">← Back to Dashboard</Link>
+            ) : (
+              <Link to="/coaches-exec" className="back-link">← Back to Team</Link>
+            )}
+          </div>
+          {isUserProfile && (
+            <div className="profile-toolbar">
+              {currentUser && isMember(currentUser) && (
+                <Link to="/results" className="btn btn-secondary">
+                  View Results
+                </Link>
+              )}
+              <button type="button" className="btn btn-edit" onClick={handleEdit}>
+                Edit Profile
+              </button>
+            </div>
+          )}
+        </div>
         
         <div className="profile-content">
           <div className="profile-image-section">
@@ -621,20 +678,10 @@ const Profile = () => {
             <div className="profile-header">
               <h1 className="profile-name">{userProfile.name}</h1>
               <h2 className="profile-role">{userProfile.role}</h2>
-              {isUserProfile && (
-                <div className="profile-actions">
-                  {currentUser && isMember(currentUser) && (
-                    <Link to="/results" className="btn btn-secondary" style={{ marginRight: '0.5rem' }}>
-                      View Results
-                    </Link>
-                  )}
-                  <button 
-                    className="btn btn-edit" 
-                    onClick={handleEdit}
-                  >
-                    Edit Profile
-                  </button>
-                </div>
+              {isUserProfile && userProfile.joined_year != null && userProfile.end_year != null && (
+                <p className="profile-years">
+                  {userProfile.joined_year}–{userProfile.end_year}
+                </p>
               )}
             </div>
             
@@ -766,6 +813,39 @@ const Profile = () => {
                       className="form-input"
                       placeholder="Enter your bio..."
                     />
+                  </div>
+
+                  <div className="profile-years-edit-row">
+                    <div className="form-group">
+                      <label htmlFor="joined-year-input" className="form-label">Joined year:</label>
+                      <input
+                        id="joined-year-input"
+                        type="number"
+                        min={1990}
+                        max={2100}
+                        value={editedJoinedYear}
+                        onChange={(e) => {
+                          setEditedJoinedYear(e.target.value);
+                          if (error) setError('');
+                        }}
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="end-year-input" className="form-label">End year:</label>
+                      <input
+                        id="end-year-input"
+                        type="number"
+                        min={1990}
+                        max={2100}
+                        value={editedEndYear}
+                        onChange={(e) => {
+                          setEditedEndYear(e.target.value);
+                          if (error) setError('');
+                        }}
+                        className="form-input"
+                      />
+                    </div>
                   </div>
                   
                   <div className="edit-actions">

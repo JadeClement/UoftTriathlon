@@ -594,6 +594,27 @@ async function initializeDatabase() {
       console.log('ℹ️  races_public column may already exist in users table');
     }
 
+    // Profile years: season on team (editable on profile)
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS joined_year INTEGER
+      `);
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS end_year INTEGER
+      `);
+      await pool.query(`
+        UPDATE users SET joined_year = EXTRACT(YEAR FROM created_at)::int WHERE joined_year IS NULL
+      `);
+      await pool.query(`
+        UPDATE users SET end_year = EXTRACT(YEAR FROM CURRENT_DATE)::int WHERE end_year IS NULL
+      `);
+      console.log('✅ joined_year/end_year columns on users table (or already exist)');
+    } catch (error) {
+      console.error('❌ Error adding joined_year/end_year:', error.message);
+    }
+
     // Create merch_orders table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS merch_orders (
