@@ -37,6 +37,17 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* First row inside the card: actions aligned top-right */
+.profile-content-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: -0.25rem 0 0.25rem;
+}
+
 .profile-image-section {
   text-align: center;
   background-color: #1976d3;
@@ -62,29 +73,11 @@
 }
 
 .profile-top-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
   margin-bottom: 1rem;
 }
 
-.profile-top-bar-left {
-  flex: 1;
-  min-width: 0;
-}
-
-.profile-top-bar-left .back-link {
+.profile-top-bar .back-link {
   margin-bottom: 0;
-}
-
-.profile-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
 }
 
 .profile-info-section {
@@ -414,6 +407,11 @@
     width: 100%;
     margin-right: 0;
     margin-bottom: 0.5rem;
+  }
+
+  .profile-content-toolbar .btn {
+    width: auto;
+    margin-bottom: 0;
   }
   
   .image-preview {

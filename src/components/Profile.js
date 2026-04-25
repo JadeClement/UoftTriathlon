@@ -632,15 +632,16 @@ const Profile = () => {
     >
       <div className="container">
         <div className="profile-top-bar">
-          <div className="profile-top-bar-left">
-            {isUserProfile ? (
-              <Link to="/dashboard" className="back-link">← Back to Dashboard</Link>
-            ) : (
-              <Link to="/coaches-exec" className="back-link">← Back to Team</Link>
-            )}
-          </div>
+          {isUserProfile ? (
+            <Link to="/dashboard" className="back-link">← Back to Dashboard</Link>
+          ) : (
+            <Link to="/coaches-exec" className="back-link">← Back to Team</Link>
+          )}
+        </div>
+        
+        <div className="profile-content">
           {isUserProfile && (
-            <div className="profile-toolbar">
+            <div className="profile-content-toolbar">
               {currentUser && isMember(currentUser) && (
                 <Link to="/results" className="btn btn-secondary">
                   View Results
@@ -651,9 +652,6 @@ const Profile = () => {
               </button>
             </div>
           )}
-        </div>
-        
-        <div className="profile-content">
           <div className="profile-image-section">
             <img 
               src={editMode ? (editedImage || userProfile.image || '/images/default_profile.png') : (userProfile.image || '/images/default_profile.png')} 
