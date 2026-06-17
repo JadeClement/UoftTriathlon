@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
@@ -1330,6 +1330,18 @@ const Forum = () => {
     return d.toLocaleDateString(undefined, { timeZone: 'UTC' });
   };
 
+  const sortedEventPosts = useMemo(() => {
+    return [...eventPosts].sort((a, b) => {
+      const da = a?.event_date
+        ? parseDateOnlyUTC(a.event_date)
+        : (a?.created_at ? new Date(a.created_at) : new Date(0));
+      const db = b?.event_date
+        ? parseDateOnlyUTC(b.event_date)
+        : (b?.created_at ? new Date(b.created_at) : new Date(0));
+      return db - da;
+    });
+  }, [eventPosts]);
+
   // Helpers for date filtering
   const isPast = (dateStr) => {
     try {
@@ -1947,11 +1959,11 @@ const Forum = () => {
               </div>
             </div>
 
-            {eventPosts.length === 0 ? (
+            {sortedEventPosts.length === 0 ? (
               <p className="no-posts">{eventsLoadingFromCache ? 'Events loading...' : 'No event posts yet.'}</p>
             ) : (
               <div className="posts-list">
-                {eventPosts.map(post => (
+                {sortedEventPosts.map(post => (
                   <div key={post.id} className="post-card event-post" onClick={() => window.location.href = `/event/${post.id}`}>
                     <div className="post-header">
                       {editingEvent === post.id ? (

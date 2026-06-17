@@ -107,7 +107,11 @@ router.get('/posts', authenticateToken, requireMember, async (req, res) => {
       JOIN users u ON fp.user_id = u.id
       ${whereClause}
       ORDER BY 
-        CASE WHEN fp.type = 'workout' AND fp.workout_date IS NOT NULL THEN fp.workout_date ELSE fp.created_at END DESC
+        CASE 
+          WHEN fp.type = 'workout' AND fp.workout_date IS NOT NULL THEN fp.workout_date::timestamptz
+          WHEN fp.type = 'event' AND fp.event_date IS NOT NULL THEN fp.event_date::timestamptz
+          ELSE fp.created_at
+        END DESC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `, [...params, limit, offset]);
     
