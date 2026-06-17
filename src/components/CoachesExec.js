@@ -400,39 +400,6 @@ const CoachesExec = () => {
               {(isAdmin(currentUser) || isExec(currentUser)) && (
                 <button 
                   className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('co-president'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/co-president/jade-clement" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img 
-                        src={teamMembers['co-president']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['co-president']?.name || 'Co-President'} - Co-President`}
-                      />
-                    </div>
-                    <span className="exec-emoji">👑</span>
-                  </div>
-                  <h3>Co-President</h3>
-                  <p className="exec-name">{teamMembers['co-president']?.name || 'Co-President'}</p>
-                  {teamMembers['co-president']?.email && (
-                    <p className="exec-email">{teamMembers['co-president']?.email}</p>
-                  )}
-                  <p className="exec-bio">
-                    {getBioPreview('co-president')}
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('co-president-2'); }}
                   title="Edit profile"
                 >
@@ -655,6 +622,45 @@ const CoachesExec = () => {
                   )}
                   <p className="exec-bio">
                     {getBioPreview('workout-coordinator')}
+                  </p>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Past Presidents Section */}
+        <div className="exec-team-section">
+          <h2 className="section-subtitle">Past Presidents</h2>
+          <div className="exec-grid">
+            <div className="exec-card-container">
+              {(isAdmin(currentUser) || isExec(currentUser)) && (
+                <button
+                  className="edit-button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('co-president'); }}
+                  title="Edit profile"
+                >
+                  ✏️
+                </button>
+              )}
+              <Link to="/profile/co-president/jade-clement" className="exec-card-link">
+                <div className="exec-card">
+                  <div className="exec-avatar">
+                    <div className="exec-photo">
+                      <img
+                        src={teamMembers['co-president']?.image || "/images/icon.png"}
+                        alt={`${teamMembers['co-president']?.name || 'Past President'} - Past President`}
+                      />
+                    </div>
+                    <span className="exec-emoji">👑</span>
+                  </div>
+                  <h3>Past President</h3>
+                  <p className="exec-name">{teamMembers['co-president']?.name || 'Past President'}</p>
+                  {teamMembers['co-president']?.email && (
+                    <p className="exec-email">{teamMembers['co-president']?.email}</p>
+                  )}
+                  <p className="exec-bio">
+                    {getBioPreview('co-president')}
                   </p>
                 </div>
               </Link>
