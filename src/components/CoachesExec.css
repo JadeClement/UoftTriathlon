@@ -210,7 +210,6 @@
   height: 100%; /* Make all cards in the same row equal height */
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   min-height: 350px; /* Ensure consistent minimum height */
 }
 
@@ -269,6 +268,7 @@
   color: #6B7280;
   margin: 0.25rem 0 0.5rem 0;
   font-style: italic;
+  min-height: 1.35rem;
 }
 
 .exec-bio {
@@ -278,6 +278,7 @@
   height: 60px; /* Fixed height for consistent card sizing */
   overflow: hidden;
   text-align: left;
+  margin-top: auto;
 }
 
 /* Contact Section */

@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { showError } from './SimpleNotification';
 import './CoachesExec.css';
 
+const PAST_PRESIDENTS = [
+  { id: 'co-president', slug: 'jade-clement', years: '2025-26', emoji: '👑' },
+];
+
 const CoachesExec = () => {
   const location = useLocation();
   const { currentUser, isAdmin, isExec, isCoach } = useAuth();
@@ -419,9 +423,7 @@ const CoachesExec = () => {
                   </div>
                   <h3>Co-President</h3>
                   <p className="exec-name">{teamMembers['co-president-2']?.name || 'Co-President'}</p>
-                  {teamMembers['co-president-2']?.email && (
-                    <p className="exec-email">{teamMembers['co-president-2']?.email}</p>
-                  )}
+                  <p className="exec-email">{teamMembers['co-president-2']?.email || '\u00A0'}</p>
                   <p className="exec-bio">
                     {getBioPreview('co-president-2')}
                   </p>
@@ -452,9 +454,7 @@ const CoachesExec = () => {
                   </div>
                   <h3>Treasurer</h3>
                   <p className="exec-name">{teamMembers['treasurer']?.name || 'Treasurer'}</p>
-                  {teamMembers['treasurer']?.email && (
-                    <p className="exec-email">{teamMembers['treasurer']?.email}</p>
-                  )}
+                  <p className="exec-email">{teamMembers['treasurer']?.email || '\u00A0'}</p>
                   <p className="exec-bio">
                     {getBioPreview('treasurer')}
                   </p>
@@ -485,9 +485,7 @@ const CoachesExec = () => {
                   </div>
                   <h3>Secretary</h3>
                   <p className="exec-name">{teamMembers['secretary']?.name || 'Secretary'}</p>
-                  {teamMembers['secretary']?.email && (
-                    <p className="exec-email">{teamMembers['secretary']?.email}</p>
-                  )}
+                  <p className="exec-email">{teamMembers['secretary']?.email || '\u00A0'}</p>
                   <p className="exec-bio">
                     {getBioPreview('secretary')}
                   </p>
@@ -518,9 +516,7 @@ const CoachesExec = () => {
                   </div>
                   <h3>Social Coordinator/Recruitment</h3>
                   <p className="exec-name">{teamMembers['social-coordinator']?.name || 'Social Coordinator'}</p>
-                  {teamMembers['social-coordinator']?.email && (
-                    <p className="exec-email">{teamMembers['social-coordinator']?.email}</p>
-                  )}
+                  <p className="exec-email">{teamMembers['social-coordinator']?.email || '\u00A0'}</p>
                   <p className="exec-bio">
                     {getBioPreview('social-coordinator')}
                   </p>
@@ -551,9 +547,7 @@ const CoachesExec = () => {
                   </div>
                   <h3>Social Media Manager</h3>
                   <p className="exec-name">{teamMembers['social-media']?.name || 'Social Media Manager'}</p>
-                  {teamMembers['social-media']?.email && (
-                    <p className="exec-email">{teamMembers['social-media']?.email}</p>
-                  )}
+                  <p className="exec-email">{teamMembers['social-media']?.email || '\u00A0'}</p>
                   <p className="exec-bio">
                     {getBioPreview('social-media')}
                   </p>
@@ -584,9 +578,7 @@ const CoachesExec = () => {
                   </div>
                   <h3>Webmaster</h3>
                   <p className="exec-name">{teamMembers['webmaster']?.name || 'Webmaster'}</p>
-                  {teamMembers['webmaster']?.email && (
-                    <p className="exec-email">{teamMembers['webmaster']?.email}</p>
-                  )}
+                  <p className="exec-email">{teamMembers['webmaster']?.email || '\u00A0'}</p>
                   <p className="exec-bio">
                     {getBioPreview('webmaster')}
                   </p>
@@ -617,9 +609,7 @@ const CoachesExec = () => {
                   </div>
                   <h3>Workout/Race Coordinator</h3>
                   <p className="exec-name">{teamMembers['workout-coordinator']?.name || 'TBD'}</p>
-                  {teamMembers['workout-coordinator']?.email && (
-                    <p className="exec-email">{teamMembers['workout-coordinator']?.email}</p>
-                  )}
+                  <p className="exec-email">{teamMembers['workout-coordinator']?.email || '\u00A0'}</p>
                   <p className="exec-bio">
                     {getBioPreview('workout-coordinator')}
                   </p>
@@ -633,38 +623,38 @@ const CoachesExec = () => {
         <div className="exec-team-section">
           <h2 className="section-subtitle">Past Presidents</h2>
           <div className="exec-grid">
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button
-                  className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('co-president'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/co-president/jade-clement" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img
-                        src={teamMembers['co-president']?.image || "/images/icon.png"}
-                        alt={`${teamMembers['co-president']?.name || 'Past President'} - Past President`}
-                      />
+            {PAST_PRESIDENTS.map(({ id, slug, years, emoji }) => (
+              <div key={id} className="exec-card-container">
+                {(isAdmin(currentUser) || isExec(currentUser)) && (
+                  <button
+                    className="edit-button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick(id); }}
+                    title="Edit profile"
+                  >
+                    ✏️
+                  </button>
+                )}
+                <Link to={`/profile/${id}/${slug}`} className="exec-card-link">
+                  <div className="exec-card">
+                    <div className="exec-avatar">
+                      <div className="exec-photo">
+                        <img
+                          src={teamMembers[id]?.image || "/images/icon.png"}
+                          alt={`${teamMembers[id]?.name || years} - ${years}`}
+                        />
+                      </div>
+                      <span className="exec-emoji">{emoji}</span>
                     </div>
-                    <span className="exec-emoji">👑</span>
+                    <h3>{years}</h3>
+                    <p className="exec-name">{teamMembers[id]?.name || 'Past President'}</p>
+                    <p className="exec-email">{teamMembers[id]?.email || '\u00A0'}</p>
+                    <p className="exec-bio">
+                      {getBioPreview(id)}
+                    </p>
                   </div>
-                  <h3>Past President</h3>
-                  <p className="exec-name">{teamMembers['co-president']?.name || 'Past President'}</p>
-                  {teamMembers['co-president']?.email && (
-                    <p className="exec-email">{teamMembers['co-president']?.email}</p>
-                  )}
-                  <p className="exec-bio">
-                    {getBioPreview('co-president')}
-                  </p>
-                </div>
-              </Link>
-            </div>
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
 
