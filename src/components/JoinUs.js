@@ -42,15 +42,50 @@ const JoinUs = () => {
 
   const handleNavClick = useCallback((e, targetId) => {
     e.preventDefault();
-    const target = document.getElementById(targetId);
-    if (!target) return;
-    // Keep CSS vars fresh, then scroll using the exact measured offset.
+    const box = document.getElementById(targetId);
+    if (!box) return;
     applyOffsetVars();
-    const { total } = getHeaderOffset();
+
+    const GAP = 12; // breathing room below the header
+
+    // Live-measure the bottom of whatever is actually pinned to the top of the
+    // viewport: the fixed navbar always, plus the in-page section nav ONLY if it
+    // is genuinely stuck at the top (sticky can be disabled by ancestor overflow).
+    const getHeaderBottom = () => {
+      const navbar = document.querySelector('.navbar');
+      let bottom = navbar ? navbar.getBoundingClientRect().bottom : 0;
+      const sectionNav = navRef.current;
+      if (sectionNav) {
+        const r = sectionNav.getBoundingClientRect();
+        if (r.top <= bottom + 1 && r.bottom > bottom) bottom = r.bottom;
+      }
+      return bottom;
+    };
+
+    // Top of the section's heading (falls back to the section box).
+    const getHeadingTop = () => {
+      const heading = box.querySelector('h1, h2, h3') || box;
+      return heading.getBoundingClientRect().top;
+    };
+
+    // 1) Smooth-scroll to a good first estimate.
     const scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
-    const top = target.getBoundingClientRect().top + scrollY - total;
-    window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
-  }, [applyOffsetVars, getHeaderOffset]);
+    const estimate = getHeadingTop() + scrollY - (getHeaderBottom() + GAP);
+    window.scrollTo({ top: Math.max(estimate, 0), behavior: 'smooth' });
+
+    // 2) After the smooth scroll settles, correct for any residual so the title
+    //    lands exactly below the header (handles sticky headers + layout shifts).
+    let tries = 0;
+    const correct = () => {
+      const delta = getHeadingTop() - (getHeaderBottom() + GAP);
+      if (Math.abs(delta) > 2 && tries < 20) {
+        window.scrollBy({ top: delta, left: 0, behavior: 'auto' });
+        tries += 1;
+        setTimeout(correct, 60);
+      }
+    };
+    setTimeout(correct, 380);
+  }, [applyOffsetVars]);
 
   useEffect(() => {
     const nav = navRef.current;
