@@ -1,10 +1,56 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './JoinUs.css';
 
 const JoinUs = () => {
   const [isSticky, setIsSticky] = useState(false);
   const navRef = useRef(null);
+  const containerRef = useRef(null);
   const navInitialTopRef = useRef(null);
+
+  // Measure the real, rendered heights of the fixed navbar and the sticky
+  // in-page section nav so we can offset anchor scrolling by the exact amount.
+  // This works on any device/size (browser, iOS, Android incl. safe areas)
+  // instead of relying on hardcoded pixel guesses.
+  const getHeaderOffset = useCallback(() => {
+    const navbar = document.querySelector('.navbar');
+    const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 0;
+    const sectionNav = navRef.current;
+    const sectionNavHeight = sectionNav ? sectionNav.getBoundingClientRect().height : 0;
+    const GAP = 12; // small breathing room below the header
+    return { navbarHeight, sectionNavHeight, total: navbarHeight + sectionNavHeight + GAP };
+  }, []);
+
+  // Expose the measured offset to CSS so sticky positions + scroll-margin
+  // stay in sync with the JS scroll math (and provide a no-JS fallback).
+  const applyOffsetVars = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const { navbarHeight, total } = getHeaderOffset();
+    el.style.setProperty('--joinus-navbar-height', `${navbarHeight}px`);
+    el.style.setProperty('--joinus-scroll-offset', `${total}px`);
+  }, [getHeaderOffset]);
+
+  useEffect(() => {
+    applyOffsetVars();
+    window.addEventListener('resize', applyOffsetVars);
+    window.addEventListener('orientationchange', applyOffsetVars);
+    return () => {
+      window.removeEventListener('resize', applyOffsetVars);
+      window.removeEventListener('orientationchange', applyOffsetVars);
+    };
+  }, [applyOffsetVars]);
+
+  const handleNavClick = useCallback((e, targetId) => {
+    e.preventDefault();
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    // Keep CSS vars fresh, then scroll using the exact measured offset.
+    applyOffsetVars();
+    const { total } = getHeaderOffset();
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    const top = target.getBoundingClientRect().top + scrollY - total;
+    window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+  }, [applyOffsetVars, getHeaderOffset]);
 
   useEffect(() => {
     const nav = navRef.current;
@@ -18,13 +64,13 @@ const JoinUs = () => {
 
     const handleScroll = () => {
       if (!nav) return;
-      
-      // Account for mobile navbar height
-      const navbarHeight = window.innerWidth <= 768 ? 100 : 70;
-      
+
+      // Use the real navbar height rather than a hardcoded guess
+      const { navbarHeight } = getHeaderOffset();
+
       const scrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY;
       const shouldBeSticky = scrollY >= navInitialTopRef.current - navbarHeight;
-      
+
       setIsSticky(shouldBeSticky);
     };
 
@@ -50,18 +96,18 @@ const JoinUs = () => {
       document.removeEventListener('scroll', handleScroll);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [getHeaderOffset]);
 
   return (
-    <div className="join-us-container">
+    <div className="join-us-container" ref={containerRef}>
       <div className="container">
         <h1 className="section-title">Join Us!</h1>
         
         <div ref={navRef} className={`section-navigation ${isSticky ? 'sticky' : ''}`}>
-          <a href="#goal" className="nav-link">Goal</a>
-          <a href="#who-can-join" className="nav-link">Who Can Join</a>
-          <a href="#how-to-join" className="nav-link">How to Join</a>
-          <a href="#team-charter" className="nav-link">Team Charter</a>
+          <a href="#goal" className="nav-link" onClick={(e) => handleNavClick(e, 'goal')}>Goal</a>
+          <a href="#who-can-join" className="nav-link" onClick={(e) => handleNavClick(e, 'who-can-join')}>Who Can Join</a>
+          <a href="#how-to-join" className="nav-link" onClick={(e) => handleNavClick(e, 'how-to-join')}>How to Join</a>
+          <a href="#team-charter" className="nav-link" onClick={(e) => handleNavClick(e, 'team-charter')}>Team Charter</a>
         </div>
         
         <div id="goal" className="goal-section">

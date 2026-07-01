@@ -20,6 +20,8 @@ const MobileNav = () => {
   // Only show in native Capacitor apps (iOS/Android), not in browsers
   // Use Capacitor.isNativePlatform() to properly detect native app vs browser
   const isNativeApp = Capacitor.isNativePlatform();
+  // Android's gesture/nav bar isn't covered by safe-area insets, so flag it
+  const isAndroid = Capacitor.getPlatform() === 'android';
 
   const handleNavClick = (path) => {
     hapticSelection();
@@ -63,7 +65,7 @@ const MobileNav = () => {
   return (
     <>
       <nav 
-        className="mobile-nav capacitor-nav mobile-nav-visible"
+        className={`mobile-nav capacitor-nav mobile-nav-visible ${isAndroid ? 'capacitor-android-nav' : ''}`}
         role="navigation" 
         aria-label="Main navigation"
       >

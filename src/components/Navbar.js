@@ -147,6 +147,16 @@ const Navbar = () => {
     loadBanner();
   }, [API_BASE_URL]);
 
+  // Add class on body for Android so status-bar spacing applies to content padding
+  useEffect(() => {
+    if (Capacitor.getPlatform() === 'android') {
+      document.body.classList.add('capacitor-android-body');
+    }
+    return () => {
+      document.body.classList.remove('capacitor-android-body');
+    };
+  }, []);
+
   // Add/remove class on body for iOS banner at bottom
   useEffect(() => {
     const isIOS = Capacitor.getPlatform() === 'ios';
@@ -505,6 +515,8 @@ const Navbar = () => {
   const isNativeApp = Capacitor.isNativePlatform();
   // Check if iOS specifically
   const isIOS = Capacitor.getPlatform() === 'ios';
+  // Check if Android specifically (safe-area insets aren't reliable there)
+  const isAndroid = Capacitor.getPlatform() === 'android';
 
   return (
     <>
@@ -548,7 +560,7 @@ const Navbar = () => {
         </div>
       </div>
     )}
-    <nav className={`navbar ${isNativeApp ? 'capacitor-navbar' : ''}`} style={{ marginTop: (banner.enabled && (banner.items?.length > 0) && !isIOS) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
+    <nav className={`navbar ${isNativeApp ? 'capacitor-navbar' : ''} ${isAndroid ? 'capacitor-android' : ''}`} style={{ marginTop: (banner.enabled && (banner.items?.length > 0) && !isIOS) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
       <div className="navbar-container" ref={navbarContainerRef}>
         <Link to="/" className="navbar-logo" onClick={closeMenu} ref={logoRef}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />

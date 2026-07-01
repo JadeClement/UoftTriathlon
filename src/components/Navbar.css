@@ -2,6 +2,11 @@
   --navbar-height: 70px;
   --navbar-height-mobile: 50px; /* Compact height for mobile, safe area inset handles status bar spacing */
   --banner-offset: 0px;
+  /* Android WebView doesn't report safe-area-inset-top reliably, so use a fixed
+     status-bar allowance to push the logo/profile below the time & battery. */
+  --android-status-bar: 28px;
+  /* Same story at the bottom for the Android gesture/navigation bar. */
+  --android-nav-bar: 24px;
 }
 
 /* Site Banner Styles */
@@ -236,6 +241,12 @@
     height: calc(var(--navbar-height-mobile) + env(safe-area-inset-top, 0px)) !important;
     min-height: calc(var(--navbar-height-mobile) + env(safe-area-inset-top, 0px)) !important;
   }
+
+  /* Android: add a fixed status-bar allowance since safe-area insets report 0 */
+  .navbar.capacitor-android {
+    height: calc(var(--navbar-height-mobile) + var(--android-status-bar)) !important;
+    min-height: calc(var(--navbar-height-mobile) + var(--android-status-bar)) !important;
+  }
   
   .navbar-container {
     position: absolute !important;
@@ -256,6 +267,11 @@
   .navbar.capacitor-navbar .navbar-container {
     height: var(--navbar-height-mobile) !important;
     min-height: var(--navbar-height-mobile) !important;
+  }
+
+  /* Android: push the container (logo + profile) below the status bar */
+  .navbar.capacitor-android .navbar-container {
+    top: var(--android-status-bar) !important;
   }
   
   /* Hide the title text on mobile */

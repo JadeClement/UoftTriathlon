@@ -21,6 +21,11 @@ body {
   body {
     padding-top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px)); /* Use taller navbar on mobile, account for safe area */
   }
+
+  /* Android: safe-area insets report 0, so add the fixed status-bar allowance */
+  body.capacitor-android-body {
+    padding-top: calc(var(--navbar-height-mobile, 100px) + var(--android-status-bar, 28px));
+  }
 }
 
 .App {

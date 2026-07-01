@@ -31,7 +31,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   flex-wrap: wrap;
   position: sticky;
-  top: 70px; /* Below navbar */
+  top: var(--joinus-navbar-height, 70px); /* Sits right below the fixed navbar (measured at runtime) */
   z-index: 100;
   transition: box-shadow 0.3s ease;
   /* Force hardware acceleration for better performance in WebView */
@@ -76,7 +76,7 @@
   margin-bottom: 1rem;
   font-weight: 600;
   position: sticky;
-  top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px) + 80px); /* Below navbar + sticky nav */
+  top: var(--joinus-scroll-offset, 180px); /* Below navbar + sticky section nav (measured at runtime) */
   z-index: 50;
   background: white;
   padding: 1rem 0;
@@ -96,19 +96,7 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
   text-align: center;
-  scroll-margin-top: 200px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
-}
-
-/* Desktop: Nav is single row, less height needed */
-@media (min-width: 769px) {
-  .goal-section {
-    scroll-margin-top: 160px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
-  }
-  
-  .goal-title,
-  .section-subtitle {
-    top: calc(var(--navbar-height, 70px) + 80px); /* Desktop navbar height */
-  }
+  scroll-margin-top: var(--joinus-scroll-offset, 180px); /* Land the title just below the header (measured at runtime) */
 }
 
 .goal-title {
@@ -117,7 +105,7 @@
   margin-bottom: 1rem;
   font-weight: 600;
   position: sticky;
-  top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px) + 80px); /* Below navbar + sticky nav */
+  top: var(--joinus-scroll-offset, 180px); /* Below navbar + sticky section nav (measured at runtime) */
   z-index: 50;
   background: white;
   padding: 1rem 0;
@@ -144,15 +132,9 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
-  scroll-margin-top: 200px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
+  scroll-margin-top: var(--joinus-scroll-offset, 180px); /* Land the title just below the header (measured at runtime) */
   position: relative;
   overflow: visible; /* Allow sticky titles to work */
-}
-
-@media (min-width: 769px) {
-  .who-can-join-section {
-    scroll-margin-top: 160px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
-  }
 }
 
 .membership-info p {
@@ -225,13 +207,7 @@
   margin-bottom: 2rem;
   position: relative;
   overflow: visible; /* Allow sticky titles to work */
-  scroll-margin-top: 180px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
-}
-
-@media (min-width: 769px) {
-  .charter-section {
-    scroll-margin-top: 150px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
-  }
+  scroll-margin-top: var(--joinus-scroll-offset, 180px); /* Land the title just below the header (measured at runtime) */
 }
 
 .charter-notice {
@@ -308,15 +284,9 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
-  scroll-margin-top: 220px; /* Mobile: Account for navbar (70px) + sticky nav 2 rows (~100px) + extra space */
+  scroll-margin-top: var(--joinus-scroll-offset, 180px); /* Land the title just below the header (measured at runtime) */
   position: relative;
   overflow: visible; /* Allow sticky titles to work */
-}
-
-@media (min-width: 769px) {
-  .joining-instructions-section {
-    scroll-margin-top: 170px; /* Desktop: navbar (70px) + sticky nav 1 row (~70px) + extra space */
-  }
 }
 
 .step-container {
