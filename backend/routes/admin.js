@@ -286,14 +286,20 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
     }
 
     if (phone_number !== undefined) {
-      // Validate phone number format (10 digits)
-      const phoneDigitsOnly = phone_number.replace(/\D/g, '');
-      if (phoneDigitsOnly.length !== 10) {
-        return res.status(400).json({ error: 'Please enter a valid 10-digit phone number' });
+      const trimmedPhone = String(phone_number || '').trim();
+      if (trimmedPhone === '') {
+        paramCount++;
+        updates.push(`phone_number = $${paramCount}`);
+        values.push(null);
+      } else {
+        const phoneDigitsOnly = trimmedPhone.replace(/\D/g, '');
+        if (phoneDigitsOnly.length !== 10) {
+          return res.status(400).json({ error: 'Please enter a valid 10-digit phone number' });
+        }
+        paramCount++;
+        updates.push(`phone_number = $${paramCount}`);
+        values.push(trimmedPhone);
       }
-      paramCount++;
-      updates.push(`phone_number = $${paramCount}`);
-      values.push(phone_number);
     }
 
     if (role !== undefined) {

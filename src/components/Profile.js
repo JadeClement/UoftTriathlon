@@ -358,7 +358,9 @@ const Profile = () => {
       const profileData = {
         name: editedName,
         email: editedEmail,
-        phone_number: formatPhoneNumber(editedPhone), // Format phone number before sending
+        phone_number: editedPhone?.trim()
+          ? formatPhoneNumber(editedPhone)
+          : null,
         bio: editedBio,
         joined_year: jy,
         end_year: ey
@@ -499,7 +501,9 @@ const Profile = () => {
       const authUpdateData = {
         name: editedName,
         email: editedEmail,
-        phone_number: formatPhoneNumber(editedPhone),  // Format phone number before updating auth context
+        phone_number: editedPhone?.trim()
+          ? formatPhoneNumber(editedPhone)
+          : null,
         bio: editedBio,
         joined_year: jy,
         end_year: ey

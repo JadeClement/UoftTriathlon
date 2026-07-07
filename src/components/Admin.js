@@ -1410,7 +1410,9 @@ const Admin = () => {
       name: editForm.name,
       email: editForm.email,
       role: editForm.role,
-      phone_number: formatPhoneNumber(editForm.phoneNumber), // Format phone number before sending and map to backend field name
+      phone_number: editForm.phoneNumber?.trim()
+        ? formatPhoneNumber(editForm.phoneNumber)
+        : null,
       charterAccepted: editForm.charterAccepted ? 1 : 0,
       sport: editForm.sport || 'triathlon',
       term_id: editForm.term_id || null
