@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmModal from './ConfirmModal';
 import './Profile.css';
+
+const DEFAULT_PROFILE_IMAGE = '/images/default_profile.png';
 
 const Profile = () => {
   const params = useParams();
@@ -19,6 +21,8 @@ const Profile = () => {
   const [editedJoinedYear, setEditedJoinedYear] = useState('');
   const [editedEndYear, setEditedEndYear] = useState('');
   const [editedImage, setEditedImage] = useState('');
+  const [removeProfileImage, setRemoveProfileImage] = useState(false);
+  const profileImageInputRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [justSaved, setJustSaved] = useState(false);
@@ -299,6 +303,7 @@ const Profile = () => {
     
     setJustSaved(false); // Reset the flag when starting to edit
     setError(''); // Clear any previous errors
+    setRemoveProfileImage(false);
     setEditedName(userProfile.name || '');
     setEditedEmail(userProfile.email || '');
     setEditedPhone(userProfile.phone || '');
@@ -306,9 +311,28 @@ const Profile = () => {
     const y = new Date().getFullYear();
     setEditedJoinedYear(String(userProfile.joined_year ?? y));
     setEditedEndYear(String(userProfile.end_year ?? y));
-    setEditedImage(userProfile.image || '/images/default_profile.png');
+    setEditedImage(userProfile.image || DEFAULT_PROFILE_IMAGE);
     setEditMode(true);
     setShowEditModal(true);
+  };
+
+  const userHasSavedProfilePhoto = Boolean(
+    currentUser?.profile_picture_url || currentUser?.profilePictureUrl
+  );
+
+  const showRemovePhotoButton =
+    !removeProfileImage &&
+    (userHasSavedProfilePhoto || (editedImage && editedImage.startsWith('blob:')));
+
+  const handleRemovePhoto = () => {
+    if (editedImage && editedImage.startsWith('blob:')) {
+      URL.revokeObjectURL(editedImage);
+    }
+    if (profileImageInputRef.current) {
+      profileImageInputRef.current.value = '';
+    }
+    setEditedImage(DEFAULT_PROFILE_IMAGE);
+    setRemoveProfileImage(userHasSavedProfilePhoto);
   };
 
   const handleSave = async () => {
@@ -368,15 +392,27 @@ const Profile = () => {
 
       console.log('✅ Profile text fields updated successfully');
 
-      // Then, if there's a new image, upload it separately
+      // Then handle profile picture changes
       let profilePictureUrl = null;
-      console.log('🔍 CHECKING FOR NEW IMAGE:');
+      console.log('🔍 CHECKING FOR IMAGE CHANGES:');
       console.log('🔍 editedImage:', editedImage);
-      console.log('🔍 userProfile.image:', userProfile.image);
-      console.log('🔍 editedImage !== userProfile.image:', editedImage !== userProfile.image);
-      console.log('🔍 editedImage.startsWith("blob:"):', editedImage && editedImage.startsWith('blob:'));
-      
-      if (editedImage && editedImage !== userProfile.image && editedImage.startsWith('blob:')) {
+      console.log('🔍 removeProfileImage:', removeProfileImage);
+
+      if (removeProfileImage) {
+        const deleteResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile-picture`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!deleteResponse.ok) {
+          const errorText = await deleteResponse.text();
+          throw new Error(errorText || 'Failed to remove profile picture');
+        }
+
+        console.log('✅ Profile picture removed successfully');
+      } else if (editedImage && editedImage !== userProfile.image && editedImage.startsWith('blob:')) {
         console.log('🖼️ Processing new image for upload...');
         
         // Convert blob URL to file
@@ -409,9 +445,10 @@ const Profile = () => {
           console.error('❌ IMAGE UPLOAD FAILED!');
           console.error('❌ Status:', imageResponse.status);
           console.error('❌ Error:', errorText);
+          throw new Error(errorText || 'Failed to upload profile picture');
         }
       } else {
-        console.log('ℹ️ No new image to upload');
+        console.log('ℹ️ No image changes to apply');
       }
 
       // Update local state with the new image
@@ -419,7 +456,10 @@ const Profile = () => {
       console.log('🔍 DETERMINING FINAL IMAGE:');
       console.log('🔍 profilePictureUrl:', profilePictureUrl);
       
-      if (profilePictureUrl) {
+      if (removeProfileImage) {
+        finalImage = DEFAULT_PROFILE_IMAGE;
+        console.log('✅ Using default image after removal');
+      } else if (profilePictureUrl) {
         // If backend returned absolute URL (e.g., S3), use it as-is
         if (/^https?:\/\//i.test(profilePictureUrl)) {
           finalImage = profilePictureUrl;
@@ -465,9 +505,13 @@ const Profile = () => {
         end_year: ey
       };
       
-      // Always update profile_picture_url with the backend URL (if we got a new one)
-      if (profilePictureUrl) {
+      // Always update profile picture fields when changed
+      if (removeProfileImage) {
+        authUpdateData.profile_picture_url = null;
+        authUpdateData.profilePictureUrl = null;
+      } else if (profilePictureUrl) {
         authUpdateData.profile_picture_url = profilePictureUrl;
+        authUpdateData.profilePictureUrl = profilePictureUrl;
       }
       
       console.log('🔄 Updating auth context with:', authUpdateData);
@@ -513,6 +557,7 @@ const Profile = () => {
 
       setEditMode(false);
       setShowEditModal(false);
+      setRemoveProfileImage(false);
       setSaving(false);
       console.log('✅ Saving state set to false - save completed');
       setJustSaved(true);
@@ -532,6 +577,7 @@ const Profile = () => {
   const handleCancel = () => {
     setEditMode(false);
     setShowEditModal(false);
+    setRemoveProfileImage(false);
     if (isUserProfile) {
       setEditedName(userProfile?.name || '');
       setEditedEmail(userProfile?.email || '');
@@ -695,6 +741,7 @@ const Profile = () => {
                   </label>
                   <input
                     id="profile-image"
+                    ref={profileImageInputRef}
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
@@ -702,6 +749,7 @@ const Profile = () => {
                       if (file) {
                         console.log('📁 New image selected:', file.name, file.type, file.size);
                         const imageUrl = URL.createObjectURL(file);
+                        setRemoveProfileImage(false);
                         setEditedImage(imageUrl);
                         console.log('🖼️ Preview image set to:', imageUrl);
                       }
@@ -711,6 +759,15 @@ const Profile = () => {
                   <p className="image-upload-help">
                     Click the image above to upload a new profile picture
                   </p>
+                  {showRemovePhotoButton && (
+                    <button
+                      type="button"
+                      className="btn btn-remove-photo"
+                      onClick={handleRemovePhoto}
+                    >
+                      Remove Photo
+                    </button>
+                  )}
                 </div>
                 
                 <div className="profile-edit-section">
