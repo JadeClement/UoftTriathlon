@@ -44,7 +44,12 @@ SMTP_FROM="UofT Triathlon Club" <info@uoft-tri.club>
 
 # Option 1: FCM Service Account (Recommended - more secure)
 # Download service account JSON from Firebase Console > Project Settings > Service Accounts
+
+# Local dev — path to the JSON file:
 FCM_SERVICE_ACCOUNT_PATH=./config/firebase-service-account.json
+
+# Production (Railway) — paste the entire JSON file as one line:
+# FCM_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key":"..."}
 
 # Option 2: FCM Server Key (Legacy - simpler but less secure)
 # Get from Firebase Console > Project Settings > Cloud Messaging > Server Key

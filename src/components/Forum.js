@@ -2141,11 +2141,13 @@ const Forum = () => {
           <div className="modal-overlay">
             <div className="modal cancel-modal">
               <h2>Cancel Workout Signup</h2>
-              <div className="cancel-warning">
-                <p>⚠️ <strong>Important:</strong> If you cancel less than 12 hours in advance, it will count as an absence.</p>
-                <p>Your absences are recorded and once you have three, you will be suspended from signing up for a week.</p>
-                <p>This is to keep it fair for all members!</p>
-              </div>
+              {workoutPosts.find((post) => post.id === workoutToCancel)?.workout_type !== 'outdoor-ride' && (
+                <div className="cancel-warning">
+                  <p>⚠️ <strong>Important:</strong> If you cancel less than 12 hours in advance, it will count as an absence.</p>
+                  <p>Your absences are recorded and once you have three, you will be suspended from signing up for a week.</p>
+                  <p>This is to keep it fair for all members!</p>
+                </div>
+              )}
               <div className="modal-actions">
                 <button className="btn-secondary" onClick={handleCancelCancel}>
                   Keep Booking

@@ -20,6 +20,20 @@ function getAppIconUrl() {
 }
 
 /**
+ * Load Firebase service account credentials from env (Railway) or file (local).
+ * @returns {object|null}
+ */
+function loadFCMServiceAccount() {
+  if (process.env.FCM_SERVICE_ACCOUNT_JSON) {
+    return JSON.parse(process.env.FCM_SERVICE_ACCOUNT_JSON);
+  }
+  if (process.env.FCM_SERVICE_ACCOUNT_PATH) {
+    return require(process.env.FCM_SERVICE_ACCOUNT_PATH);
+  }
+  return null;
+}
+
+/**
  * Initialize Firebase Cloud Messaging (FCM) for Android
  */
 function initializeFCM() {
@@ -28,30 +42,32 @@ function initializeFCM() {
   }
 
   try {
-    // Check if FCM is configured
-    if (process.env.FCM_SERVICE_ACCOUNT_PATH) {
+    const serviceAccount = loadFCMServiceAccount();
+    if (serviceAccount) {
       const admin = require('firebase-admin');
-      
-      // Initialize with service account (recommended)
+
       if (!admin.apps.length) {
-        const serviceAccount = require(process.env.FCM_SERVICE_ACCOUNT_PATH);
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount)
         });
-        console.log('✅ FCM initialized with service account');
+        const source = process.env.FCM_SERVICE_ACCOUNT_JSON
+          ? 'FCM_SERVICE_ACCOUNT_JSON'
+          : 'FCM_SERVICE_ACCOUNT_PATH';
+        console.log(`✅ FCM initialized with service account (${source})`);
       }
       fcmAdmin = admin;
       return fcmAdmin;
-    } else if (process.env.FCM_SERVER_KEY) {
+    }
+
+    if (process.env.FCM_SERVER_KEY) {
       // Legacy FCM server key (less secure, but simpler setup)
-      console.log('⚠️ FCM_SERVER_KEY detected. Consider using FCM_SERVICE_ACCOUNT_PATH for better security.');
-      // For legacy key, we'll use HTTP API instead
+      console.log('⚠️ FCM_SERVER_KEY detected. Consider using FCM_SERVICE_ACCOUNT_JSON or FCM_SERVICE_ACCOUNT_PATH for better security.');
       fcmAdmin = { legacy: true, serverKey: process.env.FCM_SERVER_KEY };
       return fcmAdmin;
-    } else {
-      console.log('⚠️ FCM not configured. Set FCM_SERVICE_ACCOUNT_PATH or FCM_SERVER_KEY to enable Android push notifications.');
-      return null;
     }
+
+    console.log('⚠️ FCM not configured. Set FCM_SERVICE_ACCOUNT_JSON, FCM_SERVICE_ACCOUNT_PATH, or FCM_SERVER_KEY to enable Android push notifications.');
+    return null;
   } catch (error) {
     console.error('❌ Error initializing FCM:', error);
     return null;

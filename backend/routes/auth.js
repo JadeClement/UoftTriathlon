@@ -256,7 +256,7 @@ router.post('/forgot-password', async (req, res) => {
     if (userResult.rows.length === 0) {
       console.log('❌ No user found with email:', email);
       // Don't reveal if user exists or not for security
-      return res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+      return res.json({ message: 'If you have an account with us, you\'ll receive an email with instructions to reset your password.' });
     }
 
     const user = userResult.rows[0];
@@ -309,7 +309,7 @@ router.post('/forgot-password', async (req, res) => {
       // Do not leak email send failures to client for security; still respond with success message
     }
 
-    res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+    res.json({ message: 'If you have an account with us, you\'ll receive an email with instructions to reset your password.' });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ error: 'Internal server error' });

@@ -96,6 +96,10 @@ main {
     padding-top: 0; /* no extra padding needed on mobile */
     padding-bottom: 55px; /* Space for bottom navigation */
   }
+
+  body.capacitor-android-body main {
+    padding-bottom: calc(55px + var(--android-nav-bar, 24px));
+  }
   
   .section-title {
     font-size: 2rem;

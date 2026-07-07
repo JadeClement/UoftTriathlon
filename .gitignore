@@ -20,6 +20,11 @@ backend/.env.*
 *.pem
 *.p12
 
+# Firebase (client + admin credentials — never commit)
+google-services.json
+*-firebase-adminsdk-*.json
+backend/config/firebase-service-account.json
+
 # Accidental secrets / exports
 s3-upload-user_accessKeys.csv
 *.csv

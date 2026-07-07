@@ -787,8 +787,8 @@ const Login = () => {
             <h2>Reset Password</h2>
             {forgotPasswordSuccess ? (
               <div className="success-message">
-                <p>✅ Password reset email sent successfully!</p>
-                <p>Please check your email and follow the instructions to reset your password.</p>
+                <p>If you have an account with us, you'll receive an email with instructions to reset your password.</p>
+                <p>Please check your inbox and spam folder.</p>
                 <button type="button" onClick={closeForgotPassword} className="btn btn-primary">
                   Close
                 </button>

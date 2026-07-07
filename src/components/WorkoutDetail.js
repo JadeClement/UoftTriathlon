@@ -2205,13 +2205,14 @@ const WorkoutDetail = () => {
             : null;
           const hoursUntil = workoutDateTime ? getHoursUntil(workoutDateTime) : null;
           const within12Hours = workoutDateTime ? isWithinHours(workoutDateTime, 12) : false;
+          const isOutdoorRide = displayWorkout.workout_type === 'outdoor-ride';
 
           return (
             <div className="modal-overlay">
               <div className="modal">
                 <h2>Cancel Workout Signup</h2>
                 <p>Are you sure you want to cancel your signup for this workout?</p>
-                {within12Hours && hoursUntil !== null && (
+                {!isOutdoorRide && within12Hours && hoursUntil !== null && (
                   <p className="warning-text">
                     <strong>⚠️ Warning:</strong> You are canceling less than 12 hours before this workout ({hoursUntil.toFixed(1)} hours remaining). 
                     This cancellation will count as an absence. 
@@ -2219,13 +2220,13 @@ const WorkoutDetail = () => {
                     This is to keep it fair for all members!
                   </p>
                 )}
-                {!within12Hours && hoursUntil !== null && hoursUntil > 0 && (
+                {!isOutdoorRide && !within12Hours && hoursUntil !== null && hoursUntil > 0 && (
                   <p style={{ background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '8px', padding: '1rem', margin: '1rem 0', color: '#065f46' }}>
                     <strong>✓ Safe to Cancel:</strong> You are canceling more than 12 hours in advance ({hoursUntil.toFixed(1)} hours remaining). 
                     This cancellation will NOT count as an absence.
                   </p>
                 )}
-                {hoursUntil !== null && hoursUntil <= 0 && (
+                {!isOutdoorRide && hoursUntil !== null && hoursUntil <= 0 && (
                   <p className="warning-text">
                     <strong>Note:</strong> This workout is in the past. Canceling will not affect your attendance record.
                   </p>

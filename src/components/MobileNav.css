@@ -158,10 +158,10 @@
 
 /* Android: add the nav-bar allowance so content clears the taller bottom nav */
 body.capacitor-android-body {
-  padding-bottom: calc(55px + var(--android-nav-bar, 24px));
+  padding-bottom: 0; /* footer handles bottom inset — avoids white scroll gap */
 }
 
 body.capacitor-android-body .App {
-  padding-bottom: calc(55px + var(--android-nav-bar, 24px));
+  padding-bottom: 0;
 }
 

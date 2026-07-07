@@ -1,4 +1,11 @@
 import { useState } from 'react';
+import { time24To12Parts, time12To24 } from '../utils/dateUtils';
+
+function normalizeWorkoutTimeForForm(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  const p = time24To12Parts(raw);
+  return p ? time12To24(p.hour12, p.minute, p.period) : raw;
+}
 
 export const useWorkoutEdit = (API_BASE_URL) => {
   const [editingWorkout, setEditingWorkout] = useState(null);
@@ -18,7 +25,7 @@ export const useWorkoutEdit = (API_BASE_URL) => {
       title: workout.title || '',
       workoutType: workout.workout_type || '',
       workoutDate: workout.workout_date ? workout.workout_date.split('T')[0] : '',
-      workoutTime: workout.workout_time || '',
+      workoutTime: normalizeWorkoutTimeForForm(workout.workout_time || ''),
       content: workout.content || '',
       capacity: workout.capacity || ''
     });

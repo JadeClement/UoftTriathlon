@@ -33,6 +33,7 @@ import RoleChangeNotification from './components/RoleChangeNotification';
 import SimpleNotification from './components/SimpleNotification';
 import { setNavigationFunction, getPendingNavigation } from './utils/notificationNavigation';
 import { startPeriodicSync, stopPeriodicSync } from './services/calendarSyncService';
+import { useSwipeNavigation } from './hooks/useSwipeNavigation';
 
 // Settings is iOS-only, use lazy loading to avoid bundling for web builds
 const Settings = lazy(() => import('./components/Settings'));
@@ -151,6 +152,7 @@ function AppContent() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const swipeHandlers = useSwipeNavigation(navigate, location);
   
   // Start periodic calendar sync for iOS users
   useEffect(() => {
@@ -235,7 +237,7 @@ function AppContent() {
   return (
     <>
       <RoleChangeNotification currentUser={currentUser} />
-      <main>
+      <main {...swipeHandlers}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/forum" element={<Forum />} />

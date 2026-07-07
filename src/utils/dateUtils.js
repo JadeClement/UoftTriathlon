@@ -410,5 +410,42 @@ export function formatSignupTimeOnlyForDisplay(date, options = {}) {
   return dateObj.toLocaleTimeString(undefined, { ...defaultOptions, ...options });
 }
 
+/**
+ * Parse a 24h time string (HH:MM or HH:MM:SS) into 12-hour clock parts.
+ * @param {string} time24
+ * @returns {{ hour12: number, minute: number, period: 'AM'|'PM' }|null}
+ */
+export function time24To12Parts(time24) {
+  if (!time24 || typeof time24 !== 'string') return null;
+  const match = time24.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (!match) return null;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (Number.isNaN(h) || Number.isNaN(m) || h > 23 || m > 59) return null;
+  const period = h >= 12 ? 'PM' : 'AM';
+  let hour12 = h % 12;
+  if (hour12 === 0) hour12 = 12;
+  return { hour12, minute: m, period };
+}
+
+/**
+ * Build a 24h HH:MM string for storage/API from 12-hour clock inputs.
+ * @param {number} hour12 1–12
+ * @param {number} minute 0–59
+ * @param {'AM'|'PM'} period
+ */
+export function time12To24(hour12, minute, period) {
+  if (hour12 < 1 || hour12 > 12 || minute < 0 || minute > 59) {
+    return '00:00';
+  }
+  let h24;
+  if (period === 'AM') {
+    h24 = hour12 === 12 ? 0 : hour12;
+  } else {
+    h24 = hour12 === 12 ? 12 : hour12 + 12;
+  }
+  return `${String(h24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 // Export timezone constant for use in other modules
 export { TORONTO_TIMEZONE };

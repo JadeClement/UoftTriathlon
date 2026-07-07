@@ -509,17 +509,29 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
     );
 
     if (existingSignup.rows.length > 0) {
-      // Check if cancellation is within 12 hours of workout start
       const workoutDetails = await client.query(
-        `SELECT workout_date, workout_time, title FROM forum_posts WHERE id = $1`,
+        `SELECT workout_date, workout_time, title, workout_type FROM forum_posts WHERE id = $1`,
         [id]
       );
-      
+
+      const workout = workoutDetails.rows[0];
+      const workoutTitle = workout?.title || 'Unknown Workout';
+
+      // Outdoor rides have no reserved spots, so skip cancellation policy enforcement
+      if (workout?.workout_type === 'outdoor-ride') {
+        await client.query('DELETE FROM workout_signups WHERE id = $1', [existingSignup.rows[0].id]);
+        await client.query('COMMIT');
+        return res.json({
+          message: 'Signup cancelled successfully.',
+          signedUp: false,
+          within12hrs: false,
+          markedAbsent: false
+        });
+      }
+
+      // Check if cancellation is within 12 hours of workout start
       let within12hrs = false;
-      let workoutTitle = 'Unknown Workout';
       if (workoutDetails.rows.length > 0) {
-        const workout = workoutDetails.rows[0];
-        workoutTitle = workout.title || 'Untitled Workout';
         
         // Use standardized date utilities
         const workoutDateTime = combineDateTime(workout.workout_date, workout.workout_time);

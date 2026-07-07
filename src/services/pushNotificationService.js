@@ -11,6 +11,10 @@ import { handleNotificationNavigation, navigateTo } from '../utils/notificationN
  */
 
 const isNativePlatform = Capacitor.isNativePlatform();
+const isAndroid = Capacitor.getPlatform() === 'android';
+// Android push requires google-services.json (FCM). Without it, PushNotifications.register()
+// can crash the app natively — skip until REACT_APP_ENABLE_ANDROID_PUSH=true is set.
+const androidPushEnabled = process.env.REACT_APP_ENABLE_ANDROID_PUSH === 'true';
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
 let pushToken = null;
@@ -142,6 +146,14 @@ export async function requestPushPermissions() {
 export async function registerForPushNotifications(userId) {
   if (!isNativePlatform) {
     console.log('📱 Push notifications not available on web platform');
+    return false;
+  }
+
+  if (isAndroid && !androidPushEnabled) {
+    console.log(
+      '📱 Skipping Android push registration — FCM is not configured yet. ' +
+      'Add google-services.json and set REACT_APP_ENABLE_ANDROID_PUSH=true to enable.'
+    );
     return false;
   }
 

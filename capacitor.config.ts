@@ -10,6 +10,11 @@ const config: CapacitorConfig = {
     // cleartext: false
   },
   plugins: {
+    // Route fetch/XHR through native HTTP on iOS/Android (WebView fetch can fail
+    // for cross-origin API calls even when the emulator browser works fine).
+    CapacitorHttp: {
+      enabled: true,
+    },
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,

@@ -1,8 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Capacitor } from '@capacitor/core';
 import './index.css';
 import './utils/enableScrolling'; // Force enable scrolling on iOS
 import App from './App';
+
+const isNativeApp = Capacitor.isNativePlatform();
+
+// Clear any service worker left over from an older build in the native app.
+if (isNativeApp && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((reg) => reg.unregister());
+  });
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -11,9 +21,9 @@ root.render(
   </React.StrictMode>
 );
 
-// Register service worker for PWA capabilities
-// Only enable in production to avoid development errors
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+// Register service worker for PWA capabilities (web only).
+// Skip in Capacitor native apps — SW caching can interfere with API requests in WebView.
+if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production' && !isNativeApp) {
   window.addEventListener('load', () => {
     let updatePrompted = false; // Track if we've already prompted for this update
     let userAcceptedUpdate = false; // Track if user accepted the update

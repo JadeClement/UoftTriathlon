@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmModal from './ConfirmModal';
 import './Profile.css';
-import { Capacitor } from '@capacitor/core';
 
 const Profile = () => {
   const params = useParams();
   const { role, name } = params;
-  const navigate = useNavigate();
   const { currentUser, updateUser, isMember, refreshUserData } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
@@ -28,12 +26,6 @@ const Profile = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPauseConfirm, setShowPauseConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
-  const isIOS = Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
-
-  // Swipe-to-go-back gesture for coach/exec bios on iOS
-  const touchStartXRef = useRef(null);
-  const touchStartYRef = useRef(null);
-  
   
   console.log('🔍 All URL params:', params);
   console.log('🔍 Role param:', role);
@@ -48,44 +40,6 @@ const Profile = () => {
     console.log('🧮 isUserProfile calculated:', { role, result });
     return result;
   }, [role]);
-
-  const handleTouchStart = useCallback((e) => {
-    // Only enable swipe back for team/coach/exec bios on iOS
-    if (!isIOS || !role) return;
-    if (!e.touches || e.touches.length === 0) return;
-    const touch = e.touches[0];
-    touchStartXRef.current = touch.clientX;
-    touchStartYRef.current = touch.clientY;
-  }, [isIOS, role]);
-
-  const handleTouchEnd = useCallback((e) => {
-    if (!isIOS || !role) return;
-    if (touchStartXRef.current == null || touchStartYRef.current == null) return;
-    if (!e.changedTouches || e.changedTouches.length === 0) return;
-
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStartXRef.current;
-    const deltaY = touch.clientY - touchStartYRef.current;
-
-    // Reset for next gesture
-    touchStartXRef.current = null;
-    touchStartYRef.current = null;
-
-    // Only trigger if swipe starts near left edge and is mostly horizontal
-    const EDGE_THRESHOLD = 40; // px from left edge
-    const SWIPE_THRESHOLD = 80; // minimum horizontal distance
-    const MAX_VERTICAL_DEVIATION = 60; // allow some vertical movement
-
-    if (touch.clientX <= 0) return;
-
-    const startedNearEdge = (touch.clientX - deltaX) <= EDGE_THRESHOLD;
-    const isHorizontal = Math.abs(deltaY) < MAX_VERTICAL_DEVIATION;
-    const isRightSwipe = deltaX > SWIPE_THRESHOLD;
-
-    if (startedNearEdge && isHorizontal && isRightSwipe) {
-      navigate('/coaches-exec');
-    }
-  }, [isIOS, role, navigate]);
 
   // Load team members from backend API
   useEffect(() => {
@@ -606,11 +560,7 @@ const Profile = () => {
 
   if (!userProfile) {
     return (
-      <div
-        className="profile-container"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      <div className="profile-container">
         <div className="container">
           <div className="error-state">
             <h2>Profile Not Found</h2>
@@ -622,14 +572,26 @@ const Profile = () => {
     );
   }
 
-
+  const renderProfileToolbar = () => (
+    <>
+      {currentUser && isMember(currentUser) && (
+        <Link to="/results" className="btn btn-secondary">
+          View Your Results
+        </Link>
+      )}
+      <button
+        type="button"
+        className="btn btn-edit btn-edit-icon"
+        onClick={handleEdit}
+        aria-label="Edit Profile"
+      >
+        ✏️
+      </button>
+    </>
+  );
 
   return (
-    <div
-      className="profile-container"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="profile-container">
       <div className="container">
         <div className="profile-top-bar">
           {isUserProfile ? (
@@ -641,15 +603,8 @@ const Profile = () => {
         
         <div className="profile-content">
           {isUserProfile && (
-            <div className="profile-content-toolbar">
-              {currentUser && isMember(currentUser) && (
-                <Link to="/results" className="btn btn-secondary">
-                  View Results
-                </Link>
-              )}
-              <button type="button" className="btn btn-edit" onClick={handleEdit}>
-                Edit Profile
-              </button>
+            <div className="profile-content-toolbar profile-content-toolbar--top">
+              {renderProfileToolbar()}
             </div>
           )}
           <div className="profile-image-section">
@@ -675,7 +630,9 @@ const Profile = () => {
           <div className="profile-info-section">
             <div className="profile-header">
               <h1 className="profile-name">{userProfile.name}</h1>
-              <h2 className="profile-role">{userProfile.role}</h2>
+              <h2 className="profile-role">
+                {isUserProfile ? `status: ${userProfile.role}` : userProfile.role}
+              </h2>
               {isUserProfile && userProfile.joined_year != null && userProfile.end_year != null && (
                 <p className="profile-years">
                   {userProfile.joined_year}–{userProfile.end_year}
@@ -696,6 +653,11 @@ const Profile = () => {
               {userProfile.phone && (
                 <div className="info-item">
                   <strong>Phone:</strong> {userProfile.phone}
+                </div>
+              )}
+              {isUserProfile && (
+                <div className="profile-content-toolbar profile-content-toolbar--inline">
+                  {renderProfileToolbar()}
                 </div>
               )}
               {userProfile.bio && (
