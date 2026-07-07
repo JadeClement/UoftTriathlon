@@ -1754,16 +1754,20 @@ const WorkoutDetail = () => {
                         {/* single avatar element handled above */}
                         <span className="signup-user">{signup.user_name}</span>
                       </div>
-                      <span className="signup-date">
-                        📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
-                          ? formatSignupDateForDisplay(signup.signup_time)
-                          : 'Recently'
-                        }
-                        <span className="signup-time"> • 🕐 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
-                          ? formatSignupTimeOnlyForDisplay(signup.signup_time)
-                          : 'Recently'
-                        }</span>
-                      </span>
+                      <div className="signup-datetime">
+                        <span className="signup-date">
+                          📅 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
+                            ? formatSignupDateForDisplay(signup.signup_time)
+                            : 'Recently'
+                          }
+                        </span>
+                        <span className="signup-time">
+                          🕐 {signup.signup_time && signup.signup_time !== 'Invalid Date' && signup.signup_time !== 'null' 
+                            ? formatSignupTimeOnlyForDisplay(signup.signup_time)
+                            : 'Recently'
+                          }
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1844,10 +1848,14 @@ const WorkoutDetail = () => {
                     )}
                     <span className="waitlist-user">{waitlistItem.user_name}</span>
                   </div>
-                  <span className="waitlist-date">
-                    📅 {new Date(waitlistItem.joined_at).toLocaleDateString()}
-                    <span className="waitlist-time"> • 🕐 {new Date(waitlistItem.joined_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  </span>
+                  <div className="signup-datetime">
+                    <span className="waitlist-date">
+                      📅 {new Date(waitlistItem.joined_at).toLocaleDateString()}
+                    </span>
+                    <span className="waitlist-time">
+                      🕐 {new Date(waitlistItem.joined_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
