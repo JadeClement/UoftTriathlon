@@ -17,6 +17,7 @@
   margin-bottom: 0 !important;
   line-height: 1.2 !important;
   padding-top: 0 !important;
+  font-size: 1.05rem;
 }
 
 .create-post {
@@ -498,11 +499,23 @@
 }
 
 /* Workout Post Styling */
+.workout-post {
+  padding: 1.25rem 1.5rem;
+}
+
+.workout-post .post-header {
+  margin-bottom: 0.25rem;
+}
+
 .workout-title h2 {
   margin: 0.5rem 0;
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.workout-post .workout-title h2 {
+  margin: 0;
 }
 
 .workout-title-link {
@@ -525,6 +538,15 @@
   margin: 0.5rem 0;
   padding: 0.5rem 0;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.workout-post .workout-author {
+  margin: 0;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.workouts-section .posts-list {
+  gap: 1.25rem;
 }
 
 .workout-meta {

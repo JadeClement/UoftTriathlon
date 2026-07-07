@@ -607,6 +607,13 @@
   font-size: 0.875rem;
 }
 
+.signup-datetime {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
 .signup-time {
   color: #059669;
   font-weight: 500;
@@ -920,6 +927,35 @@
 
 /* Mobile: Show only emoji icons for edit/delete buttons */
 @media (max-width: 768px) {
+  .signup-item,
+  .waitlist-item {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .signup-user-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .signup-datetime {
+    flex: 1 1 100%;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .signup-date,
+  .signup-time,
+  .waitlist-date,
+  .waitlist-time {
+    white-space: nowrap;
+    font-size: 0.8rem;
+  }
+
   .edit-btn, .delete-btn {
     padding: 0.5rem;
     width: 44px;
@@ -948,6 +984,25 @@
   .new-post-btn .btn-text {
     display: none;
   }
+}
+
+/* Android native: keep signup date and time on one row */
+body.capacitor-android-body .signup-datetime {
+  flex: 1 1 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+body.capacitor-android-body .signup-date,
+body.capacitor-android-body .signup-time,
+body.capacitor-android-body .waitlist-date,
+body.capacitor-android-body .waitlist-time {
+  white-space: nowrap;
+  font-size: 0.8rem;
 }
 
 /* Edit Form */
