@@ -30,20 +30,10 @@
 /* Coaches Section */
 .coaches-section {
   background: white;
-  position: relative;
-  padding: 3.5rem 2rem 2rem; /* reserve space for sticky subtitle */
+  padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin: -1rem 0 2rem; /* pull section upward */
-}
-
-.coaches-section .section-subtitle {
-  position: absolute;
-  top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  text-align: center;
 }
 
 .coaches-grid {
@@ -57,7 +47,6 @@
 .coach-card-container {
   flex: 1;
   min-width: 250px;
-  margin-top: 2.5rem; /* separation from subtitle */
 }
 
 .coach-card-link {
@@ -190,8 +179,8 @@
 .section-header-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: center;
+  gap: 0.5rem;
   flex-wrap: wrap;
   margin-bottom: 1.5rem;
 }
@@ -204,12 +193,18 @@
   background: #1E40AF;
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.25rem;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   transition: background-color 0.2s ease;
 }
 
@@ -389,7 +384,6 @@
   .exec-team-section,
   .contact-section {
     padding: 1.5rem;
-    padding-top: 0;
     margin-bottom: 1.5rem;
   }
   
@@ -398,18 +392,13 @@
     margin-bottom: 1rem;
   }
   
-  .coaches-section .section-subtitle,
-  .exec-team-section .section-subtitle {
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
-    margin-top: 0 !important;
-    padding-top: 0.75rem;
-    line-height: 1.2;
+  .section-header-row {
+    margin-bottom: 1rem;
   }
   
-  .coaches-section:first-child .section-subtitle {
-    margin-top: 0 !important;
-    padding-top: 0.75rem;
+  .section-header-row .section-subtitle {
+    font-size: 1.5rem;
+    line-height: 1.2;
   }
   
   .coach-card,

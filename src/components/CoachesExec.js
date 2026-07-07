@@ -212,6 +212,18 @@ const CoachesExec = () => {
     }
   };
 
+  const openAddPosition = (category = 'exec') => {
+    setAddForm({
+      role: '',
+      category,
+      emoji: '',
+      name: '',
+      email: '',
+      profileLabel: ''
+    });
+    setShowAddPosition(true);
+  };
+
   const handleAddPosition = async () => {
     if (!addForm.role.trim()) {
       showError('Position title is required.');
@@ -401,7 +413,20 @@ const CoachesExec = () => {
         <h1 className="section-title">Coaches & Executive Team</h1>
 
         <div className="coaches-section">
-          <h2 className="section-subtitle">Our Coaches</h2>
+          <div className="section-header-row">
+            <h2 className="section-subtitle">Our Coaches</h2>
+            {canManagePositions && (
+              <button
+                className="add-position-button"
+                onClick={() => openAddPosition('coach')}
+                type="button"
+                title="Add coach"
+                aria-label="Add coach"
+              >
+                +
+              </button>
+            )}
+          </div>
           <div className="coaches-grid">
             {coaches.map(renderCoachCard)}
           </div>
@@ -413,10 +438,12 @@ const CoachesExec = () => {
             {canManagePositions && (
               <button
                 className="add-position-button"
-                onClick={() => setShowAddPosition(true)}
+                onClick={() => openAddPosition('exec')}
                 type="button"
+                title="Add position"
+                aria-label="Add position"
               >
-                + Add Position
+                +
               </button>
             )}
           </div>
@@ -432,13 +459,12 @@ const CoachesExec = () => {
               {canManagePositions && (
                 <button
                   className="add-position-button add-position-button-secondary"
-                  onClick={() => {
-                    setAddForm((prev) => ({ ...prev, category: 'past-president' }));
-                    setShowAddPosition(true);
-                  }}
+                  onClick={() => openAddPosition('past-president')}
                   type="button"
+                  title="Add past president"
+                  aria-label="Add past president"
                 >
-                  + Add Past President
+                  +
                 </button>
               )}
             </div>
