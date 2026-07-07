@@ -7,7 +7,7 @@ const PrivacyPolicy = () => {
       <div className="privacy-container">
         <h1>Privacy Policy</h1>
 
-        <p className="effective-date">Last updated: January 2026</p>
+        <p className="effective-date">Last updated: July 2026</p>
 
         <p>
           This policy explains what information we collect through the UofT Triathlon website and app,
@@ -51,10 +51,37 @@ const PrivacyPolicy = () => {
           may remain where required.
         </p>
 
+        <h2>Account &amp; Data Deletion</h2>
+        <p>
+          You can delete your account or specific data without contacting us first. You can also email{' '}
+          <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> if you need help.
+        </p>
+
+        <h3>Delete your account</h3>
+        <ol>
+          <li>Log in at <a href="https://www.uoft-tri.club/login">uoft-tri.club</a> or in the app.</li>
+          <li>Go to <strong>Profile</strong>.</li>
+          <li>Tap or click <strong>Edit</strong>.</li>
+          <li>Scroll to the bottom and choose <strong>Delete Account</strong>.</li>
+        </ol>
+        <p>
+          This permanently deletes your account and associated data, including profile details, workout and
+          race signups, attendance records, forum posts, notification preferences, and push tokens.
+          Some minimal security or legal records may be retained where required by law.
+        </p>
+
+        <h3>Delete some data without deleting your account</h3>
+        <ul>
+          <li>Remove your profile photo from <strong>Profile → Edit</strong>.</li>
+          <li>Delete forum, workout, or event posts you created.</li>
+          <li>Update or remove profile details such as your bio or phone number from <strong>Profile → Edit</strong>.</li>
+          <li>Email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> to request deletion of other specific data.</li>
+        </ul>
+
         <h2>Your Choices</h2>
         <ul>
           <li>Access or update your profile information.</li>
-          <li>Request account deletion.</li>
+          <li>Delete your account or specific data using the steps above.</li>
           <li>Control push/email preferences where offered.</li>
         </ul>
 
