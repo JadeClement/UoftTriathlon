@@ -1,258 +1,345 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { showError } from './SimpleNotification';
+import { showError, showSuccess } from './SimpleNotification';
 import './CoachesExec.css';
 
-const PAST_PRESIDENTS = [
-  { id: 'co-president', slug: 'jade-clement', years: '2025-26', emoji: '👑' },
-];
+const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+
+const normalizeImageUrl = (image) => {
+  let normalized = image;
+  if (!normalized || (typeof normalized === 'string' && normalized.trim() === '')) {
+    normalized = '/images/icon.png';
+  }
+  if (normalized && normalized.startsWith('/uploads/')) {
+    normalized = `${API_BASE}/..${normalized}`;
+  }
+  return normalized;
+};
+
+const membersArrayToObject = (members) => {
+  const membersObject = {};
+  if (Array.isArray(members)) {
+    members.forEach((member) => {
+      membersObject[member.id] = {
+        ...member,
+        image: normalizeImageUrl(member.image)
+      };
+    });
+  }
+  return membersObject;
+};
+
+const getMembersByCategory = (members, category) =>
+  Object.values(members)
+    .filter((member) => member.category === category)
+    .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
+
+const getCardTitle = (member) =>
+  member.category === 'past-president'
+    ? (member.profileLabel || member.role)
+    : member.role;
 
 const CoachesExec = () => {
   const location = useLocation();
   const { currentUser, isAdmin, isExec, isCoach } = useAuth();
   const isCoachOrExec = currentUser && (isAdmin(currentUser) || isExec(currentUser) || isCoach(currentUser));
+  const canEditProfiles = currentUser && (isAdmin(currentUser) || isExec(currentUser));
+  const canManagePositions = currentUser && isAdmin(currentUser);
+
   const [teamMembers, setTeamMembers] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
   const [editForm, setEditForm] = useState({
     name: '',
+    role: '',
     bio: '',
     image: '',
-    email: ''
+    email: '',
+    profileLabel: ''
   });
   const [saving, setSaving] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
   const [imageFile, setImageFile] = useState(null);
+  const [showAddPosition, setShowAddPosition] = useState(false);
+  const [addForm, setAddForm] = useState({
+    role: '',
+    category: 'exec',
+    emoji: '',
+    name: '',
+    email: '',
+    profileLabel: ''
+  });
+  const [addingPosition, setAddingPosition] = useState(false);
 
-  // Load team members from backend API
+  const coaches = useMemo(() => getMembersByCategory(teamMembers, 'coach'), [teamMembers]);
+  const execMembers = useMemo(() => getMembersByCategory(teamMembers, 'exec'), [teamMembers]);
+  const pastPresidents = useMemo(() => getMembersByCategory(teamMembers, 'past-president'), [teamMembers]);
+
+  const loadTeamMembers = async () => {
+    const response = await fetch(`${API_BASE}/profiles`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    }).catch((networkError) => {
+      throw new Error(`Network error: ${networkError.message || 'Failed to connect to server'}`);
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch team members: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return membersArrayToObject(data.teamMembers);
+  };
+
   useEffect(() => {
-    const loadTeamMembers = async () => {
+    const fetchMembers = async () => {
       try {
         setLoading(true);
-        const apiUrl = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`;
-        console.log('🔄 Loading team members from:', apiUrl);
-        
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }).catch((networkError) => {
-          // Catch network errors (connection failed, timeout, etc.)
-          console.error('🌐 Network error:', networkError);
-          throw new Error(`Network error: ${networkError.message || 'Failed to connect to server'}`);
-        });
-        
-        console.log('📡 Response status:', response.status);
-        console.log('📡 Response ok:', response.ok);
-        
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => 'Unknown error');
-          console.error('❌ Response error:', errorText);
-          throw new Error(`Failed to fetch team members: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('📊 Received data:', data);
-        
-        // Convert array to object with id as key
-        const membersObject = {};
-        if (Array.isArray(data.teamMembers)) {
-          data.teamMembers.forEach(member => {
-            // Normalize image: use default if missing/blank; expand relative upload paths
-            let image = member.image;
-            if (!image || (typeof image === 'string' && image.trim() === '')) {
-              image = '/images/icon.png';
-            }
-            const normalizedImage = image && image.startsWith('/uploads/')
-              ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${image}`
-              : image;
-
-            membersObject[member.id] = {
-              ...member,
-              image: normalizedImage
-            };
-          });
-          console.log('✅ Converted', data.teamMembers.length, 'team members to object');
-          console.log('🔑 Member IDs:', Object.keys(membersObject));
-        } else {
-          console.error('❌ Expected array but got:', typeof data.teamMembers, data.teamMembers);
-        }
-        
-        setTeamMembers(membersObject);
+        setTeamMembers(await loadTeamMembers());
         setError(null);
-      } catch (error) {
-        console.error('❌ Error loading team members:', error);
-        console.error('❌ Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-          toString: error.toString()
-        });
-        setError(`Failed to load team members: ${error.message || 'Unknown error'}`);
+      } catch (fetchError) {
+        console.error('Error loading team members:', fetchError);
+        setError(`Failed to load team members: ${fetchError.message || 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
     };
 
-    loadTeamMembers();
+    fetchMembers();
   }, []);
 
-  // Handle opening edit modal
+  useEffect(() => {
+    if (!loading) {
+      loadTeamMembers()
+        .then(setTeamMembers)
+        .catch((refreshError) => console.error('Error refreshing team members:', refreshError));
+    }
+  }, [location.pathname, loading]);
+
   const handleEditClick = (memberId) => {
     const member = teamMembers[memberId];
     if (member) {
       setEditingMember(memberId);
       setEditForm({
         name: member.name || '',
+        role: member.role || '',
         bio: member.bio || '',
         image: member.image || '',
-        email: member.email || ''
+        email: member.email || '',
+        profileLabel: member.profileLabel || ''
       });
       setImagePreview(member.image || '');
       setImageFile(null);
     }
   };
 
-  // Handle closing edit modal
   const handleCloseEdit = () => {
     setEditingMember(null);
-    setEditForm({ name: '', bio: '', image: '', email: '' });
+    setEditForm({ name: '', role: '', bio: '', image: '', email: '', profileLabel: '' });
+    setImagePreview('');
+    setImageFile(null);
   };
 
-  // Handle form input changes
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle saving edits
   const handleSaveEdit = async () => {
     if (!editingMember) return;
 
     try {
       setSaving(true);
       const token = localStorage.getItem('triathlonToken');
-      
-      // Build multipart form data to support image uploads
       const formData = new FormData();
       formData.append('name', editForm.name || '');
       formData.append('bio', editForm.bio || '');
       formData.append('email', editForm.email || '');
-      // Only include the image file if a new one was chosen; otherwise, allow URL fallback
+
+      if (canManagePositions) {
+        formData.append('role', editForm.role || '');
+        if (teamMembers[editingMember]?.category === 'past-president') {
+          formData.append('profileLabel', editForm.profileLabel || '');
+        }
+      }
+
       if (imageFile) {
         formData.append('image', imageFile);
       } else if (editForm.image && typeof editForm.image === 'string') {
         formData.append('image', editForm.image);
       }
 
-      console.log('📤 Sending edit form data (multipart):', {
-        name: editForm.name,
-        email: editForm.email,
-        hasImageFile: !!imageFile,
-        imageFromText: !imageFile && !!editForm.image
-      });
-      
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles/${editingMember}`, {
+      const response = await fetch(`${API_BASE}/profiles/${editingMember}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ Server error:', errorData);
-        throw new Error(`Failed to update profile: ${errorData.error || 'Unknown error'}`);
+        throw new Error(errorData.error || 'Unknown error');
       }
 
       const result = await response.json();
-      console.log('✅ Profile updated successfully:', result);
-
-      // Update local state
       const updatedFromServer = result.member || {};
-      // Normalize returned image to absolute URL if needed
       let normalizedImage = updatedFromServer.image;
       if (normalizedImage && normalizedImage.startsWith('/uploads/')) {
-        normalizedImage = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${normalizedImage}`;
+        normalizedImage = `${API_BASE}/..${normalizedImage}`;
       }
-      setTeamMembers(prev => ({
+
+      setTeamMembers((prev) => ({
         ...prev,
         [editingMember]: {
           ...prev[editingMember],
           name: updatedFromServer.name ?? editForm.name,
+          role: updatedFromServer.role ?? editForm.role,
           email: updatedFromServer.email ?? editForm.email,
           bio: updatedFromServer.bio ?? editForm.bio,
+          profileLabel: updatedFromServer.profileLabel ?? editForm.profileLabel,
           image: normalizedImage || editForm.image || prev[editingMember]?.image
         }
       }));
 
+      showSuccess('Profile updated successfully.');
       handleCloseEdit();
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      showError('Failed to update profile. Please try again.');
+    } catch (saveError) {
+      console.error('Error updating profile:', saveError);
+      showError(saveError.message || 'Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  // Refresh team members when location changes (when navigating back to this page)
-  useEffect(() => {
-    if (!loading) {
-      const refreshTeamMembers = async () => {
-        try {
-          const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            // Convert array to object with id as key
-            const membersObject = {};
-            if (Array.isArray(data.teamMembers)) {
-              data.teamMembers.forEach(member => {
-                let image = member.image;
-                if (!image || (typeof image === 'string' && image.trim() === '')) {
-                  image = '/images/icon.png';
-                }
-                const normalizedImage = image && image.startsWith('/uploads/')
-                  ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${image}`
-                  : image;
-                membersObject[member.id] = {
-                  ...member,
-                  image: normalizedImage
-                };
-              });
-            }
-            
-            setTeamMembers(membersObject);
-          }
-        } catch (error) {
-          console.error('Error refreshing team members:', error);
-        }
+  const handleAddPosition = async () => {
+    if (!addForm.role.trim()) {
+      showError('Position title is required.');
+      return;
+    }
+
+    try {
+      setAddingPosition(true);
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE}/profiles`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(addForm)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create position');
+      }
+
+      const result = await response.json();
+      const newMember = {
+        ...result.member,
+        image: normalizeImageUrl(result.member?.image)
       };
 
-      refreshTeamMembers();
-    }
-  }, [location.pathname, loading]);
+      setTeamMembers((prev) => ({
+        ...prev,
+        [newMember.id]: newMember
+      }));
 
-  // Helper function to get bio preview
+      showSuccess('Position added successfully.');
+      setShowAddPosition(false);
+      setAddForm({
+        role: '',
+        category: 'exec',
+        emoji: '',
+        name: '',
+        email: '',
+        profileLabel: ''
+      });
+    } catch (createError) {
+      console.error('Error creating position:', createError);
+      showError(createError.message || 'Failed to add position. Please try again.');
+    } finally {
+      setAddingPosition(false);
+    }
+  };
+
   const getBioPreview = (memberId) => {
     const member = teamMembers[memberId];
     if (member && member.bio) {
-      // Get first 120 characters and add ellipsis if longer
-      return member.bio.length > 120 ? member.bio.substring(0, 120) + '...' : member.bio;
+      return member.bio.length > 120 ? `${member.bio.substring(0, 120)}...` : member.bio;
     }
     return 'Bio coming soon...';
   };
 
-  // Note: Removed periodic refresh as it was causing profile edits to revert
-  // The data is now only refreshed on component mount and location changes
+  const renderCoachCard = (member) => (
+    <div key={member.id} className="coach-card-container">
+      {canEditProfiles && (
+        <button
+          className="edit-button"
+          onClick={() => handleEditClick(member.id)}
+          title="Edit profile"
+        >
+          ✏️
+        </button>
+      )}
+      <Link to={`/profile/${member.id}/${member.slug || member.id}`} className="coach-card-link">
+        <div className="coach-card">
+          <div className="coach-avatar">
+            <div className="coach-photo">
+              <img
+                src={member.image || '/images/icon.png'}
+                alt={`${member.name || member.role} - ${member.role}`}
+              />
+            </div>
+            <span className="coach-emoji">{member.emoji || '🏊‍♂️'}</span>
+          </div>
+          <h3>{member.role}</h3>
+          <p className="coach-name">{member.name || member.role}</p>
+          {member.email && <p className="coach-email">{member.email}</p>}
+          <p className="coach-bio">{getBioPreview(member.id)}</p>
+          <div className="coach-contact">
+            <p><strong>Contact:</strong> {member.email || 'Email not available'}</p>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+
+  const renderExecCard = (member) => (
+    <div key={member.id} className="exec-card-container">
+      {canEditProfiles && (
+        <button
+          className="edit-button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleEditClick(member.id);
+          }}
+          title="Edit profile"
+        >
+          ✏️
+        </button>
+      )}
+      <Link to={`/profile/${member.id}/${member.slug || member.id}`} className="exec-card-link">
+        <div className="exec-card">
+          <div className="exec-avatar">
+            <div className="exec-photo">
+              <img
+                src={member.image || '/images/icon.png'}
+                alt={`${member.name || member.role} - ${getCardTitle(member)}`}
+              />
+            </div>
+            <span className="exec-emoji">{member.emoji || '👤'}</span>
+          </div>
+          <h3>{getCardTitle(member)}</h3>
+          <p className="exec-name">{member.name || member.role}</p>
+          <p className="exec-email">{member.email || '\u00A0'}</p>
+          <p className="exec-bio">{getBioPreview(member.id)}</p>
+        </div>
+      </Link>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -290,11 +377,6 @@ const CoachesExec = () => {
               >
                 Try Again
               </button>
-              {!navigator.onLine && (
-                <p style={{ fontSize: '0.875rem', color: '#9ca3af', marginTop: '1rem' }}>
-                  Waiting for connection...
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -317,359 +399,64 @@ const CoachesExec = () => {
     <div className="coaches-exec-container">
       <div className="container">
         <h1 className="section-title">Coaches & Executive Team</h1>
-        
-        {/* Coaches Section */}
+
         <div className="coaches-section">
           <h2 className="section-subtitle">Our Coaches</h2>
           <div className="coaches-grid">
-            <div className="coach-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={() => handleEditClick('swim-coach')}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/swim-coach/justin-konik" className="coach-card-link">
-                <div className="coach-card">
-                  <div className="coach-avatar">
-                    <div className="coach-photo">
-                      <img 
-                        src={teamMembers['swim-coach']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['swim-coach']?.name || 'Coach Name'} - Swim Coach`}
-                      />
-                    </div>
-                    <span className="coach-emoji">🏊‍♂️</span>
-                  </div>
-                  <h3>Swim Coach</h3>
-                  <p className="coach-name">{teamMembers['swim-coach']?.name || 'Coach Name'}</p>
-                  {teamMembers['swim-coach']?.email && (
-                    <p className="coach-email">{teamMembers['swim-coach']?.email}</p>
-                  )}
-                  <p className="coach-bio">
-                    {getBioPreview('swim-coach')}
-                  </p>
-                  <div className="coach-contact">
-                    <p><strong>Contact:</strong> {teamMembers['swim-coach']?.email || 'Email not available'}</p>
-                  </div>
-                </div>
-              </Link>
-            </div>
-
-            <div className="coach-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={() => handleEditClick('run-coach')}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/run-coach/run-coach" className="coach-card-link">
-                <div className="coach-card">
-                  <div className="coach-avatar">
-                    <div className="coach-photo">
-                      <img 
-                        src={teamMembers['run-coach']?.image || "/images/icon.png"}
-                        alt={`${teamMembers['run-coach']?.name || 'Coach Name'} - Run Coach`}
-                      />
-                    </div>
-                    <span className="coach-emoji">🏃‍♂️</span>
-                  </div>
-                  <h3>Run Coach</h3>
-                  <p className="coach-name">{teamMembers['run-coach']?.name || 'Coach Name'}</p>
-                  {teamMembers['run-coach']?.email && (
-                    <p className="coach-email">{teamMembers['run-coach']?.email}</p>
-                  )}
-                  <p className="coach-bio">
-                    {getBioPreview('run-coach')}
-                  </p>
-                  <div className="coach-contact">
-                    <p><strong>Contact:</strong> {teamMembers['run-coach']?.email || 'Email not available'}</p>
-                  </div>
-                </div>
-              </Link>
-            </div>
+            {coaches.map(renderCoachCard)}
           </div>
         </div>
 
-        {/* Executive Team Section */}
         <div className="exec-team-section">
-          <h2 className="section-subtitle">Executive Team</h2>
+          <div className="section-header-row">
+            <h2 className="section-subtitle">Executive Team</h2>
+            {canManagePositions && (
+              <button
+                className="add-position-button"
+                onClick={() => setShowAddPosition(true)}
+                type="button"
+              >
+                + Add Position
+              </button>
+            )}
+          </div>
           <div className="exec-grid">
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('co-president-2'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/co-president-2/marlene-garijo" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img 
-                        src={teamMembers['co-president-2']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['co-president-2']?.name || 'Co-President'} - Co-President`}
-                      />
-                    </div>
-                    <span className="exec-emoji">👑</span>
-                  </div>
-                  <h3>Co-President</h3>
-                  <p className="exec-name">{teamMembers['co-president-2']?.name || 'Co-President'}</p>
-                  <p className="exec-email">{teamMembers['co-president-2']?.email || '\u00A0'}</p>
-                  <p className="exec-bio">
-                    {getBioPreview('co-president-2')}
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('treasurer'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/treasurer/edward-ing" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img 
-                        src={teamMembers['treasurer']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['treasurer']?.name || 'Treasurer'} - Treasurer`}
-                      />
-                    </div>
-                    <span className="exec-emoji">💰</span>
-                  </div>
-                  <h3>Treasurer</h3>
-                  <p className="exec-name">{teamMembers['treasurer']?.name || 'Treasurer'}</p>
-                  <p className="exec-email">{teamMembers['treasurer']?.email || '\u00A0'}</p>
-                  <p className="exec-bio">
-                    {getBioPreview('treasurer')}
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('secretary'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/secretary/lauren-williams" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img 
-                        src={teamMembers['secretary']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['secretary']?.name || 'Secretary'} - Secretary`}
-                      />
-                    </div>
-                    <span className="exec-emoji">📝</span>
-                  </div>
-                  <h3>Secretary</h3>
-                  <p className="exec-name">{teamMembers['secretary']?.name || 'Secretary'}</p>
-                  <p className="exec-email">{teamMembers['secretary']?.email || '\u00A0'}</p>
-                  <p className="exec-bio">
-                    {getBioPreview('secretary')}
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('social-coordinator'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/social-coordinator/katy-tiper" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img 
-                        src={teamMembers['social-coordinator']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['social-coordinator']?.name || 'Social Coordinator'} - Social Coordinator/Recruitment`}
-                      />
-                    </div>
-                    <span className="exec-emoji">🎉</span>
-                  </div>
-                  <h3>Social Coordinator/Recruitment</h3>
-                  <p className="exec-name">{teamMembers['social-coordinator']?.name || 'Social Coordinator'}</p>
-                  <p className="exec-email">{teamMembers['social-coordinator']?.email || '\u00A0'}</p>
-                  <p className="exec-bio">
-                    {getBioPreview('social-coordinator')}
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('social-media'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/social-media/paulette-dalton" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img 
-                        src={teamMembers['social-media']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['social-media']?.name || 'Social Media Manager'} - Social Media Manager`}
-                      />
-                    </div>
-                    <span className="exec-emoji">📱</span>
-                  </div>
-                  <h3>Social Media Manager</h3>
-                  <p className="exec-name">{teamMembers['social-media']?.name || 'Social Media Manager'}</p>
-                  <p className="exec-email">{teamMembers['social-media']?.email || '\u00A0'}</p>
-                  <p className="exec-bio">
-                    {getBioPreview('social-media')}
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('webmaster'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/webmaster/ilan-gofman" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img 
-                        src={teamMembers['webmaster']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['webmaster']?.name || 'Webmaster'} - Webmaster`}
-                      />
-                    </div>
-                    <span className="exec-emoji">💻</span>
-                  </div>
-                  <h3>Webmaster</h3>
-                  <p className="exec-name">{teamMembers['webmaster']?.name || 'Webmaster'}</p>
-                  <p className="exec-email">{teamMembers['webmaster']?.email || '\u00A0'}</p>
-                  <p className="exec-bio">
-                    {getBioPreview('webmaster')}
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            <div className="exec-card-container">
-              {(isAdmin(currentUser) || isExec(currentUser)) && (
-                <button 
-                  className="edit-button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick('workout-coordinator'); }}
-                  title="Edit profile"
-                >
-                  ✏️
-                </button>
-              )}
-              <Link to="/profile/workout-coordinator/workout-coordinator" className="exec-card-link">
-                <div className="exec-card">
-                  <div className="exec-avatar">
-                    <div className="exec-photo">
-                      <img 
-                        src={teamMembers['workout-coordinator']?.image || "/images/icon.png"} 
-                        alt={`${teamMembers['workout-coordinator']?.name || 'Workout/Race Coordinator'} - Workout/Race Coordinator`}
-                      />
-                    </div>
-                    <span className="exec-emoji">🏃‍♂️</span>
-                  </div>
-                  <h3>Workout/Race Coordinator</h3>
-                  <p className="exec-name">{teamMembers['workout-coordinator']?.name || 'TBD'}</p>
-                  <p className="exec-email">{teamMembers['workout-coordinator']?.email || '\u00A0'}</p>
-                  <p className="exec-bio">
-                    {getBioPreview('workout-coordinator')}
-                  </p>
-                </div>
-              </Link>
-            </div>
+            {execMembers.map(renderExecCard)}
           </div>
         </div>
 
-        {/* Past Presidents Section */}
-        <div className="exec-team-section">
-          <h2 className="section-subtitle">Past Presidents</h2>
-          <div className="exec-grid">
-            {PAST_PRESIDENTS.map(({ id, slug, years, emoji }) => (
-              <div key={id} className="exec-card-container">
-                {(isAdmin(currentUser) || isExec(currentUser)) && (
-                  <button
-                    className="edit-button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick(id); }}
-                    title="Edit profile"
-                  >
-                    ✏️
-                  </button>
-                )}
-                <Link to={`/profile/${id}/${slug}`} className="exec-card-link">
-                  <div className="exec-card">
-                    <div className="exec-avatar">
-                      <div className="exec-photo">
-                        <img
-                          src={teamMembers[id]?.image || "/images/icon.png"}
-                          alt={`${teamMembers[id]?.name || years} - ${years}`}
-                        />
-                      </div>
-                      <span className="exec-emoji">{emoji}</span>
-                    </div>
-                    <h3>{years}</h3>
-                    <p className="exec-name">{teamMembers[id]?.name || 'Past President'}</p>
-                    <p className="exec-email">{teamMembers[id]?.email || '\u00A0'}</p>
-                    <p className="exec-bio">
-                      {getBioPreview(id)}
-                    </p>
-                  </div>
-                </Link>
-              </div>
-            ))}
+        {pastPresidents.length > 0 && (
+          <div className="exec-team-section">
+            <div className="section-header-row">
+              <h2 className="section-subtitle">Past Presidents</h2>
+              {canManagePositions && (
+                <button
+                  className="add-position-button add-position-button-secondary"
+                  onClick={() => {
+                    setAddForm((prev) => ({ ...prev, category: 'past-president' }));
+                    setShowAddPosition(true);
+                  }}
+                  type="button"
+                >
+                  + Add Past President
+                </button>
+              )}
+            </div>
+            <div className="exec-grid">
+              {pastPresidents.map(renderExecCard)}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Contact Section */}
         <div className="contact-section">
           <h2 className="section-subtitle">Get in Touch</h2>
           <p className="contact-info">
             For general inquiries about the club, please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a>.
           </p>
-         
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {editingMember && (isAdmin(currentUser) || isExec(currentUser)) && (
+      {editingMember && canEditProfiles && (
         <div className="edit-modal-overlay" onClick={handleCloseEdit}>
           <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="edit-modal-header">
@@ -677,6 +464,32 @@ const CoachesExec = () => {
               <button className="close-button" onClick={handleCloseEdit}>×</button>
             </div>
             <div className="edit-modal-body">
+              {canManagePositions && (
+                <div className="form-group">
+                  <label htmlFor="role">Position Title:</label>
+                  <input
+                    type="text"
+                    id="role"
+                    name="role"
+                    value={editForm.role}
+                    onChange={handleEditChange}
+                    placeholder="e.g. Co-President, Treasurer"
+                  />
+                </div>
+              )}
+              {canManagePositions && teamMembers[editingMember]?.category === 'past-president' && (
+                <div className="form-group">
+                  <label htmlFor="profileLabel">Years Label:</label>
+                  <input
+                    type="text"
+                    id="profileLabel"
+                    name="profileLabel"
+                    value={editForm.profileLabel}
+                    onChange={handleEditChange}
+                    placeholder="e.g. 2025-26"
+                  />
+                </div>
+              )}
               <div className="form-group">
                 <label htmlFor="name">Name:</label>
                 <input
@@ -728,31 +541,119 @@ const CoachesExec = () => {
                       const file = e.target.files && e.target.files[0];
                       if (file) {
                         setImageFile(file);
-                        const url = URL.createObjectURL(file);
-                        setImagePreview(url);
-                        // Clear text URL when picking a file
-                        setEditForm(prev => ({ ...prev, image: '' }));
+                        setImagePreview(URL.createObjectURL(file));
+                        setEditForm((prev) => ({ ...prev, image: '' }));
                       }
                     }}
                   />
                 </div>
-                {!imageFile && (
-                  <p style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
-                    Tip: Choose a photo to upload. Existing image URL will remain if no file is selected.
-                  </p>
-                )}
               </div>
             </div>
             <div className="edit-modal-footer">
               <button className="cancel-button" onClick={handleCloseEdit}>
                 Cancel
               </button>
-              <button 
-                className="save-button" 
+              <button
+                className="save-button"
                 onClick={handleSaveEdit}
                 disabled={saving}
               >
                 {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddPosition && canManagePositions && (
+        <div className="edit-modal-overlay" onClick={() => setShowAddPosition(false)}>
+          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="edit-modal-header">
+              <h3>Add Position</h3>
+              <button className="close-button" onClick={() => setShowAddPosition(false)}>×</button>
+            </div>
+            <div className="edit-modal-body">
+              <div className="form-group">
+                <label htmlFor="add-role">Position Title:</label>
+                <input
+                  type="text"
+                  id="add-role"
+                  name="role"
+                  value={addForm.role}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, role: e.target.value }))}
+                  placeholder="e.g. Vice President, Equipment Manager"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="add-category">Section:</label>
+                <select
+                  id="add-category"
+                  name="category"
+                  value={addForm.category}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, category: e.target.value }))}
+                >
+                  <option value="exec">Executive Team</option>
+                  <option value="coach">Coaches</option>
+                  <option value="past-president">Past Presidents</option>
+                </select>
+              </div>
+              {addForm.category === 'past-president' && (
+                <div className="form-group">
+                  <label htmlFor="add-profileLabel">Years Label:</label>
+                  <input
+                    type="text"
+                    id="add-profileLabel"
+                    name="profileLabel"
+                    value={addForm.profileLabel}
+                    onChange={(e) => setAddForm((prev) => ({ ...prev, profileLabel: e.target.value }))}
+                    placeholder="e.g. 2024-25"
+                  />
+                </div>
+              )}
+              <div className="form-group">
+                <label htmlFor="add-emoji">Emoji (optional):</label>
+                <input
+                  type="text"
+                  id="add-emoji"
+                  name="emoji"
+                  value={addForm.emoji}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, emoji: e.target.value }))}
+                  placeholder="e.g. 👑"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="add-name">Person Name (optional):</label>
+                <input
+                  type="text"
+                  id="add-name"
+                  name="name"
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Leave blank to fill in later"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="add-email">Email (optional):</label>
+                <input
+                  type="email"
+                  id="add-email"
+                  name="email"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter email address"
+                />
+              </div>
+            </div>
+            <div className="edit-modal-footer">
+              <button className="cancel-button" onClick={() => setShowAddPosition(false)}>
+                Cancel
+              </button>
+              <button
+                className="save-button"
+                onClick={handleAddPosition}
+                disabled={addingPosition}
+              >
+                {addingPosition ? 'Adding...' : 'Add Position'}
               </button>
             </div>
           </div>
@@ -763,4 +664,3 @@ const CoachesExec = () => {
 };
 
 export default CoachesExec;
-

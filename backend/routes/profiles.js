@@ -17,6 +17,58 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
+const VALID_CATEGORIES = ['coach', 'exec', 'past-president'];
+
+const POSITION_METADATA = {
+  'swim-coach': { category: 'coach', emoji: '🏊‍♂️', slug: 'justin-konik', sortOrder: 0 },
+  'run-coach': { category: 'coach', emoji: '🏃‍♂️', slug: 'run-coach', sortOrder: 1 },
+  'co-president': { category: 'past-president', emoji: '👑', slug: 'jade-clement', sortOrder: 0, profileLabel: '2025-26' },
+  'co-president-2': { category: 'exec', emoji: '👑', slug: 'marlene-garijo', sortOrder: 0 },
+  'treasurer': { category: 'exec', emoji: '💰', slug: 'edward-ing', sortOrder: 1 },
+  'secretary': { category: 'exec', emoji: '📝', slug: 'lauren-williams', sortOrder: 2 },
+  'social-coordinator': { category: 'exec', emoji: '🎉', slug: 'katy-tiper', sortOrder: 3 },
+  'social-media': { category: 'exec', emoji: '📱', slug: 'paulette-dalton', sortOrder: 4 },
+  'webmaster': { category: 'exec', emoji: '💻', slug: 'ilan-gofman', sortOrder: 5 },
+  'workout-coordinator': { category: 'exec', emoji: '🏃‍♂️', slug: 'workout-coordinator', sortOrder: 6 }
+};
+
+function slugify(text) {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'member';
+}
+
+function enrichMember(id, member) {
+  const meta = POSITION_METADATA[id] || {};
+  return {
+    ...member,
+    id: member.id || id,
+    category: member.category || meta.category || 'exec',
+    emoji: member.emoji || meta.emoji || '👤',
+    slug: member.slug || meta.slug || slugify(member.name || id),
+    sortOrder: member.sortOrder ?? meta.sortOrder ?? 999,
+    profileLabel: member.profileLabel ?? meta.profileLabel ?? ''
+  };
+}
+
+function enrichAllMembers(teamMembers) {
+  const enriched = {};
+  for (const [id, member] of Object.entries(teamMembers)) {
+    enriched[id] = enrichMember(id, member);
+  }
+  return enriched;
+}
+
+function generateUniqueId(teamMembers, baseId) {
+  let candidate = slugify(baseId);
+  if (!teamMembers[candidate]) return candidate;
+  let counter = 2;
+  while (teamMembers[`${candidate}-${counter}`]) counter += 1;
+  return `${candidate}-${counter}`;
+}
+
 // Load team member data from file or use defaults
 async function loadTeamMembers() {
   try {
@@ -26,14 +78,14 @@ async function loadTeamMembers() {
       const fromS3 = await getJsonFromS3(s3Key);
       if (fromS3) {
         console.log('📁 Loaded team members from S3 JSON:', Object.keys(fromS3));
-        return fromS3;
+        return enrichAllMembers(fromS3);
       }
     }
     if (fs.existsSync(dataFilePath)) {
       const data = fs.readFileSync(dataFilePath, 'utf8');
       const parsedData = JSON.parse(data);
       console.log('📁 Loaded team members from JSON file:', Object.keys(parsedData));
-      return parsedData;
+      return enrichAllMembers(parsedData);
     } else {
       console.log('⚠️ JSON file not found, using default data');
     }
@@ -43,7 +95,7 @@ async function loadTeamMembers() {
   
   // Initialize sensible defaults for all roles if nothing found
   console.log('⚠️ No team-profiles.json found in S3 or local. Initializing defaults.');
-  const defaults = {
+  const rawDefaults = {
     'swim-coach': { id: 'swim-coach', name: 'Coach Name', role: 'Swim Coach', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
     'run-coach': { id: 'run-coach', name: 'Coach Name', role: 'Run Coach', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
     'co-president': { id: 'co-president', name: 'Co-President', role: 'Co-President', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
@@ -55,6 +107,7 @@ async function loadTeamMembers() {
     'webmaster': { id: 'webmaster', name: 'Webmaster', role: 'Webmaster', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
     'workout-coordinator': { id: 'workout-coordinator', name: 'Workout/Race Coordinator', role: 'Workout/Race Coordinator', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' }
   };
+  const defaults = enrichAllMembers(rawDefaults);
   try {
     await saveTeamMembers(defaults);
   } catch (_) {}
@@ -112,6 +165,52 @@ const upload = multer({
   }
 });
 
+// Create a new team position (admin only)
+router.post('/', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { role, category, emoji, name, email, bio, slug, profileLabel, sortOrder } = req.body;
+
+    if (!role || !String(role).trim()) {
+      return res.status(400).json({ error: 'Position title is required' });
+    }
+
+    const memberCategory = category || 'exec';
+    if (!VALID_CATEGORIES.includes(memberCategory)) {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
+
+    const teamMembers = await loadTeamMembers();
+    const id = generateUniqueId(teamMembers, role);
+    const memberName = name?.trim() || role.trim();
+    const memberSlug = slug?.trim() ? slugify(slug) : slugify(memberName);
+
+    const newMember = enrichMember(id, {
+      id,
+      name: memberName,
+      role: role.trim(),
+      category: memberCategory,
+      emoji: emoji?.trim() || '👤',
+      slug: memberSlug,
+      profileLabel: profileLabel?.trim() || '',
+      sortOrder: sortOrder !== undefined ? Number(sortOrder) : Object.values(teamMembers).filter(m => m.category === memberCategory).length,
+      image: '/images/icon.png',
+      email: email?.trim() || '',
+      bio: bio?.trim() || 'Bio coming soon!'
+    });
+
+    teamMembers[id] = newMember;
+    await saveTeamMembers(teamMembers);
+
+    res.status(201).json({
+      message: 'Position created successfully',
+      member: newMember
+    });
+  } catch (error) {
+    console.error('Error creating position:', error);
+    res.status(500).json({ error: 'Failed to create position' });
+  }
+});
+
 // Get all team member profiles
 router.get('/', async (req, res) => {
   try {
@@ -151,11 +250,12 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, bio, image, email } = req.body;
+    const { name, bio, image, email, role, emoji, profileLabel, slug } = req.body;
     const imageFile = req.file;
 
     console.log('🔄 Updating profile for:', id);
     console.log('👤 New name:', name);
+    console.log('🏷️ New role:', role);
     console.log('📧 New email:', email);
     console.log('📝 New bio:', bio);
     console.log('🖼️ New image URL:', image);
@@ -175,7 +275,11 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
       name: name || currentMember.name,
       email: email !== undefined ? email : currentMember.email,
       bio: bio || currentMember.bio,
-      image: image || currentMember.image
+      image: image || currentMember.image,
+      role: role !== undefined ? role : currentMember.role,
+      emoji: emoji !== undefined ? emoji : currentMember.emoji,
+      profileLabel: profileLabel !== undefined ? profileLabel : currentMember.profileLabel,
+      slug: slug !== undefined ? slugify(slug) : currentMember.slug
     };
     
     // Clean up undefined values to prevent JSON issues
