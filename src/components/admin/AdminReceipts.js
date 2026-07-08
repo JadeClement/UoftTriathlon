@@ -34,14 +34,14 @@ const AdminReceipts = () => {
   }, [receiptStatusFilter]);
 
   return (
-    <div className="admin-main-content" style={{ padding: '2rem' }}>
-      <div className="receipts-section">
+    <div className="admin-main-content">
+      <div className="receipts-section admin-section">
         <h2>Membership Receipts</h2>
         <p style={{ color: '#64748b', marginTop: '-4px' }}>
           Review payment receipts uploaded by members. Approving activates the member and assigns the paid term.
         </p>
 
-        <div className="receipts-tabs" style={{ display: 'flex', gap: '8px', margin: '16px 0', flexWrap: 'wrap' }}>
+        <div className="receipts-tabs">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -58,7 +58,7 @@ const AdminReceipts = () => {
         ) : receipts.length === 0 ? (
           <p className="no-pending">No receipts to show.</p>
         ) : (
-          <div className="receipts-grid" style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+          <div className="receipts-grid">
             {receipts.map((receipt) => (
               <div key={receipt.id} className="receipt-card" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', background: '#fff' }}>
                 <a

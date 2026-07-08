@@ -31,8 +31,8 @@ const AdminIntervalResults = () => {
   }
 
   return (
-    <div className="admin-main-content" style={{ padding: '2rem' }}>
-      <div className="test-events-section">
+    <div className="admin-main-content">
+      <div className="test-events-section admin-section">
         <h2>Interval Results</h2>
         <p style={{ marginTop: '0.5rem', marginBottom: '1.5rem', color: '#6b7280', fontSize: '0.9rem' }}>
           View members who have interval results and export a per-user Excel file.
@@ -73,7 +73,7 @@ const AdminIntervalResults = () => {
             ) : intervalUsers.length === 0 ? (
               <p style={{ color: '#6b7280' }}>No interval results recorded yet.</p>
             ) : (
-              <div style={{ maxHeight: '360px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white' }}>
+              <div className="interval-users-table-wrap" style={{ maxHeight: '360px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
@@ -165,6 +165,7 @@ const AdminIntervalResults = () => {
                       {selectedIntervalUser.email || ''}
                     </p>
                   </div>
+                  <div className="interval-export-toolbar">
                   <button
                     type="button"
                     className="btn btn-secondary"
@@ -253,6 +254,7 @@ const AdminIntervalResults = () => {
                   >
                     {downloadingAllIntervalExports ? 'Downloading…' : 'Download All (selected)'}
                   </button>
+                  </div>
                 </div>
 
                 {selectedUserResultsLoading ? (

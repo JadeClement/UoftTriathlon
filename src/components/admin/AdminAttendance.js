@@ -14,8 +14,8 @@ const AdminAttendance = () => {
   } = useAdminContext();
 
   return (
-    <div className="admin-main-content" style={{ padding: '2rem' }}>
-      <div className="attendance-section">
+    <div className="admin-main-content">
+      <div className="attendance-section admin-section">
         <h2>Attendance Dashboard</h2>
 
         <div className="attendance-filters">

@@ -23,10 +23,10 @@ const AdminMembers = () => {
 
   return (
     <div className="admin-main-content">
-      <div className="members-section">
+      <div className="members-section admin-section">
         <h2>All Members</h2>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: '16px' }}>
-          <div className="form-group member-search" style={{ maxWidth: 420 }}>
+        <div className="admin-page-header">
+          <div className="form-group member-search" style={{ maxWidth: 420, flex: '1 1 100%' }}>
             <input
               type="text"
               className="member-search-input"

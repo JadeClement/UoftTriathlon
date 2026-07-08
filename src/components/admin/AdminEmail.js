@@ -24,11 +24,11 @@ const AdminEmail = () => {
   } = useAdminContext();
 
   return (
-    <div className="admin-main-content" style={{ padding: '2rem' }}>
-      <div className="email-section">
+    <div className="admin-main-content">
+      <div className="email-section admin-section">
         <h2>Send Email</h2>
-        <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1, minWidth: '400px' }}>
+        <div className="email-layout">
+          <div className="email-form-panel">
             <form>
               <div className="form-group" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -507,7 +507,7 @@ const AdminEmail = () => {
           </div>
 
           {emailType === 'everyone' && (
-            <div style={{ flex: 1, minWidth: '400px' }}>
+            <div className="email-preview-panel">
               <div className="card" style={{ padding: '16px', border: '1px solid #eee', borderRadius: 6, position: 'sticky', top: '20px' }}>
                 <h3 style={{ marginTop: 0 }}>Preview</h3>
                 <div

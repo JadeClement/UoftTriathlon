@@ -339,10 +339,42 @@
 /* Members Section */
 .admin-main-content {
   padding: 2rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Shared page layout for admin sections */
+.admin-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-page-header h2 {
+  margin: 0;
+}
+
+.admin-page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-section {
+  padding: 0;
+}
+
+.admin-section h2 {
+  margin: 0 0 1rem 0;
+  color: #374151;
 }
 
 .members-section {
-  padding: 2rem;
+  padding: 0;
 }
 
 .members-section h2 {
@@ -382,6 +414,26 @@
 
 .member-search-clear:hover {
   color: #374151;
+}
+
+.receipts-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.receipts-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.interval-export-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .members-table {
@@ -959,7 +1011,27 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .admin-container {
+    padding: 0.5rem;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  .admin-header {
     padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+  }
+
+  .admin-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .admin-content {
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
   }
   
   .admin-layout {
@@ -976,10 +1048,115 @@
 
   .admin-main-content {
     padding: 0;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
-  .members-section {
+  .members-section,
+  .orders-section,
+  .receipts-section,
+  .terms-section,
+  .email-section,
+  .attendance-section,
+  .test-events-section {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .attendance-filters {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.75rem;
+  }
+
+  .admin-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-page-toolbar {
+    width: 100%;
+  }
+
+  .admin-page-toolbar select {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .admin-page-toolbar .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.625rem;
+  }
+
+  .receipts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .receipts-tabs {
+    width: 100%;
+  }
+
+  .receipts-tabs .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.625rem;
+  }
+
+  .orders-table,
+  .members-table,
+  .attendance-table-container,
+  .records-table,
+  .test-events-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .orders-table {
+    border-radius: 6px;
+  }
+
+  .popup-preview-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .banner-add-row,
+  .banner-item {
+    flex-wrap: wrap;
+  }
+
+  .interval-export-toolbar {
+    width: 100%;
+  }
+
+  .member-search {
+    max-width: 100% !important;
+    width: 100%;
+  }
+
+  .pagination-controls {
     padding: 0.5rem 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .admin-warning {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .interval-users-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
   }
 
   .admin-sidebar {

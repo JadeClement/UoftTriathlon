@@ -13,8 +13,8 @@ const AdminBanner = () => {
   } = useAdminContext();
 
   return (
-    <div className="admin-main-content" style={{ padding: '2rem' }}>
-      <div className="email-section">
+    <div className="admin-main-content">
+      <div className="email-section admin-section">
         <h2>Site Banner & Pop Ups</h2>
         <p>Configure the rotating site banner and an optional login pop-up message.</p>
 

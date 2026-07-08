@@ -24,11 +24,11 @@ const AdminOrders = () => {
   }
 
   return (
-    <div className="admin-main-content" style={{ padding: '2rem' }}>
-      <div className="orders-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+    <div className="admin-main-content">
+      <div className="orders-section admin-section">
+        <div className="admin-page-header">
           <h2>Merch Orders</h2>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="admin-page-toolbar">
             <select
               value={orderFilter}
               onChange={(e) => setOrderFilter(e.target.value)}
@@ -45,7 +45,7 @@ const AdminOrders = () => {
                   onClick={unarchiveSelectedOrders}
                   style={{ backgroundColor: '#10b981' }}
                 >
-                  Unarchive Selected ({selectedOrders.size})
+                  Unarchive ({selectedOrders.size})
                 </button>
               ) : (
                 <button
@@ -53,14 +53,14 @@ const AdminOrders = () => {
                   onClick={archiveSelectedOrders}
                   style={{ backgroundColor: '#f59e0b' }}
                 >
-                  Archive Selected ({selectedOrders.size})
+                  Archive ({selectedOrders.size})
                 </button>
               ))}
             <button className="btn btn-primary" onClick={openNewOrder}>
               + New Order
             </button>
             <button className="btn btn-primary" onClick={exportMerchToExcel}>
-              Export to Excel
+              Export
             </button>
           </div>
         </div>

@@ -11,11 +11,13 @@ const AdminTerms = () => {
   } = useAdminContext();
 
   return (
-    <div className="admin-main-content" style={{ padding: '2rem' }}>
-      <div className="terms-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+    <div className="admin-main-content">
+      <div className="terms-section admin-section">
+        <div className="admin-page-header">
           <h2>Membership Terms</h2>
-          <button className="btn btn-primary" onClick={openNewTerm}>+ Add Term</button>
+          <div className="admin-page-toolbar">
+            <button className="btn btn-primary" onClick={openNewTerm}>+ Add Term</button>
+          </div>
         </div>
         <p style={{ color: '#64748b' }}>
           Each term has a season and a year. The end date determines when a member's access expires.
