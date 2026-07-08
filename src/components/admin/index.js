@@ -1,5 +1,6 @@
 export { default as AdminLayout } from './AdminLayout';
 export { default as AdminSidebar } from './AdminSidebar';
+export { default as AdminGuide } from './AdminGuide';
 export { default as AdminMembers } from './AdminMembers';
 export { default as AdminEmail } from './AdminEmail';
 export { default as AdminBanner } from './AdminBanner';

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { usePendingReceipts } from '../../context/PendingReceiptsContext';
 
 const navItems = [
+  { path: 'guide', label: 'Admin Guide', icon: '📖', adminOnly: false },
   { path: 'members', label: 'All Members', icon: '👥', adminOnly: false },
   { path: 'receipts', label: 'Receipts', icon: '🧾', adminOnly: false },
   { path: 'terms', label: 'Terms', icon: '📅', adminOnly: true },
