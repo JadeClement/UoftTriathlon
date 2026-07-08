@@ -227,6 +227,7 @@ const Profile = () => {
         setReceiptTermId('');
         if (receiptFileInputRef.current) receiptFileInputRef.current.value = '';
         await loadMembershipData();
+        window.dispatchEvent(new Event('receiptsUpdated'));
       } else {
         setReceiptError(data.error || 'Failed to upload receipt');
       }
@@ -762,7 +763,7 @@ const Profile = () => {
 
         <div className="membership-details">
           {membership.term_label && (
-            <div className="info-item"><strong>Term:</strong> {membership.term_label}</div>
+            <div className="info-item"><strong>{status === 'expired' ? 'Latest Term:' : 'Term:'}</strong> {membership.term_label}</div>
           )}
           {membership.term_end_date && (
             <div className="info-item">

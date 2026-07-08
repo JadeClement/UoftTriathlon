@@ -443,6 +443,33 @@
   flex-shrink: 0; /* Don't shrink the profile button */
 }
 
+.profile-picture-nav-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.nav-receipt-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  z-index: 2;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #dc2626;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  pointer-events: none;
+}
+
 .profile-picture-nav {
   width: 40px;
   height: 40px;

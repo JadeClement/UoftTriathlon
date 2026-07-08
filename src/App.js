@@ -10,7 +10,7 @@ import JoinUs from './components/JoinUs';
 import Races from './components/Races';
 import CoachesExec from './components/CoachesExec';
 import Admin from './components/Admin';
-import { AdminMembers, AdminPending, AdminEmail, AdminBanner, AdminAttendance, AdminOrders, AdminIntervalResults, AdminReceipts, AdminTerms } from './components/admin/index';
+import { AdminMembers, AdminEmail, AdminBanner, AdminAttendance, AdminOrders, AdminIntervalResults, AdminReceipts, AdminTerms } from './components/admin/index';
 import Login from './components/Login';
 import WorkoutDetail from './components/WorkoutDetail';
 import EventDetail from './components/EventDetail';
@@ -28,6 +28,7 @@ import RAGChatWidget from './components/RAGChatWidget';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import Support from './components/Support';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PendingReceiptsProvider } from './context/PendingReceiptsContext';
 import CharterModal from './components/CharterModal';
 import RoleChangeNotification from './components/RoleChangeNotification';
 import SimpleNotification from './components/SimpleNotification';
@@ -253,7 +254,6 @@ function AppContent() {
           <Route path="/admin" element={<Admin />}>
             <Route index element={<Navigate to="members" replace />} />
             <Route path="members" element={<AdminMembers />} />
-            <Route path="pending" element={<AdminPending />} />
             <Route path="receipts" element={<AdminReceipts />} />
             <Route path="terms" element={<AdminTerms />} />
             <Route path="email" element={<AdminEmail />} />
@@ -290,13 +290,15 @@ function App() {
     <ErrorBoundary>
     <AuthProvider>
       <Router>
-        <div className="App">
-          <ScrollToTop />
-          <Navbar />
-          <CharterPrompt />
-          <AppContent />
-          <SimpleNotification />
-        </div>
+        <PendingReceiptsProvider>
+          <div className="App">
+            <ScrollToTop />
+            <Navbar />
+            <CharterPrompt />
+            <AppContent />
+            <SimpleNotification />
+          </div>
+        </PendingReceiptsProvider>
       </Router>
     </AuthProvider>
     </ErrorBoundary>

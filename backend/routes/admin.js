@@ -295,6 +295,19 @@ router.get('/receipts', authenticateToken, requireRole('exec'), async (req, res)
   }
 });
 
+// Lightweight count of receipts awaiting review (for badges/notifications)
+router.get('/receipts/pending-count', authenticateToken, requireRole('exec'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM membership_receipts WHERE status = 'pending_review'`
+    );
+    res.json({ count: result.rows[0]?.count || 0 });
+  } catch (error) {
+    console.error('Get pending receipts count error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Approve a receipt: activate the member and assign the paid term (admin only)
 router.post('/receipts/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
   const client = await pool.connect();

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { usePendingReceipts } from '../../context/PendingReceiptsContext';
 
 const navItems = [
   { path: 'members', label: 'All Members', icon: '👥', adminOnly: false },
-  { path: 'pending', label: 'Pending Approval', icon: '⏳', adminOnly: false },
   { path: 'receipts', label: 'Receipts', icon: '🧾', adminOnly: false },
   { path: 'terms', label: 'Terms', icon: '📅', adminOnly: true },
   { path: 'email', label: 'Send Email', icon: '✉️', adminOnly: false },
@@ -17,6 +17,9 @@ const navItems = [
 const AdminSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { currentUser, isAdmin, isCoach, isExec } = useAuth();
+  const { pendingReceiptsCount } = usePendingReceipts();
+
+  const receiptBadgeLabel = pendingReceiptsCount > 99 ? '99+' : pendingReceiptsCount;
 
   const visibleItems = navItems.filter(item => {
     if (item.adminOnly) return isAdmin(currentUser);
@@ -47,7 +50,21 @@ const AdminSidebar = () => {
             title={collapsed ? label : undefined}
           >
             <span className="admin-sidebar-icon">{icon}</span>
-            {!collapsed && <span className="admin-sidebar-label">{label}</span>}
+            {!collapsed && (
+              <span className="admin-sidebar-label">
+                {label}
+                {path === 'receipts' && pendingReceiptsCount > 0 && (
+                  <span className="admin-receipt-badge" aria-label={`${pendingReceiptsCount} receipt(s) awaiting review`}>
+                    {receiptBadgeLabel}
+                  </span>
+                )}
+              </span>
+            )}
+            {collapsed && path === 'receipts' && pendingReceiptsCount > 0 && (
+              <span className="admin-receipt-badge admin-receipt-badge-collapsed" aria-label={`${pendingReceiptsCount} receipt(s) awaiting review`}>
+                {receiptBadgeLabel}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

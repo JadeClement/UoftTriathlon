@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePendingReceipts } from '../context/PendingReceiptsContext';
 import { Capacitor } from '@capacitor/core';
 import './Navbar.css';
 
@@ -51,7 +52,9 @@ const Navbar = () => {
   const [itemsInMore, setItemsInMore] = useState(new Set()); // Track which items are in More dropdown
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
+  const { pendingReceiptsCount } = usePendingReceipts();
   const profileRef = useRef(null);
   const profileMobileRef = useRef(null);
   const moreRef = useRef(null);
@@ -538,6 +541,18 @@ const Navbar = () => {
   // Check if Android specifically (safe-area insets aren't reliable there)
   const isAndroid = Capacitor.getPlatform() === 'android';
 
+  // Red badge on the profile circle for administrators who can approve receipts.
+  // Hidden on the admin page (the sidebar shows the count there). Execs can view
+  // the queue in admin but cannot approve, so they don't get this badge.
+  const canApproveReceipts = currentUser?.role === 'administrator';
+  const onAdminPage = location.pathname.startsWith('/admin');
+  const showReceiptBadge = canApproveReceipts && !onAdminPage && pendingReceiptsCount > 0;
+  const receiptBadge = showReceiptBadge ? (
+    <span className="nav-receipt-badge" aria-label={`${pendingReceiptsCount} receipt(s) awaiting review`}>
+      {pendingReceiptsCount > 99 ? '99+' : pendingReceiptsCount}
+    </span>
+  ) : null;
+
   return (
     <>
     {showPopupModal && popupModal?.message && (
@@ -693,25 +708,28 @@ const Navbar = () => {
             <>
               {currentUser ? (
                 <div className="profile-dropdown" ref={profileRef}>
-                  <div 
-                    className="profile-picture-nav"
-                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  >
-                    {profileImageUrl ? (
-                      <img 
-                        src={profileImageUrl} 
-                        alt="Profile" 
-                        onError={(e) => {
-                          console.log('❌ Navbar profile image failed to load, falling back to default');
-                          e.target.src = '/images/default_profile.png';
-                        }}
-                      />
-                    ) : (
-                      <img 
-                        src="/images/default_profile.png" 
-                        alt="Profile" 
-                      />
-                    )}
+                  <div className="profile-picture-nav-wrap">
+                    <div 
+                      className="profile-picture-nav"
+                      onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    >
+                      {profileImageUrl ? (
+                        <img 
+                          src={profileImageUrl} 
+                          alt="Profile" 
+                          onError={(e) => {
+                            console.log('❌ Navbar profile image failed to load, falling back to default');
+                            e.target.src = '/images/default_profile.png';
+                          }}
+                        />
+                      ) : (
+                        <img 
+                          src="/images/default_profile.png" 
+                          alt="Profile" 
+                        />
+                      )}
+                    </div>
+                    {receiptBadge}
                   </div>
                   
                   {isProfileOpen && (
@@ -783,25 +801,28 @@ const Navbar = () => {
           <>
             {currentUser ? (
               <div className="profile-dropdown" ref={profileRef}>
-                <div 
-                  className="profile-picture-nav"
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                >
-                  {profileImageUrl ? (
-                    <img 
-                      src={profileImageUrl} 
-                      alt="Profile" 
-                      onError={(e) => {
-                        console.log('❌ Navbar profile image failed to load, falling back to default');
-                        e.target.src = '/images/default_profile.png';
-                      }}
-                    />
-                  ) : (
-                    <img 
-                      src="/images/default_profile.png" 
-                      alt="Profile" 
-                    />
-                  )}
+                <div className="profile-picture-nav-wrap">
+                  <div 
+                    className="profile-picture-nav"
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  >
+                    {profileImageUrl ? (
+                      <img 
+                        src={profileImageUrl} 
+                        alt="Profile" 
+                        onError={(e) => {
+                          console.log('❌ Navbar profile image failed to load, falling back to default');
+                          e.target.src = '/images/default_profile.png';
+                        }}
+                      />
+                    ) : (
+                      <img 
+                        src="/images/default_profile.png" 
+                        alt="Profile" 
+                      />
+                    )}
+                  </div>
+                  {receiptBadge}
                 </div>
                 
                 {isProfileOpen && (
@@ -871,25 +892,28 @@ const Navbar = () => {
           <div className="profile-dropdown-mobile" ref={profileMobileRef}>
           {currentUser ? (
             <>
-              <div 
-                className="profile-picture-nav"
-                onClick={() => setIsProfileOpen(!isProfileOpen)}
-              >
-                {profileImageUrl ? (
-                  <img 
-                    src={profileImageUrl} 
-                    alt="Profile" 
-                    onError={(e) => {
-                      console.log('❌ Navbar profile image failed to load, falling back to default');
-                      e.target.src = '/images/default_profile.png';
-                    }}
-                  />
-                ) : (
-                  <img 
-                    src="/images/default_profile.png" 
-                    alt="Profile" 
-                  />
-                )}
+              <div className="profile-picture-nav-wrap">
+                <div 
+                  className="profile-picture-nav"
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                >
+                  {profileImageUrl ? (
+                    <img 
+                      src={profileImageUrl} 
+                      alt="Profile" 
+                      onError={(e) => {
+                        console.log('❌ Navbar profile image failed to load, falling back to default');
+                        e.target.src = '/images/default_profile.png';
+                      }}
+                    />
+                  ) : (
+                    <img 
+                      src="/images/default_profile.png" 
+                      alt="Profile" 
+                    />
+                  )}
+                </div>
+                {receiptBadge}
               </div>
               
               {isProfileOpen && (

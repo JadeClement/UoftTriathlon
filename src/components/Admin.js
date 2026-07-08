@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePendingReceipts } from '../context/PendingReceiptsContext';
 import { getFieldsForSport } from '../config/sportFields';
 import { formatSignupTimeForDisplay } from '../utils/dateUtils';
 import { showError, showSuccess } from './SimpleNotification';
@@ -11,9 +12,9 @@ import './Admin.css';
 
 const Admin = () => {
   const { currentUser, isAdmin, isCoach, isExec } = useAuth();
+  const { refreshPendingReceipts } = usePendingReceipts();
   const location = useLocation();
   const [members, setMembers] = useState([]);
-  const [pendingMembers, setPendingMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [intervalUsers, setIntervalUsers] = useState([]);
   const [intervalUsersLoading, setIntervalUsersLoading] = useState(false);
@@ -661,7 +662,7 @@ const Admin = () => {
       });
       if (response.ok) {
         showSuccess('Receipt approved and member activated');
-        await Promise.all([loadReceipts(), loadAdminData()]);
+        await Promise.all([loadReceipts(), loadAdminData(), refreshPendingReceipts()]);
       } else {
         const err = await response.json().catch(() => ({}));
         showError(`Failed to approve receipt${err.error ? `: ${err.error}` : ''}`);
@@ -690,7 +691,7 @@ const Admin = () => {
         showSuccess('Receipt rejected');
         setRejectingReceipt(null);
         setRejectReason('');
-        await loadReceipts();
+        await Promise.all([loadReceipts(), refreshPendingReceipts()]);
       } else {
         const err = await response.json().catch(() => ({}));
         showError(`Failed to reject receipt${err.error ? `: ${err.error}` : ''}`);
@@ -828,10 +829,6 @@ const Admin = () => {
         console.log('🔍 Jade members found:', jadeMembers);
         
         setMembers(transformedMembers);
-        
-        // Filter pending members
-        const pending = transformedMembers.filter(m => m.role === 'pending');
-        setPendingMembers(pending);
       }
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -1694,7 +1691,7 @@ const Admin = () => {
   }
 
   const adminContextValue = {
-    members, setMembers, pendingMembers, memberSearch, setMemberSearch,
+    members, setMembers, memberSearch, setMemberSearch,
     currentPage, setCurrentPage, membersPerPage, terms, loadAdminData, formatTermName,
     receipts, receiptsLoading, receiptStatusFilter, setReceiptStatusFilter, loadReceipts,
     approveReceipt, openRejectReceipt,

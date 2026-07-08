@@ -22,25 +22,26 @@ const AdminMembers = () => {
   } = useAdminContext();
 
   return (
-    <div className="admin-main-content" style={{ padding: '2rem' }}>
+    <div className="admin-main-content">
       <div className="members-section">
         <h2>All Members</h2>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: '16px' }}>
-          <div className="form-group" style={{ maxWidth: 420, display: 'flex', gap: '8px' }}>
+          <div className="form-group member-search" style={{ maxWidth: 420 }}>
             <input
               type="text"
+              className="member-search-input"
               placeholder="Search by name or email…"
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
-              style={{ flex: 1 }}
             />
             {memberSearch && (
               <button
-                className="btn btn-secondary"
+                type="button"
+                className="member-search-clear"
                 onClick={() => setMemberSearch('')}
-                style={{ padding: '8px 12px', fontSize: '14px' }}
+                aria-label="Clear search"
               >
-                Clear
+                ×
               </button>
             )}
           </div>
@@ -72,10 +73,10 @@ const AdminMembers = () => {
                   )}
                 </div>
                 <div className="pagination-buttons">
-                  <button className="pagination-btn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+                  <button className="pagination-btn pagination-nav-btn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
                     First
                   </button>
-                  <button className="pagination-btn" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
+                  <button className="pagination-btn pagination-nav-btn" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
                     Previous
                   </button>
 
@@ -105,14 +106,14 @@ const AdminMembers = () => {
                   })}
 
                   <button
-                    className="pagination-btn"
+                    className="pagination-btn pagination-nav-btn"
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >
                     Next
                   </button>
                   <button
-                    className="pagination-btn"
+                    className="pagination-btn pagination-nav-btn"
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={currentPage === totalPages}
                   >
@@ -248,10 +249,10 @@ const AdminMembers = () => {
                   )}
                 </div>
                 <div className="pagination-buttons">
-                  <button className="pagination-btn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+                  <button className="pagination-btn pagination-nav-btn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
                     First
                   </button>
-                  <button className="pagination-btn" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
+                  <button className="pagination-btn pagination-nav-btn" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
                     Previous
                   </button>
 
@@ -281,14 +282,14 @@ const AdminMembers = () => {
                   })}
 
                   <button
-                    className="pagination-btn"
+                    className="pagination-btn pagination-nav-btn"
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >
                     Next
                   </button>
                   <button
-                    className="pagination-btn"
+                    className="pagination-btn pagination-nav-btn"
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={currentPage === totalPages}
                   >
