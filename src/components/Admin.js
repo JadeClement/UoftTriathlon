@@ -126,6 +126,51 @@ const Admin = () => {
     return `${season} ${startYear}`;
   };
 
+  const MEMBERSHIP_STATUS_LABELS = {
+    not_member: 'Not a member',
+    pending_review: 'Receipt under review',
+    active: 'Active',
+    expiring_soon: 'Expiring soon',
+    expired: 'Expired',
+  };
+
+  const NON_EXPIRING_ROLES = ['coach', 'exec', 'administrator'];
+
+  const toEditableMembershipStatus = (status) => {
+    if (status === 'expiring_soon') return 'active';
+    if (status === 'pending_review') return 'pending_review';
+    return status || 'not_member';
+  };
+
+  const previewMembershipStatus = (role, termEndDate, hasPendingReceipt) => {
+    const memberRoles = ['member', 'coach', 'exec', 'administrator'];
+    if (!memberRoles.includes(role)) return 'not_member';
+    if (role !== 'member') return 'active';
+    if (!termEndDate) return 'active';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(`${String(termEndDate).slice(0, 10)}T00:00:00`);
+    end.setHours(0, 0, 0, 0);
+    let base = 'active';
+    if (end < today) base = 'expired';
+    else {
+      const soon = new Date(today);
+      soon.setDate(soon.getDate() + 7);
+      if (end <= soon) base = 'expiring_soon';
+    }
+    if (hasPendingReceipt && (base === 'not_member' || base === 'expired')) return 'pending_review';
+    return base;
+  };
+
+  const isTermExpired = (term) => {
+    if (!term?.end_date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(`${String(term.end_date).slice(0, 10)}T00:00:00`);
+    end.setHours(0, 0, 0, 0);
+    return end < today;
+  };
+
   // Rich text editor functions
   const insertText = (text, wrapper = '') => {
     const textarea = document.getElementById('email-body-textarea');
@@ -224,7 +269,8 @@ const Admin = () => {
     phoneNumber: '',
     charterAccepted: false,
     sport: 'triathlon',
-    term_id: null
+    term_id: null,
+    membershipStatus: 'not_member',
   });
   const [approvingMember, setApprovingMember] = useState(null);
   const [approvalForm, setApprovalForm] = useState({
@@ -1550,7 +1596,8 @@ const Admin = () => {
       phoneNumber: member.phone_number || '',
       charterAccepted: initialCharterAccepted,
       sport: member.sport || 'triathlon',
-      term_id: member.term_id || null
+      term_id: member.term_id || null,
+      membershipStatus: toEditableMembershipStatus(member.membership_status),
     });
     console.log('📝 Edit form set to:', {
       name: member.name,
@@ -1558,6 +1605,37 @@ const Admin = () => {
       role: member.role,
       phoneNumber: member.phone_number || '',
       charterAccepted: initialCharterAccepted
+    });
+  };
+
+  const handleRoleChange = (role) => {
+    let membershipStatus = editForm.membershipStatus;
+    if (role === 'pending') {
+      membershipStatus = 'not_member';
+    } else if (NON_EXPIRING_ROLES.includes(role)) {
+      membershipStatus = 'active';
+    } else if (role === 'member' && membershipStatus === 'not_member') {
+      membershipStatus = 'active';
+    }
+    setEditForm({ ...editForm, role, membershipStatus });
+  };
+
+  const handleMembershipStatusChange = (membershipStatus) => {
+    if (membershipStatus === 'pending_review') return;
+    if (membershipStatus === 'not_member') {
+      setEditForm({ ...editForm, membershipStatus, role: 'pending', term_id: null });
+      return;
+    }
+    const role = editForm.role === 'pending' || editForm.role === 'member'
+      ? 'member'
+      : editForm.role;
+    setEditForm({ ...editForm, membershipStatus, role });
+  };
+
+  const handleTermChange = (termId) => {
+    setEditForm({
+      ...editForm,
+      term_id: termId === '' ? null : parseInt(termId, 10),
     });
   };
 
@@ -1570,6 +1648,18 @@ const Admin = () => {
     
     console.log('🔄 Saving member edit for:', editingMember.id);
     console.log('📝 Form data:', editForm);
+
+    const selectedTerm = terms.find((t) => t.id === editForm.term_id);
+    if (editForm.role === 'member') {
+      if (editForm.membershipStatus === 'active' && selectedTerm && isTermExpired(selectedTerm)) {
+        showError('Active membership requires a term that has not ended. Choose a current or future term.');
+        return;
+      }
+      if (editForm.membershipStatus === 'expired' && selectedTerm && !isTermExpired(selectedTerm)) {
+        showError('Expired membership requires a term whose end date has passed.');
+        return;
+      }
+    }
     
     // Clean up the form data - convert empty strings to null for optional fields
     const cleanFormData = {
@@ -1649,7 +1739,8 @@ const Admin = () => {
           phoneNumber: '',
           charterAccepted: false,
           sport: 'triathlon',
-          term_id: null
+          term_id: null,
+          membershipStatus: 'not_member',
         });
       } else {
         const errorData = await response.json();
@@ -1671,7 +1762,8 @@ const Admin = () => {
       phoneNumber: '',
       charterAccepted: false,
       sport: 'triathlon',
-      term_id: null
+      term_id: null,
+      membershipStatus: 'not_member',
     });
   };
 
@@ -1784,7 +1876,7 @@ const Admin = () => {
                 <label>Role:</label>
                 <select
                   value={editForm.role}
-                  onChange={(e) => setEditForm({...editForm, role: e.target.value})}
+                  onChange={(e) => handleRoleChange(e.target.value)}
                   required
                 >
                   <option value="pending">Pending</option>
@@ -1793,6 +1885,64 @@ const Admin = () => {
                   <option value="exec">Executive</option>
                   <option value="administrator">Administrator</option>
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label>Membership Status:</label>
+                {editForm.membershipStatus === 'pending_review' ? (
+                  <>
+                    <div style={{ marginBottom: '6px' }}>
+                      <span className="membership-status pending_review">
+                        {MEMBERSHIP_STATUS_LABELS.pending_review}
+                      </span>
+                    </div>
+                    <small>Receipt awaiting review — approve or reject in the Receipts tab.</small>
+                  </>
+                ) : NON_EXPIRING_ROLES.includes(editForm.role) ? (
+                  <>
+                    <div style={{ marginBottom: '6px' }}>
+                      <span className="membership-status active">{MEMBERSHIP_STATUS_LABELS.active}</span>
+                    </div>
+                    <small>Coaches, executives, and administrators do not expire with terms.</small>
+                  </>
+                ) : (
+                  <>
+                    <select
+                      value={editForm.membershipStatus}
+                      onChange={(e) => handleMembershipStatusChange(e.target.value)}
+                    >
+                      <option value="active">Active</option>
+                      <option value="expired">Expired</option>
+                      <option value="not_member">Not a member</option>
+                    </select>
+                    {(() => {
+                      const selectedTerm = terms.find((t) => t.id === editForm.term_id);
+                      const preview = previewMembershipStatus(
+                        editForm.role,
+                        selectedTerm?.end_date,
+                        editingMember?.has_pending_receipt
+                      );
+                      if (preview === 'expiring_soon') {
+                        return (
+                          <div style={{ marginTop: '8px' }}>
+                            <span className="membership-status expiring_soon">
+                              {MEMBERSHIP_STATUS_LABELS.expiring_soon}
+                            </span>
+                            <small style={{ display: 'block', marginTop: '4px' }}>
+                              Based on the selected term ending within 7 days.
+                            </small>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                    <small>
+                      {editForm.membershipStatus === 'active' && 'Set role to member and assign a current term.'}
+                      {editForm.membershipStatus === 'expired' && 'Set role to member and assign a term that has already ended.'}
+                      {editForm.membershipStatus === 'not_member' && 'Sets role to pending and clears the term.'}
+                    </small>
+                  </>
+                )}
               </div>
 
               <div className="form-group">
@@ -1829,7 +1979,7 @@ const Admin = () => {
                 <label>Term:</label>
                 <select
                   value={editForm.term_id || ''}
-                  onChange={(e) => setEditForm({...editForm, term_id: e.target.value === '' ? null : parseInt(e.target.value, 10)})}
+                  onChange={(e) => handleTermChange(e.target.value)}
                 >
                   <option value="">No term assigned</option>
                   {terms.map(term => (
