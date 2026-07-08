@@ -49,6 +49,11 @@ const AdminSidebar = () => {
               `admin-sidebar-link ${isActive ? 'active' : ''}`
             }
             title={collapsed ? label : undefined}
+            aria-label={
+              path === 'receipts' && pendingReceiptsCount > 0
+                ? `${label}, ${pendingReceiptsCount} awaiting review`
+                : label
+            }
           >
             <span className="admin-sidebar-icon">{icon}</span>
             {!collapsed && (

@@ -483,6 +483,24 @@
   justify-content: center;
 }
 
+button.profile-picture-nav {
+  padding: 0;
+  background: none;
+  font: inherit;
+}
+
+.profile-picture-nav:focus-visible,
+.navbar-hamburger:focus-visible,
+.navbar-logo:focus-visible,
+.navbar-link:focus-visible,
+.navbar-link.as-button:focus-visible,
+.more-item:focus-visible,
+.hamburger-item:focus-visible,
+.profile-menu-item:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .profile-picture-nav:hover {
   border-color: rgba(255, 255, 255, 0.6);
   transform: scale(1.05);

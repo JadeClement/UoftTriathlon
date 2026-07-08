@@ -37,6 +37,35 @@ function linkify(text) {
   return result;
 }
 
+function ProfileAvatar({ profileImageUrl }) {
+  const handleError = (e) => {
+    e.target.src = '/images/default_profile.png';
+  };
+  if (profileImageUrl) {
+    return <img src={profileImageUrl} alt="" aria-hidden="true" onError={handleError} />;
+  }
+  return <img src="/images/default_profile.png" alt="" aria-hidden="true" />;
+}
+
+function ProfileToggle({ isOpen, onToggle, profileImageUrl, receiptBadge, menuId }) {
+  return (
+    <div className="profile-picture-nav-wrap">
+      <button
+        type="button"
+        className="profile-picture-nav"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-controls={menuId}
+        aria-label="Account menu"
+      >
+        <ProfileAvatar profileImageUrl={profileImageUrl} />
+      </button>
+      {receiptBadge}
+    </div>
+  );
+}
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -529,6 +558,34 @@ const Navbar = () => {
     };
   }, []);
 
+  // Close dropdown menus on Escape and return focus to the trigger
+  useEffect(() => {
+    if (!isProfileOpen && !isMoreOpen && !isHamburgerOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+
+      if (isProfileOpen) {
+        setIsProfileOpen(false);
+        const trigger =
+          profileMobileRef.current?.querySelector('button.profile-picture-nav') ||
+          profileRef.current?.querySelector('button.profile-picture-nav');
+        trigger?.focus();
+      }
+      if (isMoreOpen) {
+        setIsMoreOpen(false);
+        moreRef.current?.querySelector('button')?.focus();
+      }
+      if (isHamburgerOpen) {
+        setIsHamburgerOpen(false);
+        document.querySelector('.navbar-hamburger')?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isProfileOpen, isMoreOpen, isHamburgerOpen]);
+
   const navItems = getNavItems();
   const itemsInMoreArray = Array.from(itemsInMore);
   const itemsInMoreMenu = navItems.filter(item => itemsInMoreArray.includes(item.key));
@@ -555,6 +612,9 @@ const Navbar = () => {
 
   return (
     <>
+    <a href="#main-content" className="skip-link">
+      Skip to main content
+    </a>
     {showPopupModal && popupModal?.message && (
       <div className="popup-overlay" onClick={acknowledgePopup}>
         <div className="popup-modal" onClick={(e) => e.stopPropagation()}>
@@ -608,6 +668,8 @@ const Navbar = () => {
             className="navbar-hamburger"
             onClick={() => setIsHamburgerOpen(!isHamburgerOpen)}
             aria-label="Menu"
+            aria-expanded={isHamburgerOpen}
+            aria-controls="hamburger-menu"
           >
             <span className={`hamburger-bar ${isHamburgerOpen ? 'active' : ''}`}></span>
             <span className={`hamburger-bar ${isHamburgerOpen ? 'active' : ''}`}></span>
@@ -617,7 +679,7 @@ const Navbar = () => {
         
         {/* Hamburger menu dropdown for mobile - hide on iOS apps */}
         {isMobile && !isNativeApp && isHamburgerOpen && (
-          <div className="hamburger-menu">
+          <div className="hamburger-menu" id="hamburger-menu" role="menu" aria-label="Site navigation">
             {navItems.map(item => (
               <Link
                 key={item.key}
@@ -661,11 +723,14 @@ const Navbar = () => {
             <button 
               className={`navbar-link as-button ${isMoreOpen ? 'active' : ''}`}
               onClick={() => setIsMoreOpen(!isMoreOpen)}
+              aria-expanded={isMoreOpen}
+              aria-haspopup="menu"
+              aria-controls="more-menu"
             >
               More ▾
             </button>
             {isMoreOpen && (
-              <div className="more-menu">
+              <div className="more-menu" id="more-menu" role="menu" aria-label="More pages">
                 {/* Items moved from main nav */}
                 {itemsInMoreMenu.map(item => (
                   <Link
@@ -708,35 +773,20 @@ const Navbar = () => {
             <>
               {currentUser ? (
                 <div className="profile-dropdown" ref={profileRef}>
-                  <div className="profile-picture-nav-wrap">
-                    <div 
-                      className="profile-picture-nav"
-                      onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    >
-                      {profileImageUrl ? (
-                        <img 
-                          src={profileImageUrl} 
-                          alt="Profile" 
-                          onError={(e) => {
-                            console.log('❌ Navbar profile image failed to load, falling back to default');
-                            e.target.src = '/images/default_profile.png';
-                          }}
-                        />
-                      ) : (
-                        <img 
-                          src="/images/default_profile.png" 
-                          alt="Profile" 
-                        />
-                      )}
-                    </div>
-                    {receiptBadge}
-                  </div>
+                  <ProfileToggle
+                    isOpen={isProfileOpen}
+                    onToggle={() => setIsProfileOpen(!isProfileOpen)}
+                    profileImageUrl={profileImageUrl}
+                    receiptBadge={receiptBadge}
+                    menuId="profile-menu-desktop"
+                  />
                   
                   {isProfileOpen && (
-                    <div className="profile-menu">
+                    <div className="profile-menu" id="profile-menu-desktop" role="menu" aria-label="Account">
                       <Link 
                         to="/profile" 
                         className="profile-menu-item"
+                        role="menuitem"
                         onClick={() => {
                           setIsProfileOpen(false);
                           closeMenu();
@@ -747,6 +797,7 @@ const Navbar = () => {
                       <Link 
                         to="/results" 
                         className="profile-menu-item"
+                        role="menuitem"
                         onClick={() => {
                           setIsProfileOpen(false);
                           closeMenu();
@@ -758,6 +809,7 @@ const Navbar = () => {
                         <Link 
                           to="/settings" 
                           className="profile-menu-item"
+                          role="menuitem"
                           onClick={() => {
                             setIsProfileOpen(false);
                             closeMenu();
@@ -768,6 +820,7 @@ const Navbar = () => {
                       )}
                       <button 
                         className="profile-menu-item logout-btn"
+                        role="menuitem"
                         onClick={() => {
                           logout();
                         }}
@@ -783,11 +836,9 @@ const Navbar = () => {
                     to="/login"
                     className="profile-picture-nav"
                     onClick={closeMenu}
+                    aria-label="Log in"
                   >
-                    <img 
-                      src="/images/default_profile.png" 
-                      alt="Profile" 
-                    />
+                    <ProfileAvatar profileImageUrl={null} />
                   </Link>
                 </div>
               )}
@@ -801,35 +852,20 @@ const Navbar = () => {
           <>
             {currentUser ? (
               <div className="profile-dropdown" ref={profileRef}>
-                <div className="profile-picture-nav-wrap">
-                  <div 
-                    className="profile-picture-nav"
-                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  >
-                    {profileImageUrl ? (
-                      <img 
-                        src={profileImageUrl} 
-                        alt="Profile" 
-                        onError={(e) => {
-                          console.log('❌ Navbar profile image failed to load, falling back to default');
-                          e.target.src = '/images/default_profile.png';
-                        }}
-                      />
-                    ) : (
-                      <img 
-                        src="/images/default_profile.png" 
-                        alt="Profile" 
-                      />
-                    )}
-                  </div>
-                  {receiptBadge}
-                </div>
+                <ProfileToggle
+                  isOpen={isProfileOpen}
+                  onToggle={() => setIsProfileOpen(!isProfileOpen)}
+                  profileImageUrl={profileImageUrl}
+                  receiptBadge={receiptBadge}
+                  menuId="profile-menu-native"
+                />
                 
                 {isProfileOpen && (
-                  <div className="profile-menu">
+                  <div className="profile-menu" id="profile-menu-native" role="menu" aria-label="Account">
                     <Link 
                       to="/profile" 
                       className="profile-menu-item"
+                      role="menuitem"
                       onClick={() => {
                         setIsProfileOpen(false);
                         closeMenu();
@@ -840,6 +876,7 @@ const Navbar = () => {
                     <Link 
                       to="/results" 
                       className="profile-menu-item"
+                      role="menuitem"
                       onClick={() => {
                         setIsProfileOpen(false);
                         closeMenu();
@@ -851,6 +888,7 @@ const Navbar = () => {
                       <Link 
                         to="/settings" 
                         className="profile-menu-item"
+                        role="menuitem"
                         onClick={() => {
                           setIsProfileOpen(false);
                           closeMenu();
@@ -861,6 +899,7 @@ const Navbar = () => {
                     )}
                     <button 
                       className="profile-menu-item logout-btn"
+                      role="menuitem"
                       onClick={() => {
                         logout();
                       }}
@@ -876,11 +915,9 @@ const Navbar = () => {
                   to="/login"
                   className="profile-picture-nav"
                   onClick={closeMenu}
+                  aria-label="Log in"
                 >
-                  <img 
-                    src="/images/default_profile.png" 
-                    alt="Profile" 
-                  />
+                  <ProfileAvatar profileImageUrl={null} />
                 </Link>
               </div>
             )}
@@ -892,35 +929,20 @@ const Navbar = () => {
           <div className="profile-dropdown-mobile" ref={profileMobileRef}>
           {currentUser ? (
             <>
-              <div className="profile-picture-nav-wrap">
-                <div 
-                  className="profile-picture-nav"
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                >
-                  {profileImageUrl ? (
-                    <img 
-                      src={profileImageUrl} 
-                      alt="Profile" 
-                      onError={(e) => {
-                        console.log('❌ Navbar profile image failed to load, falling back to default');
-                        e.target.src = '/images/default_profile.png';
-                      }}
-                    />
-                  ) : (
-                    <img 
-                      src="/images/default_profile.png" 
-                      alt="Profile" 
-                    />
-                  )}
-                </div>
-                {receiptBadge}
-              </div>
+              <ProfileToggle
+                isOpen={isProfileOpen}
+                onToggle={() => setIsProfileOpen(!isProfileOpen)}
+                profileImageUrl={profileImageUrl}
+                receiptBadge={receiptBadge}
+                menuId="profile-menu-mobile"
+              />
               
               {isProfileOpen && (
-                <div className="profile-menu">
+                <div className="profile-menu" id="profile-menu-mobile" role="menu" aria-label="Account">
                   <Link 
                     to="/profile" 
                     className="profile-menu-item"
+                    role="menuitem"
                     onClick={() => {
                       setIsProfileOpen(false);
                     }}
@@ -930,6 +952,7 @@ const Navbar = () => {
                   <Link 
                     to="/results" 
                     className="profile-menu-item"
+                    role="menuitem"
                     onClick={() => {
                       setIsProfileOpen(false);
                     }}
@@ -940,6 +963,7 @@ const Navbar = () => {
                     <Link 
                       to="/settings" 
                       className="profile-menu-item"
+                      role="menuitem"
                       onClick={() => {
                         setIsProfileOpen(false);
                       }}
@@ -951,6 +975,7 @@ const Navbar = () => {
                     <Link
                       to="/admin"
                       className="profile-menu-item"
+                      role="menuitem"
                       onClick={() => {
                         setIsProfileOpen(false);
                       }}
@@ -960,6 +985,7 @@ const Navbar = () => {
                   )}
                   <button 
                     className="profile-menu-item logout-btn"
+                    role="menuitem"
                     onClick={() => {
                       logout();
                     }}
@@ -970,15 +996,13 @@ const Navbar = () => {
               )}
             </>
           ) : (
-            <div 
+            <Link 
+              to="/login"
               className="profile-picture-nav"
-              onClick={() => navigate('/login')}
+              aria-label="Log in"
             >
-              <img 
-                src="/images/default_profile.png" 
-                alt="Profile" 
-              />
-            </div>
+              <ProfileAvatar profileImageUrl={null} />
+            </Link>
           )}
           </div>
         )}

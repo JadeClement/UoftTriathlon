@@ -1,8 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import './Schedule.css';
+
+const SEASONS = ['Spring', 'Summer', 'Fall/Winter'];
 
 const Schedule = () => {
   const [activeSeason, setActiveSeason] = useState('Spring');
+  const seasonTabRefs = useRef({});
+
+  const focusSeasonTab = (season) => {
+    seasonTabRefs.current[season]?.focus();
+  };
+
+  const handleSeasonKeyDown = (event, season) => {
+    const index = SEASONS.indexOf(season);
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      const next = SEASONS[(index + 1) % SEASONS.length];
+      setActiveSeason(next);
+      focusSeasonTab(next);
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      const prev = SEASONS[(index - 1 + SEASONS.length) % SEASONS.length];
+      setActiveSeason(prev);
+      focusSeasonTab(prev);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      setActiveSeason(SEASONS[0]);
+      focusSeasonTab(SEASONS[0]);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      const last = SEASONS[SEASONS.length - 1];
+      setActiveSeason(last);
+      focusSeasonTab(last);
+    }
+  };
 
 
 
@@ -14,25 +45,24 @@ const Schedule = () => {
    
         
         {/* Season Tabs */}
-        <div className="season-tabs">
-          <button
-            className={`season-tab ${activeSeason === 'Spring' ? 'active' : ''}`}
-            onClick={() => setActiveSeason('Spring')}
-          >
-            Spring
-          </button>
-          <button
-            className={`season-tab ${activeSeason === 'Summer' ? 'active' : ''}`}
-            onClick={() => setActiveSeason('Summer')}
-          >
-            Summer
-          </button>
-          <button
-            className={`season-tab ${activeSeason === 'Fall/Winter' ? 'active' : ''}`}
-            onClick={() => setActiveSeason('Fall/Winter')}
-          >
-            Fall/Winter
-          </button>
+        <div className="season-tabs" role="tablist" aria-label="Season">
+          {SEASONS.map((season) => (
+            <button
+              key={season}
+              ref={(el) => { seasonTabRefs.current[season] = el; }}
+              type="button"
+              role="tab"
+              id={`season-tab-${season.replace('/', '-')}`}
+              aria-selected={activeSeason === season}
+              aria-controls={`season-panel-${season.replace('/', '-')}`}
+              tabIndex={activeSeason === season ? 0 : -1}
+              className={`season-tab ${activeSeason === season ? 'active' : ''}`}
+              onClick={() => setActiveSeason(season)}
+              onKeyDown={(event) => handleSeasonKeyDown(event, season)}
+            >
+              {season}
+            </button>
+          ))}
         </div>
         
 
@@ -40,7 +70,12 @@ const Schedule = () => {
         <div className="demo-workouts">
           
           {activeSeason === 'Spring' && (
-            <div className="season-schedule">
+            <div
+              className="season-schedule"
+              role="tabpanel"
+              id="season-panel-Spring"
+              aria-labelledby="season-tab-Spring"
+            >
               <h4>Weekly Spring Schedule</h4>
               <p className="season-dates">April 29 - June 25</p>
               <div className="schedule-grid">
@@ -78,7 +113,12 @@ const Schedule = () => {
           )}
           
           {activeSeason === 'Summer' && (
-            <div className="season-schedule">
+            <div
+              className="season-schedule"
+              role="tabpanel"
+              id="season-panel-Summer"
+              aria-labelledby="season-tab-Summer"
+            >
               <h4>Weekly Summer Schedule</h4>
               <p className="season-dates">June 25 - August 20</p>
               <div className="schedule-grid">
@@ -118,7 +158,12 @@ const Schedule = () => {
           )}
           
           {activeSeason === 'Fall/Winter' && (
-            <div className="season-schedule">
+            <div
+              className="season-schedule"
+              role="tabpanel"
+              id="season-panel-Fall-Winter"
+              aria-labelledby="season-tab-Fall-Winter"
+            >
               <h4>Weekly Winter Schedule</h4>
               <p className="season-dates">September 1 - April 29</p>
               <div className="schedule-grid">

@@ -238,7 +238,7 @@ function AppContent() {
   return (
     <>
       <RoleChangeNotification currentUser={currentUser} />
-      <main {...swipeHandlers}>
+      <main id="main-content" tabIndex={-1} {...swipeHandlers}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/forum" element={<Forum />} />
