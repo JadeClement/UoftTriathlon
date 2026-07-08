@@ -170,6 +170,18 @@ router.post('/terms', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Start date must be on or before end date' });
     }
 
+    const existing = await pool.query(
+      'SELECT id, term, year, start_date, end_date FROM terms WHERE term = $1 AND year = $2',
+      [term, yearInt]
+    );
+    if (existing.rows.length > 0) {
+      const label = formatTermLabel(existing.rows[0]);
+      return res.status(400).json({
+        error: `${label} already exists. Edit the existing term instead of creating a duplicate.`,
+        existingTerm: existing.rows[0]
+      });
+    }
+
     const result = await pool.query(
       `INSERT INTO terms (term, year, start_date, end_date)
        VALUES ($1, $2, $3, $4)
@@ -213,6 +225,24 @@ router.put('/terms/:id', authenticateToken, requireAdmin, async (req, res) => {
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const current = await pool.query('SELECT term, year FROM terms WHERE id = $1', [id]);
+    if (current.rows.length === 0) {
+      return res.status(404).json({ error: 'Term not found' });
+    }
+    const nextTerm = term !== undefined ? term : current.rows[0].term;
+    const nextYear = year !== undefined ? parseInt(year, 10) : current.rows[0].year;
+    const duplicate = await pool.query(
+      'SELECT id, term, year, start_date, end_date FROM terms WHERE term = $1 AND year = $2 AND id != $3',
+      [nextTerm, nextYear, id]
+    );
+    if (duplicate.rows.length > 0) {
+      const label = formatTermLabel(duplicate.rows[0]);
+      return res.status(400).json({
+        error: `${label} already exists. Choose a different season or year.`,
+        existingTerm: duplicate.rows[0]
+      });
     }
 
     values.push(id);

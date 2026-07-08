@@ -4,7 +4,7 @@
 const MEMBER_ROLES = ['member', 'coach', 'exec', 'administrator'];
 
 // Number of days before term end where we start warning the user to renew.
-const DEFAULT_EXPIRING_SOON_DAYS = 14;
+const DEFAULT_EXPIRING_SOON_DAYS = 7;
 
 /**
  * Derive a single membership status from the pieces of state we track.

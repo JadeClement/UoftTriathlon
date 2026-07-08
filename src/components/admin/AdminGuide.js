@@ -102,7 +102,7 @@ const AdminGuide = () => {
             </p>
             <ul>
               <li><span className="membership-status active">Active</span> — valid membership for their assigned term</li>
-              <li><span className="membership-status expiring_soon">Expiring soon</span> — term ends within 14 days; they should renew</li>
+              <li><span className="membership-status expiring_soon">Expiring soon</span> — term ends within 7 days; they should renew</li>
               <li><span className="membership-status expired">Expired</span> — term has ended; forum and member features are locked until they renew</li>
               <li><span className="membership-status pending_review">Under review</span> — they uploaded a receipt that is waiting for administrator approval</li>
               <li><span className="membership-status not_member">Not a member</span> — account is still pending registration, or they have no active membership</li>

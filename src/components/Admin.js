@@ -744,7 +744,13 @@ const Admin = () => {
         await loadTerms();
       } else {
         const err = await response.json().catch(() => ({}));
-        showError(`Failed to save term${err.error ? `: ${err.error}` : ''}`);
+        await loadTerms();
+        if (err.existingTerm) {
+          openEditTerm(err.existingTerm);
+          showError(err.error || 'This term already exists — opened the existing one for editing.');
+        } else {
+          showError(`Failed to save term${err.error ? `: ${err.error}` : ''}`);
+        }
       }
     } catch (error) {
       console.error('Error saving term:', error);
@@ -2728,6 +2734,9 @@ const Admin = () => {
                   <option value="summer">Summer</option>
                   <option value="spring/summer">Spring/Summer</option>
                 </select>
+                <small>
+                  Spring/Summer and Summer are different signup options. Members pick one when uploading a receipt.
+                </small>
               </div>
               <div className="form-group">
                 <label>Year {termForm.term.includes('/') ? '(starting academic year)' : ''}:</label>
@@ -2746,7 +2755,13 @@ const Admin = () => {
                 <input
                   type="date"
                   value={termForm.start_date}
-                  onChange={(e) => setTermForm({ ...termForm, start_date: e.target.value })}
+                  onChange={(e) => {
+                    const start_date = e.target.value;
+                    const yearFromDate = start_date
+                      ? new Date(`${start_date}T00:00:00`).getFullYear()
+                      : termForm.year;
+                    setTermForm({ ...termForm, start_date, year: yearFromDate });
+                  }}
                   required
                 />
               </div>
