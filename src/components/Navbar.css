@@ -1,10 +1,10 @@
 :root {
   --navbar-height: 70px;
-  --navbar-height-mobile: 50px; /* Compact height for mobile, safe area inset handles status bar spacing */
+  --navbar-height-mobile: 48px; /* 44px profile + small top inset below status bar */
   --banner-offset: 0px;
-  /* Android WebView doesn't report safe-area-inset-top reliably, so use a fixed
-     status-bar allowance to push the logo/profile below the time & battery. */
-  --android-status-bar: 28px;
+  --navbar-content-top: 2px;
+  /* Android WebView often reports safe-area-inset-top as 0; JS may bump this further. */
+  --android-status-bar: max(24px, env(safe-area-inset-top, 0px));
   /* Same story at the bottom for the Android gesture/navigation bar. */
   --android-nav-bar: 24px;
 }
@@ -279,12 +279,12 @@
     display: none !important;
   }
   
-  /* Logo absolutely positioned on LEFT, near bottom of navbar content area (below status bar) */
+  /* Logo absolutely positioned on LEFT, snug below status bar */
   .navbar-logo {
     position: absolute !important;
     left: 1rem !important;
-    bottom: 0.75rem !important; /* Position near bottom of navbar content area */
-    top: auto !important;
+    top: var(--navbar-content-top, 2px) !important;
+    bottom: auto !important;
     transform: none !important;
     display: flex !important;
     align-items: center;
@@ -297,12 +297,12 @@
     height: 32px;
   }
   
-  /* Profile dropdown for iOS apps - absolutely positioned on RIGHT */
+  /* Profile dropdown for native apps - absolutely positioned on RIGHT */
   .navbar-container > .profile-dropdown {
     position: absolute !important;
     right: 1rem !important;
-    bottom: 0.75rem !important;
-    top: auto !important;
+    top: var(--navbar-content-top, 2px) !important;
+    bottom: auto !important;
     transform: none !important;
     display: flex !important;
     align-items: center;
@@ -352,12 +352,12 @@
     display: flex !important;
   }
 
-  /* Profile absolutely positioned on RIGHT, near bottom of navbar content area (below status bar) */
+  /* Profile absolutely positioned on RIGHT, snug below status bar */
   .profile-dropdown-mobile {
     position: absolute !important;
     right: 1rem !important;
-    bottom: 0.75rem !important; /* Position near bottom of navbar content area */
-    top: auto !important;
+    top: var(--navbar-content-top, 2px) !important;
+    bottom: auto !important;
     transform: none !important;
     display: flex !important;
     align-items: center;
@@ -377,8 +377,8 @@
   .navbar-container > a[href="/login"] {
     position: absolute !important;
     right: 1rem !important;
-    bottom: 0.75rem !important; /* Position near bottom of navbar content area */
-    top: auto !important;
+    top: var(--navbar-content-top, 2px) !important;
+    bottom: auto !important;
     transform: none !important;
     display: flex !important;
     align-items: center;
@@ -602,7 +602,9 @@
   gap: 4px;
   position: absolute;
   right: calc(1rem + 44px + 0.5rem); /* Position to left of profile image (1rem margin + 44px profile + 0.5rem gap) */
-  bottom: 0.75rem;
+  top: var(--navbar-content-top, 2px);
+  bottom: auto;
+  transform: none;
   z-index: 10;
 }
 

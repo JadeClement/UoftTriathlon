@@ -24,7 +24,7 @@ body {
 
   /* Android: safe-area insets report 0, so add the fixed status-bar allowance */
   body.capacitor-android-body {
-    padding-top: calc(var(--navbar-height-mobile, 100px) + var(--android-status-bar, 28px));
+    padding-top: calc(var(--navbar-height-mobile, 48px) + var(--android-status-bar, 24px));
   }
 }
 

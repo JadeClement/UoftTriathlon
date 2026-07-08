@@ -174,6 +174,10 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Position title is required' });
     }
 
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: 'Person name is required' });
+    }
+
     const memberCategory = category || 'exec';
     if (!VALID_CATEGORIES.includes(memberCategory)) {
       return res.status(400).json({ error: 'Invalid category' });
@@ -181,7 +185,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
 
     const teamMembers = await loadTeamMembers();
     const id = generateUniqueId(teamMembers, role);
-    const memberName = name?.trim() || role.trim();
+    const memberName = name.trim();
     const memberSlug = slug?.trim() ? slugify(slug) : slugify(memberName);
 
     const newMember = enrichMember(id, {

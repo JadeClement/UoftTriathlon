@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import './ResetPassword.css';
+import PasswordInput from './PasswordInput';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -146,27 +147,27 @@ const ResetPassword = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="newPassword">New Password</label>
-            <input
-              type="password"
+            <PasswordInput
               id="newPassword"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
               placeholder="Enter your new password"
               minLength="6"
+              autoComplete="new-password"
             />
           </div>
           
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm New Password</label>
-            <input
-              type="password"
+            <PasswordInput
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               placeholder="Confirm your new password"
               minLength="6"
+              autoComplete="new-password"
             />
             {confirmPassword && (
               <div className={`password-validation ${newPassword === confirmPassword ? 'valid' : 'invalid'}`}>

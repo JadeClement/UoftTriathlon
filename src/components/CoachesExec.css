@@ -33,7 +33,7 @@
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: -1rem 0 2rem; /* pull section upward */
+  margin-bottom: 2rem;
 }
 
 .coaches-grid {
@@ -178,15 +178,22 @@
 
 .section-header-row {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
   margin-bottom: 1.5rem;
 }
 
 .section-header-row .section-subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
+  padding: 0;
+  line-height: 1.15;
+}
+
+.coaches-exec-container .add-position-button {
+  min-width: 2rem;
+  min-height: 2rem;
 }
 
 .add-position-button {
@@ -398,43 +405,64 @@
   
   .section-header-row .section-subtitle {
     font-size: 1.5rem;
-    line-height: 1.2;
+    line-height: 1.15;
   }
   
   .coach-card,
   .exec-card {
     padding: 1rem;
     margin-bottom: 0;
+    min-height: unset;
+    justify-content: flex-start;
+  }
+
+  .coach-avatar,
+  .exec-avatar {
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
   }
   
   .coach-photo,
   .exec-photo {
     width: 60px;
     height: 60px;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0;
   }
   
   .coach-emoji,
   .exec-emoji {
     font-size: 1.5rem;
+    line-height: 1;
   }
   
   .coach-card h3,
   .exec-card h3 {
     font-size: 1.2rem;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
+    line-height: 1.2;
   }
   
   .coach-name,
   .exec-name {
     font-size: 0.9rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.125rem;
+    line-height: 1.2;
+  }
+
+  .coach-email,
+  .exec-email {
+    margin: 0 0 0.5rem;
+    line-height: 1.2;
+    min-height: 0;
   }
   
   .coach-bio,
   .exec-bio {
     font-size: 0.85rem;
-    line-height: 1.4;
+    line-height: 1.35;
+    margin-top: 0;
+    height: auto;
+    min-height: 0;
   }
   
   .coach-contact {

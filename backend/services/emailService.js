@@ -638,6 +638,93 @@ UofT Triathlon Club
       return { success: false, error: error.message };
     }
   }
+
+  // Notify the club inbox that a member submitted a payment receipt for review
+  async sendReceiptSubmittedToAdmin(memberName, memberEmail, termLabel, amount) {
+    try {
+      const to = process.env.ADMIN_NOTIFY_EMAIL || this.fromEmail;
+      const subject = `🧾 New membership receipt from ${memberName}`;
+      const termLine = termLabel ? `<p style="margin: 5px 0; color: #6b7280;"><strong>Term:</strong> ${termLabel}</p>` : '';
+      const amountLine = (amount || amount === 0) ? `<p style="margin: 5px 0; color: #6b7280;"><strong>Amount:</strong> $${Number(amount).toFixed(2)}</p>` : '';
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>New Membership Receipt</title></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #1E3A8A, #1E40AF); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 26px;">🧾 New Membership Receipt</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">UofT Triathlon Club</p>
+          </div>
+          <div style="background: #f8fafc; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+            <p style="font-size: 16px;">A member has submitted a payment receipt that needs review.</p>
+            <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #10b981;">
+              <p style="margin: 5px 0; color: #6b7280;"><strong>Member:</strong> ${memberName}</p>
+              <p style="margin: 5px 0; color: #6b7280;"><strong>Email:</strong> ${memberEmail}</p>
+              ${termLine}
+              ${amountLine}
+            </div>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://uoft-tri.club/admin/receipts" style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review Receipt</a>
+          </div>
+          <div style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p>UofT Triathlon Club | <a href="https://uoft-tri.club" style="color: #3b82f6;">uoft-tri.club</a></p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const textContent = `New membership receipt submitted for review.\n\nMember: ${memberName}\nEmail: ${memberEmail}\n${termLabel ? `Term: ${termLabel}\n` : ''}${(amount || amount === 0) ? `Amount: $${Number(amount).toFixed(2)}\n` : ''}\nReview it at https://uoft-tri.club/admin/receipts`;
+
+      return await this.sendEmail(to, subject, htmlContent, textContent, memberEmail);
+    } catch (error) {
+      console.error('❌ Error sending receipt-submitted admin email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Notify a member that their receipt was rejected, with a reason
+  async sendReceiptRejected(userEmail, userName, reason) {
+    try {
+      const subject = `Action needed: your UofT Triathlon Club membership receipt`;
+      const reasonBlock = reason && String(reason).trim()
+        ? `<div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 4px solid #dc2626; margin: 20px 0;"><p style="margin: 0; color: #991b1b;"><strong>Reason:</strong> ${reason}</p></div>`
+        : '';
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Receipt Needs Attention</title></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #f59e0b, #f97316); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 26px;">⚠️ Receipt Needs Attention</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">UofT Triathlon Club</p>
+          </div>
+          <div style="background: #f8fafc; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+            <h2 style="color: #1E3A8A; margin-top: 0;">Hi ${userName},</h2>
+            <p style="font-size: 16px;">We weren't able to approve the membership payment receipt you submitted.</p>
+            ${reasonBlock}
+            <p style="font-size: 16px;">Please upload a new receipt from your profile page, and we'll review it as soon as we can.</p>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://uoft-tri.club/profile" style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Upload a New Receipt</a>
+          </div>
+          <div style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p>Questions? Reply to this email or contact <a href="mailto:info@uoft-tri.club" style="color: #3b82f6;">info@uoft-tri.club</a></p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const textContent = `Hi ${userName},\n\nWe weren't able to approve the membership payment receipt you submitted.\n${reason && String(reason).trim() ? `\nReason: ${reason}\n` : ''}\nPlease upload a new receipt from your profile page: https://uoft-tri.club/profile\n\nQuestions? Contact info@uoft-tri.club\n\nUofT Triathlon Club`;
+
+      return await this.sendEmail(userEmail, subject, htmlContent, textContent, this.fromEmail);
+    } catch (error) {
+      console.error('❌ Error sending receipt rejection email:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = new EmailService();

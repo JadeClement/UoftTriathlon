@@ -478,6 +478,38 @@
   color: #9ca3af;
 }
 
+/* Membership status badges */
+.membership-status {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.membership-status.active { background: #dcfce7; color: #166534; }
+.membership-status.expiring_soon { background: #fef3c7; color: #92400e; }
+.membership-status.expired { background: #fee2e2; color: #991b1b; }
+.membership-status.pending_review { background: #e0f2fe; color: #075985; }
+.membership-status.not_member { background: #f3f4f6; color: #6b7280; }
+
+/* Receipt status badges */
+.receipt-status {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.receipt-status.pending_review { background: #e0f2fe; color: #075985; }
+.receipt-status.approved { background: #dcfce7; color: #166534; }
+.receipt-status.rejected { background: #fee2e2; color: #991b1b; }
+
 /* Absence count styling */
 .absence-count {
   display: inline-block;

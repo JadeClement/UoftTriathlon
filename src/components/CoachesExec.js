@@ -230,6 +230,11 @@ const CoachesExec = () => {
       return;
     }
 
+    if (!addForm.name.trim()) {
+      showError('Person name is required.');
+      return;
+    }
+
     try {
       setAddingPosition(true);
       const token = localStorage.getItem('triathlonToken');
@@ -353,6 +358,25 @@ const CoachesExec = () => {
     </div>
   );
 
+  const renderSectionHeader = (title, category, { secondary = false } = {}) => (
+    <div className="section-header-row">
+      <h2 className="section-subtitle">
+        {title}
+        {canManagePositions && (
+          <button
+            className={`add-position-button${secondary ? ' add-position-button-secondary' : ''}`}
+            onClick={() => openAddPosition(category)}
+            type="button"
+            title={`Add ${title.toLowerCase()}`}
+            aria-label={`Add ${title.toLowerCase()}`}
+          >
+            +
+          </button>
+        )}
+      </h2>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="coaches-exec-container">
@@ -413,40 +437,14 @@ const CoachesExec = () => {
         <h1 className="section-title">Coaches & Executive Team</h1>
 
         <div className="coaches-section">
-          <div className="section-header-row">
-            <h2 className="section-subtitle">Our Coaches</h2>
-            {canManagePositions && (
-              <button
-                className="add-position-button"
-                onClick={() => openAddPosition('coach')}
-                type="button"
-                title="Add coach"
-                aria-label="Add coach"
-              >
-                +
-              </button>
-            )}
-          </div>
+          {renderSectionHeader('Our Coaches', 'coach')}
           <div className="coaches-grid">
             {coaches.map(renderCoachCard)}
           </div>
         </div>
 
         <div className="exec-team-section">
-          <div className="section-header-row">
-            <h2 className="section-subtitle">Executive Team</h2>
-            {canManagePositions && (
-              <button
-                className="add-position-button"
-                onClick={() => openAddPosition('exec')}
-                type="button"
-                title="Add position"
-                aria-label="Add position"
-              >
-                +
-              </button>
-            )}
-          </div>
+          {renderSectionHeader('Executive Team', 'exec')}
           <div className="exec-grid">
             {execMembers.map(renderExecCard)}
           </div>
@@ -454,20 +452,7 @@ const CoachesExec = () => {
 
         {pastPresidents.length > 0 && (
           <div className="exec-team-section">
-            <div className="section-header-row">
-              <h2 className="section-subtitle">Past Presidents</h2>
-              {canManagePositions && (
-                <button
-                  className="add-position-button add-position-button-secondary"
-                  onClick={() => openAddPosition('past-president')}
-                  type="button"
-                  title="Add past president"
-                  aria-label="Add past president"
-                >
-                  +
-                </button>
-              )}
-            </div>
+            {renderSectionHeader('Past Presidents', 'past-president', { secondary: true })}
             <div className="exec-grid">
               {pastPresidents.map(renderExecCard)}
             </div>
@@ -648,14 +633,15 @@ const CoachesExec = () => {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="add-name">Person Name (optional):</label>
+                <label htmlFor="add-name">Person Name:</label>
                 <input
                   type="text"
                   id="add-name"
                   name="name"
                   value={addForm.name}
                   onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Leave blank to fill in later"
+                  placeholder="Enter name"
+                  required
                 />
               </div>
               <div className="form-group">

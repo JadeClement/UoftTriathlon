@@ -7,3 +7,5 @@ export { default as AdminBanner } from './AdminBanner';
 export { default as AdminAttendance } from './AdminAttendance';
 export { default as AdminOrders } from './AdminOrders';
 export { default as AdminIntervalResults } from './AdminIntervalResults';
+export { default as AdminReceipts } from './AdminReceipts';
+export { default as AdminTerms } from './AdminTerms';

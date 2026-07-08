@@ -99,27 +99,30 @@ const Admin = () => {
     }, 3000);
   };
 
-  // Format term name for display (e.g., "Fall 25" or "Fall/Winter 25-26")
+  // Format term name for display (e.g., "Fall 2025" or "Fall/Winter 2025–26").
+  // Prefers the stored `year` (starting academic year); falls back to dates.
   const formatTermName = (term) => {
-    const termName = term.term.charAt(0).toUpperCase() + term.term.slice(1);
-    // Parse defensively; if dates are missing/invalid, fall back to name only
-    const startDate = new Date(`${term.start_date}T00:00:00`);
-    const endDate = new Date(`${term.end_date}T00:00:00`);
-    const startYearFull = Number.isFinite(startDate.getFullYear()) ? startDate.getFullYear() : null;
-    const endYearFull = Number.isFinite(endDate.getFullYear()) ? endDate.getFullYear() : null;
+    if (!term || !term.term) return '';
+    const seasonRaw = String(term.term);
+    const season = seasonRaw
+      .split('/')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join('/');
 
-    if (startYearFull === null || endYearFull === null) {
-      return termName;
+    let startYear = term.year != null ? parseInt(term.year, 10) : null;
+    if (startYear == null && term.start_date) {
+      const d = new Date(`${term.start_date}T00:00:00`);
+      if (Number.isFinite(d.getFullYear())) startYear = d.getFullYear();
     }
+    if (startYear == null) return season;
 
-    const startYear = startYearFull % 100; // last 2 digits
-    const endYear = endYearFull % 100;
-    
-    if (startYear === endYear) {
-      return `${termName} ${startYear}`;
-    } else {
-      return `${termName} ${startYear}-${endYear}`;
+    // Only fall/winter actually crosses a calendar-year boundary, so only it shows
+    // a year range (e.g. "Fall/Winter 2025–26"). Spring/summer stays within one year.
+    if (seasonRaw.toLowerCase() === 'fall/winter') {
+      const nextTwo = String((startYear + 1) % 100).padStart(2, '0');
+      return `${season} ${startYear}\u2013${nextTwo}`;
     }
+    return `${season} ${startYear}`;
   };
 
   // Rich text editor functions
@@ -200,6 +203,19 @@ const Admin = () => {
 
   const [editingMember, setEditingMember] = useState(null);
   const [terms, setTerms] = useState([]);
+
+  // Membership receipts (review queue)
+  const [receipts, setReceipts] = useState([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+  const [receiptStatusFilter, setReceiptStatusFilter] = useState('pending_review');
+  const [rejectingReceipt, setRejectingReceipt] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  // Term management
+  const [showTermModal, setShowTermModal] = useState(false);
+  const [editingTerm, setEditingTerm] = useState(null);
+  const [termForm, setTermForm] = useState({ term: 'fall', year: new Date().getFullYear(), start_date: '', end_date: '' });
+  const [deleteTermConfirm, setDeleteTermConfirm] = useState({ isOpen: false, termId: null });
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
@@ -287,6 +303,7 @@ const Admin = () => {
 
     loadAdminData();
     loadTerms();
+    loadReceipts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, isAdmin]);
 
@@ -612,6 +629,152 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error loading terms:', error);
+    }
+  };
+
+  // ----- Membership receipts -----
+  const loadReceipts = async (status = receiptStatusFilter) => {
+    try {
+      setReceiptsLoading(true);
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/receipts?status=${status}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setReceipts(data.receipts || []);
+      }
+    } catch (error) {
+      console.error('Error loading receipts:', error);
+    } finally {
+      setReceiptsLoading(false);
+    }
+  };
+
+  const approveReceipt = async (receipt) => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/receipts/${receipt.id}/approve`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'member', term_id: receipt.term_id || null })
+      });
+      if (response.ok) {
+        showSuccess('Receipt approved and member activated');
+        await Promise.all([loadReceipts(), loadAdminData()]);
+      } else {
+        const err = await response.json().catch(() => ({}));
+        showError(`Failed to approve receipt${err.error ? `: ${err.error}` : ''}`);
+      }
+    } catch (error) {
+      console.error('Error approving receipt:', error);
+      showError(`Error approving receipt: ${error.message}`);
+    }
+  };
+
+  const openRejectReceipt = (receipt) => {
+    setRejectingReceipt(receipt);
+    setRejectReason('');
+  };
+
+  const submitRejectReceipt = async () => {
+    if (!rejectingReceipt) return;
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/receipts/${rejectingReceipt.id}/reject`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectReason })
+      });
+      if (response.ok) {
+        showSuccess('Receipt rejected');
+        setRejectingReceipt(null);
+        setRejectReason('');
+        await loadReceipts();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        showError(`Failed to reject receipt${err.error ? `: ${err.error}` : ''}`);
+      }
+    } catch (error) {
+      console.error('Error rejecting receipt:', error);
+      showError(`Error rejecting receipt: ${error.message}`);
+    }
+  };
+
+  // ----- Term management -----
+  const openNewTerm = () => {
+    setEditingTerm(null);
+    setTermForm({ term: 'fall', year: new Date().getFullYear(), start_date: '', end_date: '' });
+    setShowTermModal(true);
+  };
+
+  const openEditTerm = (term) => {
+    setEditingTerm(term);
+    setTermForm({
+      term: term.term,
+      year: term.year || (term.start_date ? new Date(`${term.start_date}T00:00:00`).getFullYear() : new Date().getFullYear()),
+      start_date: term.start_date ? String(term.start_date).slice(0, 10) : '',
+      end_date: term.end_date ? String(term.end_date).slice(0, 10) : ''
+    });
+    setShowTermModal(true);
+  };
+
+  const saveTerm = async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const url = editingTerm
+        ? `${API_BASE_URL}/admin/terms/${editingTerm.id}`
+        : `${API_BASE_URL}/admin/terms`;
+      const method = editingTerm ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          term: termForm.term,
+          year: parseInt(termForm.year, 10),
+          start_date: termForm.start_date,
+          end_date: termForm.end_date
+        })
+      });
+      if (response.ok) {
+        showSuccess(editingTerm ? 'Term updated' : 'Term created');
+        setShowTermModal(false);
+        setEditingTerm(null);
+        await loadTerms();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        showError(`Failed to save term${err.error ? `: ${err.error}` : ''}`);
+      }
+    } catch (error) {
+      console.error('Error saving term:', error);
+      showError(`Error saving term: ${error.message}`);
+    }
+  };
+
+  const deleteTerm = (termId) => {
+    setDeleteTermConfirm({ isOpen: true, termId });
+  };
+
+  const confirmDeleteTerm = async () => {
+    const { termId } = deleteTermConfirm;
+    setDeleteTermConfirm({ isOpen: false, termId: null });
+    if (!termId) return;
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/terms/${termId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        showSuccess('Term deleted');
+        await loadTerms();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        showError(`Failed to delete term${err.error ? `: ${err.error}` : ''}`);
+      }
+    } catch (error) {
+      console.error('Error deleting term:', error);
+      showError(`Error deleting term: ${error.message}`);
     }
   };
 
@@ -1350,12 +1513,12 @@ const Admin = () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/members/${memberId}/reject`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ role: 'rejected' })
+        body: JSON.stringify({ reason: 'Application rejected' })
       });
 
       if (response.ok) {
@@ -1533,6 +1696,9 @@ const Admin = () => {
   const adminContextValue = {
     members, setMembers, pendingMembers, memberSearch, setMemberSearch,
     currentPage, setCurrentPage, membersPerPage, terms, loadAdminData, formatTermName,
+    receipts, receiptsLoading, receiptStatusFilter, setReceiptStatusFilter, loadReceipts,
+    approveReceipt, openRejectReceipt,
+    openNewTerm, openEditTerm, deleteTerm,
     currentUser, isAdmin, isCoach, isExec, API_BASE_URL, showError, showSuccess,
     editMember, removeMember, editingMember, setEditingMember, editForm, setEditForm,
     saveMemberEdit, cancelEdit, formatPhoneNumber, handlePhoneNumberChange, validatePhoneNumber,
@@ -2510,6 +2676,100 @@ const Admin = () => {
         cancelText="Cancel"
         confirmDanger={true}
       />
+
+      <ConfirmModal
+        isOpen={deleteTermConfirm.isOpen}
+        onConfirm={confirmDeleteTerm}
+        onCancel={() => setDeleteTermConfirm({ isOpen: false, termId: null })}
+        title="Delete Term"
+        message="Are you sure you want to delete this term? This cannot be undone. Members currently assigned to it must be reassigned first."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmDanger={true}
+      />
+
+      {/* Reject Receipt Modal */}
+      {rejectingReceipt && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Reject Receipt</h2>
+            <p>Rejecting the receipt from <strong>{rejectingReceipt.user_name}</strong>. They'll be emailed and can upload a new one.</p>
+            <div className="form-group">
+              <label>Reason (optional, included in the email):</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g. The receipt was unreadable, or the amount didn't match the membership fee."
+                rows={4}
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-danger" onClick={submitRejectReceipt}>Reject &amp; Notify</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setRejectingReceipt(null); setRejectReason(''); }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Term Create/Edit Modal */}
+      {showTermModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>{editingTerm ? 'Edit Term' : 'Add Term'}</h2>
+            <form onSubmit={(e) => { e.preventDefault(); saveTerm(); }}>
+              <div className="form-group">
+                <label>Season:</label>
+                <select
+                  value={termForm.term}
+                  onChange={(e) => setTermForm({ ...termForm, term: e.target.value })}
+                  required
+                >
+                  <option value="fall">Fall</option>
+                  <option value="winter">Winter</option>
+                  <option value="fall/winter">Fall/Winter</option>
+                  <option value="spring">Spring</option>
+                  <option value="summer">Summer</option>
+                  <option value="spring/summer">Spring/Summer</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Year {termForm.term.includes('/') ? '(starting academic year)' : ''}:</label>
+                <input
+                  type="number"
+                  min={2000}
+                  max={2100}
+                  value={termForm.year}
+                  onChange={(e) => setTermForm({ ...termForm, year: e.target.value })}
+                  required
+                />
+                <small>Preview: {formatTermName({ term: termForm.term, year: parseInt(termForm.year, 10) })}</small>
+              </div>
+              <div className="form-group">
+                <label>Start date:</label>
+                <input
+                  type="date"
+                  value={termForm.start_date}
+                  onChange={(e) => setTermForm({ ...termForm, start_date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>End date (membership expiry):</label>
+                <input
+                  type="date"
+                  value={termForm.end_date}
+                  onChange={(e) => setTermForm({ ...termForm, end_date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="submit" className="btn btn-primary">{editingTerm ? 'Save Changes' : 'Create Term'}</button>
+                <button type="button" className="btn btn-secondary" onClick={() => { setShowTermModal(false); setEditingTerm(null); }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
     </AdminContext.Provider>
   );

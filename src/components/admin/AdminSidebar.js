@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 const navItems = [
   { path: 'members', label: 'All Members', icon: '👥', adminOnly: false },
   { path: 'pending', label: 'Pending Approval', icon: '⏳', adminOnly: false },
+  { path: 'receipts', label: 'Receipts', icon: '🧾', adminOnly: false },
+  { path: 'terms', label: 'Terms', icon: '📅', adminOnly: true },
   { path: 'email', label: 'Send Email', icon: '✉️', adminOnly: false },
   { path: 'banner', label: 'Site Banner', icon: '📢', adminOnly: false },
   { path: 'attendance', label: 'Attendance', icon: '📋', adminOnly: false },

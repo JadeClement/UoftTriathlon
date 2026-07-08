@@ -1,6 +1,14 @@
 import React from 'react';
 import { useAdminContext } from '../../context/AdminContext';
 
+const MEMBERSHIP_STATUS_LABELS = {
+  not_member: 'Not a member',
+  pending_review: 'Under review',
+  active: 'Active',
+  expiring_soon: 'Expiring soon',
+  expired: 'Expired',
+};
+
 const AdminMembers = () => {
   const {
     members,
@@ -125,6 +133,7 @@ const AdminMembers = () => {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th>Sport</th>
                 <th>Phone Number</th>
                 <th>Join Date</th>
@@ -154,6 +163,13 @@ const AdminMembers = () => {
                     <td>{member.email}</td>
                     <td><span className={`role-badge ${member.role}`}>{member.role}</span></td>
                     <td>
+                      {member.membership_status ? (
+                        <span className={`membership-status ${member.membership_status}`}>
+                          {MEMBERSHIP_STATUS_LABELS[member.membership_status] || member.membership_status}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td>
                       <span className={`sport-badge ${member.sport || 'triathlon'}`}>
                         {member.sport === 'run_only' ? 'Run Only' :
                          member.sport === 'swim_only' ? 'Swim Only' :
@@ -166,7 +182,7 @@ const AdminMembers = () => {
                     <td>
                       {member.term ? (
                         <span className={`term-badge ${member.term.toLowerCase().replace('/', '-')}`}>
-                          {member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/')}
+                          {member.term_label || (member.term.charAt(0).toUpperCase() + member.term.slice(1))}
                         </span>
                       ) : (
                         <span className="term-badge no-term">Not set</span>

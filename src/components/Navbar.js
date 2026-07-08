@@ -149,11 +149,31 @@ const Navbar = () => {
 
   // Add class on body for Android so status-bar spacing applies to content padding
   useEffect(() => {
-    if (Capacitor.getPlatform() === 'android') {
-      document.body.classList.add('capacitor-android-body');
-    }
+    if (Capacitor.getPlatform() !== 'android') return undefined;
+
+    document.body.classList.add('capacitor-android-body');
+
+    const updateAndroidStatusBarInset = () => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top,0px);pointer-events:none;visibility:hidden;';
+      document.documentElement.appendChild(probe);
+      const measured = probe.getBoundingClientRect().height;
+      probe.remove();
+
+      // Keep profile/logo below system icons even when WebView reports 0 safe-area.
+      const statusBarHeight = Math.max(Math.ceil(measured), 24);
+      document.documentElement.style.setProperty('--android-status-bar', `${statusBarHeight}px`);
+    };
+
+    updateAndroidStatusBarInset();
+    window.addEventListener('resize', updateAndroidStatusBarInset);
+    window.visualViewport?.addEventListener('resize', updateAndroidStatusBarInset);
+
     return () => {
       document.body.classList.remove('capacitor-android-body');
+      document.documentElement.style.removeProperty('--android-status-bar');
+      window.removeEventListener('resize', updateAndroidStatusBarInset);
+      window.visualViewport?.removeEventListener('resize', updateAndroidStatusBarInset);
     };
   }, []);
 

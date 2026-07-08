@@ -725,6 +725,57 @@ async function initializeDatabase() {
       console.error('❌ Error creating terms table:', error.message);
     }
 
+    // Terms: add explicit `year` (starting academic year) so a season is
+    // unambiguous (e.g. "Fall 2025" vs "Fall 2026"). Switch the uniqueness
+    // constraint from (term) to (term, year) so multiple years can coexist.
+    try {
+      await pool.query(`ALTER TABLE terms ADD COLUMN IF NOT EXISTS year INTEGER`);
+      // Backfill year from start_date for any existing rows
+      await pool.query(`UPDATE terms SET year = EXTRACT(YEAR FROM start_date)::int WHERE year IS NULL`);
+      // Drop the old single-column unique on term (auto-named terms_term_key)
+      await pool.query(`ALTER TABLE terms DROP CONSTRAINT IF EXISTS terms_term_key`);
+      // Add composite unique (term, year) if it doesn't already exist
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'terms_term_year_key'
+          ) THEN
+            ALTER TABLE terms ADD CONSTRAINT terms_term_year_key UNIQUE (term, year);
+          END IF;
+        END $$;
+      `);
+      console.log('✅ terms.year column + (term, year) unique constraint applied');
+    } catch (error) {
+      console.error('❌ Error applying terms.year migration:', error.message);
+    }
+
+    // Membership receipts: members upload proof of payment; admins review and
+    // approve/reject. Kept as its own table to preserve renewal history.
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS membership_receipts (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          term_id INTEGER REFERENCES terms(id),
+          file_url VARCHAR(1000) NOT NULL,
+          file_key VARCHAR(1000),
+          file_type VARCHAR(100),
+          amount NUMERIC(10,2),
+          status VARCHAR(20) DEFAULT 'pending_review' CHECK(status IN ('pending_review', 'approved', 'rejected')),
+          review_notes TEXT,
+          reviewed_by INTEGER REFERENCES users(id),
+          reviewed_at TIMESTAMP,
+          uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_membership_receipts_user_id ON membership_receipts(user_id)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_membership_receipts_status ON membership_receipts(status)');
+      console.log('✅ membership_receipts table created');
+    } catch (error) {
+      console.error('❌ Error creating membership_receipts table:', error.message);
+    }
+
     // Remove old term columns from users table if they exist (migration)
     try {
       await pool.query(`

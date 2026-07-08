@@ -10,7 +10,7 @@ import JoinUs from './components/JoinUs';
 import Races from './components/Races';
 import CoachesExec from './components/CoachesExec';
 import Admin from './components/Admin';
-import { AdminMembers, AdminPending, AdminEmail, AdminBanner, AdminAttendance, AdminOrders, AdminIntervalResults } from './components/admin/index';
+import { AdminMembers, AdminPending, AdminEmail, AdminBanner, AdminAttendance, AdminOrders, AdminIntervalResults, AdminReceipts, AdminTerms } from './components/admin/index';
 import Login from './components/Login';
 import WorkoutDetail from './components/WorkoutDetail';
 import EventDetail from './components/EventDetail';
@@ -254,6 +254,8 @@ function AppContent() {
             <Route index element={<Navigate to="members" replace />} />
             <Route path="members" element={<AdminMembers />} />
             <Route path="pending" element={<AdminPending />} />
+            <Route path="receipts" element={<AdminReceipts />} />
+            <Route path="terms" element={<AdminTerms />} />
             <Route path="email" element={<AdminEmail />} />
             <Route path="banner" element={<AdminBanner />} />
             <Route path="attendance" element={<AdminAttendance />} />

@@ -30,6 +30,18 @@ const Profile = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPauseConfirm, setShowPauseConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Membership + receipt state (own profile only)
+  const [membership, setMembership] = useState(null);
+  const [receipts, setReceipts] = useState([]);
+  const [availableTerms, setAvailableTerms] = useState([]);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptTermId, setReceiptTermId] = useState('');
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
+  const [receiptSuccess, setReceiptSuccess] = useState('');
+  const receiptFileInputRef = useRef(null);
+  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   
   console.log('🔍 All URL params:', params);
   console.log('🔍 Role param:', role);
@@ -150,6 +162,79 @@ const Profile = () => {
       setError(err.message || 'Failed to delete account');
     } finally {
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const loadMembershipData = React.useCallback(async () => {
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      if (!token) return;
+      const headers = { 'Authorization': `Bearer ${token}` };
+
+      const [profileRes, receiptsRes, termsRes] = await Promise.all([
+        fetch(`${API_BASE}/users/profile`, { headers }),
+        fetch(`${API_BASE}/users/profile/receipts`, { headers }),
+        fetch(`${API_BASE}/users/terms`, { headers }),
+      ]);
+
+      if (profileRes.ok) {
+        const data = await profileRes.json();
+        setMembership(data.user || null);
+      }
+      if (receiptsRes.ok) {
+        const data = await receiptsRes.json();
+        setReceipts(data.receipts || []);
+      }
+      if (termsRes.ok) {
+        const data = await termsRes.json();
+        setAvailableTerms(data.terms || []);
+      }
+    } catch (err) {
+      console.error('Error loading membership data:', err);
+    }
+  }, [API_BASE]);
+
+  useEffect(() => {
+    if (isUserProfile && currentUser?.id) {
+      loadMembershipData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUserProfile, currentUser?.id]);
+
+  const handleReceiptUpload = async () => {
+    setReceiptError('');
+    setReceiptSuccess('');
+    if (!receiptFile) {
+      setReceiptError('Please choose a receipt file to upload.');
+      return;
+    }
+    setUploadingReceipt(true);
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const formData = new FormData();
+      formData.append('receipt', receiptFile);
+      if (receiptTermId) formData.append('term_id', receiptTermId);
+
+      const resp = await fetch(`${API_BASE}/users/profile/receipt`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setReceiptSuccess('Receipt submitted! An exec will review it shortly and activate your membership.');
+        setReceiptFile(null);
+        setReceiptTermId('');
+        if (receiptFileInputRef.current) receiptFileInputRef.current.value = '';
+        await loadMembershipData();
+      } else {
+        setReceiptError(data.error || 'Failed to upload receipt');
+      }
+    } catch (err) {
+      console.error('Receipt upload error:', err);
+      setReceiptError(err.message || 'Failed to upload receipt');
+    } finally {
+      setUploadingReceipt(false);
     }
   };
 
@@ -640,6 +725,140 @@ const Profile = () => {
     </>
   );
 
+  const MEMBERSHIP_STATUS_META = {
+    active: { label: 'Active', className: 'active', icon: '✅' },
+    expiring_soon: { label: 'Expiring soon', className: 'expiring_soon', icon: '⏳' },
+    expired: { label: 'Expired', className: 'expired', icon: '⚠️' },
+    pending_review: { label: 'Receipt under review', className: 'pending_review', icon: '🧾' },
+    not_member: { label: 'Not an active member', className: 'not_member', icon: '❌' },
+  };
+
+  const formatDate = (d) => {
+    if (!d) return '';
+    try {
+      return new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (_) {
+      return String(d);
+    }
+  };
+
+  const renderMembershipCard = () => {
+    if (!membership) return null;
+
+    const status = membership.membership_status || 'not_member';
+    const meta = MEMBERSHIP_STATUS_META[status] || MEMBERSHIP_STATUS_META.not_member;
+    const hasPending = status === 'pending_review';
+    // Show the upload widget for anyone not currently in good standing.
+    const canUpload = !hasPending && ['not_member', 'expired', 'expiring_soon'].includes(status);
+
+    return (
+      <div className="membership-card">
+        <div className="membership-card-header">
+          <h2>Membership</h2>
+          <span className={`membership-status ${meta.className}`}>
+            {meta.icon} {meta.label}
+          </span>
+        </div>
+
+        <div className="membership-details">
+          {membership.term_label && (
+            <div className="info-item"><strong>Term:</strong> {membership.term_label}</div>
+          )}
+          {membership.term_end_date && (
+            <div className="info-item">
+              <strong>{status === 'expired' ? 'Expired on:' : 'Valid until:'}</strong> {formatDate(membership.term_end_date)}
+            </div>
+          )}
+          {status === 'active' && !membership.term_end_date && membership.role !== 'member' && (
+            <div className="info-item">Your access does not expire.</div>
+          )}
+        </div>
+
+        {hasPending && (
+          <div className="membership-note membership-note--info">
+            🧾 Your payment receipt has been submitted and is awaiting review by an exec. You'll get an email once it's approved.
+          </div>
+        )}
+
+        {canUpload && (
+          <div className="receipt-upload">
+            <h3>
+              {status === 'expired' ? 'Renew your membership'
+                : status === 'expiring_soon' ? 'Renew for the next term'
+                : 'Activate your membership'}
+            </h3>
+            <p className="receipt-upload-help">
+              Pay your membership fee, then upload your payment receipt (image or PDF) here. An exec will review it and activate your account—no need to email it.
+            </p>
+
+            {receiptError && <div className="error-message">{receiptError}</div>}
+            {receiptSuccess && <div className="success-message">{receiptSuccess}</div>}
+
+            <div className="form-group">
+              <label className="form-label">Term you're paying for:</label>
+              <select
+                className="form-input"
+                value={receiptTermId}
+                onChange={(e) => setReceiptTermId(e.target.value)}
+              >
+                <option value="">Select a term…</option>
+                {availableTerms.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+              {availableTerms.length === 0 && (
+                <small>No terms are open yet. You can still upload; an exec will assign the term.</small>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Receipt file (image or PDF):</label>
+              <input
+                ref={receiptFileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                className="form-input"
+                onChange={(e) => {
+                  setReceiptError('');
+                  setReceiptFile(e.target.files[0] || null);
+                }}
+              />
+            </div>
+
+            <button
+              className="btn btn-primary"
+              onClick={handleReceiptUpload}
+              disabled={uploadingReceipt}
+            >
+              {uploadingReceipt ? 'Uploading…' : 'Submit Receipt'}
+            </button>
+          </div>
+        )}
+
+        {receipts.length > 0 && (
+          <div className="receipt-history">
+            <h3>Your receipts</h3>
+            <ul>
+              {receipts.map((r) => (
+                <li key={r.id} className="receipt-history-item">
+                  <span className={`receipt-status ${r.status}`}>{r.status.replace('_', ' ')}</span>
+                  <span className="receipt-history-meta">
+                    {r.term_label ? `${r.term_label} · ` : ''}{formatDate(r.uploaded_at)}
+                    {' · '}
+                    <a href={r.file_url && r.file_url.startsWith('/') ? `${API_BASE.replace(/\/?api$/i, '')}${r.file_url}` : r.file_url} target="_blank" rel="noopener noreferrer">view</a>
+                  </span>
+                  {r.status === 'rejected' && r.review_notes && (
+                    <span className="receipt-history-reason">Reason: {r.review_notes}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="profile-container">
       <div className="container">
@@ -720,6 +939,8 @@ const Profile = () => {
             </div>
           </div>
         </div>
+
+        {isUserProfile && renderMembershipCard()}
 
         {showEditModal && (
           <div className="modal-overlay">

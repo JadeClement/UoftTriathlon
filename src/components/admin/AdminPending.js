@@ -26,11 +26,14 @@ const AdminPending = () => {
                   <p><strong>Join Date:</strong> {member.joinDate ? new Date(member.joinDate).toLocaleDateString() : member.join_date ? new Date(member.join_date).toLocaleDateString() : member.created_at ? new Date(member.created_at).toLocaleDateString() : 'Not set'}</p>
                   <p><strong>Term:</strong> {member.term ? (
                     <span className={`term-badge ${member.term.toLowerCase().replace('/', '-')}`}>
-                      {member.term.charAt(0).toUpperCase() + member.term.slice(1).replace('/', '/')}
+                      {member.term_label || (member.term.charAt(0).toUpperCase() + member.term.slice(1))}
                     </span>
                   ) : (
                     <span className="term-badge no-term">Not set</span>
                   )}</p>
+                  {member.has_pending_receipt && (
+                    <p><span className="receipt-status pending_review">🧾 Receipt awaiting review</span></p>
+                  )}
                 </div>
                 <div className="approval-actions">
                   <button className="approve-btn" onClick={() => approveMember(member)}>

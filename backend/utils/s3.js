@@ -6,10 +6,19 @@ function getEnv(name, fallbackName) {
   return process.env[name] || (fallbackName ? process.env[fallbackName] : undefined);
 }
 
-const ACCESS_KEY = getEnv('AWS_S3_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID');
-const SECRET_KEY = getEnv('AWS_S3_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY');
-const REGION = getEnv('AWS_S3_REGION', 'AWS_REGION');
-const BUCKET = getEnv('AWS_S3_BUCKET', 'S3_BUCKET');
+// Treat template/placeholder values (e.g. the ones shipped in .env) as "not set"
+// so local dev falls back to disk storage instead of failing against fake keys.
+function realValue(value) {
+  if (!value) return undefined;
+  const trimmed = String(value).trim();
+  if (!trimmed || trimmed.startsWith('your_') || trimmed.startsWith('your-')) return undefined;
+  return trimmed;
+}
+
+const ACCESS_KEY = realValue(getEnv('AWS_S3_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID'));
+const SECRET_KEY = realValue(getEnv('AWS_S3_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY'));
+const REGION = realValue(getEnv('AWS_S3_REGION', 'AWS_REGION'));
+const BUCKET = realValue(getEnv('AWS_S3_BUCKET', 'S3_BUCKET'));
 
 function isS3Enabled() {
   return Boolean(ACCESS_KEY && SECRET_KEY && BUCKET && REGION);

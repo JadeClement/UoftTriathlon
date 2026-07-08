@@ -3,6 +3,7 @@ const { pool } = require('../database-pg');
 const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('../middleware/auth');
 const ExcelJS = require('exceljs');
 const notificationService = require('../services/notificationService');
+const { computeMembershipStatus, formatTermLabel } = require('../utils/membership');
 
 // Function to convert markdown-like formatting to HTML
 const formatText = (text) => {
@@ -93,7 +94,11 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
       SELECT 
         u.id, u.email, u.name, u.role, u.created_at,
         u.join_date, u.phone_number, u.absences, u.charter_accepted, u.sport,
-        u.term_id, t.term
+        u.term_id, t.term, t.year AS term_year, t.start_date AS term_start_date, t.end_date AS term_end_date,
+        EXISTS (
+          SELECT 1 FROM membership_receipts mr
+          WHERE mr.user_id = u.id AND mr.status = 'pending_review'
+        ) AS has_pending_receipt
       FROM users u
       LEFT JOIN terms t ON u.term_id = t.id
       ${whereClause}
@@ -102,10 +107,20 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
     `, [...params, limit, offset]);
 
     console.log('🔍 Members query returned:', membersResult.rows.length, 'members');
-    console.log('🔍 Sample member:', membersResult.rows[0]);
+
+    // Attach a derived membership status + human-friendly term label to each row
+    const members = (membersResult.rows || []).map((m) => ({
+      ...m,
+      term_label: m.term ? formatTermLabel({ term: m.term, year: m.term_year, start_date: m.term_start_date, end_date: m.term_end_date }) : null,
+      membership_status: computeMembershipStatus({
+        role: m.role,
+        termEndDate: m.term_end_date,
+        hasPendingReceipt: m.has_pending_receipt
+      })
+    }));
 
     res.json({
-      members: membersResult.rows || [],
+      members: members || [],
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(countResult.rows[0].total / limit),
@@ -123,13 +138,284 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
 router.get('/terms', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, term, start_date, end_date
+      SELECT id, term, year, start_date, end_date
       FROM terms
-      ORDER BY start_date DESC
+      ORDER BY year DESC NULLS LAST, start_date DESC
     `);
     res.json({ terms: result.rows || [] });
   } catch (error) {
     console.error('Get terms error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+const VALID_SEASONS = ['fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer'];
+
+// Create a term (admin only)
+router.post('/terms', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { term, year, start_date, end_date } = req.body;
+
+    if (!term || !VALID_SEASONS.includes(term)) {
+      return res.status(400).json({ error: `Invalid season. Must be one of: ${VALID_SEASONS.join(', ')}` });
+    }
+    const yearInt = parseInt(year, 10);
+    if (Number.isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+      return res.status(400).json({ error: 'Year must be a valid number between 2000 and 2100' });
+    }
+    if (!start_date || !end_date) {
+      return res.status(400).json({ error: 'Start date and end date are required' });
+    }
+    if (new Date(start_date) > new Date(end_date)) {
+      return res.status(400).json({ error: 'Start date must be on or before end date' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO terms (term, year, start_date, end_date)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, term, year, start_date, end_date`,
+      [term, yearInt, start_date, end_date]
+    );
+
+    res.status(201).json({ message: 'Term created successfully', term: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'A term with this season and year already exists' });
+    }
+    console.error('Create term error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update a term (admin only)
+router.put('/terms/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { term, year, start_date, end_date } = req.body;
+
+    if (term !== undefined && !VALID_SEASONS.includes(term)) {
+      return res.status(400).json({ error: `Invalid season. Must be one of: ${VALID_SEASONS.join(', ')}` });
+    }
+
+    const updates = [];
+    const values = [];
+    let p = 0;
+    if (term !== undefined) { updates.push(`term = $${++p}`); values.push(term); }
+    if (year !== undefined) {
+      const yearInt = parseInt(year, 10);
+      if (Number.isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+        return res.status(400).json({ error: 'Year must be a valid number between 2000 and 2100' });
+      }
+      updates.push(`year = $${++p}`); values.push(yearInt);
+    }
+    if (start_date !== undefined) { updates.push(`start_date = $${++p}`); values.push(start_date); }
+    if (end_date !== undefined) { updates.push(`end_date = $${++p}`); values.push(end_date); }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE terms SET ${updates.join(', ')} WHERE id = $${p + 1}
+       RETURNING id, term, year, start_date, end_date`,
+      values
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Term not found' });
+    }
+    res.json({ message: 'Term updated successfully', term: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'A term with this season and year already exists' });
+    }
+    console.error('Update term error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete a term (admin only) - guarded if any member is assigned to it
+router.delete('/terms/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const inUse = await pool.query('SELECT COUNT(*) as count FROM users WHERE term_id = $1', [id]);
+    if (parseInt(inUse.rows[0].count) > 0) {
+      return res.status(400).json({ error: `Cannot delete: ${inUse.rows[0].count} member(s) are assigned to this term. Reassign them first.` });
+    }
+    // Detach any receipts referencing this term (keep the receipt history)
+    await pool.query('UPDATE membership_receipts SET term_id = NULL WHERE term_id = $1', [id]);
+    const result = await pool.query('DELETE FROM terms WHERE id = $1', [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Term not found' });
+    }
+    res.json({ message: 'Term deleted successfully' });
+  } catch (error) {
+    console.error('Delete term error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ----- Membership receipt review (exec can view; admin approves/rejects) -----
+
+// List membership receipts (defaults to pending_review)
+router.get('/receipts', authenticateToken, requireRole('exec'), async (req, res) => {
+  try {
+    const { status = 'pending_review' } = req.query;
+    const params = [];
+    let whereClause = '';
+    if (status && status !== 'all') {
+      params.push(status);
+      whereClause = `WHERE mr.status = $1`;
+    }
+
+    const result = await pool.query(`
+      SELECT
+        mr.id, mr.user_id, mr.term_id, mr.file_url, mr.file_type, mr.amount,
+        mr.status, mr.review_notes, mr.reviewed_by, mr.reviewed_at, mr.uploaded_at,
+        u.name AS user_name, u.email AS user_email, u.role AS user_role,
+        t.term, t.year AS term_year, t.start_date AS term_start_date, t.end_date AS term_end_date,
+        reviewer.name AS reviewer_name
+      FROM membership_receipts mr
+      JOIN users u ON mr.user_id = u.id
+      LEFT JOIN terms t ON mr.term_id = t.id
+      LEFT JOIN users reviewer ON mr.reviewed_by = reviewer.id
+      ${whereClause}
+      ORDER BY mr.uploaded_at DESC
+    `, params);
+
+    const receipts = (result.rows || []).map((r) => ({
+      ...r,
+      term_label: r.term ? formatTermLabel({ term: r.term, year: r.term_year, start_date: r.term_start_date, end_date: r.term_end_date }) : null
+    }));
+
+    res.json({ receipts });
+  } catch (error) {
+    console.error('Get receipts error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Approve a receipt: activate the member and assign the paid term (admin only)
+router.post('/receipts/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { role = 'member', term_id } = req.body;
+
+    const validRoles = ['member', 'coach', 'exec', 'administrator'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    await client.query('BEGIN');
+
+    const receiptResult = await client.query(
+      `SELECT mr.*, u.name AS user_name, u.email AS user_email, u.role AS user_role
+       FROM membership_receipts mr JOIN users u ON mr.user_id = u.id
+       WHERE mr.id = $1 FOR UPDATE`,
+      [id]
+    );
+    if (receiptResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Receipt not found' });
+    }
+    const receipt = receiptResult.rows[0];
+
+    // Term to assign: explicit override wins, else the term the receipt was for
+    const finalTermId = term_id !== undefined && term_id !== null && term_id !== ''
+      ? parseInt(term_id, 10)
+      : receipt.term_id;
+
+    if (finalTermId) {
+      const termCheck = await client.query('SELECT id FROM terms WHERE id = $1', [finalTermId]);
+      if (termCheck.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Assigned term not found' });
+      }
+    }
+
+    // Activate the user: set role, assign term, set join_date if first activation
+    await client.query(`
+      UPDATE users
+      SET role = $1,
+          term_id = COALESCE($2, term_id),
+          join_date = COALESCE(join_date, CURRENT_DATE),
+          is_active = true
+      WHERE id = $3
+    `, [role, finalTermId || null, receipt.user_id]);
+
+    // Mark this receipt approved
+    await client.query(`
+      UPDATE membership_receipts
+      SET status = 'approved', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+    `, [req.user.id, id]);
+
+    // Record the role transition for the in-app notification banner
+    if (receipt.user_role !== role) {
+      await client.query(`
+        INSERT INTO role_change_notifications (user_id, old_role, new_role)
+        VALUES ($1, $2, $3)
+      `, [receipt.user_id, receipt.user_role, role]);
+    }
+
+    await client.query('COMMIT');
+
+    // Notify the member (best effort)
+    try {
+      const emailService = require('../services/emailService');
+      if (role === 'member') {
+        await emailService.sendMemberAcceptance(receipt.user_email, receipt.user_name);
+      } else {
+        await emailService.sendRoleChangeNotification(receipt.user_email, receipt.user_name, receipt.user_role, role);
+      }
+    } catch (emailError) {
+      console.error('❌ Failed to send receipt approval email:', emailError);
+    }
+
+    res.json({ message: 'Receipt approved and member activated', newRole: role });
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error('Approve receipt error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// Reject a receipt with a reason (admin only)
+router.post('/receipts/:id/reject', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason = '' } = req.body;
+
+    const receiptResult = await pool.query(
+      `SELECT mr.*, u.name AS user_name, u.email AS user_email
+       FROM membership_receipts mr JOIN users u ON mr.user_id = u.id
+       WHERE mr.id = $1`,
+      [id]
+    );
+    if (receiptResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Receipt not found' });
+    }
+    const receipt = receiptResult.rows[0];
+
+    await pool.query(`
+      UPDATE membership_receipts
+      SET status = 'rejected', review_notes = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+    `, [reason || null, req.user.id, id]);
+
+    try {
+      const emailService = require('../services/emailService');
+      await emailService.sendReceiptRejected(receipt.user_email, receipt.user_name, reason);
+    } catch (emailError) {
+      console.error('❌ Failed to send receipt rejection email:', emailError);
+    }
+
+    res.json({ message: 'Receipt rejected' });
+  } catch (error) {
+    console.error('Reject receipt error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

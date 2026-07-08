@@ -11,6 +11,7 @@ import {
   getBiometricCredentials,
 } from '../services/biometricAuth';
 import './Login.css';
+import PasswordInput from './PasswordInput';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -705,13 +706,13 @@ const Login = () => {
           
           <div className="form-group">
             <label htmlFor="password">Password *</label>
-            <input
-              type="password"
+            <PasswordInput
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="Enter your password"
+              autoComplete={isLogin ? 'current-password' : 'new-password'}
             />
           </div>
 
@@ -719,13 +720,13 @@ const Login = () => {
             <>
               <div className="form-group">
                 <label htmlFor="confirmPassword">Confirm Password *</label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required={!isLogin}
                   placeholder="Confirm your password"
+                  autoComplete="new-password"
                 />
                 {!isLogin && confirmPassword && (
                   <div className={`password-validation ${password === confirmPassword ? 'valid' : 'invalid'}`}>

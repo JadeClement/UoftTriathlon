@@ -5,6 +5,7 @@ const fs = require('fs');
 const { pool } = require('../database-pg');
 const { authenticateToken, allowOwnProfile, requireMember } = require('../middleware/auth');
 const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
+const { computeMembershipStatus, formatTermLabel } = require('../utils/membership');
 
 // Debug (non-sensitive) printout of S3 detection to help diagnose env on deploys
 try {
@@ -57,6 +58,31 @@ const upload = multer({
   }
 });
 
+// Separate uploader for payment receipts: allow images AND PDFs (up to 10MB).
+const receiptDiskStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '..', 'uploads', 'receipts');
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const receiptUpload = multer({
+  storage: isS3Enabled() ? memoryStorage : receiptDiskStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image or PDF files are allowed'), false);
+    }
+  }
+});
+
 // CORS is handled by main server middleware
 // Get user profile
 router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) => {
@@ -64,17 +90,32 @@ router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     const userId = req.user.id;
 
     const userResult = await pool.query(`
-      SELECT id, name, email, role, created_at, phone_number, profile_picture_url, charter_accepted, results_public, races_public,
-        bio, joined_year, end_year
-      FROM users 
-      WHERE id = $1 AND is_active = true
+      SELECT u.id, u.name, u.email, u.role, u.created_at, u.phone_number, u.profile_picture_url,
+        u.charter_accepted, u.results_public, u.races_public, u.bio, u.joined_year, u.end_year,
+        u.term_id, t.term, t.year AS term_year, t.start_date AS term_start_date, t.end_date AS term_end_date,
+        EXISTS (
+          SELECT 1 FROM membership_receipts mr
+          WHERE mr.user_id = u.id AND mr.status = 'pending_review'
+        ) AS has_pending_receipt
+      FROM users u
+      LEFT JOIN terms t ON u.term_id = t.id
+      WHERE u.id = $1 AND u.is_active = true
     `, [userId]);
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const user = userResult.rows[0];
+    const row = userResult.rows[0];
+    const user = {
+      ...row,
+      term_label: row.term ? formatTermLabel({ term: row.term, year: row.term_year, start_date: row.term_start_date, end_date: row.term_end_date }) : null,
+      membership_status: computeMembershipStatus({
+        role: row.role,
+        termEndDate: row.term_end_date,
+        hasPendingReceipt: row.has_pending_receipt
+      })
+    };
     res.json({ user });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -817,6 +858,147 @@ router.delete('/profile', authenticateToken, allowOwnProfile(), async (req, res)
     res.status(500).json({ error: 'Internal server error' });
   } finally {
     client.release();
+  }
+});
+
+// List terms a member can pay for (current + upcoming)
+router.get('/terms', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, term, year, start_date, end_date
+      FROM terms
+      WHERE end_date >= CURRENT_DATE
+      ORDER BY start_date ASC
+    `);
+    const terms = (result.rows || []).map((t) => ({
+      ...t,
+      label: formatTermLabel(t)
+    }));
+    res.json({ terms });
+  } catch (error) {
+    console.error('Get member terms error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get the current user's own receipt history
+router.get('/profile/receipts', authenticateToken, allowOwnProfile(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(`
+      SELECT mr.id, mr.term_id, mr.file_url, mr.file_type, mr.amount, mr.status,
+             mr.review_notes, mr.uploaded_at, mr.reviewed_at,
+             t.term, t.year AS term_year, t.start_date AS term_start_date, t.end_date AS term_end_date
+      FROM membership_receipts mr
+      LEFT JOIN terms t ON mr.term_id = t.id
+      WHERE mr.user_id = $1
+      ORDER BY mr.uploaded_at DESC
+    `, [userId]);
+
+    const receipts = (result.rows || []).map((r) => ({
+      ...r,
+      term_label: r.term ? formatTermLabel({ term: r.term, year: r.term_year, start_date: r.term_start_date, end_date: r.term_end_date }) : null
+    }));
+    res.json({ receipts });
+  } catch (error) {
+    console.error('Get own receipts error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Upload a membership payment receipt (image or PDF)
+router.post('/profile/receipt', authenticateToken, allowOwnProfile(), receiptUpload.single('receipt'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const userId = req.user.id;
+    const { term_id, amount } = req.body;
+
+    // Validate term if provided
+    let termIdInt = null;
+    if (term_id !== undefined && term_id !== null && term_id !== '') {
+      termIdInt = parseInt(term_id, 10);
+      if (Number.isNaN(termIdInt)) {
+        return res.status(400).json({ error: 'Invalid term selected' });
+      }
+      const termCheck = await pool.query('SELECT id FROM terms WHERE id = $1', [termIdInt]);
+      if (termCheck.rows.length === 0) {
+        return res.status(400).json({ error: 'Selected term not found' });
+      }
+    }
+
+    let amountNum = null;
+    if (amount !== undefined && amount !== null && String(amount).trim() !== '') {
+      amountNum = parseFloat(amount);
+      if (Number.isNaN(amountNum) || amountNum < 0) {
+        return res.status(400).json({ error: 'Invalid amount' });
+      }
+    }
+
+    // Prevent duplicate pending submissions
+    const existingPending = await pool.query(
+      `SELECT id FROM membership_receipts WHERE user_id = $1 AND status = 'pending_review'`,
+      [userId]
+    );
+    if (existingPending.rows.length > 0) {
+      return res.status(400).json({ error: 'You already have a receipt awaiting review. Please wait for it to be processed.' });
+    }
+
+    // Store the file
+    let fileUrl;
+    let fileKey = null;
+    if (isS3Enabled()) {
+      const ext = path.extname(req.file.originalname || '').toLowerCase() || (req.file.mimetype === 'application/pdf' ? '.pdf' : '.jpg');
+      fileKey = `receipts/receipt-${userId}-${Date.now()}${ext}`;
+      fileUrl = await uploadBufferToS3(fileKey, req.file.buffer, req.file.mimetype);
+    } else {
+      fileUrl = `/uploads/receipts/${req.file.filename}`;
+    }
+
+    const insertResult = await pool.query(`
+      INSERT INTO membership_receipts (user_id, term_id, file_url, file_key, file_type, amount, status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending_review')
+      RETURNING id, term_id, file_url, file_type, amount, status, uploaded_at
+    `, [userId, termIdInt, fileUrl, fileKey, req.file.mimetype, amountNum]);
+
+    // Notify the club inbox that a new receipt needs review (best effort)
+    try {
+      const emailService = require('../services/emailService');
+      const userInfo = await pool.query('SELECT name, email FROM users WHERE id = $1', [userId]);
+      let termLabel = null;
+      if (termIdInt) {
+        const termInfo = await pool.query('SELECT term, year, start_date, end_date FROM terms WHERE id = $1', [termIdInt]);
+        if (termInfo.rows.length > 0) termLabel = formatTermLabel(termInfo.rows[0]);
+      }
+      if (userInfo.rows.length > 0 && typeof emailService.sendReceiptSubmittedToAdmin === 'function') {
+        await emailService.sendReceiptSubmittedToAdmin(
+          userInfo.rows[0].name,
+          userInfo.rows[0].email,
+          termLabel,
+          amountNum
+        );
+      }
+    } catch (emailError) {
+      console.error('❌ Failed to send receipt-submitted admin email:', emailError);
+    }
+
+    res.status(201).json({ message: 'Receipt submitted for review', receipt: insertResult.rows[0] });
+  } catch (error) {
+    console.error('Upload receipt error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Serve locally-stored receipts (only used when S3 is not configured)
+router.get('/uploads/receipts/:filename', authenticateToken, (req, res) => {
+  const filename = req.params.filename;
+  const filepath = path.join(__dirname, '..', 'uploads', 'receipts', filename);
+  if (fs.existsSync(filepath)) {
+    res.sendFile(filepath);
+  } else {
+    res.status(404).json({ error: 'Receipt not found' });
   }
 });
 
