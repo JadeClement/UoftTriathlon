@@ -194,16 +194,26 @@
   box-shadow: 0 0 0 2px #1E40AF;
 }
 
-.admin-receipt-badge-collapsed {
+/* Icon overlay badge — shown on collapsed sidebar and mobile icon-only nav */
+.admin-receipt-badge-icon {
+  display: none;
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
+  top: 0.15rem;
+  right: 0.1rem;
   margin-left: 0;
-  min-width: 1rem;
-  height: 1rem;
-  padding: 0 0.25rem;
-  font-size: 0.625rem;
-  box-shadow: 0 0 0 2px #f8fafc;
+  min-width: 0.875rem;
+  height: 0.875rem;
+  padding: 0 0.2rem;
+  font-size: 0.5625rem;
+  box-shadow: 0 0 0 1.5px #f8fafc;
+}
+
+.admin-sidebar.collapsed .admin-receipt-badge-icon {
+  display: inline-flex;
+}
+
+.admin-sidebar-link.active .admin-receipt-badge-icon {
+  box-shadow: 0 0 0 1.5px #1E40AF;
 }
 
 .admin-sidebar.collapsed .admin-sidebar-label {
@@ -1413,6 +1423,10 @@
   .admin-sidebar-icon {
     font-size: 1.2rem;
     width: auto;
+  }
+
+  .admin-receipt-badge-icon {
+    display: inline-flex;
   }
   
   .admin-tabs {

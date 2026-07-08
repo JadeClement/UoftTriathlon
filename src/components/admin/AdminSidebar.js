@@ -55,14 +55,14 @@ const AdminSidebar = () => {
               <span className="admin-sidebar-label">
                 {label}
                 {path === 'receipts' && pendingReceiptsCount > 0 && (
-                  <span className="admin-receipt-badge" aria-label={`${pendingReceiptsCount} receipt(s) awaiting review`}>
+                  <span className="admin-receipt-badge admin-receipt-badge-label" aria-label={`${pendingReceiptsCount} receipt(s) awaiting review`}>
                     {receiptBadgeLabel}
                   </span>
                 )}
               </span>
             )}
-            {collapsed && path === 'receipts' && pendingReceiptsCount > 0 && (
-              <span className="admin-receipt-badge admin-receipt-badge-collapsed" aria-label={`${pendingReceiptsCount} receipt(s) awaiting review`}>
+            {path === 'receipts' && pendingReceiptsCount > 0 && (
+              <span className="admin-receipt-badge admin-receipt-badge-icon" aria-label={`${pendingReceiptsCount} receipt(s) awaiting review`}>
                 {receiptBadgeLabel}
               </span>
             )}
