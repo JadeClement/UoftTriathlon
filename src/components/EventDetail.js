@@ -313,7 +313,7 @@ const EventDetail = () => {
             color: isOffline ? undefined : '#991b1b',
             lineHeight: 1.6
           }}>
-            <h2>{isOffline ? 'You Are Offline' : (error ? 'Unable to load event' : 'Event Not Found')}</h2>
+            <h1>{isOffline ? 'You Are Offline' : (error ? 'Unable to load event' : 'Event Not Found')}</h1>
             <p>{isOffline 
               ? 'This event cannot be loaded while you are offline. Please check your internet connection and try again.'
               : (error || 'The event you\'re looking for doesn\'t exist or has been deleted.')}

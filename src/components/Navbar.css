@@ -199,6 +199,9 @@
   display: none;
   flex-direction: column;
   cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 .bar {
@@ -739,7 +742,7 @@ button.profile-picture-nav {
   border: none;
   background: none;
   font-size: 1.5rem;
-  color: #94a3b8;
+  color: #64748b;
   cursor: pointer;
   padding: 4px;
   line-height: 1;
@@ -753,7 +756,7 @@ button.profile-picture-nav {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: #64748b;
   margin: 0 0 6px;
 }
 

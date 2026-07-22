@@ -580,6 +580,7 @@ const Races = () => {
               maxWidth: '400px',
               margin: '0 auto'
             }}>
+              <h1>Races</h1>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📴</div>
               <h2 style={{ color: '#374151', marginBottom: '0.75rem' }}>You&apos;re Offline</h2>
               <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: 1.5 }}>
@@ -593,7 +594,7 @@ const Races = () => {
                 Try Again
               </button>
               {!navigator.onLine && (
-                <p style={{ fontSize: '0.875rem', color: '#9ca3af', marginTop: '1rem' }}>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '1rem' }}>
                   Waiting for connection...
                 </p>
               )}
@@ -742,7 +743,20 @@ const Races = () => {
             renderEmptyRaces()
           ) : (
             getFilteredRaces().map(race => (
-              <div key={race.id} className="race-card" onClick={() => handleRaceClick(race.id)}>
+              <div
+                key={race.id}
+                className="race-card"
+                role="link"
+                tabIndex={0}
+                aria-label={`View race ${race.name}`}
+                onClick={() => handleRaceClick(race.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleRaceClick(race.id);
+                  }
+                }}
+              >
                 <div className="race-header">
                   <div className="race-main">
                     <h2 className="race-name">{race.name}</h2>
@@ -1031,7 +1045,7 @@ const Races = () => {
                       })()}
                     </div>
                     <div className="calendar-race-info">
-                      <h4>{race.name}</h4>
+                      <h3>{race.name}</h3>
                       {race.location && <p>{race.location}</p>}
                       <p className="calendar-countdown">{getDaysUntilRace(race.date)}</p>
                       {currentUser && isMember(currentUser) && (

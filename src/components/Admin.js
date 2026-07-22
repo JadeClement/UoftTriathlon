@@ -1848,7 +1848,7 @@ const Admin = () => {
     return (
       <div className="admin-container">
         <div className="admin-access-denied">
-          <h2>Access Denied</h2>
+          <h1>Access Denied</h1>
           <p>You don't have permission to access the admin panel.</p>
           <p>Current user: {currentUser ? currentUser.email : 'None'}</p>
           <p>User role: {currentUser ? currentUser.role : 'None'}</p>

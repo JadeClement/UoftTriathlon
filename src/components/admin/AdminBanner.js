@@ -34,8 +34,9 @@ const AdminBanner = () => {
               <span className="toggle-label">{bannerForm.enabled ? 'On' : 'Off'}</span>
             </div>
             <div className="form-group">
-              <label>Rotation Interval (ms)</label>
+              <label htmlFor="banner-rotation-interval-ms">Rotation Interval (ms)</label>
               <input
+                id="banner-rotation-interval-ms"
                 type="number"
                 value={bannerForm.rotationIntervalMs}
                 min={1000}
@@ -45,16 +46,21 @@ const AdminBanner = () => {
             </div>
 
             <div className="form-group">
-              <label>Banner Messages (max 10)</label>
+              <span id="banner-messages-label" className="form-label-text">Banner Messages (max 10)</span>
               {(bannerForm.items || []).map((msg, idx) => {
                 const length = getBannerDisplayLength(msg || '');
                 const overLimit = length > 50;
                 return (
                   <div key={idx} style={{ marginBottom: 8 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <label htmlFor={`banner-message-input-${idx}`} className="sr-only">
+                        Banner message {idx + 1}
+                      </label>
                       <input
+                        id={`banner-message-input-${idx}`}
                         type="text"
                         value={msg}
+                        aria-labelledby="banner-messages-label"
                         onChange={(e) => {
                           const next = [...(bannerForm.items || [])];
                           next[idx] = e.target.value;
@@ -76,7 +82,7 @@ const AdminBanner = () => {
                     <div style={{ fontSize: '12px', color: overLimit ? '#b91c1c' : '#6b7280', textAlign: 'left', marginTop: 2 }}>
                       {length}/50 characters
                     </div>
-                    <div style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'left', marginTop: 4, fontStyle: 'italic' }}>
+                    <div style={{ fontSize: '11px', color: '#6b7280', textAlign: 'left', marginTop: 4, fontStyle: 'italic' }}>
                       Link format: [text](url). No spaces between brackets.
                     </div>
                   </div>
@@ -121,8 +127,9 @@ const AdminBanner = () => {
               <span className="toggle-label">{bannerForm.popupEnabled ? 'Pop Up On' : 'Pop Up Off'}</span>
             </div>
             <div className="form-group">
-              <label>Pop Up Message</label>
+              <label htmlFor="popup-message-textarea">Pop Up Message</label>
               <textarea
+                id="popup-message-textarea"
                 rows="4"
                 placeholder="Write the message you want members to see after logging in..."
                 value={bannerForm.popupDraft}

@@ -177,6 +177,8 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  border: none;
+  padding: 0;
   background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: all 0.3s ease;

@@ -54,6 +54,7 @@
   display: block;
 }
 
+.race-location h2,
 .race-location h3 {
   margin: 0 0 0.5rem 0;
   color: #1f2937;
@@ -72,6 +73,7 @@
   text-align: center;
 }
 
+.race-link-block h2,
 .race-link-block h3 {
   margin: 0 0 0.5rem 0;
   color: #1f2937;
@@ -117,6 +119,7 @@
   margin-bottom: 0;
 }
 
+.info-section h2,
 .info-section h3 {
   margin: 0 0 1rem 0;
   color: #1f2937;

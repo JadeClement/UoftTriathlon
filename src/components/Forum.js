@@ -1826,6 +1826,9 @@ const Forum = () => {
                         <div
                           key={post.id}
                           className="post-card workout-post"
+                          role="link"
+                          tabIndex={0}
+                          aria-label={`View workout ${post.title || 'Untitled Workout'}`}
                           onClick={(e) => {
                             // Only navigate if clicking on the card itself, not on buttons or edit form
                             if (
@@ -1835,15 +1838,26 @@ const Forum = () => {
                               window.location.href = `/workout/${post.id}`;
                             }
                           }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              if (
+                                !e.target.closest('.workout-actions-admin') &&
+                                !e.target.closest('.workout-edit-form')
+                              ) {
+                                e.preventDefault();
+                                window.location.href = `/workout/${post.id}`;
+                              }
+                            }
+                          }}
                         >
                           <div className="post-header">
                             {post.title ? (
                               <div className="workout-title">
-                                <h2>{post.title}</h2>
+                                <h3>{post.title}</h3>
                               </div>
                             ) : (
                               <div className="workout-title">
-                                <h2>Untitled Workout</h2>
+                                <h3>Untitled Workout</h3>
                               </div>
                             )}
 
@@ -2103,7 +2117,16 @@ const Forum = () => {
                     <div
                       key={post.id}
                       className="post-card event-post"
+                      role="link"
+                      tabIndex={0}
+                      aria-label={`View event ${post.title || 'Untitled Event'}`}
                       onClick={() => (window.location.href = `/event/${post.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          window.location.href = `/event/${post.id}`;
+                        }
+                      }}
                     >
                       <div className="post-header">
                         {editingEvent === post.id ? (
@@ -2275,7 +2298,7 @@ const Forum = () => {
           {showPromotionMessage && promotedWorkout && (
             <div className="promotion-message">
               <div className="promotion-content">
-                <h3>🎉 Congratulations!</h3>
+                <p className="promotion-heading" role="status"><strong>🎉 Congratulations!</strong></p>
                 <p>
                   You've been promoted from the waitlist for{' '}
                   <strong>{promotedWorkout.title}</strong>!

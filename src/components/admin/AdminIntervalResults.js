@@ -45,8 +45,9 @@ const AdminIntervalResults = () => {
               <h3 style={{ margin: 0, fontSize: '1rem', color: '#374151' }}>Members with Interval Results</h3>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.15rem', color: '#6b7280' }}>From</label>
+                  <label htmlFor="interval-filter-start-date" style={{ display: 'block', marginBottom: '0.15rem', color: '#6b7280' }}>From</label>
                   <input
+                    id="interval-filter-start-date"
                     type="date"
                     value={intervalDateFilter.startDate}
                     onChange={(e) =>
@@ -56,8 +57,9 @@ const AdminIntervalResults = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.15rem', color: '#6b7280' }}>To</label>
+                  <label htmlFor="interval-filter-end-date" style={{ display: 'block', marginBottom: '0.15rem', color: '#6b7280' }}>To</label>
                   <input
+                    id="interval-filter-end-date"
                     type="date"
                     value={intervalDateFilter.endDate}
                     onChange={(e) =>

@@ -20,8 +20,9 @@ const AdminAttendance = () => {
 
         <div className="attendance-filters">
           <div className="filter-group">
-            <label>Workout Type:</label>
+            <label htmlFor="attendance-workout-type-filter">Workout Type:</label>
             <select
+              id="attendance-workout-type-filter"
               value={attendanceFilters.type}
               onChange={(e) => handleAttendanceFilterChange('type', e.target.value)}
             >
@@ -34,8 +35,9 @@ const AdminAttendance = () => {
           </div>
 
           <div className="filter-group">
-            <label>Status:</label>
+            <label htmlFor="attendance-status-filter">Status:</label>
             <select
+              id="attendance-status-filter"
               value={attendanceFilters.status}
               onChange={(e) => handleAttendanceFilterChange('status', e.target.value)}
             >

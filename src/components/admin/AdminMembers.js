@@ -27,12 +27,17 @@ const AdminMembers = () => {
         <h2>All Members</h2>
         <div className="admin-page-header">
           <div className="form-group member-search" style={{ maxWidth: 420, flex: '1 1 100%' }}>
+            <label htmlFor="admin-member-search" className="sr-only">
+              Search members by name or email
+            </label>
             <input
-              type="text"
+              id="admin-member-search"
+              type="search"
               className="member-search-input"
               placeholder="Search by name or email…"
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
+              aria-label="Search members by name or email"
             />
             {memberSearch && (
               <button

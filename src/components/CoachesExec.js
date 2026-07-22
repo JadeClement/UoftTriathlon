@@ -382,6 +382,7 @@ const CoachesExec = () => {
     return (
       <div className="coaches-exec-container">
         <div className="container">
+          <h1 className="section-title">Coaches & Executive Team</h1>
           <div className="loading-state">
             <h2>Loading team members...</h2>
           </div>
@@ -396,6 +397,7 @@ const CoachesExec = () => {
       return (
         <div className="coaches-exec-container">
           <div className="container">
+            <h1 className="section-title">Coaches & Executive Team</h1>
             <div className="offline-state" style={{
               textAlign: 'center',
               padding: '3rem 2rem',
@@ -422,6 +424,7 @@ const CoachesExec = () => {
     return (
       <div className="coaches-exec-container">
         <div className="container">
+          <h1 className="section-title">Coaches & Executive Team</h1>
           <div className="error-state">
             <h2>Error loading team members</h2>
             <p>{error}</p>
@@ -473,7 +476,7 @@ const CoachesExec = () => {
           <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="edit-modal-header">
               <h3>Edit Profile</h3>
-              <button className="close-button" onClick={handleCloseEdit}>×</button>
+              <button type="button" className="close-button" onClick={handleCloseEdit} aria-label="Close">×</button>
             </div>
             <div className="edit-modal-body">
               {canManagePositions && (
@@ -582,7 +585,7 @@ const CoachesExec = () => {
           <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="edit-modal-header">
               <h3>Add Position</h3>
-              <button className="close-button" onClick={() => setShowAddPosition(false)}>×</button>
+              <button type="button" className="close-button" onClick={() => setShowAddPosition(false)} aria-label="Close">×</button>
             </div>
             <div className="edit-modal-body">
               <div className="form-group">

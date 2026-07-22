@@ -1193,7 +1193,7 @@ const WorkoutDetail = () => {
             borderRadius: '4px',
             margin: '2rem 0'
           }}>
-            <h2>{isOffline ? '📴 You Are Offline' : 'Error Loading Workout'}</h2>
+            <h1>{isOffline ? '📴 You Are Offline' : 'Error Loading Workout'}</h1>
             <p>{isOffline ? 'This workout cannot be loaded while you are offline. Please check your internet connection and try again.' : error}</p>
             {!isOffline && (
               <button 
@@ -1236,7 +1236,7 @@ const WorkoutDetail = () => {
             borderRadius: '4px',
             margin: '2rem 0'
           }}>
-            <h2>{isOffline ? '📴 You Are Offline' : 'Workout Not Found'}</h2>
+            <h1>{isOffline ? '📴 You Are Offline' : 'Workout Not Found'}</h1>
             <p>{isOffline 
               ? 'This workout cannot be loaded while you are offline. Please check your internet connection and try again.'
               : 'The workout you\'re looking for doesn\'t exist or has been deleted.'}

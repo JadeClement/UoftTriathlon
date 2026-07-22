@@ -695,7 +695,7 @@ const TeamGear = () => {
       <p className="page-description">
         Show your UofT Tri Club pride with our official team gear! 
       </p>
-      <h3>Triathlon Specific Gear</h3>
+      <h2>Triathlon Specific Gear</h2>
       <p>
       The tri suits, bike kits and running singletsre from Champion Systems. The main reference for triathlon is here
       https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items. 
@@ -703,7 +703,7 @@ const TeamGear = () => {
       
       </p>
       
-      <h3 style={{ marginTop: '2rem' }}>Under Armour Gear</h3>
+      <h2 style={{ marginTop: '2rem' }}>Under Armour Gear</h2>
       <p>Please order through website by October 19th. After this you will receive an invoice from the university.</p>
       <p>Under construction, please check back later today.</p>
       <div className="gear-grid">
@@ -1095,6 +1095,7 @@ const TeamGear = () => {
                           onClick={() => removeImage(imageUrl)}
                           className="gear-remove-btn"
                           title="Remove image"
+                          aria-label="Remove image"
                         >
                           ×
                         </button>
@@ -1139,7 +1140,7 @@ const TeamGear = () => {
           <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
             <div className="gear-modal-header">
               <h2>Add New Merchandise</h2>
-              <button className="gear-modal-close" onClick={() => setShowAddModal(false)}>×</button>
+              <button type="button" className="gear-modal-close" onClick={() => setShowAddModal(false)} aria-label="Close">×</button>
             </div>
             <div className="gear-modal-body">
               <div className="form-group">
@@ -1273,7 +1274,7 @@ const TeamGear = () => {
         <div className="gear-modal-overlay" onClick={closeOrderModal}>
           <div className="gear-modal" onClick={(e) => e.stopPropagation()}>
             <div className="gear-modal-header order-modal-header">
-              <button className="gear-modal-close order-modal-close" onClick={closeOrderModal}>×</button>
+              <button type="button" className="gear-modal-close order-modal-close" onClick={closeOrderModal} aria-label="Close">×</button>
               <h2>Confirm Order</h2>
             </div>
             <div className="gear-modal-body">
@@ -1361,7 +1362,7 @@ const TeamGear = () => {
               <h2 style={{ margin: 0, whiteSpace: 'nowrap', fontSize: 'clamp(1.1rem, 4vw, 1.5rem)' }}>Order Confirmed!</h2>
             </div>
             <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="gear-modal-close" onClick={closeSuccessModal}>×</button>
+              <button type="button" className="gear-modal-close" onClick={closeSuccessModal} aria-label="Close">×</button>
             </div>
           </div>
           <div className="gear-modal-body success-body">

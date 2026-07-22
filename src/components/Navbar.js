@@ -705,7 +705,7 @@ const Navbar = () => {
         
         {/* Hide navbar menu on iOS apps - everything is in bottom nav */}
         {!isNativeApp && (
-        <div className={`navbar-menu ${isOpen ? 'active' : ''}`} ref={navbarMenuRef}>
+        <div id="navbar-menu" className={`navbar-menu ${isOpen ? 'active' : ''}`} ref={navbarMenuRef}>
           {/* Main nav items */}
           {itemsInMainNav.map(item => (
             <Link
@@ -1008,11 +1008,18 @@ const Navbar = () => {
           </div>
         )}
         
-        <div className="navbar-toggle" onClick={toggleMenu}>
+        <button
+          type="button"
+          className="navbar-toggle"
+          onClick={toggleMenu}
+          aria-label={isOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={isOpen}
+          aria-controls="navbar-menu"
+        >
           <span className={`bar ${isOpen ? 'active' : ''}`}></span>
           <span className={`bar ${isOpen ? 'active' : ''}`}></span>
           <span className={`bar ${isOpen ? 'active' : ''}`}></span>
-        </div>
+        </button>
       </div>
     </nav>
     </>

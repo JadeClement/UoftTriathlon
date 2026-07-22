@@ -232,7 +232,7 @@
   margin-top: 1.5rem;
 }
 
-.season-schedule h4 {
+.season-schedule h2 {
   color: #1E3A8A;
   margin-bottom: 1.5rem;
   text-align: center;
@@ -254,7 +254,7 @@
   text-align: center;
 }
 
-.schedule-day h5 {
+.schedule-day h3 {
   color: #1E3A8A;
   margin-bottom: 1rem;
   font-size: 1rem;
@@ -409,7 +409,7 @@
   border-left: 4px solid #1E40AF;
 }
 
-.workout-type h4 {
+.workout-type h2 {
   color: #1E3A8A;
   font-size: 1.4rem;
   margin-bottom: 1rem;
@@ -460,7 +460,7 @@
   border: 1px solid #e5e7eb;
 }
 
-.run-type h5 {
+.run-type h3 {
   color: #1E3A8A;
   font-size: 1.1rem;
   margin-bottom: 0.75rem;

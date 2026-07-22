@@ -768,8 +768,9 @@ const Profile = () => {
             {receiptSuccess && <div className="success-message">{receiptSuccess}</div>}
 
             <div className="form-group">
-              <label className="form-label">Term you're paying for:</label>
+              <label className="form-label" htmlFor="receipt-term-select">Term you're paying for:</label>
               <select
+                id="receipt-term-select"
                 className="form-input"
                 value={receiptTermId}
                 onChange={(e) => setReceiptTermId(e.target.value)}
@@ -785,8 +786,9 @@ const Profile = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Receipt file (image or PDF):</label>
+              <label className="form-label" htmlFor="receipt-file-input">Receipt file (image or PDF):</label>
               <input
+                id="receipt-file-input"
                 ref={receiptFileInputRef}
                 type="file"
                 accept="image/*,application/pdf"

@@ -56,8 +56,9 @@ const AdminEmail = () => {
               {emailType === 'individual' && (
                 <>
                   <div className="form-group">
-                    <label>To</label>
+                    <label htmlFor="email-to-input">To</label>
                     <input
+                      id="email-to-input"
                       type="email"
                       value={emailForm.to}
                       onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })}
@@ -67,8 +68,9 @@ const AdminEmail = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Subject</label>
+                    <label htmlFor="email-subject-input">Subject</label>
                     <input
+                      id="email-subject-input"
                       type="text"
                       value={emailForm.subject}
                       onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
@@ -78,8 +80,9 @@ const AdminEmail = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Message</label>
+                    <label htmlFor="email-message-textarea">Message</label>
                     <textarea
+                      id="email-message-textarea"
                       rows="8"
                       value={emailForm.message}
                       onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
@@ -88,7 +91,7 @@ const AdminEmail = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Attachments (optional)</label>
+                    <label htmlFor="email-file-input">Attachments (optional)</label>
                     <div
                       style={{
                         border: '2px dashed #cbd5e1',
@@ -139,7 +142,7 @@ const AdminEmail = () => {
                         <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: '500' }}>
                           Click to upload or drag and drop
                         </p>
-                        <p style={{ margin: '0', fontSize: '12px', color: '#94a3b8' }}>
+                        <p style={{ margin: '0', fontSize: '12px', color: '#64748b' }}>
                           PDF, DOC, DOCX, images, or other files (max 10MB per file)
                         </p>
                       </div>
@@ -228,8 +231,9 @@ const AdminEmail = () => {
                 <div className="card" style={{ padding: '16px', border: '1px solid #eee', borderRadius: 6, marginBottom: 16 }}>
                   <h3 style={{ marginTop: 0 }}>Email Template</h3>
                   <div className="form-group">
-                    <label>Banner Title</label>
+                    <label htmlFor="email-template-banner-title">Banner Title</label>
                     <input
+                      id="email-template-banner-title"
                       type="text"
                       value={template.bannerTitle}
                       onChange={(e) => setTemplate({ ...template, bannerTitle: e.target.value })}
@@ -238,8 +242,9 @@ const AdminEmail = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Title</label>
+                    <label htmlFor="email-template-title">Title</label>
                     <input
+                      id="email-template-title"
                       type="text"
                       value={template.title}
                       onChange={(e) => setTemplate({ ...template, title: e.target.value })}
@@ -248,7 +253,7 @@ const AdminEmail = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Email Body</label>
+                    <label htmlFor="email-body-textarea">Email Body</label>
                     <div style={{ border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
                       <div
                         style={{
@@ -347,7 +352,7 @@ const AdminEmail = () => {
                     </div>
                   </div>
                   <div className="form-group" style={{ marginTop: '20px' }}>
-                    <label>Attachments (optional)</label>
+                    <label htmlFor="email-file-input-everyone">Attachments (optional)</label>
                     <div
                       style={{
                         border: '2px dashed #cbd5e1',
@@ -398,7 +403,7 @@ const AdminEmail = () => {
                         <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: '500' }}>
                           Click to upload or drag and drop
                         </p>
-                        <p style={{ margin: '0', fontSize: '12px', color: '#94a3b8' }}>
+                        <p style={{ margin: '0', fontSize: '12px', color: '#64748b' }}>
                           PDF, DOC, DOCX, images, or other files (max 10MB per file)
                         </p>
                       </div>
@@ -527,9 +532,9 @@ const AdminEmail = () => {
                       textAlign: 'center',
                     }}
                   >
-                    <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px' }}>
+                    <div style={{ margin: 0, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px' }}>
                       {template.bannerTitle || `University of Toronto Triathlon Club – ${new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`}
-                    </h1>
+                    </div>
                   </div>
 
                   <div style={{ padding: '32px 24px' }}>

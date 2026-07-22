@@ -143,6 +143,7 @@
 }
 
 .workout-title h2,
+.workout-title h3,
 .event-title h3 {
   margin: 0;
   font-size: 1.5rem;
@@ -507,14 +508,16 @@
   margin-bottom: 0.25rem;
 }
 
-.workout-title h2 {
+.workout-title h2,
+.workout-title h3 {
   margin: 0.5rem 0;
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.2;
 }
 
-.workout-post .workout-title h2 {
+.workout-post .workout-title h2,
+.workout-post .workout-title h3 {
   margin: 0;
 }
 

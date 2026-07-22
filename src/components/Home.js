@@ -76,13 +76,21 @@ const Home = () => {
               </div>
             </div>
             <div className="slideshow-controls">
-              <button className="control-btn prev" onClick={() => changeSlide(-1)}>‹</button>
-              <div className="slide-indicators">
-                <span className={`indicator ${currentSlide === 0 ? 'active' : ''}`} onClick={() => goToSlide(0)}></span>
-                <span className={`indicator ${currentSlide === 1 ? 'active' : ''}`} onClick={() => goToSlide(1)}></span>
-                <span className={`indicator ${currentSlide === 2 ? 'active' : ''}`} onClick={() => goToSlide(2)}></span>
+              <button type="button" className="control-btn prev" onClick={() => changeSlide(-1)} aria-label="Previous slide">‹</button>
+              <div className="slide-indicators" role="tablist" aria-label="Slideshow slides">
+                {[0, 1, 2].map((index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    role="tab"
+                    aria-selected={currentSlide === index}
+                    aria-label={`Go to slide ${index + 1}`}
+                    className={`indicator ${currentSlide === index ? 'active' : ''}`}
+                    onClick={() => goToSlide(index)}
+                  />
+                ))}
               </div>
-              <button className="control-btn next" onClick={() => changeSlide(1)}>›</button>
+              <button type="button" className="control-btn next" onClick={() => changeSlide(1)} aria-label="Next slide">›</button>
             </div>
           </div>
         </div>

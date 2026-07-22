@@ -222,7 +222,7 @@ const RaceDetail = () => {
             color: isOffline ? undefined : '#991b1b',
             lineHeight: 1.6
           }}>
-            <h2>{isOffline ? 'You Are Offline' : (error ? 'Unable to load race' : 'Race Not Found')}</h2>
+            <h1>{isOffline ? 'You Are Offline' : (error ? 'Unable to load race' : 'Race Not Found')}</h1>
             <p>{isOffline 
               ? 'This race cannot be loaded while you are offline. Please check your internet connection and try again.'
               : (error || 'The race you\'re looking for doesn\'t exist or has been deleted.')}
@@ -250,13 +250,13 @@ const RaceDetail = () => {
             <div className="race-date">{formatRaceDateHeading(race)}</div>
             {race.location && (
               <div className="race-location">
-                <h3>📍 Location</h3>
+                <h2>📍 Location</h2>
                 <p>{race.location}</p>
               </div>
             )}
             {raceLinkHref && (
               <div className="race-link-block">
-                <h3>🔗 Link</h3>
+                <h2>🔗 Link</h2>
                 <a
                   href={raceLinkHref}
                   target="_blank"
@@ -273,13 +273,13 @@ const RaceDetail = () => {
         <div className="race-info">
           {race.description && (
             <div className="info-section">
-              <h3>📝 Description</h3>
+              <h2>📝 Description</h2>
               <p>{linkifyText(race.description)}</p>
             </div>
           )}
 
           <div className="info-section">
-            <h3>👥 Who's Going ({signups.length})</h3>
+            <h2>👥 Who's Going ({signups.length})</h2>
             {signups.length === 0 ? (
               <p className="no-signups">No one has signed up yet. Be the first!</p>
             ) : (
