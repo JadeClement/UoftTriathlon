@@ -47,9 +47,11 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
     const { firstName, lastName, email, item, size, quantity, gender } = req.body;
-    if (!firstName || !lastName || !email || !item) {
+    // lastName may be missing for single-word display names — allow and default
+    if (!firstName || !email || !item) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    const resolvedLastName = (lastName && String(lastName).trim()) || '-';
     const qty = Number.isFinite(quantity) ? quantity : parseInt(quantity, 10) || 1;
 
     // Gender is now controlled by the gear item's hasGender flag on the frontend
@@ -62,7 +64,7 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
       `INSERT INTO merch_orders (first_name, last_name, email, item, size, quantity, gender)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, first_name, last_name, email, item, size, quantity, gender, created_at`,
-      [firstName, lastName, email, item, size || null, qty, genderValue]
+      [firstName, resolvedLastName, email, item, size || null, qty, genderValue]
     );
     const row = result.rows[0];
     res.status(201).json({

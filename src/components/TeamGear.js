@@ -527,13 +527,37 @@ const TeamGear = () => {
     setOrderSubmitting(true);
     try {
       const token = localStorage.getItem('triathlonToken');
+      const nameParts = (currentUser.name || '').trim().split(/\s+/).filter(Boolean);
+      const firstName = (currentUser.first_name || nameParts[0] || '').trim();
+      // Single-word names have no last name from split; use '-' so backend validation still passes
+      const lastName = (currentUser.last_name || nameParts.slice(1).join(' ') || '-').trim();
+      const selection = orderSelections[selectedItem.id] || {};
+      const fit = selection.fit || 'mens';
+      let size = selection.size || null;
+      if (selectedItem.hasSize && !size) {
+        // Match UI defaults when the user never changed the dropdowns
+        const availableSizes = Array.isArray(selectedItem.availableSizes) ? selectedItem.availableSizes : [];
+        if (selectedItem.hasGender) {
+          const genderPrefix = fit === 'womens' ? 'w-' : 'm-';
+          const genderSizes = availableSizes
+            .filter((s) => s && s.startsWith(genderPrefix))
+            .map((s) => s.replace(genderPrefix, ''))
+            .filter((s) => ['xs', 's', 'm', 'l', 'xl', '2xl'].includes(s));
+          size = genderSizes[0] || 'm';
+        } else {
+          const unisexSizes = availableSizes
+            .filter((s) => s && !String(s).includes('-'))
+            .filter((s) => ['xs', 's', 'm', 'l', 'xl', '2xl'].includes(s));
+          size = unisexSizes[0] || availableSizes[0] || 'm';
+        }
+      }
       const orderData = {
-        firstName: currentUser.first_name || currentUser.name?.split(' ')[0] || '',
-        lastName: currentUser.last_name || currentUser.name?.split(' ').slice(1).join(' ') || '',
+        firstName,
+        lastName,
         email: emailToUse,
         item: selectedItem.title,
-        gender: selectedItem.hasGender && orderSelections[selectedItem.id]?.fit ? (orderSelections[selectedItem.id].fit === 'womens' ? 'womens' : 'mens') : null,
-        size: selectedItem.hasSize ? (orderSelections[selectedItem.id]?.size || null) : null,
+        gender: selectedItem.hasGender ? (fit === 'womens' ? 'womens' : 'mens') : null,
+        size: selectedItem.hasSize ? size : null,
         quantity: 1
       };
 
@@ -601,19 +625,30 @@ const TeamGear = () => {
       localStorage.setItem('orderResponseLog', JSON.stringify(responseData));
 
       if (!response.ok) {
-        // Handle specific HTTP status codes
+        const errorData = await response.json().catch(() => ({}));
+
         if (response.status === 401) {
           throw new Error('Authentication required. Please log in again.');
-        } else if (response.status === 403) {
-          throw new Error('Access denied. You need to be a member to place orders.');
-        } else if (response.status === 400) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Invalid order data. Please check your information.');
-        } else if (response.status >= 500) {
-          throw new Error('Server error. Please try again later.');
-        } else {
-          throw new Error(`Failed to submit order (${response.status})`);
         }
+        if (response.status === 403) {
+          if (errorData.error === 'term_expired') {
+            throw new Error(
+              errorData.message ||
+                'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.'
+            );
+          }
+          throw new Error(
+            errorData.message ||
+              'Access denied. You need to be a member to place orders. If you were recently approved, please log out and log back in.'
+          );
+        }
+        if (response.status === 400) {
+          throw new Error(errorData.error || errorData.message || 'Invalid order data. Please check your information.');
+        }
+        if (response.status >= 500) {
+          throw new Error(errorData.error || 'Server error. Please try again later.');
+        }
+        throw new Error(errorData.error || errorData.message || `Failed to submit order (${response.status})`);
       }
 
       await response.json();
@@ -622,8 +657,8 @@ const TeamGear = () => {
       setOrderSuccessData({
         item: selectedItem,
         email: emailToUse,
-        size: orderSelections[selectedItem.id]?.size,
-        fit: orderSelections[selectedItem.id]?.fit
+        size: orderData.size,
+        fit: selectedItem.hasGender ? fit : undefined
       });
       setShowSuccessModal(true);
       closeOrderModal();
@@ -631,13 +666,11 @@ const TeamGear = () => {
     } catch (error) {
       console.error('Order submission error:', error);
       
-      // Provide more specific error messages based on the error type
       if (error.message.includes('Failed to fetch') || error.message.includes('ERR_INTERNET_DISCONNECTED')) {
         setOrderError('Unable to connect to the server. Please check your internet connection and try again.');
-      } else if (error.message.includes('Failed to submit order')) {
-        setOrderError('Server error occurred. Please try again later.');
       } else {
-        setOrderError('Failed to submit order. Please try again.');
+        // Surface the specific error from the API (auth, term expiry, validation, etc.)
+        setOrderError(error.message || 'Failed to submit order. Please try again.');
       }
     } finally {
       setOrderSubmitting(false);
