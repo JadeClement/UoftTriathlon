@@ -152,6 +152,28 @@ const requireMember = async (req, res, next) => {
     console.log('✅ requireMember: Access granted for role:', userRole);
     next();
   } else {
+    // JWT role is below member — check DB in case they were approved after login
+    try {
+      const dbRoleResult = await pool.query(
+        'SELECT role FROM users WHERE id = $1 AND is_active = true',
+        [req.user.id]
+      );
+      if (dbRoleResult.rows.length > 0) {
+        const dbRole = dbRoleResult.rows[0].role || 'pending';
+        if (roleHierarchy[dbRole] >= roleHierarchy['member']) {
+          console.log('❌ requireMember: Stale JWT after approval. JWT:', userRole, 'DB:', dbRole);
+          return res.status(403).json({
+            error: 'stale_token',
+            message: 'Your membership was updated. Please log out and log back in to continue.',
+            tokenRole: userRole,
+            currentRole: dbRole
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error checking DB role for stale token:', error);
+    }
+
     console.log('❌ requireMember: Access denied for role:', userRole);
     return res.status(403).json({ 
       error: 'Insufficient permissions',

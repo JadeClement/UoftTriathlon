@@ -13,9 +13,38 @@ export const useAuth = () => {
   return context;
 };
 
+const ROLE_HIERARCHY = {
+  public: 0,
+  pending: 1,
+  member: 2,
+  coach: 3,
+  exec: 4,
+  administrator: 5
+};
+
+const getJwtPayload = () => {
+  const token = localStorage.getItem('triathlonToken');
+  if (!token) return null;
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch {
+    return null;
+  }
+};
+
+const getTokenRole = () => getJwtPayload()?.role || 'pending';
+
+/** True when DB role is higher than the role baked into the JWT (e.g. approved after login). */
+const isJwtRoleStale = (dbRole) => {
+  const tokenRole = getTokenRole();
+  return (ROLE_HIERARCHY[dbRole] || 0) > (ROLE_HIERARCHY[tokenRole] || 0);
+};
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // True when the user's JWT role is behind their DB role (need re-login)
+  const [needsReauth, setNeedsReauth] = useState(false);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -55,16 +84,31 @@ export const AuthProvider = ({ children }) => {
           }
           
           // Online: Validate token before setting user
-          const isValid = await isTokenValid();
-          if (isValid) {
+          const validation = await isTokenValid();
+          if (validation.valid) {
             console.log('✅ Token is valid, setting current user');
-            setCurrentUser(parsedUser);
+            // Prefer profile from validation when available; keep JWT role if DB role is ahead
+            let userToSet = parsedUser;
+            if (validation.user) {
+              const tokenRole = getTokenRole();
+              const dbRole = validation.user.role || 'pending';
+              if (isJwtRoleStale(dbRole)) {
+                console.warn('⚠️ Stale JWT after role change. Token:', tokenRole, 'DB:', dbRole);
+                setNeedsReauth(true);
+                userToSet = { ...validation.user, role: tokenRole };
+              } else {
+                setNeedsReauth(false);
+                userToSet = validation.user;
+              }
+              localStorage.setItem('triathlonUser', JSON.stringify(userToSet));
+            }
+            setCurrentUser(userToSet);
             
             // Update last login timestamp
             localStorage.setItem('triathlonLastLogin', Date.now().toString());
             
             // Register for push notifications (if on native platform)
-            registerForPushNotifications(parsedUser.id).catch(error => {
+            registerForPushNotifications(userToSet.id).catch(error => {
               console.error('❌ Error registering for push notifications:', error);
             });
           } else {
@@ -107,6 +151,7 @@ export const AuthProvider = ({ children }) => {
     // Handle token expiration/invalidation
     const handleTokenExpired = (reason = 'session_expired') => {
       console.log('🔒 Handling token expiration:', reason);
+      setNeedsReauth(false);
       
       // Unregister from push notifications on logout
       unregisterFromPushNotifications().catch(error => {
@@ -180,6 +225,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('triathlonLastLogin', Date.now().toString());
       console.log('💾 User and token stored in localStorage');
       
+      setNeedsReauth(false);
       setCurrentUser(normalizedUser);
       
       // Register for push notifications (if on native platform)
@@ -257,6 +303,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('triathlonLastLogin', Date.now().toString());
       console.log('💾 User and token stored in localStorage');
       
+      setNeedsReauth(false);
       setCurrentUser(normalizedUser);
       console.log('👤 Current user state set to:', normalizedUser);
       
@@ -290,10 +337,17 @@ export const AuthProvider = ({ children }) => {
 
       const responseData = await response.json();
       const userData = responseData.user;
+
+      // Store token first so JWT helpers can read the session role
+      localStorage.setItem('triathlonToken', token);
+      const tokenRole = getTokenRole();
+      const stale = isJwtRoleStale(userData.role);
       
       // Normalize user data to ensure consistent field names
       const normalizedUser = {
         ...userData,
+        // Keep JWT role for permission checks until they get a fresh login token
+        role: stale ? tokenRole : userData.role,
         charterAccepted: userData.charter_accepted || userData.charterAccepted,
         profilePictureUrl: userData.profile_picture_url || userData.profilePictureUrl,
         phoneNumber: userData.phone_number || userData.phoneNumber,
@@ -313,10 +367,10 @@ export const AuthProvider = ({ children }) => {
       
       // Store user and token separately
       localStorage.setItem('triathlonUser', JSON.stringify(normalizedUser));
-      localStorage.setItem('triathlonToken', token);
       localStorage.setItem('triathlonLastLogin', Date.now().toString());
       console.log('💾 User and token stored in localStorage');
       
+      setNeedsReauth(stale);
       setCurrentUser(normalizedUser);
       console.log('👤 Current user state set to:', normalizedUser);
       
@@ -344,16 +398,7 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (user, requiredRole) => {
     const userRole = getUserRole(user);
-  const roleHierarchy = {
-    'public': 0,
-    'pending': 1,
-    'member': 2,
-    'coach': 3,
-    'exec': 4,
-    'administrator': 5
-  };
-    
-    return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
+    return (ROLE_HIERARCHY[userRole] || 0) >= (ROLE_HIERARCHY[requiredRole] || 0);
   };
 
   const isAdmin = (user) => {
@@ -405,10 +450,10 @@ export const AuthProvider = ({ children }) => {
     return updatedUser;
   };
 
-  // Check if current token is valid
+  // Check if current token is valid; also detects stale JWT vs DB role
   const isTokenValid = async () => {
     const token = localStorage.getItem('triathlonToken');
-    if (!token) return false;
+    if (!token) return { valid: false };
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/profile`, {
@@ -419,13 +464,22 @@ export const AuthProvider = ({ children }) => {
       
       if (!response.ok) {
         console.warn('🔒 Token validation failed:', response.status, response.statusText);
-        return false;
+        return { valid: false };
+      }
+
+      const data = await response.json();
+      const user = data.user;
+      if (user && isJwtRoleStale(user.role)) {
+        console.warn('⚠️ Token valid but role is stale. JWT:', getTokenRole(), 'DB:', user.role);
+        setNeedsReauth(true);
+      } else {
+        setNeedsReauth(false);
       }
       
-      return true;
+      return { valid: true, user };
     } catch (error) {
       console.error('❌ Token validation error:', error);
-      return false;
+      return { valid: false };
     }
   };
 
@@ -440,8 +494,8 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       
-      const isValid = await isTokenValid();
-      if (!isValid) {
+      const validation = await isTokenValid();
+      if (!validation.valid) {
         console.warn('⚠️ Periodic token validation failed, logging out user');
         handleTokenExpired('Token expired during session');
       }
@@ -454,7 +508,7 @@ export const AuthProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
-  // Refresh user data and token
+  // Refresh user data from DB; keep JWT role if it lags behind (needs re-login)
   const refreshUserData = async () => {
     const token = localStorage.getItem('triathlonToken');
     if (!token) return false;
@@ -468,10 +522,14 @@ export const AuthProvider = ({ children }) => {
       
       if (response.ok) {
         const { user } = await response.json();
+        const tokenRole = getTokenRole();
+        const stale = isJwtRoleStale(user.role);
         
         // Normalize user data to ensure consistent field names
         const normalizedUser = {
           ...user,
+          // Permission checks must match the JWT until they re-login
+          role: stale ? tokenRole : user.role,
           charterAccepted: user.charter_accepted || user.charterAccepted,
           profilePictureUrl: user.profile_picture_url || user.profilePictureUrl,
           phoneNumber: user.phone_number || user.phoneNumber,
@@ -483,7 +541,8 @@ export const AuthProvider = ({ children }) => {
           end_year: user.end_year,
           created_at: user.created_at
         };
-        
+
+        setNeedsReauth(stale);
         setCurrentUser(normalizedUser);
         localStorage.setItem('triathlonUser', JSON.stringify(normalizedUser));
         return true;
@@ -528,6 +587,7 @@ export const AuthProvider = ({ children }) => {
     loginWithToken,
     logout,
     loading,
+    needsReauth,
     isAdmin,
     isExec,
     isCoach,

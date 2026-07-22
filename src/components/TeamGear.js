@@ -85,7 +85,7 @@ const AutoResizeText = ({ text, className = '', style = {}, inline = false }) =>
 };
 
 const TeamGear = () => {
-  const { currentUser, isAdmin, getUserRole } = useAuth();
+  const { currentUser, isAdmin, getUserRole, needsReauth } = useAuth();
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
   console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
   const [gearItems, setGearItems] = useState([]);
@@ -474,6 +474,11 @@ const TeamGear = () => {
       showError('Please log in to place an order.');
       return;
     }
+
+    if (needsReauth) {
+      showError('Your membership was updated. Please log out and log back in to place orders.');
+      return;
+    }
     
     if (!['member', 'coach', 'exec', 'administrator'].includes(currentUser.role)) {
       showError('You need to be a member to place orders. Please contact an administrator to upgrade your account.');
@@ -635,6 +640,12 @@ const TeamGear = () => {
             throw new Error(
               errorData.message ||
                 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.'
+            );
+          }
+          if (errorData.error === 'stale_token') {
+            throw new Error(
+              errorData.message ||
+                'Your membership was updated. Please log out and log back in to continue.'
             );
           }
           throw new Error(

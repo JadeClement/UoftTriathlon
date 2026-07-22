@@ -87,7 +87,7 @@ const CharterPrompt = () => {
     const validateToken = async () => {
       if (currentUser) {
         const isValid = await isTokenValid();
-        if (!isValid) {
+        if (!isValid.valid) {
           console.log('🔒 Charter: Token invalid, refreshing user data...');
           const refreshed = await refreshUserData();
           if (!refreshed) {
@@ -237,7 +237,7 @@ function AppContent() {
   
   return (
     <>
-      <RoleChangeNotification currentUser={currentUser} />
+      <RoleChangeNotification />
       <main id="main-content" tabIndex={-1} {...swipeHandlers}>
         <Routes>
           <Route path="/" element={<Home />} />

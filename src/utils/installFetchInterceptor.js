@@ -55,12 +55,13 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
       const mentionsExpired = /token.*expired|jwt.*expired|expired token/i.test(message);
       const isForumPermissionIssue = (response.status === 401 || response.status === 403) && url && url.includes('/forum');
       
-      // Don't treat term_expired as an auth error - it's a business logic error
-      // The user IS authenticated, their term just expired
+      // Don't treat term_expired / stale_token as auth failures — user is still logged in
+      // but needs membership renewal or a fresh login after role approval
       const isTermExpired = errorType === 'term_expired';
+      const isStaleToken = errorType === 'stale_token';
 
       // Skip redirect for forum auth/permission denials (pending/non-member, or missing token on forum)
-      if ((isAuthError || mentionsExpired) && !isTermExpired && !isForumPermissionIssue) {
+      if ((isAuthError || mentionsExpired) && !isTermExpired && !isStaleToken && !isForumPermissionIssue) {
         console.warn('🔒 Auth interceptor: Unauthorized response detected', { 
           url, 
           status: response.status, 
@@ -68,6 +69,7 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
           isAuthError,
           mentionsExpired,
           isTermExpired,
+          isStaleToken,
           isForumPermissionIssue
         });
         
@@ -76,6 +78,8 @@ export function installFetchInterceptor(getToken, onUnauthorized) {
         }
       } else if (isTermExpired) {
         console.log('🔍 Auth interceptor: Term expired error detected, not redirecting (business logic error)');
+      } else if (isStaleToken) {
+        console.log('🔍 Auth interceptor: Stale token after role change, not redirecting (prompt re-login)');
       } else if (isForumPermissionIssue) {
         console.log('🔍 Auth interceptor: Forum auth/permission error detected, not redirecting', { status: response.status, message });
       }
