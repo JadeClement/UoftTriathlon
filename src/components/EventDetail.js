@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
 import { formatSignupDateForDisplay } from '../utils/dateUtils';
 import { normalizeProfileImageUrl } from '../utils/imageUtils';
+import { getApiErrorMessage, parseApiError } from '../utils/apiError';
 import { showError, showSuccess } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './EventDetail.css';
@@ -17,6 +18,7 @@ const EventDetail = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [userRsvp, setUserRsvp] = useState(null); // 'going', 'maybe', 'not_going', or null
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', date: '', content: '' });
@@ -47,6 +49,7 @@ const EventDetail = () => {
       console.log('🔄 EventDetail: Starting to load event details...');
       console.log('🆔 Event ID:', id);
       console.log('👤 Current user:', currentUser);
+      setError(null);
       
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -71,7 +74,8 @@ const EventDetail = () => {
         console.log('📊 Full event data received:', eventData);
         console.log('📊 Event object:', eventData.event);
         console.log('📊 RSVPs array:', eventData.rsvps);
-        
+
+        setError(null);
         setEvent(eventData.event);
         setEditForm({
           title: eventData.event?.title || '',
@@ -106,11 +110,20 @@ const EventDetail = () => {
         }
       } else {
         console.error('❌ Event response not ok');
-        const errorText = await eventResponse.text();
-        console.error('❌ Error response:', errorText);
-        // If offline, set event to null so offline message shows
-        if (!navigator.onLine) {
+        const { message, isTermExpired, isStaleToken } = await parseApiError(
+          eventResponse,
+          `Failed to load event (${eventResponse.status})`
+        );
+        console.error('❌ Error response:', message);
+        if (isTermExpired || isStaleToken || eventResponse.status === 401 || eventResponse.status === 403) {
           setEvent(null);
+          setError(message);
+        } else if (!navigator.onLine) {
+          setEvent(null);
+          setError(null);
+        } else {
+          setEvent(null);
+          setError(message);
         }
       }
 
@@ -124,6 +137,9 @@ const EventDetail = () => {
       // If offline, set event to null so offline message shows
       if (!navigator.onLine) {
         setEvent(null);
+        setError(null);
+      } else {
+        setError(error.message || 'Failed to load event details');
       }
       setLoading(false);
     }
@@ -172,9 +188,9 @@ const EventDetail = () => {
         
         console.log('Event RSVP updated:', result);
       } else {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         console.error('Error updating RSVP:', error.error);
-        showError(error.error || 'Error updating RSVP');
+        showError(getApiErrorMessage(error, 'Error updating RSVP'));
       }
     } catch (error) {
       console.error('Error updating event RSVP:', error);
@@ -279,7 +295,7 @@ const EventDetail = () => {
   }
 
   if (!event) {
-    const isOffline = !navigator.onLine;
+    const isOffline = !navigator.onLine && !error;
     return (
       <div className="event-detail-container">
         <div className="container">
@@ -289,15 +305,17 @@ const EventDetail = () => {
           <div className="error" style={{ 
             padding: '2rem', 
             textAlign: 'center',
-            backgroundColor: isOffline ? '#fef3c7' : '#fee',
-            border: `1px solid ${isOffline ? '#fbbf24' : '#fcc'}`,
+            backgroundColor: isOffline ? '#fef3c7' : '#fee2e2',
+            border: `1px solid ${isOffline ? '#fbbf24' : '#ef4444'}`,
             borderRadius: '4px',
-            margin: '2rem 0'
+            margin: '2rem 0',
+            color: isOffline ? undefined : '#991b1b',
+            lineHeight: 1.6
           }}>
-            <h2>{isOffline ? '📴 You Are Offline' : 'Event Not Found'}</h2>
+            <h2>{isOffline ? 'You Are Offline' : (error ? 'Unable to load event' : 'Event Not Found')}</h2>
             <p>{isOffline 
               ? 'This event cannot be loaded while you are offline. Please check your internet connection and try again.'
-              : 'The event you\'re looking for doesn\'t exist or has been deleted.'}
+              : (error || 'The event you\'re looking for doesn\'t exist or has been deleted.')}
             </p>
           </div>
         </div>

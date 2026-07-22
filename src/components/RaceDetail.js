@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText, normalizeRaceLink } from '../utils/linkUtils';
 import { formatSignupDateForDisplay } from '../utils/dateUtils';
+import { parseApiError, getApiErrorMessage } from '../utils/apiError';
 import { showError } from './SimpleNotification';
 import './RaceDetail.css';
 
@@ -13,15 +14,18 @@ const RaceDetail = () => {
   const [race, setRace] = useState(null);
   const [signups, setSignups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isSignedUp, setIsSignedUp] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
 
   const loadRaceDetails = useCallback(async () => {
     try {
+      setError(null);
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
         console.error('No authentication token found');
+        setError('Authentication required. Please log in.');
         return;
       }
 
@@ -55,10 +59,18 @@ const RaceDetail = () => {
         setSignups(data.signups || []);
         setIsSignedUp(data.isSignedUp || false);
       } else {
-        console.error('Failed to load race details');
-        // If offline, don't navigate away - show offline message instead
-        if (!navigator.onLine) {
+        const { message, isTermExpired, isStaleToken } = await parseApiError(
+          response,
+          `Failed to load race details (${response.status})`
+        );
+        console.error('Failed to load race details:', message);
+        // Keep user on the page for membership/auth messages instead of bouncing to /races
+        if (isTermExpired || isStaleToken || response.status === 401 || response.status === 403) {
           setRace(null);
+          setError(message);
+        } else if (!navigator.onLine) {
+          setRace(null);
+          setError(null);
         } else {
           navigate('/races');
         }
@@ -69,7 +81,7 @@ const RaceDetail = () => {
       if (!navigator.onLine) {
         setRace(null);
       } else {
-        navigate('/races');
+        setError(error.message || 'Failed to load race details');
       }
     } finally {
       setLoading(false);
@@ -112,9 +124,9 @@ const RaceDetail = () => {
         console.log('✅ Race signup successful');
         await loadRaceDetails(); // Refresh to show updated signup status
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         console.error('❌ Failed to sign up for race:', errorData);
-        showError(errorData.error || 'Failed to sign up for race');
+        showError(getApiErrorMessage(errorData, 'Failed to sign up for race'));
       }
     } catch (error) {
       console.error('❌ Error signing up for race:', error);
@@ -146,9 +158,9 @@ const RaceDetail = () => {
         console.log('✅ Race signup cancelled successfully');
         await loadRaceDetails(); // Refresh to show updated signup status
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         console.error('❌ Failed to cancel signup:', errorData);
-        showError(errorData.error || 'Failed to cancel signup');
+        showError(getApiErrorMessage(errorData, 'Failed to cancel signup'));
       }
     } catch (error) {
       console.error('❌ Error cancelling signup:', error);
@@ -192,7 +204,7 @@ const RaceDetail = () => {
   }
 
   if (!race) {
-    const isOffline = !navigator.onLine;
+    const isOffline = !navigator.onLine && !error;
     return (
       <div className="race-detail-container">
         <div className="container">
@@ -202,15 +214,17 @@ const RaceDetail = () => {
           <div className="error" style={{ 
             padding: '2rem', 
             textAlign: 'center',
-            backgroundColor: isOffline ? '#fef3c7' : '#fee',
-            border: `1px solid ${isOffline ? '#fbbf24' : '#fcc'}`,
+            backgroundColor: isOffline ? '#fef3c7' : '#fee2e2',
+            border: `1px solid ${isOffline ? '#fbbf24' : '#ef4444'}`,
             borderRadius: '4px',
-            margin: '2rem 0'
+            margin: '2rem 0',
+            color: isOffline ? undefined : '#991b1b',
+            lineHeight: 1.6
           }}>
-            <h2>{isOffline ? '📴 You Are Offline' : 'Race Not Found'}</h2>
+            <h2>{isOffline ? 'You Are Offline' : (error ? 'Unable to load race' : 'Race Not Found')}</h2>
             <p>{isOffline 
               ? 'This race cannot be loaded while you are offline. Please check your internet connection and try again.'
-              : 'The race you\'re looking for doesn\'t exist or has been deleted.'}
+              : (error || 'The race you\'re looking for doesn\'t exist or has been deleted.')}
             </p>
           </div>
         </div>

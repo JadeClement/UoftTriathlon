@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { showSuccess, showError } from './SimpleNotification';
+import { getApiErrorMessage, parseApiError } from '../utils/apiError';
 import ConfirmModal from './ConfirmModal';
 import './Results.css';
 
@@ -11,6 +12,7 @@ const Results = () => {
 
   const [intervalResults, setIntervalResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [workouts, setWorkouts] = useState([]);
   const [intervals, setIntervals] = useState([]);
@@ -36,6 +38,7 @@ const Results = () => {
     const load = async () => {
       if (!currentUser?.id) return;
       setLoading(true);
+      setLoadError(null);
       try {
         const token = localStorage.getItem('triathlonToken');
         const res = await fetch(`${API_BASE}/forum/interval-results/me`, {
@@ -44,9 +47,13 @@ const Results = () => {
         if (res.ok) {
           const data = await res.json();
           setIntervalResults(data.intervalResults || []);
+        } else {
+          const { message } = await parseApiError(res, 'Failed to load interval results');
+          setLoadError(message);
         }
       } catch (err) {
         console.error('Error loading interval results:', err);
+        setLoadError(err.message || 'Failed to load interval results');
       } finally {
         setLoading(false);
       }
@@ -163,8 +170,8 @@ const Results = () => {
           setIntervalResults(data.intervalResults || []);
         }
       } else {
-        const err = await res.json();
-        showError(err.error || 'Failed to save');
+        const err = await res.json().catch(() => ({}));
+        showError(getApiErrorMessage(err, 'Failed to save'));
       }
     } catch (err) {
       showError('Failed to save interval result');
@@ -234,8 +241,8 @@ const Results = () => {
         );
         closeEditModal();
       } else {
-        const err = await res.json();
-        showError(err.error || 'Failed to save');
+        const err = await res.json().catch(() => ({}));
+        showError(getApiErrorMessage(err, 'Failed to save'));
       }
     } catch (err) {
       showError('Failed to update interval result');
@@ -267,8 +274,8 @@ const Results = () => {
         setDeleteConfirm({ isOpen: false, row: null });
         closeEditModal();
       } else {
-        const err = await res.json();
-        showError(err.error || 'Failed to delete');
+        const err = await res.json().catch(() => ({}));
+        showError(getApiErrorMessage(err, 'Failed to delete'));
       }
     } catch (err) {
       showError('Failed to delete interval result');
@@ -303,6 +310,24 @@ const Results = () => {
           <div>
             <h2>Your interval results</h2>
             <p>Results are only available for full members.</p>
+          </div>
+        ) : loadError ? (
+          <div>
+            <h2>Your interval results</h2>
+            <div
+              className="notice-card"
+              style={{
+                background: '#fee2e2',
+                border: '1px solid #ef4444',
+                color: '#991b1b',
+                padding: '16px',
+                borderRadius: '8px',
+                lineHeight: 1.6,
+                marginTop: '16px',
+              }}
+            >
+              <p style={{ margin: 0 }}>{loadError}</p>
+            </div>
           </div>
         ) : (
           <>

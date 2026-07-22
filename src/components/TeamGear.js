@@ -639,7 +639,7 @@ const TeamGear = () => {
           if (errorData.error === 'term_expired') {
             throw new Error(
               errorData.message ||
-                'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.'
+                'Sorry, your term has expired. To regain access, purchase a membership for the next term, then go to your Profile page and upload your payment receipt. An exec will review it and reactivate your account. If you have questions, email info@uoft-tri.club.'
             );
           }
           if (errorData.error === 'stale_token') {

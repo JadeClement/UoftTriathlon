@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText, normalizeRaceLink } from '../utils/linkUtils';
+import { parseApiError, getApiErrorMessage } from '../utils/apiError';
 import { showSuccess, showError } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './Races.css';
@@ -130,8 +131,8 @@ const Races = () => {
         const data = await response.json();
         setRaces(data.races || []);
       } else {
-        const errMsg = `Failed to load races: ${response.status}`;
-        setError(errMsg);
+        const { message } = await parseApiError(response, `Failed to load races: ${response.status}`);
+        setError(message);
       }
     } catch (err) {
       console.error('Error loading races:', err);
@@ -292,8 +293,8 @@ const Races = () => {
       if (response.ok) {
         await loadRaces(); // Refresh to show updated signup status
       } else {
-        const errorData = await response.json();
-        showError(errorData.error || 'Failed to sign up for race');
+        const errorData = await response.json().catch(() => ({}));
+        showError(getApiErrorMessage(errorData, 'Failed to sign up for race'));
       }
     } catch (error) {
       console.error('Error signing up for race:', error);
@@ -320,9 +321,9 @@ const Races = () => {
         console.log('✅ Signup canceled successfully');
         await loadRaces(); // Refresh to show updated signup status
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         console.error('❌ Failed to cancel signup:', errorData);
-        showError(errorData.error || 'Failed to cancel signup');
+        showError(getApiErrorMessage(errorData, 'Failed to cancel signup'));
       }
     } catch (error) {
       console.error('❌ Error canceling signup:', error);
@@ -612,7 +613,7 @@ const Races = () => {
             borderRadius: '8px',
             color: '#991b1b'
           }}>
-            <h2 style={{ marginBottom: '0.5rem' }}>Error loading races</h2>
+            <h2 style={{ marginBottom: '0.5rem' }}>Unable to load races</h2>
             <p style={{ marginBottom: '1rem' }}>{error}</p>
             <button className="btn btn-primary" onClick={() => { setError(null); loadRaces(); }}>
               Try Again
@@ -637,7 +638,7 @@ const Races = () => {
           marginTop: '16px'
         }}>
           <p style={{ margin: 0 }}>
-            You don't have access to the races yet. Please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration! You will have to log out and then log back in to see this page.
+            You don't have access to the races yet. Go to your <a href="/profile">Profile</a> page and upload your membership payment receipt. An exec will review it and confirm your registration—no need to email it. After approval, log out and log back in to see this page.
           </p>
           <p style={{ margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9 }}>
             <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!

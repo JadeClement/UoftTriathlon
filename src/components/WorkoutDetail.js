@@ -7,6 +7,7 @@ import { useWorkout, useOnlineStatus } from '../hooks/useOfflineData';
 import { linkifyText } from '../utils/linkUtils';
 import { combineDateTime, getHoursUntil, isWithinHours, formatSignupDateForDisplay, formatSignupTimeOnlyForDisplay } from '../utils/dateUtils';
 import { normalizeProfileImageUrl } from '../utils/imageUtils';
+import { getApiErrorMessage, parseApiError } from '../utils/apiError';
 import { showSuccess, showError, showWarning } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import { Capacitor } from '@capacitor/core';
@@ -186,7 +187,6 @@ const WorkoutDetail = () => {
           }
         }
       } else {
-        const errorText = await workoutResponse.text().catch(() => 'Unknown error');
         let errorMsg = `Failed to load workout: ${workoutResponse.status}`;
         
         // Check if offline and show appropriate message
@@ -196,11 +196,12 @@ const WorkoutDetail = () => {
           errorMsg = 'Workout not found. It may have been deleted.';
         } else if (workoutResponse.status === 401) {
           errorMsg = 'Authentication required. Please log in.';
-        } else if (workoutResponse.status === 403) {
-          errorMsg = 'You do not have permission to view this workout.';
+        } else {
+          const { message } = await parseApiError(workoutResponse, errorMsg);
+          errorMsg = message;
         }
         
-        console.error('❌ Failed to load workout details:', workoutResponse.status, workoutResponse.statusText, errorText);
+        console.error('❌ Failed to load workout details:', workoutResponse.status, workoutResponse.statusText);
         setError(errorMsg);
       }
 
@@ -630,8 +631,8 @@ const WorkoutDetail = () => {
           }
         }
       } else {
-        const error = await response.json();
-        showError(`Error: ${error.error}`);
+        const error = await response.json().catch(() => ({}));
+        showError(getApiErrorMessage(error, 'Error updating signup'));
       }
     } catch (error) {
       console.error('Error updating signup:', error);
@@ -668,8 +669,8 @@ const WorkoutDetail = () => {
           setWaitlist(waitlistData.waitlist);
         }
       } else {
-        const error = await response.json();
-        showError(`Error: ${error.error}`);
+        const error = await response.json().catch(() => ({}));
+        showError(getApiErrorMessage(error, 'Error joining waitlist'));
       }
     } catch (error) {
       console.error('Error joining waitlist:', error);
@@ -706,8 +707,8 @@ const WorkoutDetail = () => {
           setWaitlist(waitlistData.waitlist);
         }
       } else {
-        const error = await response.json();
-        showError(`Error: ${error.error}`);
+        const error = await response.json().catch(() => ({}));
+        showError(getApiErrorMessage(error, 'Error leaving waitlist'));
       }
     } catch (error) {
       console.error('Error leaving waitlist:', error);
@@ -813,8 +814,8 @@ const WorkoutDetail = () => {
 
         setShowCancelModal(false);
       } else {
-        const error = await response.json();
-        showError(`Error: ${error.error}`);
+        const error = await response.json().catch(() => ({}));
+        showError(getApiErrorMessage(error, 'Error canceling signup'));
       }
     } catch (error) {
       console.error('Error canceling signup:', error);

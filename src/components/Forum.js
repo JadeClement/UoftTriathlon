@@ -9,6 +9,7 @@ import ConfirmModal from './ConfirmModal';
 import PullToRefresh from './PullToRefresh';
 import { PostSkeleton } from './LoadingSkeleton';
 import { hapticImpact } from '../utils/haptics';
+import { isTermExpiredError, TERM_EXPIRED_DEFAULT } from '../utils/apiError';
 import './Forum.css';
 
 const Forum = () => {
@@ -384,10 +385,10 @@ const Forum = () => {
         });
 
         if (workoutResponse.status === 403) {
-          const errorData = await workoutResponse.json();
-          if (errorData.error === 'term_expired') {
+          const errorData = await workoutResponse.json().catch(() => ({}));
+          if (isTermExpiredError(errorData)) {
             setTermExpired(true);
-            setTermExpiredMessage(errorData.message || 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.');
+            setTermExpiredMessage(errorData.message || TERM_EXPIRED_DEFAULT);
             return;
           }
         }
@@ -434,10 +435,10 @@ const Forum = () => {
           });
 
           if (workoutResponse.status === 403) {
-            const errorData = await workoutResponse.json();
-            if (errorData.error === 'term_expired') {
+            const errorData = await workoutResponse.json().catch(() => ({}));
+            if (isTermExpiredError(errorData)) {
               setTermExpired(true);
-              setTermExpiredMessage(errorData.message || 'Sorry, your term has expired. To regain access please purchase a membership for the next term. If you have questions please email info@uoft-tri.club.');
+              setTermExpiredMessage(errorData.message || TERM_EXPIRED_DEFAULT);
               return;
             }
           }
@@ -1465,7 +1466,7 @@ const Forum = () => {
             marginTop: '16px'
           }}>
             <p style={{margin: 0}}>
-              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are already signed in, please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration.
+              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are already signed in, go to your <a href="/profile">Profile</a> page and upload your membership payment receipt. An exec will review it and confirm your registration—no need to email it. After approval, log out and log back in to see this page.
             </p>
             <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
               <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!
@@ -1493,7 +1494,7 @@ const Forum = () => {
             marginTop: '16px'
           }}>
             <p style={{margin: 0}}>
-              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are already signed in, please email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt and we will confirm your registration.
+              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are already signed in, go to your <a href="/profile">Profile</a> page and upload your membership payment receipt. An exec will review it and confirm your registration—no need to email it. After approval, log out and log back in to see this page.
             </p>
             <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
               <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!

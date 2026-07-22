@@ -265,7 +265,13 @@ const JoinUs = () => {
               <div className="step-number">4</div>
               <div className="step-content">
                 <h3>Create an Account and Get Approved</h3>
-                <p>Create an account on this website and email <a href="mailto:info@uoft-tri.club">info@uoft-tri.club</a> your membership receipt to get approved as a member here. Then you will be able to sign up for spin and brick workouts on the forum.</p>
+                <p>
+                  Create an account on this website, then go to your{' '}
+                  <a href="/profile">Profile</a> page and upload your membership payment receipt
+                  (image or PDF). An exec will review it and approve you as a member—no need to email it.
+                  After you&apos;re approved, log out and log back in so you can access the forum and
+                  sign up for spin and brick workouts.
+                </p>
               </div>
             </div>
 
