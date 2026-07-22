@@ -3,17 +3,18 @@
  * Handles syncing data between IndexedDB (local) and the API (server)
  */
 
-import { 
-  forumPosts, 
-  workoutSignups, 
-  workoutWaitlists, 
-  races, 
+import { getApiBaseUrl } from '../utils/apiConfig';
+import {
+  forumPosts,
+  workoutSignups,
+  workoutWaitlists,
+  races,
   raceSignups,
   cacheMetadata,
-  initDB
+  initDB,
 } from '../utils/indexedDB';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+const API_BASE_URL = getApiBaseUrl();
 
 // Cache duration (in milliseconds)
 const CACHE_DURATION = {

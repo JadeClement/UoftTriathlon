@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const logger = require('../utils/logger');
 const router = express.Router();
 const { Pinecone } = require('@pinecone-database/pinecone');
 const OpenAI = require('openai');
@@ -67,7 +68,7 @@ router.post('/ask', async (req, res) => {
     const openai = getOpenAIClient();
 
     if (!index) {
-      console.log('[RAG] 503: PINECONE_API_KEY missing or invalid');
+      logger.debug('[RAG] 503: PINECONE_API_KEY missing or invalid');
       return res.status(503).json({
         error: 'RAG service unavailable',
         answer: FALLBACK_MESSAGE,
@@ -75,7 +76,7 @@ router.post('/ask', async (req, res) => {
     }
 
     if (!openai) {
-      console.log('[RAG] 503: OPENAI_API_KEY missing or invalid');
+      logger.debug('[RAG] 503: OPENAI_API_KEY missing or invalid');
       return res.status(503).json({
         error: 'LLM service unavailable. Set OPENAI_API_KEY.',
         answer: FALLBACK_MESSAGE,
@@ -99,15 +100,15 @@ router.post('/ask', async (req, res) => {
     const topHit = hits[0];
     const score = topHit?._score ?? topHit?.score ?? 0;
 
-    console.log('[RAG] Hits:', hits.length, 'Top score:', score);
+    logger.debug('[RAG] Hits:', hits.length, 'Top score:', score);
 
     if (hits.length === 0) {
-      console.log('[RAG] Fallback: no hits from Pinecone (index may be empty - run npm run ingest-rag)');
+      logger.debug('[RAG] Fallback: no hits from Pinecone (index may be empty - run npm run ingest-rag)');
       return res.json({ answer: FALLBACK_MESSAGE, sources: [] });
     }
 
     if (score < SCORE_THRESHOLD) {
-      console.log('[RAG] Fallback: score below threshold');
+      logger.debug('[RAG] Fallback: score below threshold');
       return res.json({ answer: FALLBACK_MESSAGE, sources: [] });
     }
 

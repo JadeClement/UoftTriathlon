@@ -1,13 +1,14 @@
 require('dotenv').config();
 const { SESClient, SendEmailCommand, SendRawEmailCommand } = require('@aws-sdk/client-ses');
+const logger = require('../utils/logger');
 
 // Configure AWS SES
-console.log('🔑 EmailService: Setting up AWS SES...');
-console.log('🔑 EmailService: AWS Region:', process.env.AWS_REGION || 'us-east-1');
-console.log('🔑 EmailService: AWS Access Key ID:', process.env.AWS_ACCESS_KEY_ID ? `SET (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)` : 'NOT SET');
-console.log('🔑 EmailService: AWS Secret Access Key:', process.env.AWS_SECRET_ACCESS_KEY ? `SET (${process.env.AWS_SECRET_ACCESS_KEY.substring(0, 8)}...)` : 'NOT SET');
-console.log('🔑 EmailService: AWS From Email:', process.env.AWS_FROM_EMAIL || 'NOT SET');
-console.log('🔑 EmailService: AWS From Name:', process.env.AWS_FROM_NAME || 'NOT SET');
+logger.debug('🔑 EmailService: Setting up AWS SES...');
+logger.debug('🔑 EmailService: AWS Region:', process.env.AWS_REGION || 'us-east-1');
+logger.debug('🔑 EmailService: AWS Access Key ID:', process.env.AWS_ACCESS_KEY_ID ? `SET (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)` : 'NOT SET');
+logger.debug('🔑 EmailService: AWS Secret Access Key:', process.env.AWS_SECRET_ACCESS_KEY ? `SET (${process.env.AWS_SECRET_ACCESS_KEY.substring(0, 8)}...)` : 'NOT SET');
+logger.debug('🔑 EmailService: AWS From Email:', process.env.AWS_FROM_EMAIL || 'NOT SET');
+logger.debug('🔑 EmailService: AWS From Name:', process.env.AWS_FROM_NAME || 'NOT SET');
 
 const sesClient = new SESClient({
   region: process.env.AWS_REGION || 'us-east-1',
@@ -27,7 +28,7 @@ class EmailService {
   // Send email using AWS SES
   async sendEmail(to, subject, htmlContent, textContent = null, replyTo = null) {
     try {
-      console.log('📧 EmailService.sendEmail called with:', { to, subject, fromEmail: this.fromEmail, replyTo });
+      logger.debug('📧 EmailService.sendEmail called with:', { to, subject, fromEmail: this.fromEmail, replyTo });
       
       const params = {
         Source: `${this.fromName} <${this.fromEmail}>`,
@@ -58,11 +59,11 @@ class EmailService {
       };
 
       const command = new SendEmailCommand(params);
-      console.log('🔍 DEBUG: About to send email via AWS SES with params:', JSON.stringify(params, null, 2));
+      logger.debug('🔍 DEBUG: About to send email via AWS SES with params:', JSON.stringify(params, null, 2));
       const result = await sesClient.send(command);
       
-      console.log('✅ Email sent successfully:', result.MessageId);
-      console.log('🔍 DEBUG: Full AWS SES result:', JSON.stringify(result, null, 2));
+      logger.debug('✅ Email sent successfully:', result.MessageId);
+      logger.debug('🔍 DEBUG: Full AWS SES result:', JSON.stringify(result, null, 2));
       return { success: true, messageId: result.MessageId };
     } catch (error) {
       console.error('❌ Error sending email:', error);
@@ -73,7 +74,7 @@ class EmailService {
   // Send email with attachments using SendRawEmailCommand
   async sendEmailWithAttachments(to, subject, htmlContent, textContent = null, attachments = [], replyTo = null) {
     try {
-      console.log('📧 EmailService.sendEmailWithAttachments called with:', { to, subject, attachmentsCount: attachments.length, fromEmail: this.fromEmail, replyTo });
+      logger.debug('📧 EmailService.sendEmailWithAttachments called with:', { to, subject, attachmentsCount: attachments.length, fromEmail: this.fromEmail, replyTo });
       
       // Build multipart MIME message
       const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -141,7 +142,7 @@ class EmailService {
       const command = new SendRawEmailCommand(params);
       const result = await sesClient.send(command);
       
-      console.log('✅ Email with attachments sent successfully:', result.MessageId);
+      logger.debug('✅ Email with attachments sent successfully:', result.MessageId);
       return { success: true, messageId: result.MessageId };
     } catch (error) {
       console.error('❌ Error sending email with attachments:', error);
@@ -152,7 +153,7 @@ class EmailService {
   // Send waitlist promotion email
   async sendWaitlistPromotion(userEmail, userName, workoutTitle, workoutDate, workoutTime, workoutId) {
     try {
-      console.log('📧 EmailService.sendWaitlistPromotion called with:', { userEmail, userName, workoutTitle, workoutDate, workoutTime, workoutId, fromEmail: this.fromEmail });
+      logger.debug('📧 EmailService.sendWaitlistPromotion called with:', { userEmail, userName, workoutTitle, workoutDate, workoutTime, workoutId, fromEmail: this.fromEmail });
       
       const subject = `🎉 You're off the waitlist for ${workoutTitle}!`;
       
@@ -235,7 +236,7 @@ class EmailService {
   // Send last minute cancellation opportunity email
   async sendLastMinuteCancellationOpportunity(userEmail, userName, workoutTitle, workoutDate, workoutTime, workoutId) {
     try {
-      console.log('📧 EmailService.sendLastMinuteCancellationOpportunity called with:', { userEmail, userName, workoutTitle, workoutDate, workoutTime, workoutId, fromEmail: this.fromEmail });
+      logger.debug('📧 EmailService.sendLastMinuteCancellationOpportunity called with:', { userEmail, userName, workoutTitle, workoutDate, workoutTime, workoutId, fromEmail: this.fromEmail });
       
       const frontendUrl = process.env.FRONTEND_URL || 'https://uoft-tri.club';
       const workoutUrl = `${frontendUrl}/workout/${workoutId}`;
@@ -328,7 +329,7 @@ class EmailService {
   // Send password reset email
   async sendPasswordReset(userEmail, resetToken) {
     try {
-      console.log('📧 EmailService.sendPasswordReset called with:', { userEmail, resetToken, fromEmail: this.fromEmail });
+      logger.debug('📧 EmailService.sendPasswordReset called with:', { userEmail, resetToken, fromEmail: this.fromEmail });
       
       const resetUrl = `${process.env.FRONTEND_URL || 'https://uoft-tri.club'}/reset-password?token=${resetToken}`;
       const subject = 'Reset Your Password - UofT Triathlon Club';
@@ -405,7 +406,7 @@ class EmailService {
   // Send member acceptance email
   async sendMemberAcceptance(userEmail, userName) {
     try {
-      console.log('📧 EmailService.sendMemberAcceptance called with:', { userEmail, userName, fromEmail: this.fromEmail });
+      logger.debug('📧 EmailService.sendMemberAcceptance called with:', { userEmail, userName, fromEmail: this.fromEmail });
       
       const subject = 'Welcome to UofT Triathlon Club! 🏃‍♂️';
       
@@ -500,11 +501,11 @@ class EmailService {
   // Send role change notification email
   async sendRoleChangeNotification(userEmail, userName, oldRole, newRole) {
     try {
-      console.log('📧 EmailService.sendRoleChangeNotification called with:', { userEmail, userName, oldRole, newRole, fromEmail: this.fromEmail });
-      console.log('🔍 DEBUG: AWS credentials check - Access Key ID:', process.env.AWS_ACCESS_KEY_ID ? 'SET' : 'NOT SET');
-      console.log('🔍 DEBUG: AWS credentials check - Secret Access Key:', process.env.AWS_SECRET_ACCESS_KEY ? 'SET' : 'NOT SET');
-      console.log('🔍 DEBUG: AWS credentials check - Region:', process.env.AWS_REGION || 'us-east-1');
-      console.log('🔍 DEBUG: AWS credentials check - From Email:', this.fromEmail);
+      logger.debug('📧 EmailService.sendRoleChangeNotification called with:', { userEmail, userName, oldRole, newRole, fromEmail: this.fromEmail });
+      logger.debug('🔍 DEBUG: AWS credentials check - Access Key ID:', process.env.AWS_ACCESS_KEY_ID ? 'SET' : 'NOT SET');
+      logger.debug('🔍 DEBUG: AWS credentials check - Secret Access Key:', process.env.AWS_SECRET_ACCESS_KEY ? 'SET' : 'NOT SET');
+      logger.debug('🔍 DEBUG: AWS credentials check - Region:', process.env.AWS_REGION || 'us-east-1');
+      logger.debug('🔍 DEBUG: AWS credentials check - From Email:', this.fromEmail);
       
       const getRoleDisplayName = (role) => {
         switch (role) {

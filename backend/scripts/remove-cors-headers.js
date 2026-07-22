@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const routesDir = path.join(__dirname, 'routes');
+const routesDir = path.join(__dirname, '..', 'routes');
 const routeFiles = fs.readdirSync(routesDir).filter(file => file.endsWith('.js'));
 
 routeFiles.forEach(file => {

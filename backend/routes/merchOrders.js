@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { authenticateToken, requireAdmin, requireMember } = require('../middleware/auth');
 const db = require('../database-pg');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -69,8 +70,8 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 // POST create order
 router.post('/', authenticateToken, requireMember, async (req, res) => {
   try {
-    console.log('🔍 Merch order POST - User:', req.user);
-    console.log('🔍 Merch order POST - Body:', req.body);
+    logger.debug('🔍 Merch order POST - User:', req.user);
+    logger.debug('🔍 Merch order POST - Body:', req.body);
     
     const { name, firstName, lastName, email, item, size, quantity } = req.body || {};
     const finalFirstName = (firstName || (name ? name.split(' ')[0] : '') || '').trim();
@@ -80,10 +81,10 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
     const finalSize = (size || '').trim();
     const qty = Number(quantity) || 1;
 
-    console.log('🔍 Processed data:', { finalFirstName, finalLastName, finalEmail, finalItem, finalSize, qty });
+    logger.debug('🔍 Processed data:', { finalFirstName, finalLastName, finalEmail, finalItem, finalSize, qty });
 
     if (!finalFirstName || !finalEmail || !finalItem) {
-      console.log('❌ Missing required fields:', { finalFirstName, finalEmail, finalItem });
+      logger.debug('❌ Missing required fields:', { finalFirstName, finalEmail, finalItem });
       return res.status(400).json({ error: 'firstName, email, and item are required' });
     }
 

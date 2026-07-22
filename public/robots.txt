@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Private / app-only surfaces
+Disallow: /admin
+Disallow: /admin/
+Disallow: /settings
+Disallow: /logout
+Disallow: /reset-password
+
+Sitemap: https://uoft-tri.club/sitemap.xml

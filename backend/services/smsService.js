@@ -1,5 +1,6 @@
 require('dotenv').config();
 const twilio = require('twilio');
+const logger = require('../utils/logger');
 
 // Initialize Twilio client (you'll need to add these to your environment variables)
 const accountSid = process.env.TWILIO_ACCOUNT_SID || 'your_account_sid_here';
@@ -22,7 +23,7 @@ const sendWaitlistPromotionSMS = async (userPhone, userName, workoutTitle, worko
   try {
     // Skip SMS in test environment or if client not initialized
     if (process.env.NODE_ENV === 'test' || !client) {
-      console.log('📱 SMS skipped (test environment or Twilio not configured)');
+      logger.debug('📱 SMS skipped (test environment or Twilio not configured)');
       return false;
     }
     
@@ -36,9 +37,9 @@ const sendWaitlistPromotionSMS = async (userPhone, userName, workoutTitle, worko
       to: userPhone
     });
 
-    console.log('📱 Waitlist promotion SMS sent successfully');
-    console.log('📱 Message SID:', message.sid);
-    console.log('📱 To:', userPhone);
+    logger.debug('📱 Waitlist promotion SMS sent successfully');
+    logger.debug('📱 Message SID:', message.sid);
+    logger.debug('📱 To:', userPhone);
     
     return true;
   } catch (error) {
@@ -67,8 +68,8 @@ const sendWaitlistPromotionNotification = async (userEmail, userPhone, userName,
     // Wait for both to complete
     const [emailSent, smsSent] = await Promise.allSettled([emailPromise, smsPromise]);
     
-    console.log('📧 Email result:', emailSent.status === 'fulfilled' ? 'Success' : 'Failed');
-    console.log('📱 SMS result:', smsSent.status === 'fulfilled' ? 'Success' : 'Failed');
+    logger.debug('📧 Email result:', emailSent.status === 'fulfilled' ? 'Success' : 'Failed');
+    logger.debug('📱 SMS result:', smsSent.status === 'fulfilled' ? 'Success' : 'Failed');
     
     return {
       email: emailSent.status === 'fulfilled' && emailSent.value,

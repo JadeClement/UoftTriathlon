@@ -6,6 +6,7 @@ import { formatSignupDateForDisplay } from '../utils/dateUtils';
 import { parseApiError, getApiErrorMessage } from '../utils/apiError';
 import { showError } from './SimpleNotification';
 import './RaceDetail.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const RaceDetail = () => {
   const { id } = useParams();
@@ -17,7 +18,7 @@ const RaceDetail = () => {
   const [error, setError] = useState(null);
   const [isSignedUp, setIsSignedUp] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
 
   const loadRaceDetails = useCallback(async () => {
     try {

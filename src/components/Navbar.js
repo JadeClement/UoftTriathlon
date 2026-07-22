@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePendingReceipts } from '../context/PendingReceiptsContext';
 import { Capacitor } from '@capacitor/core';
 import './Navbar.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 function linkify(text) {
   const input = text || '';
@@ -79,7 +80,7 @@ const Navbar = () => {
   const [popupModal, setPopupModal] = useState({ enabled: false, message: '', popupId: null });
   const [showPopupModal, setShowPopupModal] = useState(false);
   const [itemsInMore, setItemsInMore] = useState(new Set()); // Track which items are in More dropdown
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, isMember, isAdmin, isExec, logout } = useAuth();
@@ -130,7 +131,7 @@ const Navbar = () => {
     // Initialize profile image URL (handle multiple possible fields and URL shapes)
     const profilePictureUrl = currentUser?.profile_picture_url || currentUser?.profilePictureUrl;
     if (profilePictureUrl) {
-      const apiBase = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+      const apiBase = getApiBaseUrl();
       const originBase = apiBase.replace(/\/api\/?$/, '');
       if (profilePictureUrl.startsWith('/api/')) {
         setProfileImageUrl(`${originBase}${profilePictureUrl}`);

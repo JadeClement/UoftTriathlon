@@ -5,6 +5,7 @@ const emailService = require('../services/emailService');
 const { sendWaitlistPromotionNotification } = require('../services/smsService');
 const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
 const notificationService = require('../services/notificationService');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -196,7 +197,7 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
       }
     }
 
-    console.log('🔍 Create post parameters:', {
+    logger.debug('🔍 Create post parameters:', {
       title, content, type, workoutType, workoutDate, workoutTime,
       capacity: capacity, capacityValue, eventDate, intervalCount: intervalsToInsert.length
     });
@@ -211,7 +212,7 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
     `, insertParams);
 
     const postId = result.rows[0].id;
-    console.log('✅ Post created successfully, ID:', postId);
+    logger.debug('✅ Post created successfully, ID:', postId);
 
     // Insert intervals into workout_intervals (for workout posts)
     if (type === 'workout' && intervalsToInsert.length > 0) {
@@ -222,7 +223,7 @@ router.post('/posts', authenticateToken, requireMemberOrCoachForWorkouts, async 
           VALUES ($1, $2, $3, $4)
         `, [postId, inv.title, inv.description, inv.sort_order]);
       }
-      console.log('✅ Inserted', intervalsToInsert.length, 'intervals');
+      logger.debug('✅ Inserted', intervalsToInsert.length, 'intervals');
     }
     
     // Get the full post with user information
@@ -303,7 +304,7 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
       capacityValue = parseInt(capacity, 10);
     }
 
-    console.log('🔍 Update post parameters:', {
+    logger.debug('🔍 Update post parameters:', {
       title, content, workoutType, workoutDate, workoutTime,
       capacity: capacity, capacityValue, eventDate, id
     });
@@ -361,9 +362,9 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
               name: w.user_name
             });
             promotedCount++;
-            console.log('✅ Capacity increase: promoted waitlist user:', { workoutId: id, waitlistUserId: w.user_id, waitlistUserName: w.user_name });
+            logger.debug('✅ Capacity increase: promoted waitlist user:', { workoutId: id, waitlistUserId: w.user_id, waitlistUserName: w.user_name });
           } else {
-            console.log('✅ Capacity increase: removed duplicate from waitlist (already signed up):', { workoutId: id, userId: w.user_id });
+            logger.debug('✅ Capacity increase: removed duplicate from waitlist (already signed up):', { workoutId: id, userId: w.user_id });
           }
         }
 
@@ -393,7 +394,7 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
              ON CONFLICT (user_id, post_id) DO NOTHING`,
             [row.user_id, id]
           );
-          console.log('✅ Capacity decrease: moved last signup to waitlist:', { workoutId: id, userId: row.user_id });
+          logger.debug('✅ Capacity decrease: moved last signup to waitlist:', { workoutId: id, userId: row.user_id });
         }
       }
     }
@@ -418,13 +419,13 @@ router.put('/posts/:id', authenticateToken, requireMember, async (req, res) => {
               workoutData
             );
           } catch (e) {
-            console.log('Waitlist promotion notification error:', e.message);
+            logger.debug('Waitlist promotion notification error:', e.message);
           }
         }
       });
     }
 
-    console.log('✅ Post updated successfully');
+    logger.debug('✅ Post updated successfully');
     res.json({ message: 'Post updated successfully' });
   } catch (error) {
     try {
@@ -466,11 +467,11 @@ router.delete('/posts/:id', authenticateToken, requireMember, async (req, res) =
       await pool.query('DELETE FROM workout_waitlist WHERE post_id = $1', [id]);
       await pool.query('DELETE FROM workout_cancellations WHERE post_id = $1', [id]);
       await pool.query('DELETE FROM forum_posts WHERE id = $1', [id]);
-      console.log('✅ Workout hard deleted successfully');
+      logger.debug('✅ Workout hard deleted successfully');
     } else {
       // Soft delete for other forum posts
       await pool.query('UPDATE forum_posts SET is_deleted = true WHERE id = $1', [id]);
-      console.log('✅ Post soft deleted successfully');
+      logger.debug('✅ Post soft deleted successfully');
     }
 
     res.json({ message: 'Post deleted successfully' });
@@ -537,7 +538,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         const workoutDateTime = combineDateTime(workout.workout_date, workout.workout_time);
         
         if (!workoutDateTime) {
-          console.log(`⚠️ Invalid workout date/time for workout ${id}:`, { 
+          logger.debug(`⚠️ Invalid workout date/time for workout ${id}:`, { 
             date: workout.workout_date, 
             time: workout.workout_time 
           });
@@ -546,7 +547,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           within12hrs = isWithinHours(workoutDateTime, 12);
           const hoursUntilWorkout = getHoursUntil(workoutDateTime);
           
-          console.log(`🕐 Time calculation details:`, {
+          logger.debug(`🕐 Time calculation details:`, {
             workoutDateTime: workoutDateTime.toISOString(),
             currentTime: new Date().toISOString(),
             hoursUntilWorkout: hoursUntilWorkout.toFixed(2),
@@ -555,7 +556,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           });
         }
         
-        console.log(`🔄 Workout Cancellation Check:`, {
+        logger.debug(`🔄 Workout Cancellation Check:`, {
           workoutId: id,
           workoutTitle,
           workoutDateTime: workoutDateTime && !isNaN(workoutDateTime.getTime()) ? workoutDateTime.toISOString() : 'Invalid Date',
@@ -568,7 +569,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
 
       // Create cancellation record if within 12 hours
       if (within12hrs) {
-        console.log(`⚠️ CANCELLATION WITHIN 12 HOURS - Processing Absence:`, {
+        logger.debug(`⚠️ CANCELLATION WITHIN 12 HOURS - Processing Absence:`, {
           workoutId: id,
           workoutTitle,
           userId: userId,
@@ -613,7 +614,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         );
         const updatedAbsences = updatedAbsencesResult.rows[0]?.absences || 0;
 
-        console.log(`📊 USER ABSENCE COUNT UPDATED:`, {
+        logger.debug(`📊 USER ABSENCE COUNT UPDATED:`, {
           userId: userId,
           workoutId: id,
           workoutTitle,
@@ -622,7 +623,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
           increment: updatedAbsences - currentAbsences
         });
       } else {
-        console.log(`✅ CANCELLATION OUTSIDE 12 HOURS - No Absence:`, {
+        logger.debug(`✅ CANCELLATION OUTSIDE 12 HOURS - No Absence:`, {
           workoutId: id,
           workoutTitle,
           userId: userId,
@@ -664,7 +665,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         if (within12hrs) {
           // Within 12 hours: Don't auto-promote, just send last minute cancellation opportunity email
           // Keep them on the waitlist so they can manually sign up
-          console.log(`📧 Last minute cancellation - sending opportunity email to waitlist user:`, {
+          logger.debug(`📧 Last minute cancellation - sending opportunity email to waitlist user:`, {
             workoutId: id,
             workoutTitle: workoutTitle,
             waitlistUserId: w.user_id,
@@ -683,7 +684,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
                 id
               );
             } catch (e) {
-              console.log('Last minute cancellation opportunity email error:', e.message);
+              logger.debug('Last minute cancellation opportunity email error:', e.message);
             }
           });
         } else {
@@ -711,7 +712,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
             [id]
           );
           
-          console.log(`✅ Auto-promoted waitlist user:`, {
+          logger.debug(`✅ Auto-promoted waitlist user:`, {
             workoutId: id,
             workoutTitle: workoutTitle,
             waitlistUserId: w.user_id,
@@ -737,7 +738,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
                 }
               );
             } catch (e) {
-              console.log('Waitlist promotion notification error:', e.message);
+              logger.debug('Waitlist promotion notification error:', e.message);
             }
           });
         }
@@ -749,7 +750,7 @@ router.post('/workouts/:id/signup', authenticateToken, requireMember, async (req
         ? 'Signup cancelled. This counts as an absence due to cancellation within 12 hours.'
         : 'Signup cancelled successfully.';
       
-      console.log(`✅ CANCELLATION COMPLETED:`, {
+      logger.debug(`✅ CANCELLATION COMPLETED:`, {
         workoutId: id,
         workoutTitle,
         userId: userId,

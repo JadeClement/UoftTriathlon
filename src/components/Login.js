@@ -12,6 +12,8 @@ import {
 } from '../services/biometricAuth';
 import './Login.css';
 import PasswordInput from './PasswordInput';
+import { getApiBaseUrl } from '../utils/apiConfig';
+import { validatePhoneNumber, formatPhoneNumber, formatPhoneNumberInput } from '../utils/phoneUtils';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -165,39 +167,9 @@ const Login = () => {
     return emailRegex.test(email);
   };
 
-  const validatePhoneNumber = (phone) => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    // Check if it's 10 digits (North American format)
-    return digitsOnly.length === 10;
-  };
-
-  const formatPhoneNumber = (phone) => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    // Format as (XXX) XXX-XXXX
-    if (digitsOnly.length === 10) {
-      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
-    }
-    return phone; // Return original if not 10 digits
-  };
-
   const handlePhoneNumberChange = (e) => {
-    const value = e.target.value;
-    // Remove all non-digit characters
-    const digitsOnly = value.replace(/\D/g, '');
-    
-    // Limit to 10 digits
-    if (digitsOnly.length <= 10) {
-      // Format as user types
-      let formatted = digitsOnly;
-      if (digitsOnly.length >= 6) {
-        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
-      } else if (digitsOnly.length >= 3) {
-        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3)}`;
-      } else if (digitsOnly.length > 0) {
-        formatted = `(${digitsOnly}`;
-      }
+    const formatted = formatPhoneNumberInput(e.target.value);
+    if (formatted !== null) {
       setPhoneNumber(formatted);
     }
   };
@@ -364,7 +336,7 @@ const Login = () => {
     setError('');
 
     try {
-      const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+      const API_BASE_URL = getApiBaseUrl();
       const url = `${API_BASE_URL}/auth/forgot-password`;
       console.log('🔑 Forgot password POST to:', url);
 

@@ -6,6 +6,7 @@ const { pool } = require('../database-pg');
 const { authenticateToken, allowOwnProfile, requireMember } = require('../middleware/auth');
 const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
 const { computeMembershipStatus, formatTermLabel } = require('../utils/membership');
+const logger = require('../utils/logger');
 
 // Debug (non-sensitive) printout of S3 detection to help diagnose env on deploys
 try {
@@ -13,7 +14,7 @@ try {
   const haveSecretKey = Boolean(process.env.AWS_S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY);
   const region = process.env.AWS_S3_REGION || process.env.AWS_REGION || '(none)';
   const bucket = process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || '(none)';
-  console.log('🧰 S3 detection:', { enabled: isS3Enabled(), haveAccessKey, haveSecretKey, region, bucket });
+  logger.debug('🧰 S3 detection:', { enabled: isS3Enabled(), haveAccessKey, haveSecretKey, region, bucket });
 } catch (_) {}
 
 const router = express.Router();
@@ -126,17 +127,17 @@ router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
 // Update user profile
 router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) => {
   try {
-    console.log('🔍 Profile update route: Starting...');
+    logger.debug('🔍 Profile update route: Starting...');
     const userId = req.user.id;
-    console.log('🔍 Profile update route: User ID:', userId);
-    console.log('🔍 Backend received request body:', req.body);
-    console.log('🔍 Backend received headers:', req.headers);
+    logger.debug('🔍 Profile update route: User ID:', userId);
+    logger.debug('🔍 Backend received request body:', req.body);
+    logger.debug('🔍 Backend received headers:', req.headers);
     
     const { name, email, phone_number, bio, results_public, races_public, joined_year, end_year } = req.body;
-    console.log('🔍 Profile update route: Extracted data:', { name, email, phone_number, bio, joined_year, end_year });
+    logger.debug('🔍 Profile update route: Extracted data:', { name, email, phone_number, bio, joined_year, end_year });
 
     if (!name || !email) {
-      console.log('❌ Backend validation failed:', { name, email, phone_number, bio });
+      logger.debug('❌ Backend validation failed:', { name, email, phone_number, bio });
       return res.status(400).json({ error: 'Name and email are required' });
     }
 
@@ -155,12 +156,12 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
       }
     }
 
-    console.log('🔍 Profile update route: Validation passed, checking email and phone uniqueness...');
+    logger.debug('🔍 Profile update route: Validation passed, checking email and phone uniqueness...');
 
     // Check if email is already taken by another user
     const existingUserByEmail = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, userId]);
     if (existingUserByEmail.rows.length > 0) {
-      console.log('❌ Email already taken by user ID:', existingUserByEmail.rows[0].id);
+      logger.debug('❌ Email already taken by user ID:', existingUserByEmail.rows[0].id);
       return res.status(400).json({ error: 'Hey, that email is already taken by another user. Please choose a different email address.' });
     }
 
@@ -168,12 +169,12 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     if (phone_number) {
       const existingUserByPhone = await pool.query('SELECT id FROM users WHERE phone_number = $1 AND id != $2', [phone_number, userId]);
       if (existingUserByPhone.rows.length > 0) {
-        console.log('❌ Phone number already taken by user ID:', existingUserByPhone.rows[0].id);
+        logger.debug('❌ Phone number already taken by user ID:', existingUserByPhone.rows[0].id);
         return res.status(400).json({ error: 'Hey, that phone number is already taken by another user. Please choose a different phone number.' });
       }
     }
 
-    console.log('🔍 Profile update route: Email and phone unique, updating database...');
+    logger.debug('🔍 Profile update route: Email and phone unique, updating database...');
 
     // Build update query dynamically
     const updates = [];
@@ -219,7 +220,7 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
       WHERE id = $${paramCount}
     `, values.slice(0, -1).concat([userId]));
 
-    console.log('✅ Profile update route: Database update successful');
+    logger.debug('✅ Profile update route: Database update successful');
     res.json({ message: 'Profile updated successfully' });
   } catch (error) {
     console.error('❌ Profile update route: Error occurred:', error);
@@ -481,12 +482,12 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
 
 // Get calendar preferences
 router.get('/calendar-preferences', authenticateToken, allowOwnProfile(), async (req, res) => {
-  console.log('📅 GET /calendar-preferences: Request received');
-  console.log('📅 Request user:', req.user ? { id: req.user.id, email: req.user.email } : 'No user');
+  logger.debug('📅 GET /calendar-preferences: Request received');
+  logger.debug('📅 Request user:', req.user ? { id: req.user.id, email: req.user.email } : 'No user');
   
   try {
     const userId = req.user.id;
-    console.log('📅 Fetching preferences for user ID:', userId);
+    logger.debug('📅 Fetching preferences for user ID:', userId);
     
     const result = await pool.query(`
       SELECT 
@@ -521,33 +522,33 @@ router.get('/calendar-preferences', authenticateToken, allowOwnProfile(), async 
 
 // Update calendar preferences
 router.put('/calendar-preferences', authenticateToken, allowOwnProfile(), async (req, res) => {
-  console.log('📅 PUT /calendar-preferences: Request received');
-  console.log('📅 Request user:', req.user ? { id: req.user.id, email: req.user.email } : 'No user');
-  console.log('📅 Request body:', JSON.stringify(req.body));
+  logger.debug('📅 PUT /calendar-preferences: Request received');
+  logger.debug('📅 Request user:', req.user ? { id: req.user.id, email: req.user.email } : 'No user');
+  logger.debug('📅 Request body:', JSON.stringify(req.body));
   
   try {
     const userId = req.user.id;
     const { preferences } = req.body;
     
-    console.log('📅 User ID:', userId);
-    console.log('📅 Preferences received:', JSON.stringify(preferences));
+    logger.debug('📅 User ID:', userId);
+    logger.debug('📅 Preferences received:', JSON.stringify(preferences));
     
     if (!preferences) {
-      console.log('📅 Error: No preferences in request body');
+      logger.debug('📅 Error: No preferences in request body');
       return res.status(400).json({ error: 'Preferences are required' });
     }
     
     // Check if preferences exist
-    console.log('📅 Checking if preferences exist for user:', userId);
+    logger.debug('📅 Checking if preferences exist for user:', userId);
     const checkResult = await pool.query(`
       SELECT user_id FROM calendar_preferences WHERE user_id = $1
     `, [userId]);
     
-    console.log('📅 Check result:', checkResult.rows.length > 0 ? 'Preferences exist' : 'No preferences found');
+    logger.debug('📅 Check result:', checkResult.rows.length > 0 ? 'Preferences exist' : 'No preferences found');
     
     if (checkResult.rows.length === 0) {
       // Insert new preferences
-      console.log('📅 Inserting new calendar preferences');
+      logger.debug('📅 Inserting new calendar preferences');
       const insertValues = [
         userId,
         preferences.tuesday_swim || false,
@@ -556,7 +557,7 @@ router.put('/calendar-preferences', authenticateToken, allowOwnProfile(), async 
         preferences.thursday_run || false,
         preferences.sunday_swim || false
       ];
-      console.log('📅 Insert values:', insertValues);
+      logger.debug('📅 Insert values:', insertValues);
       
       await pool.query(`
         INSERT INTO calendar_preferences (
@@ -569,10 +570,10 @@ router.put('/calendar-preferences', authenticateToken, allowOwnProfile(), async 
         ) VALUES ($1, $2, $3, $4, $5, $6)
       `, insertValues);
       
-      console.log('📅 ✅ Calendar preferences inserted successfully');
+      logger.debug('📅 ✅ Calendar preferences inserted successfully');
     } else {
       // Update existing preferences
-      console.log('📅 Updating existing calendar preferences');
+      logger.debug('📅 Updating existing calendar preferences');
       const updateValues = [
         userId,
         preferences.tuesday_swim || false,
@@ -581,7 +582,7 @@ router.put('/calendar-preferences', authenticateToken, allowOwnProfile(), async 
         preferences.thursday_run || false,
         preferences.sunday_swim || false
       ];
-      console.log('📅 Update values:', updateValues);
+      logger.debug('📅 Update values:', updateValues);
       
       await pool.query(`
         UPDATE calendar_preferences
@@ -594,7 +595,7 @@ router.put('/calendar-preferences', authenticateToken, allowOwnProfile(), async 
         WHERE user_id = $1
       `, updateValues);
       
-      console.log('📅 ✅ Calendar preferences updated successfully');
+      logger.debug('📅 ✅ Calendar preferences updated successfully');
     }
     
     res.json({ message: 'Calendar preferences updated successfully' });
@@ -726,7 +727,7 @@ router.post('/push-token', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { token, platform } = req.body;
     
-    console.log(`📱 Received push token save request for user ${userId}, platform: ${platform}, token length: ${token ? token.length : 0}`);
+    logger.debug(`📱 Received push token save request for user ${userId}, platform: ${platform}, token length: ${token ? token.length : 0}`);
     
     if (!token || !platform) {
       console.error('❌ Missing token or platform:', { token: !!token, platform: !!platform });
@@ -761,7 +762,7 @@ router.post('/push-token', authenticateToken, async (req, res) => {
         `UPDATE push_device_tokens SET updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND token = $2`,
         [userId, cleanToken]
       );
-      console.log(`✅ Device token updated for user ${userId}`);
+      logger.debug(`✅ Device token updated for user ${userId}`);
       return res.json({ message: 'Device token updated successfully' });
     }
     
@@ -774,7 +775,7 @@ router.post('/push-token', authenticateToken, async (req, res) => {
       [userId, cleanToken, platform]
     );
     
-    console.log(`✅ Device token saved successfully for user ${userId}, platform: ${platform}`);
+    logger.debug(`✅ Device token saved successfully for user ${userId}, platform: ${platform}`);
     res.json({ message: 'Device token saved successfully' });
   } catch (error) {
     console.error('❌ Save push token error:', error);

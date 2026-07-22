@@ -1,4 +1,5 @@
 require('dotenv').config();
+const logger = require('../utils/logger');
 
 /**
  * Push Notification Sender Service
@@ -53,7 +54,7 @@ function initializeFCM() {
         const source = process.env.FCM_SERVICE_ACCOUNT_JSON
           ? 'FCM_SERVICE_ACCOUNT_JSON'
           : 'FCM_SERVICE_ACCOUNT_PATH';
-        console.log(`✅ FCM initialized with service account (${source})`);
+        logger.debug(`✅ FCM initialized with service account (${source})`);
       }
       fcmAdmin = admin;
       return fcmAdmin;
@@ -61,12 +62,12 @@ function initializeFCM() {
 
     if (process.env.FCM_SERVER_KEY) {
       // Legacy FCM server key (less secure, but simpler setup)
-      console.log('⚠️ FCM_SERVER_KEY detected. Consider using FCM_SERVICE_ACCOUNT_JSON or FCM_SERVICE_ACCOUNT_PATH for better security.');
+      logger.debug('⚠️ FCM_SERVER_KEY detected. Consider using FCM_SERVICE_ACCOUNT_JSON or FCM_SERVICE_ACCOUNT_PATH for better security.');
       fcmAdmin = { legacy: true, serverKey: process.env.FCM_SERVER_KEY };
       return fcmAdmin;
     }
 
-    console.log('⚠️ FCM not configured. Set FCM_SERVICE_ACCOUNT_JSON, FCM_SERVICE_ACCOUNT_PATH, or FCM_SERVER_KEY to enable Android push notifications.');
+    logger.debug('⚠️ FCM not configured. Set FCM_SERVICE_ACCOUNT_JSON, FCM_SERVICE_ACCOUNT_PATH, or FCM_SERVER_KEY to enable Android push notifications.');
     return null;
   } catch (error) {
     console.error('❌ Error initializing FCM:', error);
@@ -86,7 +87,7 @@ function initializeAPNs() {
   
   // Reset provider if settings changed
   if (apnProvider) {
-    console.log('🔄 APNs provider settings changed, re-initializing...');
+    logger.debug('🔄 APNs provider settings changed, re-initializing...');
     apnProvider = null;
   }
 
@@ -99,7 +100,7 @@ function initializeAPNs() {
     const hasTeamId = process.env.APNS_TEAM_ID;
     
     // Debug logging
-    console.log('📱 APNs config check:', {
+    logger.debug('📱 APNs config check:', {
       hasKeyPath: !!hasKeyPath,
       hasKeyBase64: !!hasKeyBase64,
       hasKeyId: !!hasKeyId,
@@ -116,7 +117,7 @@ function initializeAPNs() {
       if (hasKeyBase64) {
         try {
           key = Buffer.from(process.env.APNS_KEY_BASE64, 'base64');
-          console.log('📱 APNs: Using key from APNS_KEY_BASE64 environment variable');
+          logger.debug('📱 APNs: Using key from APNS_KEY_BASE64 environment variable');
         } catch (error) {
           console.error('❌ Error decoding APNS_KEY_BASE64:', error);
           return null;
@@ -131,9 +132,9 @@ function initializeAPNs() {
           return null;
         }
         key = fs.readFileSync(keyPath);
-        console.log('📱 APNs: Using key from file:', keyPath);
+        logger.debug('📱 APNs: Using key from file:', keyPath);
       } else {
-        console.log('⚠️ APNs not configured. Set APNS_KEY_PATH (local) or APNS_KEY_BASE64 (production) along with APNS_KEY_ID and APNS_TEAM_ID.');
+        logger.debug('⚠️ APNs not configured. Set APNS_KEY_PATH (local) or APNS_KEY_BASE64 (production) along with APNS_KEY_ID and APNS_TEAM_ID.');
         return null;
       }
       
@@ -149,7 +150,7 @@ function initializeAPNs() {
       const isProduction = process.env.APNS_PRODUCTION === 'true';
       const nodeEnv = process.env.NODE_ENV;
       
-      console.log('📱 APNs provider config:', {
+      logger.debug('📱 APNs provider config:', {
         keyId: keyId,
         teamId: teamId,
         bundleId: bundleId,
@@ -172,7 +173,7 @@ function initializeAPNs() {
       // Store production setting for comparison
       apnProvider._production = isProduction;
       
-      console.log('✅ APNs initialized with settings:', {
+      logger.debug('✅ APNs initialized with settings:', {
         production: isProduction,
         bundleId: bundleId,
         keyId: keyId,
@@ -187,15 +188,15 @@ function initializeAPNs() {
       
       return apnProvider;
     } else {
-      console.log('⚠️ APNs not configured. Missing:');
+      logger.debug('⚠️ APNs not configured. Missing:');
       if (!hasKeyPath && !hasKeyBase64) {
-        console.log('   - APNS_KEY_PATH (local) or APNS_KEY_BASE64 (production)');
+        logger.debug('   - APNS_KEY_PATH (local) or APNS_KEY_BASE64 (production)');
       }
       if (!hasKeyId) {
-        console.log('   - APNS_KEY_ID');
+        logger.debug('   - APNS_KEY_ID');
       }
       if (!hasTeamId) {
-        console.log('   - APNS_TEAM_ID');
+        logger.debug('   - APNS_TEAM_ID');
       }
       return null;
     }
@@ -215,7 +216,7 @@ async function sendFCMNotification(token, notification) {
   try {
     const fcm = initializeFCM();
     if (!fcm) {
-      console.log('⚠️ FCM not initialized, skipping Android notification');
+      logger.debug('⚠️ FCM not initialized, skipping Android notification');
       return false;
     }
 
@@ -236,7 +237,7 @@ async function sendFCMNotification(token, notification) {
       };
 
       const response = await fcm.messaging().send(message);
-      console.log('✅ FCM notification sent successfully:', response);
+      logger.debug('✅ FCM notification sent successfully:', response);
       return true;
     } 
     // Legacy FCM server key - use HTTP API
@@ -270,7 +271,7 @@ async function sendFCMNotification(token, notification) {
           res.on('data', (chunk) => { data += chunk; });
           res.on('end', () => {
             if (res.statusCode === 200) {
-              console.log('✅ FCM (legacy) notification sent successfully');
+              logger.debug('✅ FCM (legacy) notification sent successfully');
               resolve(true);
             } else {
               console.error('❌ FCM (legacy) error:', res.statusCode, data);
@@ -307,7 +308,7 @@ async function sendAPNsNotification(token, notification) {
     const apn = require('apn');
     const provider = initializeAPNs();
     if (!provider) {
-      console.log('⚠️ APNs not initialized, skipping iOS notification');
+      logger.debug('⚠️ APNs not initialized, skipping iOS notification');
       return false;
     }
 
@@ -350,7 +351,7 @@ async function sendAPNsNotification(token, notification) {
     apnNotification.badge = 1;
     apnNotification.pushType = 'alert';
 
-    console.log('📱 Sending APNs notification:', {
+    logger.debug('📱 Sending APNs notification:', {
       topic: bundleId,
       token: cleanToken.substring(0, 32) + '...',
       tokenLength: cleanToken.length,
@@ -361,7 +362,7 @@ async function sendAPNsNotification(token, notification) {
     const result = await provider.send(apnNotification, cleanToken);
     
     if (result.sent && result.sent.length > 0) {
-      console.log('✅ APNs notification sent successfully to', result.sent.length, 'device(s)');
+      logger.debug('✅ APNs notification sent successfully to', result.sent.length, 'device(s)');
       return true;
     } else if (result.failed && result.failed.length > 0) {
       console.error('❌ APNs notification failed:', result.failed.length, 'failure(s)');
@@ -376,7 +377,7 @@ async function sendAPNsNotification(token, notification) {
       return false;
     }
 
-    console.log('⚠️ APNs send returned no sent or failed results');
+    logger.debug('⚠️ APNs send returned no sent or failed results');
     return false;
   } catch (error) {
     console.error('❌ Error sending APNs notification:', error);
@@ -439,7 +440,7 @@ async function sendBulkPushNotifications(tokens, notification) {
 
       // Clean and validate tokens
       const iosTokenStrings = iosTokens.map((t, index) => {
-        console.log(`🔍 Processing token ${index + 1} from database:`, {
+        logger.debug(`🔍 Processing token ${index + 1} from database:`, {
           rawType: typeof t.token,
           rawValue: t.token,
           rawLength: t.token ? t.token.length : 0,
@@ -456,7 +457,7 @@ async function sendBulkPushNotifications(tokens, notification) {
         // Some systems store tokens with dashes or spaces
         let clean = t.token.replace(/[\s-]/g, '').toLowerCase();
         
-        console.log(`🔍 After cleaning token ${index + 1}:`, {
+        logger.debug(`🔍 After cleaning token ${index + 1}:`, {
           cleaned: clean,
           length: clean.length,
           isHex: /^[0-9a-f]+$/.test(clean),
@@ -478,15 +479,15 @@ async function sendBulkPushNotifications(tokens, notification) {
       }
       
       const isProduction = process.env.APNS_PRODUCTION === 'true';
-      console.log(`📱 Sending APNs notification to ${iosTokenStrings.length} iOS device(s), topic: ${bundleId}, production: ${isProduction}`);
-      console.log(`📱 Token sample: ${iosTokenStrings[0]?.substring(0, 32)}... (full: ${iosTokenStrings[0]})`);
+      logger.debug(`📱 Sending APNs notification to ${iosTokenStrings.length} iOS device(s), topic: ${bundleId}, production: ${isProduction}`);
+      logger.debug(`📱 Token sample: ${iosTokenStrings[0]?.substring(0, 32)}... (full: ${iosTokenStrings[0]})`);
       
-      console.log('📱 Calling provider.send()...');
+      logger.debug('📱 Calling provider.send()...');
       const result = await provider.send(apnNotification, iosTokenStrings);
-      console.log('📱 provider.send() completed, result received');
+      logger.debug('📱 provider.send() completed, result received');
       
       // Log the full result structure for debugging
-      console.log('📱 APNs send result structure:', {
+      logger.debug('📱 APNs send result structure:', {
         hasResult: !!result,
         resultType: typeof result,
         isArray: Array.isArray(result),
@@ -517,30 +518,30 @@ async function sendBulkPushNotifications(tokens, notification) {
         }
       }
       
-      console.log('📱 Extracted arrays:', {
+      logger.debug('📱 Extracted arrays:', {
         sentArrayLength: sentArray.length,
         failedArrayLength: failedArray.length
       });
       
       // Wait a bit for async responses (APNs uses HTTP/2 and responses may be delayed)
-      console.log('📱 Waiting 2 seconds for async APNs responses...');
+      logger.debug('📱 Waiting 2 seconds for async APNs responses...');
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Check again after delay - the arrays might have been populated
       const finalSent = result?.sent ? (Array.isArray(result.sent) ? result.sent : Array.from(result.sent)) : [];
       const finalFailed = result?.failed ? (Array.isArray(result.failed) ? result.failed : Array.from(result.failed)) : [];
       
-      console.log('📱 APNs final result after delay:', {
+      logger.debug('📱 APNs final result after delay:', {
         sentCount: finalSent.length,
         failedCount: finalFailed.length,
         resultKeys: result ? Object.keys(result) : []
       });
       
       if (finalSent.length > 0) {
-        console.log(`✅ APNs: Successfully sent to ${finalSent.length} device(s)`);
+        logger.debug(`✅ APNs: Successfully sent to ${finalSent.length} device(s)`);
         finalSent.forEach((device, index) => {
           const deviceToken = typeof device === 'string' ? device : (device?.device || device?.token || String(device));
-          console.log(`   ✅ Device ${index + 1}: ${deviceToken.substring(0, 32)}...`);
+          logger.debug(`   ✅ Device ${index + 1}: ${deviceToken.substring(0, 32)}...`);
         });
         results.sent += finalSent.length;
       }
@@ -588,7 +589,7 @@ async function sendBulkPushNotifications(tokens, notification) {
         results.sent += iosTokenStrings.length;
       }
     } else {
-      console.log('⚠️ APNs provider not initialized, skipping iOS notifications');
+      logger.debug('⚠️ APNs provider not initialized, skipping iOS notifications');
     }
   }
 

@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 const path = require('path');
 
 // SQLite database path
-const sqlitePath = path.join(__dirname, 'triathlon_club.db');
+const sqlitePath = path.join(__dirname, '..', 'triathlon_club.db');
 
 // PostgreSQL connection
 // IMPORTANT: Update the password below to match your PostgreSQL password
@@ -28,7 +28,7 @@ async function migrateData() {
     console.log('📋 SQLite tables found:', tables.map(t => t.name));
     
     // Initialize PostgreSQL database first
-    const { initializeDatabase, seedDatabase } = require('./database-pg');
+    const { initializeDatabase, seedDatabase } = require('../database-pg');
     await initializeDatabase();
     
     console.log('📊 Migrating users...');

@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Pool } = require('pg');
 
 // This script adds the submitted_by column to the production database
-// Run this with: DATABASE_URL=your_production_url node migrate-add-submitted-by.js
+// Run this with: DATABASE_URL=your_production_url node scripts/migrate-add-submitted-by.js
 
 async function addSubmittedByColumn() {
   let pool;

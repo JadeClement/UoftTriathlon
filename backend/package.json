@@ -11,12 +11,14 @@
     "ingest-rag": "node scripts/ingestToPinecone.js",
     "test": "NODE_ENV=test jest --coverage",
     "test:watch": "NODE_ENV=test jest --watch",
-    "test:integration": "NODE_ENV=test jest --testPathPattern=integration"
+    "test:integration": "NODE_ENV=test jest --testPathPattern=integration",
+    "lint": "eslint . --ext .js"
   },
   "dependencies": {
-    "@pinecone-database/pinecone": "^5.0.0",
     "@aws-sdk/client-s3": "^3.883.0",
     "@aws-sdk/client-ses": "^3.883.0",
+    "@pinecone-database/pinecone": "^5.0.0",
+    "@sendgrid/mail": "^8.1.6",
     "apn": "^2.2.0",
     "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
@@ -32,16 +34,17 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.5",
+    "openai": "^4.77.0",
     "pg": "^8.16.3",
     "sqlite3": "^5.1.6",
-    "openai": "^4.77.0",
     "twilio": "^5.8.0"
   },
   "devDependencies": {
-    "puppeteer": "^23.0.0",
     "@types/jest": "^29.5.11",
+    "eslint": "^8.57.1",
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
+    "puppeteer": "^23.0.0",
     "supertest": "^6.3.3"
   },
   "keywords": [

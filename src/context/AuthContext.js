@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { installFetchInterceptor } from '../utils/installFetchInterceptor';
 import { registerForPushNotifications, unregisterFromPushNotifications } from '../services/pushNotificationService';
 import { clearBiometricCredentials } from '../services/biometricAuth';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const AuthContext = createContext();
 
@@ -46,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   // True when the user's JWT role is behind their DB role (need re-login)
   const [needsReauth, setNeedsReauth] = useState(false);
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
 
   useEffect(() => {
     console.log('🔄 AuthContext useEffect running...');

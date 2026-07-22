@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const logger = require('../utils/logger');
 const { 
   isS3Enabled, 
   uploadBufferToS3, 
@@ -60,7 +61,7 @@ async function loadGear() {
         }
       ];
       await saveGear(defaultGear);
-      console.log('📦 [GEAR] Initialized default gear items');
+      logger.debug('📦 [GEAR] Initialized default gear items');
       return defaultGear;
     }
   } catch (e) {
@@ -134,7 +135,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     items.push(newItem);
     await saveGear(items);
     
-    console.log('✅ [GEAR POST] Created new item:', newItem);
+    logger.debug('✅ [GEAR POST] Created new item:', newItem);
     res.json({ message: 'Gear item created', item: newItem });
   } catch (e) {
     console.error('❌ Create gear error:', e);
@@ -147,7 +148,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { title, price, description, images, hasGender, hasSize, availableSizes } = req.body;
-    console.log('🛠️ [GEAR PUT] id:', id, 'title:', title, 'price:', price, 'descLen:', (description||'').length, 'images?', Array.isArray(images), 'images:', images, 'hasGender:', hasGender, 'hasSize:', hasSize, 'availableSizes:', availableSizes);
+    logger.debug('🛠️ [GEAR PUT] id:', id, 'title:', title, 'price:', price, 'descLen:', (description||'').length, 'images?', Array.isArray(images), 'images:', images, 'hasGender:', hasGender, 'hasSize:', hasSize, 'availableSizes:', availableSizes);
 
     const items = await loadGear();
     const idx = items.findIndex(g => g.id === id);
@@ -166,7 +167,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
 
     items[idx] = updated;
     await saveGear(items);
-    console.log('✅ [GEAR PUT] updated item images count:', (updated.images||[]).length);
+    logger.debug('✅ [GEAR PUT] updated item images count:', (updated.images||[]).length);
     res.json({ message: 'Updated', item: updated });
   } catch (e) {
     console.error('❌ Update gear error:', e);
@@ -179,7 +180,7 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
   try {
     const id = parseInt(req.params.id, 10);
     const files = req.files || [];
-    console.log('🖼️ [GEAR IMAGES POST] id:', id, 'files:', files.map(f=>({name:f.originalname,size:f.size,mime:f.mimetype})));
+    logger.debug('🖼️ [GEAR IMAGES POST] id:', id, 'files:', files.map(f=>({name:f.originalname,size:f.size,mime:f.mimetype})));
 
     if (files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
 
@@ -206,10 +207,10 @@ router.post('/:id/images', authenticateToken, requireAdmin, upload.array('images
       const desc = items[idx].description || '';
       const cleaned = desc.replace(/image coming soon\.?/ig, '').trim();
       items[idx].description = cleaned;
-      console.log('🧹 [GEAR IMAGES POST] Cleaned description:', cleaned);
+      logger.debug('🧹 [GEAR IMAGES POST] Cleaned description:', cleaned);
     } catch (_) {}
 
-    console.log('✅ [GEAR IMAGES POST] total images now:', (items[idx].images||[]).length);
+    logger.debug('✅ [GEAR IMAGES POST] total images now:', (items[idx].images||[]).length);
     await saveGear(items);
 
     res.json({ message: 'Images uploaded', images: items[idx].images });
@@ -243,14 +244,14 @@ router.delete('/:id/images', authenticateToken, requireAdmin, async (req, res) =
         } else {
           const filename = imageUrl.split('/').pop();
           const filepath = path.join(uploadsDir, filename);
-          console.log('🗑️ [GEAR DELETE] Attempting to delete file:', filepath);
+          logger.debug('🗑️ [GEAR DELETE] Attempting to delete file:', filepath);
           if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
         }
       } catch (fileError) {
         console.error('❌ [GEAR DELETE] Error deleting file:', fileError.message);
       }
     } else {
-      console.log('🗑️ [GEAR DELETE] Skipping placeholder image deletion:', imageUrl);
+      logger.debug('🗑️ [GEAR DELETE] Skipping placeholder image deletion:', imageUrl);
     }
 
     await saveGear(items);
@@ -284,7 +285,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
             const filepath = path.join(uploadsDir, filename);
             if (fs.existsSync(filepath)) {
               fs.unlinkSync(filepath);
-              console.log('🗑️ [GEAR DELETE] Removed file:', filename);
+              logger.debug('🗑️ [GEAR DELETE] Removed file:', filename);
             }
           }
         } catch (fileError) {
@@ -297,7 +298,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     items.splice(idx, 1);
     await saveGear(items);
     
-    console.log('✅ [GEAR DELETE] Removed item:', item.title);
+    logger.debug('✅ [GEAR DELETE] Removed item:', item.title);
     res.json({ message: 'Gear item deleted' });
   } catch (e) {
     console.error('❌ Delete gear error:', e);

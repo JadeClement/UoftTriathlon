@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const logger = require('../utils/logger');
 const router = express.Router();
 const { isS3Enabled, uploadBufferToS3, getJsonFromS3, putJsonToS3 } = require('../utils/s3');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
@@ -77,24 +78,24 @@ async function loadTeamMembers() {
       const s3Key = 'team-profiles/team-profiles.json';
       const fromS3 = await getJsonFromS3(s3Key);
       if (fromS3) {
-        console.log('📁 Loaded team members from S3 JSON:', Object.keys(fromS3));
+        logger.debug('📁 Loaded team members from S3 JSON:', Object.keys(fromS3));
         return enrichAllMembers(fromS3);
       }
     }
     if (fs.existsSync(dataFilePath)) {
       const data = fs.readFileSync(dataFilePath, 'utf8');
       const parsedData = JSON.parse(data);
-      console.log('📁 Loaded team members from JSON file:', Object.keys(parsedData));
+      logger.debug('📁 Loaded team members from JSON file:', Object.keys(parsedData));
       return enrichAllMembers(parsedData);
     } else {
-      console.log('⚠️ JSON file not found, using default data');
+      logger.debug('⚠️ JSON file not found, using default data');
     }
   } catch (error) {
     console.error('Error loading team members:', error);
   }
   
   // Initialize sensible defaults for all roles if nothing found
-  console.log('⚠️ No team-profiles.json found in S3 or local. Initializing defaults.');
+  logger.debug('⚠️ No team-profiles.json found in S3 or local. Initializing defaults.');
   const rawDefaults = {
     'swim-coach': { id: 'swim-coach', name: 'Coach Name', role: 'Swim Coach', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
     'run-coach': { id: 'run-coach', name: 'Coach Name', role: 'Run Coach', image: '/images/icon.png', email: '', bio: 'Bio coming soon!' },
@@ -121,7 +122,7 @@ async function saveTeamMembers(teamMembers) {
     if (isS3Enabled()) {
       const s3Key = 'team-profiles/team-profiles.json';
       await putJsonToS3(s3Key, teamMembers);
-      console.log('💾 Team members saved to S3:', s3Key);
+      logger.debug('💾 Team members saved to S3:', s3Key);
     }
 
     // Always keep local backup copy
@@ -130,7 +131,7 @@ async function saveTeamMembers(teamMembers) {
       fs.copyFileSync(dataFilePath, backupPath);
     }
     fs.writeFileSync(dataFilePath, JSON.stringify(teamMembers, null, 2), 'utf8');
-    console.log('💾 Team members saved locally:', dataFilePath);
+    logger.debug('💾 Team members saved locally:', dataFilePath);
   } catch (error) {
     console.error('❌ Error saving team members:', error);
   }
@@ -223,7 +224,7 @@ router.get('/', async (req, res) => {
     // Convert object to array for frontend compatibility
     const teamMembersArray = Object.values(teamMembers);
     
-    console.log('📊 Returning team members:', teamMembersArray.length, 'members');
+    logger.debug('📊 Returning team members:', teamMembersArray.length, 'members');
     
     res.json({ teamMembers: teamMembersArray });
   } catch (error) {
@@ -257,13 +258,13 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
     const { name, bio, image, email, role, emoji, profileLabel, slug } = req.body;
     const imageFile = req.file;
 
-    console.log('🔄 Updating profile for:', id);
-    console.log('👤 New name:', name);
-    console.log('🏷️ New role:', role);
-    console.log('📧 New email:', email);
-    console.log('📝 New bio:', bio);
-    console.log('🖼️ New image URL:', image);
-    console.log('🖼️ Image file:', imageFile ? imageFile.filename : 'No new image');
+    logger.debug('🔄 Updating profile for:', id);
+    logger.debug('👤 New name:', name);
+    logger.debug('🏷️ New role:', role);
+    logger.debug('📧 New email:', email);
+    logger.debug('📝 New bio:', bio);
+    logger.debug('🖼️ New image URL:', image);
+    logger.debug('🖼️ Image file:', imageFile ? imageFile.filename : 'No new image');
 
     // Load current data
     const teamMembers = await loadTeamMembers();
@@ -308,8 +309,8 @@ router.put('/:id', authenticateToken, requireAdmin, upload.single('image'), asyn
 
     // Save the updated data
     teamMembers[id] = updatedMember;
-    console.log('🔄 About to save team members with updated member:', id);
-    console.log('📊 Updated member data:', updatedMember);
+    logger.debug('🔄 About to save team members with updated member:', id);
+    logger.debug('📊 Updated member data:', updatedMember);
     await saveTeamMembers(teamMembers);
 
     res.json({ 

@@ -2,6 +2,7 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { handleNotificationNavigation, navigateTo } from '../utils/notificationNavigation';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 /**
  * Push Notification Service
@@ -15,7 +16,7 @@ const isAndroid = Capacitor.getPlatform() === 'android';
 // Android push requires google-services.json (FCM). Without it, PushNotifications.register()
 // can crash the app natively — skip until REACT_APP_ENABLE_ANDROID_PUSH=true is set.
 const androidPushEnabled = process.env.REACT_APP_ENABLE_ANDROID_PUSH === 'true';
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+const API_BASE_URL = getApiBaseUrl();
 
 let pushToken = null;
 let isRegistered = false;

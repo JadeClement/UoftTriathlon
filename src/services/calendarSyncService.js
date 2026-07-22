@@ -5,8 +5,9 @@
 
 import { addWorkoutToCalendar } from './calendarService';
 import { Capacitor } from '@capacitor/core';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+const API_BASE_URL = getApiBaseUrl();
 const isIOS = Capacitor.getPlatform() === 'ios';
 
 /**

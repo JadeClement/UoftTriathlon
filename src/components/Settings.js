@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { showSuccess, showError } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './Settings.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ const Settings = () => {
   });
   const [notificationPrefsLoading, setNotificationPrefsLoading] = useState(false);
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
 
   useEffect(() => {
     // Settings page is iOS only - redirect if not on iOS

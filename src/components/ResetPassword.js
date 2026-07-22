@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import './ResetPassword.css';
 import PasswordInput from './PasswordInput';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -58,7 +59,7 @@ const ResetPassword = () => {
       console.log('🔑 Token from URL:', token);
       console.log('🔑 Request body:', requestBody);
       
-      const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+      const API_BASE_URL = getApiBaseUrl();
       const resetUrl = `${API_BASE_URL}/auth/reset-password`;
       console.log('🔑 Making request to:', resetUrl);
       

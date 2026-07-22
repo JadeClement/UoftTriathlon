@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { showError, showSuccess } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './TeamGear.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 // Auto-resizing text component that shrinks font until it fits
 const AutoResizeText = ({ text, className = '', style = {}, inline = false }) => {
@@ -86,7 +87,7 @@ const AutoResizeText = ({ text, className = '', style = {}, inline = false }) =>
 
 const TeamGear = () => {
   const { currentUser, isAdmin, getUserRole, needsReauth } = useAuth();
-  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE = getApiBaseUrl();
   console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
   const [gearItems, setGearItems] = useState([]);
 

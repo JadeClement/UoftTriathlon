@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { pool } = require('../database-pg');
 const { authenticateToken } = require('../middleware/auth');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -62,9 +63,9 @@ router.post('/register', async (req, res) => {
     const user = result.rows[0];
 
     // Generate JWT token
-    console.log('🔒 Registration Route: JWT_SECRET from env:', !!process.env.JWT_SECRET);
-    console.log('🔒 Registration Route: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
-    console.log('🔒 Registration Route: Using JWT_SECRET:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
+    logger.debug('🔒 Registration Route: JWT_SECRET from env:', !!process.env.JWT_SECRET);
+    logger.debug('🔒 Registration Route: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
+    logger.debug('🔒 Registration Route: Using JWT_SECRET:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
     
     const tokenExpiry = process.env.JWT_EXPIRES_IN || '24h';
     const token = jwt.sign(
@@ -104,22 +105,22 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
   try {
-    console.log('🔐 LOGIN DEBUG - Backend received request');
+    logger.debug('🔐 LOGIN DEBUG - Backend received request');
     const { email, password } = req.body;
-    console.log('🔐 Email received:', email);
-    console.log('🔐 Password length:', password ? password.length : 'null');
+    logger.debug('🔐 Email received:', email);
+    logger.debug('🔐 Password length:', password ? password.length : 'null');
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Find user by email
-    console.log('🔍 Looking for user with email:', email);
+    logger.debug('🔍 Looking for user with email:', email);
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [email]);
-    console.log('🔍 User query result:', userResult.rows.length, 'rows found');
+    logger.debug('🔍 User query result:', userResult.rows.length, 'rows found');
     
     if (userResult.rows.length === 0) {
-      console.log('❌ No user found with email:', email);
+      logger.debug('❌ No user found with email:', email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -141,9 +142,9 @@ router.post('/login', async (req, res) => {
     `, [user.id, req.ip || 'unknown', req.get('User-Agent') || 'unknown']);
 
     // Generate JWT token
-    console.log('🔒 Login Route: JWT_SECRET from env:', !!process.env.JWT_SECRET);
-    console.log('🔒 Login Route: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
-    console.log('🔒 Login Route: Using JWT_SECRET:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
+    logger.debug('🔒 Login Route: JWT_SECRET from env:', !!process.env.JWT_SECRET);
+    logger.debug('🔒 Login Route: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
+    logger.debug('🔒 Login Route: Using JWT_SECRET:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
     
     const tokenExpiry = process.env.JWT_EXPIRES_IN || '24h';
     const token = jwt.sign(
@@ -240,21 +241,21 @@ router.put('/change-password', authenticateToken, async (req, res) => {
 // Forgot password - send reset email
 router.post('/forgot-password', async (req, res) => {
   try {
-    console.log('🔑 FORGOT PASSWORD DEBUG - Backend received request');
+    logger.debug('🔑 FORGOT PASSWORD DEBUG - Backend received request');
     const { email } = req.body;
-    console.log('🔑 Email received:', email);
+    logger.debug('🔑 Email received:', email);
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
     // Check if user exists
-    console.log('🔍 Checking if user exists for email:', email);
+    logger.debug('🔍 Checking if user exists for email:', email);
     const userResult = await pool.query('SELECT id, name FROM users WHERE email = $1 AND is_active = true', [email]);
-    console.log('🔍 User query result:', userResult.rows.length, 'rows found');
+    logger.debug('🔍 User query result:', userResult.rows.length, 'rows found');
     
     if (userResult.rows.length === 0) {
-      console.log('❌ No user found with email:', email);
+      logger.debug('❌ No user found with email:', email);
       // Don't reveal if user exists or not for security
       return res.json({ message: 'If you have an account with us, you\'ll receive an email with instructions to reset your password.' });
     }
@@ -289,18 +290,18 @@ router.post('/forgot-password', async (req, res) => {
     // Remove trailing slash
     frontendOrigin = frontendOrigin.replace(/\/$/, '');
     const resetLink = `${frontendOrigin}/reset-password?token=${resetToken}`;
-    console.log('✉️  Forgot-password: using FRONTEND origin =', frontendOrigin, ' resetLink =', resetLink);
+    logger.debug('✉️  Forgot-password: using FRONTEND origin =', frontendOrigin, ' resetLink =', resetLink);
 
     // Send email with reset link
-    console.log('📧 Attempting to send password reset email...');
+    logger.debug('📧 Attempting to send password reset email...');
     try {
       const emailService = require('../services/emailService');
-      console.log('📧 Email service loaded, calling sendPasswordReset...');
+      logger.debug('📧 Email service loaded, calling sendPasswordReset...');
       const result = await emailService.sendPasswordReset(email, resetToken);
-      console.log('📧 Email service result:', result);
+      logger.debug('📧 Email service result:', result);
       
       if (result.success) {
-        console.log('✅ Password reset email sent successfully:', result.messageId);
+        logger.debug('✅ Password reset email sent successfully:', result.messageId);
       } else {
         console.error('❌ Failed to send password reset email:', result.error);
       }
@@ -347,54 +348,54 @@ router.get('/get-user-email', async (req, res) => {
 // Reset password with token
 router.post('/reset-password', async (req, res) => {
   try {
-    console.log('🔑 RESET PASSWORD DEBUG - Backend received request');
+    logger.debug('🔑 RESET PASSWORD DEBUG - Backend received request');
     const { token, newPassword } = req.body;
-    console.log('🔑 Token received:', token ? `${token.substring(0, 10)}...` : 'null');
-    console.log('🔑 New password length:', newPassword ? newPassword.length : 'null');
+    logger.debug('🔑 Token received:', token ? `${token.substring(0, 10)}...` : 'null');
+    logger.debug('🔑 New password length:', newPassword ? newPassword.length : 'null');
 
     if (!token || !newPassword) {
-      console.log('❌ Missing token or password');
+      logger.debug('❌ Missing token or password');
       return res.status(400).json({ error: 'Token and new password are required' });
     }
 
     // Find user with valid reset token
-    console.log('🔍 Looking for user with reset token...');
+    logger.debug('🔍 Looking for user with reset token...');
     const userResult = await pool.query(`
       SELECT id, email, reset_token_expiry 
       FROM users 
       WHERE reset_token = $1 AND reset_token_expiry > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
     `, [token]);
 
-    console.log('🔍 User query result:', userResult.rows.length, 'rows found');
+    logger.debug('🔍 User query result:', userResult.rows.length, 'rows found');
     if (userResult.rows.length > 0) {
-      console.log('🔍 User found:', { id: userResult.rows[0].id, email: userResult.rows[0].email });
-      console.log('🔍 Token expiry:', userResult.rows[0].reset_token_expiry);
+      logger.debug('🔍 User found:', { id: userResult.rows[0].id, email: userResult.rows[0].email });
+      logger.debug('🔍 Token expiry:', userResult.rows[0].reset_token_expiry);
     }
 
     if (userResult.rows.length === 0) {
-      console.log('❌ No user found with valid reset token');
+      logger.debug('❌ No user found with valid reset token');
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
 
     const user = userResult.rows[0];
 
     // Hash new password
-    console.log('🔑 Hashing new password...');
+    logger.debug('🔑 Hashing new password...');
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    console.log('✅ Password hashed successfully');
+    logger.debug('✅ Password hashed successfully');
 
     // Update password and clear reset token
-    console.log('🔑 Updating user password and clearing reset token...');
+    logger.debug('🔑 Updating user password and clearing reset token...');
     await pool.query(`
       UPDATE users 
       SET password_hash = $1, reset_token = NULL, reset_token_expiry = NULL
       WHERE id = $2
     `, [hashedPassword, user.id]);
-    console.log('✅ Password updated successfully');
+    logger.debug('✅ Password updated successfully');
 
     // Return success with user email for auto-login
-    console.log('✅ Password reset completed successfully');
+    logger.debug('✅ Password reset completed successfully');
     res.json({ 
       message: 'Password reset successfully',
       email: user.email 

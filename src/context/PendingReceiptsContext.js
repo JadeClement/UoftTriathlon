@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const PendingReceiptsContext = createContext({
   pendingReceiptsCount: 0,
@@ -13,7 +14,7 @@ const POLL_INTERVAL_MS = 60000;
 export const PendingReceiptsProvider = ({ children }) => {
   const { currentUser, isAdmin, isExec } = useAuth();
   const [pendingReceiptsCount, setPendingReceiptsCount] = useState(0);
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
 
   const canReview = !!currentUser && (isAdmin(currentUser) || isExec(currentUser));
 

@@ -11,6 +11,7 @@ import { PostSkeleton } from './LoadingSkeleton';
 import { hapticImpact } from '../utils/haptics';
 import { isTermExpiredError, TERM_EXPIRED_DEFAULT } from '../utils/apiError';
 import './Forum.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const Forum = () => {
   const { currentUser, isMember, isExec, isCoach } = useAuth();
@@ -30,17 +31,17 @@ const Forum = () => {
   const [workoutsFullyLoaded, setWorkoutsFullyLoaded] = useState(false); // Track if we've loaded all workouts
   const [lastWorkoutFilter, setLastWorkoutFilter] = useState('all'); // Track last filter to detect changes
   const [loading, setLoading] = useState(true);
-  
+
   // Offline data hooks
   const isOnline = useOnlineStatus();
-  const { 
-    posts: eventPostsFromCache, 
-    loading: eventsLoadingFromCache, 
+  const {
+    posts: eventPostsFromCache,
+    loading: eventsLoadingFromCache,
     fromCache: eventsFromCache,
     isOffline: eventsOffline,
-    refresh: refreshEvents
+    refresh: refreshEvents,
   } = useForumPosts({ type: 'event', enabled: isMember(effectiveUser) });
-  
+
   // Use cached events if available, otherwise use state
   const [eventPosts, setEventPosts] = useState([]);
   const [showWorkoutForm, setShowWorkoutForm] = useState(false);
@@ -54,16 +55,20 @@ const Forum = () => {
     date: '',
     time: '',
     content: '',
-    capacity: ''
+    capacity: '',
   });
   // iOS only: intervals for workout post (e.g. interval times for charts)
-  const isIOS = Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
+  const isIOS =
+    Capacitor.isNativePlatform &&
+    Capacitor.isNativePlatform() &&
+    Capacitor.getPlatform &&
+    Capacitor.getPlatform() === 'ios';
   const [showIntervalsSection, setShowIntervalsSection] = useState(false);
   const [workoutIntervals, setWorkoutIntervals] = useState([{ title: '', description: '' }]);
   const [eventForm, setEventForm] = useState({
     title: '',
     date: '',
-    content: ''
+    content: '',
   });
   // Ref to ensure the workout date input never has a min attribute (Safari/iOS can persist it)
   const workoutDateInputRef = useRef(null);
@@ -81,13 +86,13 @@ const Forum = () => {
     if (showWorkoutForm) {
       // Save current scroll position
       const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
-      
+
       // Lock body scroll - use a simpler approach that doesn't interfere with modal positioning
       const originalOverflow = document.body.style.overflow;
       const originalPosition = document.body.style.position;
       const originalTop = document.body.style.top;
       const originalWidth = document.body.style.width;
-      
+
       // Prevent scrolling
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
@@ -95,7 +100,7 @@ const Forum = () => {
       document.body.style.width = '100%';
       document.body.style.left = '0';
       document.body.style.right = '0';
-      
+
       return () => {
         // Restore original styles
         document.body.style.overflow = originalOverflow;
@@ -114,7 +119,7 @@ const Forum = () => {
   const [eventEditForm, setEventEditForm] = useState({
     title: '',
     date: '',
-    content: ''
+    content: '',
   });
   const [savingEvent, setSavingEvent] = useState(false);
   const [workoutSignups, setWorkoutSignups] = useState({});
@@ -124,14 +129,14 @@ const Forum = () => {
   const [workoutToCancel, setWorkoutToCancel] = useState(null);
   const [showPromotionMessage, setShowPromotionMessage] = useState(false);
   const [promotedWorkout, setPromotedWorkout] = useState(null);
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
   const [workoutsLoading, setWorkoutsLoading] = useState(false);
   const [termExpired, setTermExpired] = useState(false);
   const [termExpiredMessage, setTermExpiredMessage] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [deleteWorkoutConfirm, setDeleteWorkoutConfirm] = useState({ isOpen: false, postId: null });
   const [deleteEventConfirm, setDeleteEventConfirm] = useState({ isOpen: false, postId: null });
-  
+
   // Reload when time filter or past page changes
   useEffect(() => {
     if (isMember(currentUser)) {
@@ -157,7 +162,7 @@ const Forum = () => {
       const filtered = getFilteredWorkouts();
       const itemsPerPage = 5;
       const neededForCurrentPage = pastPage * itemsPerPage;
-      
+
       // If we don't have enough workouts for the current page, load more
       if (filtered.length < neededForCurrentPage && !workoutsFullyLoaded) {
         loadForumPosts();
@@ -165,20 +170,20 @@ const Forum = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pastPage]);
-  
+
   // Function to check if a workout type is allowed for the user's sport
   const isWorkoutTypeAllowed = (workoutType) => {
     console.log('🔍 isWorkoutTypeAllowed debug:', {
       currentUser: currentUser,
       sport: currentUser?.sport,
-      workoutType: workoutType
+      workoutType: workoutType,
     });
-    
+
     if (!currentUser || !currentUser.sport) {
       console.log('🔍 No sport preference, showing all workouts');
       return true; // Show all if no sport preference
     }
-    
+
     const sport = currentUser.sport;
     const isAllowed = (() => {
       switch (sport) {
@@ -194,7 +199,7 @@ const Forum = () => {
           return true; // Show all for unknown sports
       }
     })();
-    
+
     console.log('🔍 Sport filtering result:', { sport, workoutType, isAllowed });
     return isAllowed;
   };
@@ -209,22 +214,22 @@ const Forum = () => {
         { value: 'run', label: 'Run' },
         { value: 'swim', label: 'Swim' },
         { value: 'brick', label: 'Brick (Bike + Run)' },
-        { value: 'other', label: 'Other' }
+        { value: 'other', label: 'Other' },
       ];
     }
-    
+
     const sport = currentUser.sport;
-    
+
     switch (sport) {
       case 'run_only':
         return [
           { value: 'run', label: 'Run' },
-          { value: 'other', label: 'Other' }
+          { value: 'other', label: 'Other' },
         ];
       case 'swim_only':
         return [
           { value: 'swim', label: 'Swim' },
-          { value: 'other', label: 'Other' }
+          { value: 'other', label: 'Other' },
         ];
       case 'duathlon':
         return [
@@ -232,7 +237,7 @@ const Forum = () => {
           { value: 'outdoor-ride', label: 'Outdoor Ride' },
           { value: 'brick', label: 'Brick (Bike + Run)' },
           { value: 'spin', label: 'Spin' },
-          { value: 'other', label: 'Other' }
+          { value: 'other', label: 'Other' },
         ];
       case 'triathlon':
         return [
@@ -241,7 +246,7 @@ const Forum = () => {
           { value: 'brick', label: 'Brick (Bike + Run)' },
           { value: 'swim', label: 'Swim' },
           { value: 'spin', label: 'Spin' },
-          { value: 'other', label: 'Other' }
+          { value: 'other', label: 'Other' },
         ];
       default:
         return [
@@ -250,7 +255,7 @@ const Forum = () => {
           { value: 'run', label: 'Run' },
           { value: 'swim', label: 'Swim' },
           { value: 'brick', label: 'Brick (Bike + Run)' },
-          { value: 'other', label: 'Other' }
+          { value: 'other', label: 'Other' },
         ];
     }
   };
@@ -259,22 +264,15 @@ const Forum = () => {
   useEffect(() => {
     const options = getAllowedWorkoutTypes();
     if (!options || options.length === 0) return;
-    const valid = options.some(o => o.value === workoutForm.type);
+    const valid = options.some((o) => o.value === workoutForm.type);
     if (!valid) {
-      setWorkoutForm(form => ({ ...form, type: options[0].value }));
+      setWorkoutForm((form) => ({ ...form, type: options[0].value }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.sport]);
-  
-  const { 
-    editingWorkout, 
-    editForm, 
-    saving, 
-    startEdit, 
-    cancelEdit, 
-    updateField, 
-    saveWorkout 
-  } = useWorkoutEdit(API_BASE_URL);
+
+  const { editingWorkout, editForm, saving, startEdit, cancelEdit, updateField, saveWorkout } =
+    useWorkoutEdit(API_BASE_URL);
 
   // ESLint: loadForumPosts is stable and we only want to rerun when effectiveUser or membership changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,7 +286,7 @@ const Forum = () => {
       setLoading(false);
       return;
     }
-    
+
     const member = isMember(effectiveUser);
     console.log('🧭 Forum: user role check', { member, role: effectiveUser?.role });
     // If user is at least member, load posts. If pending, we'll render a gate message.
@@ -298,7 +296,7 @@ const Forum = () => {
       // Ensure we don't stay stuck on loading for pending users
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveUser, isMember]);
 
   // Listen for profile updates to refresh profile pictures
@@ -311,18 +309,18 @@ const Forum = () => {
     };
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
-    
+
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Check for tab query parameter and set active tab accordingly
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    
+
     if (tabParam === 'events') {
       setActiveTab('events');
     } else if (tabParam === 'workouts') {
@@ -354,34 +352,39 @@ const Forum = () => {
 
       // Load workout posts - load in batches until we have enough filtered results
       setWorkoutsLoading(true);
-      
+
       // Determine if we need to reset (when filters change) or continue loading (when navigating pages)
       const filterChanged = workoutFilter !== lastWorkoutFilter;
-      const shouldReset = timeFilter === 'past' && (allLoadedWorkouts.length === 0 || filterChanged);
-      
-      console.log('🔄 Loading state:', { filterChanged, shouldReset, allLoadedWorkoutsCount: allLoadedWorkouts.length });
-      
+      const shouldReset =
+        timeFilter === 'past' && (allLoadedWorkouts.length === 0 || filterChanged);
+
+      console.log('🔄 Loading state:', {
+        filterChanged,
+        shouldReset,
+        allLoadedWorkoutsCount: allLoadedWorkouts.length,
+      });
+
       if (filterChanged) {
         setLastWorkoutFilter(workoutFilter);
         setAllLoadedWorkouts([]);
         setWorkoutsFullyLoaded(false);
       }
-      
+
       let allWorkouts = shouldReset ? [] : [...allLoadedWorkouts]; // Keep existing workouts if continuing
       let page = shouldReset ? 1 : Math.floor(allLoadedWorkouts.length / 20) + 1; // Continue from where we left off
       let hasMore = true;
       const limit = 20; // Load 20 at a time
-      
+
       // For upcoming workouts, just load once (no pagination needed client-side)
       if (timeFilter === 'upcoming') {
         const qp = new URLSearchParams();
         qp.set('type', 'workout');
         qp.set('time', 'upcoming');
-        
+
         const workoutResponse = await fetch(`${API_BASE_URL}/forum/posts?${qp.toString()}`, {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         if (workoutResponse.status === 403) {
@@ -396,7 +399,7 @@ const Forum = () => {
         if (workoutResponse.ok) {
           const workoutData = await workoutResponse.json();
           const posts = workoutData.posts || [];
-          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
+          const validPosts = posts.filter((post) => post && post.id && typeof post === 'object');
           allWorkouts = validPosts;
         }
       } else {
@@ -405,13 +408,13 @@ const Forum = () => {
         // 2. Accumulate in allWorkouts
         // 3. After each batch, check getFilteredWorkouts() to see if we have enough
         // 4. Keep loading until we have enough for current page OR run out of data
-        
+
         console.log('📋 Loading past workouts:', { shouldReset, page, pastPage, workoutFilter });
-        
+
         const itemsPerPage = 5;
         const neededForCurrentPage = pastPage * itemsPerPage;
         const neededForNextPage = (pastPage + 1) * itemsPerPage;
-        
+
         // Load batches until we have enough filtered workouts
         while (hasMore) {
           const qp = new URLSearchParams();
@@ -419,19 +422,19 @@ const Forum = () => {
           qp.set('time', 'past');
           qp.set('page', String(page));
           qp.set('limit', String(limit));
-          
+
           // Use backend filtering for workout_type (efficiency optimization)
           if (workoutFilter !== 'all') {
             qp.set('workout_type', workoutFilter);
           }
-          
+
           const fetchUrl = `${API_BASE_URL}/forum/posts?${qp.toString()}`;
           console.log('🌐 Fetching:', fetchUrl);
-          
+
           const workoutResponse = await fetch(fetchUrl, {
             headers: {
-              'Authorization': `Bearer ${token}`
-            }
+              Authorization: `Bearer ${token}`,
+            },
           });
 
           if (workoutResponse.status === 403) {
@@ -447,46 +450,53 @@ const Forum = () => {
             console.error('❌ Fetch failed:', workoutResponse.status);
             break;
           }
-          
+
           const workoutData = await workoutResponse.json();
           const posts = workoutData.posts || [];
-          const validPosts = posts.filter(post => post && post.id && typeof post === 'object');
-          
-          console.log('📦 Backend returned:', { totalPosts: posts.length, validPosts: validPosts.length });
-          
+          const validPosts = posts.filter((post) => post && post.id && typeof post === 'object');
+
+          console.log('📦 Backend returned:', {
+            totalPosts: posts.length,
+            validPosts: validPosts.length,
+          });
+
           if (validPosts.length === 0) {
             hasMore = false;
             break;
           }
-          
+
           // Add new workouts to collection
           allWorkouts = [...allWorkouts, ...validPosts];
-          
+
           console.log('📊 Total loaded so far:', allWorkouts.length);
-          
+
           // Temporarily update state so getFilteredWorkouts() can use it
           // (We'll set it properly at the end)
           const tempAllLoaded = allWorkouts;
-          
+
           // Use the EXACT same filtering logic as getFilteredWorkouts() to ensure accuracy
           // Step 1: Filter by sport (matches getFilteredWorkouts line 1113-1115)
-          const bySport = tempAllLoaded.filter(post => {
+          const bySport = tempAllLoaded.filter((post) => {
             return isWorkoutTypeAllowed(post.workout_type);
           });
-          
+
           // Step 2: Filter by time (matches getFilteredWorkouts line 1118-1121)
-          const byTime = bySport.filter(post => {
+          const byTime = bySport.filter((post) => {
             const past = isPast(post.workout_date);
             return timeFilter === 'past' ? past : !past;
           });
-          
+
           // Step 3: Apply workout type filter (matches getFilteredWorkouts line 1115-1128)
           let tempFiltered = byTime;
           if (workoutFilter !== 'all') {
-            tempFiltered = byTime.filter(post => {
+            tempFiltered = byTime.filter((post) => {
               switch (workoutFilter) {
                 case 'bike':
-                  return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
+                  return (
+                    post.workout_type === 'spin' ||
+                    post.workout_type === 'outdoor-ride' ||
+                    post.workout_type === 'brick'
+                  );
                 case 'swim':
                   return post.workout_type === 'swim';
                 case 'run':
@@ -496,26 +506,26 @@ const Forum = () => {
               }
             });
           }
-          
+
           const filteredCount = tempFiltered.length;
-          
+
           // Check if backend has more pages
           const pagination = workoutData.pagination;
           hasMore = pagination?.hasMore || false;
-          
+
           // Decision: Do we have enough?
           // CRITICAL: For page 1, we MUST have at least 5 workouts before stopping
           // For page 2+, we need at least (pastPage) * 5
-          
+
           console.log('🔍 Loading check:', {
             pastPage,
             filteredCount,
             neededForCurrentPage,
             neededForNextPage,
             hasMore,
-            allWorkoutsCount: allWorkouts.length
+            allWorkoutsCount: allWorkouts.length,
           });
-          
+
           // Priority 1: If on page 1, we MUST keep loading until we have at least 5
           if (pastPage === 1 && filteredCount < itemsPerPage) {
             if (!hasMore) {
@@ -528,28 +538,28 @@ const Forum = () => {
             page++;
             continue;
           }
-          
+
           // Priority 2: Stop if we have enough for current + next page (ideal)
           if (filteredCount >= neededForNextPage) {
             console.log('✅ Have enough for current + next page:', filteredCount);
             break;
           }
-          
+
           // Priority 3: If we have enough for current page, we can stop
           if (filteredCount >= neededForCurrentPage) {
             console.log('✅ Have enough for current page:', filteredCount);
             break;
           }
-          
+
           // If no more data from backend, stop even if we don't have enough
           if (!hasMore) {
             console.log('⚠️ No more data available, stopping with', filteredCount, 'workouts');
             break;
           }
-          
+
           // Load next batch
           page++;
-          
+
           // Safety limit to prevent infinite loops
           if (page > 100) {
             console.warn('Hit safety limit of 100 pages while loading workouts');
@@ -557,11 +567,11 @@ const Forum = () => {
           }
         }
       }
-      
+
       setAllLoadedWorkouts(allWorkouts);
       setWorkoutPosts(allWorkouts);
       setWorkoutsFullyLoaded(!hasMore || timeFilter === 'upcoming');
-        
+
       // Do not load per-workout signups/waitlists here; fetch on demand in detail view
 
       // Event posts are now loaded via useForumPosts hook (offline-first)
@@ -591,28 +601,34 @@ const Forum = () => {
       if (!token) return;
 
       const signupsData = {};
-      
+
       for (const workout of workouts) {
-        const signupsResponse = await fetch(`${API_BASE_URL}/forum/workouts/${workout.id}/signups`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        const signupsResponse = await fetch(
+          `${API_BASE_URL}/forum/workouts/${workout.id}/signups`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           }
-        });
-        
+        );
+
         if (signupsResponse.ok) {
           const data = await signupsResponse.json();
           signupsData[workout.id] = data.signups || [];
           console.log(`🔍 Workout ${workout.id} signups:`, data.signups || []);
         }
       }
-      
+
       setWorkoutSignups(signupsData);
       console.log('📊 All workout signups loaded:', signupsData);
-      console.log('🔍 Current workoutSignups state structure:', Object.keys(signupsData).map(key => ({
-        workoutId: key,
-        signupCount: signupsData[key]?.length || 0,
-        signups: signupsData[key] || []
-      })));
+      console.log(
+        '🔍 Current workoutSignups state structure:',
+        Object.keys(signupsData).map((key) => ({
+          workoutId: key,
+          signupCount: signupsData[key]?.length || 0,
+          signups: signupsData[key] || [],
+        }))
+      );
     } catch (error) {
       console.error('Error loading workout signups:', error);
     }
@@ -624,20 +640,23 @@ const Forum = () => {
       if (!token) return;
 
       const waitlistData = {};
-      
+
       for (const workout of workouts) {
-        const waitlistResponse = await fetch(`${API_BASE_URL}/forum/workouts/${workout.id}/waitlist`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        const waitlistResponse = await fetch(
+          `${API_BASE_URL}/forum/workouts/${workout.id}/waitlist`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           }
-        });
+        );
 
         if (waitlistResponse.ok) {
           const data = await waitlistResponse.json();
           waitlistData[workout.id] = data.waitlist || [];
         }
       }
-      
+
       setWorkoutWaitlists(waitlistData);
     } catch (error) {
       console.error('Error loading workout waitlists:', error);
@@ -651,21 +670,21 @@ const Forum = () => {
       if (!token) return;
 
       const rsvpsData = {};
-      
+
       for (const event of events) {
         const rsvpsResponse = await fetch(`${API_BASE_URL}/forum/events/${event.id}`, {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
-        
+
         if (rsvpsResponse.ok) {
           const data = await rsvpsResponse.json();
           rsvpsData[event.id] = data.rsvps || [];
           console.log(`🔍 Event ${event.id} RSVPs:`, data.rsvps || []);
         }
       }
-      
+
       setEventRsvps(rsvpsData);
       console.log('📊 All event RSVPs loaded:', rsvpsData);
     } catch (error) {
@@ -679,7 +698,7 @@ const Forum = () => {
     setEventEditForm({
       title: eventPost.title || '',
       date: eventPost.event_date ? String(eventPost.event_date).split('T')[0] : '',
-      content: eventPost.content || ''
+      content: eventPost.content || '',
     });
   };
 
@@ -689,7 +708,7 @@ const Forum = () => {
   };
 
   const updateEventField = (field, value) => {
-    setEventEditForm(prev => ({ ...prev, [field]: value }));
+    setEventEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const saveEvent = async (eventId) => {
@@ -701,16 +720,16 @@ const Forum = () => {
       const body = {
         title: eventEditForm.title,
         eventDate: eventEditForm.date,
-        content: eventEditForm.content
+        content: eventEditForm.content,
       };
 
       const response = await fetch(`${API_BASE_URL}/forum/posts/${eventId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -732,10 +751,12 @@ const Forum = () => {
   const handleWorkoutSignUp = async (workoutId) => {
     // Check if offline - workout signups require online connection
     if (!navigator.onLine) {
-      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+      showError(
+        "Whoops! You're offline right now. Please check your internet connection and try again when you're back online!"
+      );
       return;
     }
-    
+
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -745,14 +766,16 @@ const Forum = () => {
 
       // Check if user is already signed up
       const isCurrentlySignedUp = isUserSignedUp(workoutId);
-      
+
       if (!isCurrentlySignedUp) {
         // Check capacity limit before allowing sign-up
-        const workout = workoutPosts.find(w => w.id === workoutId);
+        const workout = workoutPosts.find((w) => w.id === workoutId);
         if (workout && workout.capacity) {
           const currentSignups = workoutSignups[workoutId]?.length || 0;
           if (currentSignups >= workout.capacity) {
-            showWarning(`Sorry, this workout is full! Maximum capacity: ${workout.capacity} people.`);
+            showWarning(
+              `Sorry, this workout is full! Maximum capacity: ${workout.capacity} people.`
+            );
             return;
           }
         }
@@ -761,17 +784,17 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/workouts/${workoutId}/signup`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
         // eslint-disable-next-line no-unused-vars
         const result = await response.json();
-        
+
         // Reload signup data from backend to ensure accuracy
         await loadWorkoutSignups(workoutPosts);
-        
+
         // Also reload waitlist data in case someone was promoted
         await loadWorkoutWaitlists(workoutPosts);
       } else {
@@ -786,13 +809,13 @@ const Forum = () => {
   const isUserSignedUp = (workoutId) => {
     if (!workoutId) return false;
     const signups = workoutSignups[workoutId] || [];
-    return signups.some(signup => signup && signup.user_id === currentUser.id);
+    return signups.some((signup) => signup && signup.user_id === currentUser.id);
   };
 
   // eslint-disable-next-line no-unused-vars
   const isWorkoutFull = (workoutId) => {
     if (!workoutId) return false;
-    const workout = workoutPosts.find(w => w && w.id === workoutId);
+    const workout = workoutPosts.find((w) => w && w.id === workoutId);
     if (!workout || !workout.capacity) return false;
     const currentSignups = workoutSignups[workoutId]?.length || 0;
     return currentSignups >= workout.capacity;
@@ -805,14 +828,14 @@ const Forum = () => {
       // Parse the workout date and get just the date part (YYYY-MM-DD)
       const workoutDate = new Date(post.workout_date);
       if (isNaN(workoutDate.getTime())) return false;
-      
+
       // Get today's date in the same timezone as the workout date
       const today = new Date();
-      
+
       // Compare dates by converting both to YYYY-MM-DD format
       const workoutDateStr = workoutDate.toISOString().split('T')[0];
       const todayStr = today.toISOString().split('T')[0];
-      
+
       return workoutDateStr < todayStr;
     } catch (_) {
       return false;
@@ -822,7 +845,11 @@ const Forum = () => {
   // eslint-disable-next-line no-unused-vars
   const isUserOnWaitlist = (workoutId) => {
     if (!workoutId) return false;
-    return workoutWaitlists[workoutId]?.some(waitlist => waitlist && waitlist.user_id === currentUser.id) || false;
+    return (
+      workoutWaitlists[workoutId]?.some(
+        (waitlist) => waitlist && waitlist.user_id === currentUser.id
+      ) || false
+    );
   };
 
   // Returns 1-based position or null if not on waitlist
@@ -830,15 +857,16 @@ const Forum = () => {
   const getWaitlistPosition = (workoutId) => {
     if (!workoutId) return null;
     const list = workoutWaitlists[workoutId] || [];
-    const idx = list.findIndex(w => w && w.user_id === currentUser.id);
+    const idx = list.findIndex((w) => w && w.user_id === currentUser.id);
     return idx === -1 ? null : idx + 1;
   };
 
   // eslint-disable-next-line no-unused-vars
   const formatOrdinal = (n) => {
     if (n == null) return '';
-    const s = ["th","st","nd","rd"], v = n % 100;
-    return n + (s[(v-20)%10] || s[v] || s[0]);
+    const s = ['th', 'st', 'nd', 'rd'],
+      v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
 
   // Event RSVP functions
@@ -855,41 +883,41 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/events/${eventId}/rsvp`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Update local state based on backend response
         const currentRsvps = eventRsvps[eventId] || [];
-        
+
         if (result.status === null) {
           // RSVP was removed
-          const filteredRsvps = currentRsvps.filter(r => r.user_id !== currentUser.id);
-          setEventRsvps(prev => ({
+          const filteredRsvps = currentRsvps.filter((r) => r.user_id !== currentUser.id);
+          setEventRsvps((prev) => ({
             ...prev,
-            [eventId]: filteredRsvps
+            [eventId]: filteredRsvps,
           }));
         } else {
           // RSVP was added/updated
-          const filteredRsvps = currentRsvps.filter(r => r.user_id !== currentUser.id);
+          const filteredRsvps = currentRsvps.filter((r) => r.user_id !== currentUser.id);
           const newRsvp = {
             id: Date.now(),
             user_id: currentUser.id,
             user_name: currentUser.name,
             status: result.status,
-            signed_up_at: new Date().toISOString().split('T')[0]
+            signed_up_at: new Date().toISOString().split('T')[0],
           };
-          setEventRsvps(prev => ({
+          setEventRsvps((prev) => ({
             ...prev,
-            [eventId]: [...filteredRsvps, newRsvp]
+            [eventId]: [...filteredRsvps, newRsvp],
           }));
         }
-        
+
         console.log('Event RSVP updated:', result);
       } else {
         const error = await response.json();
@@ -906,7 +934,7 @@ const Forum = () => {
   const getUserRsvpStatus = (eventId) => {
     if (!eventId) return null;
     const rsvps = eventRsvps[eventId] || [];
-    const userRsvp = rsvps.find(rsvp => rsvp.user_id === currentUser.id);
+    const userRsvp = rsvps.find((rsvp) => rsvp.user_id === currentUser.id);
     return userRsvp ? userRsvp.status : null;
   };
 
@@ -922,8 +950,8 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/workouts/${workoutId}/waitlist`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -951,8 +979,8 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/workouts/${workoutId}/waitlist`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -976,7 +1004,7 @@ const Forum = () => {
 
   const handleCancelConfirm = async () => {
     if (!workoutToCancel) return;
-    
+
     try {
       const token = localStorage.getItem('triathlonToken');
       if (!token) {
@@ -987,8 +1015,8 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/workouts/${workoutToCancel}/signup`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -1015,15 +1043,15 @@ const Forum = () => {
   // Check if user was promoted from waitlist after data refresh
   // eslint-disable-next-line no-unused-vars
   const checkForWaitlistPromotion = (workoutId) => {
-            const wasOnWaitlist = workoutWaitlists[workoutId]?.some(w => w.user_id === currentUser.id);
-        const isNowSignedUp = workoutSignups[workoutId]?.some(s => s.user_id === currentUser.id);
-    
+    const wasOnWaitlist = workoutWaitlists[workoutId]?.some((w) => w.user_id === currentUser.id);
+    const isNowSignedUp = workoutSignups[workoutId]?.some((s) => s.user_id === currentUser.id);
+
     if (wasOnWaitlist && isNowSignedUp) {
       // User was promoted from waitlist!
-      const workout = workoutPosts.find(w => w.id === workoutId);
+      const workout = workoutPosts.find((w) => w.id === workoutId);
       setPromotedWorkout(workout);
       setShowPromotionMessage(true);
-      
+
       // Auto-hide after 10 seconds
       setTimeout(() => {
         setShowPromotionMessage(false);
@@ -1034,11 +1062,19 @@ const Forum = () => {
 
   const handleSubmitWorkout = async (e) => {
     e.preventDefault();
-    if (!workoutForm.title.trim() || !workoutForm.date || !workoutForm.time || !workoutForm.content.trim()) return;
+    if (
+      !workoutForm.title.trim() ||
+      !workoutForm.date ||
+      !workoutForm.time ||
+      !workoutForm.content.trim()
+    )
+      return;
 
     // Check if offline - forum posts require online connection
     if (!navigator.onLine) {
-      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+      showError(
+        "Whoops! You're offline right now. Please check your internet connection and try again when you're back online!"
+      );
       return;
     }
 
@@ -1064,23 +1100,23 @@ const Forum = () => {
             ? workoutIntervals
                 .filter((i) => i.title.trim() || i.description.trim())
                 .map((i) => ({ title: i.title.trim(), description: i.description.trim() }))
-            : undefined
+            : undefined,
       };
       console.log('📤 Create workout request:', { url: `${API_BASE_URL}/forum/posts`, payload });
 
       const response = await fetch(`${API_BASE_URL}/forum/posts`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         const newPostData = await response.json();
         console.log('🔍 New workout data received:', newPostData);
-        
+
         // Check if the response has the expected structure
         if (newPostData.post) {
           setWorkoutPosts([newPostData.post, ...workoutPosts]);
@@ -1095,15 +1131,15 @@ const Forum = () => {
           console.log('🔄 Reloading all posts as fallback...');
           loadForumPosts();
         }
-        
-        const defaultType = (getAllowedWorkoutTypes()[0]?.value) || 'swim';
+
+        const defaultType = getAllowedWorkoutTypes()[0]?.value || 'swim';
         setWorkoutForm({
           title: '',
           type: defaultType,
           date: '',
           time: '',
           content: '',
-          capacity: ''
+          capacity: '',
         });
         setShowIntervalsSection(false);
         setWorkoutIntervals([{ title: '', description: '' }]);
@@ -1120,17 +1156,18 @@ const Forum = () => {
           status: response.status,
           statusText: response.statusText,
           body: errorBody,
-          url: `${API_BASE_URL}/forum/posts`
+          url: `${API_BASE_URL}/forum/posts`,
         });
         showError(
-          errorBody?.error || `Failed to create workout (${response.status}): ${response.statusText}`
+          errorBody?.error ||
+            `Failed to create workout (${response.status}): ${response.statusText}`
         );
       }
     } catch (error) {
       console.error('❌ Error creating workout post:', {
         message: error?.message,
         stack: error?.stack,
-        name: error?.name
+        name: error?.name,
       });
       showError(`Failed to create workout: ${error?.message || 'Network or server error'}`);
     }
@@ -1142,7 +1179,9 @@ const Forum = () => {
 
     // Check if offline - forum posts require online connection
     if (!navigator.onLine) {
-      showError("Whoops! You're offline right now. Please check your internet connection and try again when you're back online!");
+      showError(
+        "Whoops! You're offline right now. Please check your internet connection and try again when you're back online!"
+      );
       return;
     }
 
@@ -1150,7 +1189,7 @@ const Forum = () => {
     const selectedDate = new Date(eventForm.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-    
+
     if (selectedDate <= today) {
       showError('Please select a future date for your event.');
       return;
@@ -1166,15 +1205,15 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/posts`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           title: eventForm.title.trim(),
           eventDate: eventForm.date,
           content: eventForm.content.trim(),
-          type: 'event'
-        })
+          type: 'event',
+        }),
       });
 
       if (response.ok) {
@@ -1185,7 +1224,7 @@ const Forum = () => {
         setEventForm({
           title: '',
           date: '',
-          content: ''
+          content: '',
         });
         setShowEventForm(false);
       } else {
@@ -1208,8 +1247,8 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/posts/${postId}/like`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -1230,7 +1269,7 @@ const Forum = () => {
   const confirmDeleteWorkout = async () => {
     const { postId } = deleteWorkoutConfirm;
     setDeleteWorkoutConfirm({ isOpen: false, postId: null });
-    
+
     if (!postId) return;
 
     try {
@@ -1244,8 +1283,8 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/posts/${postId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -1275,7 +1314,7 @@ const Forum = () => {
   const confirmDeleteEvent = async () => {
     const { postId } = deleteEventConfirm;
     setDeleteEventConfirm({ isOpen: false, postId: null });
-    
+
     if (!postId) return;
 
     try {
@@ -1289,8 +1328,8 @@ const Forum = () => {
       const response = await fetch(`${API_BASE_URL}/forum/posts/${postId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -1313,12 +1352,10 @@ const Forum = () => {
     }
   };
 
-
-
   // Date helpers (treat YYYY-MM-DD as UTC to avoid TZ shifting)
   const parseDateOnlyUTC = (dateStr) => {
     if (!dateStr) return null;
-    const base = (typeof dateStr === 'string') ? dateStr.split('T')[0] : dateStr;
+    const base = typeof dateStr === 'string' ? dateStr.split('T')[0] : dateStr;
     const parts = base.split('-');
     if (parts.length !== 3) return new Date(dateStr);
     const [y, m, d] = parts.map(Number);
@@ -1335,10 +1372,14 @@ const Forum = () => {
     return [...eventPosts].sort((a, b) => {
       const da = a?.event_date
         ? parseDateOnlyUTC(a.event_date)
-        : (a?.created_at ? new Date(a.created_at) : new Date(0));
+        : a?.created_at
+          ? new Date(a.created_at)
+          : new Date(0);
       const db = b?.event_date
         ? parseDateOnlyUTC(b.event_date)
-        : (b?.created_at ? new Date(b.created_at) : new Date(0));
+        : b?.created_at
+          ? new Date(b.created_at)
+          : new Date(0);
       return db - da;
     });
   }, [eventPosts]);
@@ -1365,17 +1406,21 @@ const Forum = () => {
     // Only apply sport preference filtering when a specific workout type is selected
     // When "all" is selected, show all workout types regardless of sport preference
     if (workoutFilter !== 'all') {
-      filtered = filtered.filter(post => {
+      filtered = filtered.filter((post) => {
         return isWorkoutTypeAllowed(post.workout_type);
       });
     }
 
     // Filter by workout type if not "all"
     if (workoutFilter !== 'all') {
-      filtered = filtered.filter(post => {
+      filtered = filtered.filter((post) => {
         switch (workoutFilter) {
           case 'bike':
-            return post.workout_type === 'spin' || post.workout_type === 'outdoor-ride' || post.workout_type === 'brick';
+            return (
+              post.workout_type === 'spin' ||
+              post.workout_type === 'outdoor-ride' ||
+              post.workout_type === 'brick'
+            );
           case 'swim':
             return post.workout_type === 'swim';
           case 'run':
@@ -1387,7 +1432,7 @@ const Forum = () => {
     }
 
     // Then filter by time
-    const byTime = filtered.filter(post => {
+    const byTime = filtered.filter((post) => {
       const past = isPast(post.workout_date);
       return timeFilter === 'past' ? past : !past;
     });
@@ -1424,14 +1469,14 @@ const Forum = () => {
     const filtered = getFilteredWorkouts();
     const itemsPerPage = 5;
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
-    
+
     // Note: Loading more workouts is handled by the useEffect on pastPage change
-    
+
     return {
       currentPage: pastPage,
       totalPages: totalPages || 1,
       totalPosts: filtered.length,
-      hasMore: pastPage < totalPages
+      hasMore: pastPage < totalPages,
     };
   };
 
@@ -1456,20 +1501,28 @@ const Forum = () => {
       <div className="forum-container">
         <div className="container">
           <h1 className="section-title">Team Forum</h1>
-          <div className="notice-card" style={{
-            background: '#fff8e1',
-            border: '1px solid #facc15',
-            color: '#92400e',
-            padding: '16px',
-            borderRadius: '8px',
-            lineHeight: 1.6,
-            marginTop: '16px'
-          }}>
-            <p style={{margin: 0}}>
-              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are already signed in, go to your <a href="/profile">Profile</a> page and upload your membership payment receipt. An exec will review it and confirm your registration—no need to email it. After approval, log out and log back in to see this page.
+          <div
+            className="notice-card"
+            style={{
+              background: '#fff8e1',
+              border: '1px solid #facc15',
+              color: '#92400e',
+              padding: '16px',
+              borderRadius: '8px',
+              lineHeight: 1.6,
+              marginTop: '16px',
+            }}
+          >
+            <p style={{ margin: 0 }}>
+              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are
+              already signed in, go to your <a href="/profile">Profile</a> page and upload your
+              membership payment receipt. An exec will review it and confirm your registration—no
+              need to email it. After approval, log out and log back in to see this page.
             </p>
-            <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
-              <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!
+            <p style={{ margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9 }}>
+              <strong>Note:</strong> If you were a member on our old website, you'll be
+              automatically approved as a member once you sign up. You will get an email once you
+              get access!
             </p>
           </div>
         </div>
@@ -1484,20 +1537,28 @@ const Forum = () => {
       <div className="forum-container">
         <div className="container">
           <h1 className="section-title">Team Forum</h1>
-          <div className="notice-card" style={{
-            background: '#fff8e1',
-            border: '1px solid #facc15',
-            color: '#92400e',
-            padding: '16px',
-            borderRadius: '8px',
-            lineHeight: 1.6,
-            marginTop: '16px'
-          }}>
-            <p style={{margin: 0}}>
-              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are already signed in, go to your <a href="/profile">Profile</a> page and upload your membership payment receipt. An exec will review it and confirm your registration—no need to email it. After approval, log out and log back in to see this page.
+          <div
+            className="notice-card"
+            style={{
+              background: '#fff8e1',
+              border: '1px solid #facc15',
+              color: '#92400e',
+              padding: '16px',
+              borderRadius: '8px',
+              lineHeight: 1.6,
+              marginTop: '16px',
+            }}
+          >
+            <p style={{ margin: 0 }}>
+              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are
+              already signed in, go to your <a href="/profile">Profile</a> page and upload your
+              membership payment receipt. An exec will review it and confirm your registration—no
+              need to email it. After approval, log out and log back in to see this page.
             </p>
-            <p style={{margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9}}>
-              <strong>Note:</strong> If you were a member on our old website, you'll be automatically approved as a member once you sign up. You will get an email once you get access!
+            <p style={{ margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9 }}>
+              <strong>Note:</strong> If you were a member on our old website, you'll be
+              automatically approved as a member once you sign up. You will get an email once you
+              get access!
             </p>
           </div>
         </div>
@@ -1511,17 +1572,18 @@ const Forum = () => {
       <div className="forum-container">
         <div className="container">
           <h1 className="section-title">Team Forum</h1>
-          <div className="notice-card" style={{
-            background: '#fee2e2',
-            border: '1px solid #ef4444',
-            color: '#991b1b',
-            padding: '16px',
-            borderRadius: '8px',
-            lineHeight: 1.6
-          }}>
-            <p style={{margin: 0}}>
-              {termExpiredMessage}
-            </p>
+          <div
+            className="notice-card"
+            style={{
+              background: '#fee2e2',
+              border: '1px solid #ef4444',
+              color: '#991b1b',
+              padding: '16px',
+              borderRadius: '8px',
+              lineHeight: 1.6,
+            }}
+          >
+            <p style={{ margin: 0 }}>{termExpiredMessage}</p>
           </div>
         </div>
       </div>
@@ -1542,10 +1604,32 @@ const Forum = () => {
       <div className="forum-container">
         <div className="container">
           <div style={{ marginBottom: '1rem' }}>
-            <h1 className="section-title" style={{ marginBottom: '-1rem', marginTop: '0', lineHeight: '1', paddingBottom: '0', display: 'block' }}>Team Forum</h1>
-            <p className="section-subtitle" style={{ marginTop: '2rem', marginBottom: '0', lineHeight: '1.2', paddingTop: '0', display: 'block' }}>Connect with your teammates and discuss training, races, and more!</p>
+            <h1
+              className="section-title"
+              style={{
+                marginBottom: '-1rem',
+                marginTop: '0',
+                lineHeight: '1',
+                paddingBottom: '0',
+                display: 'block',
+              }}
+            >
+              Team Forum
+            </h1>
+            <p
+              className="section-subtitle"
+              style={{
+                marginTop: '2rem',
+                marginBottom: '0',
+                lineHeight: '1.2',
+                paddingTop: '0',
+                display: 'block',
+              }}
+            >
+              Connect with your teammates and discuss training, races, and more!
+            </p>
           </div>
-          
+
           {/* Offline Indicator */}
           {!isOnline && (
             <div className="offline-indicator">
@@ -1553,859 +1637,962 @@ const Forum = () => {
               <span className="offline-text">You're offline. Showing cached data.</span>
             </div>
           )}
-          
+
           {/* Forum Tabs */}
           <div className="forum-tabs">
-          <button 
-            className={`tab-button ${activeTab === 'workouts' ? 'active' : ''}`}
-            onClick={() => setActiveTab('workouts')}
-          >
-            🏃‍♂️ Workouts
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'events' ? 'active' : ''}`}
-            onClick={() => setActiveTab('events')}
-          >
-            🎉 Events
-          </button>
-        </div>
+            <button
+              className={`tab-button ${activeTab === 'workouts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('workouts')}
+            >
+              🏃‍♂️ Workouts
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'events' ? 'active' : ''}`}
+              onClick={() => setActiveTab('events')}
+            >
+              🎉 Events
+            </button>
+          </div>
 
-        {/* Workouts Section */}
-        {activeTab === 'workouts' && (
-          <div className="workouts-section">
-            <div className="section-header">
-              <h2>Workout Posts</h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                {!isOnline && (
-                  <span className="offline-badge" title="You're offline">
-                    📴 Offline
-                  </span>
-                )}
-                <button 
-                  className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
-                  onClick={() => setShowFilters(!showFilters)}
-                  aria-label="Toggle filters"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <line x1="3" y1="5" x2="17" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    <circle cx="6" cy="5" r="1.5" fill="currentColor"/>
-                    <line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    <circle cx="14" cy="10" r="1.5" fill="currentColor"/>
-                    <line x1="3" y1="15" x2="17" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    <circle cx="6" cy="15" r="1.5" fill="currentColor"/>
-                  </svg>
-                </button>
-                {(isExec(currentUser) || isCoach(currentUser)) && (
-                  <button 
-                    className="new-post-btn"
-                    onClick={() => setShowWorkoutForm(true)}
+          {/* Workouts Section */}
+          {activeTab === 'workouts' && (
+            <div className="workouts-section">
+              <div className="section-header">
+                <h2>Workout Posts</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {!isOnline && (
+                    <span className="offline-badge" title="You're offline">
+                      📴 Offline
+                    </span>
+                  )}
+                  <button
+                    className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
+                    onClick={() => setShowFilters(!showFilters)}
+                    aria-label="Toggle filters"
                   >
-                    +<span className="btn-text"> New Workout</span>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <line
+                        x1="3"
+                        y1="5"
+                        x2="17"
+                        y2="5"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                      <circle cx="6" cy="5" r="1.5" fill="currentColor" />
+                      <line
+                        x1="3"
+                        y1="10"
+                        x2="17"
+                        y2="10"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                      <circle cx="14" cy="10" r="1.5" fill="currentColor" />
+                      <line
+                        x1="3"
+                        y1="15"
+                        x2="17"
+                        y2="15"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                      <circle cx="6" cy="15" r="1.5" fill="currentColor" />
+                    </svg>
                   </button>
-                )}
+                  {(isExec(currentUser) || isCoach(currentUser)) && (
+                    <button className="new-post-btn" onClick={() => setShowWorkoutForm(true)}>
+                      +<span className="btn-text"> New Workout</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Filters Container */}
-            <div className={`filters-container ${showFilters ? 'filters-visible' : ''}`}>
-              {/* Time Filters (row 1) */}
-              <div className="workout-filters" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button 
-                    className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
-                    onClick={() => { setTimeFilter('upcoming'); setPastPage(1); }}
-                  >
-                    ⏳ Upcoming
-                  </button>
-                  <button 
-                    className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
-                    onClick={() => { setTimeFilter('past'); setPastPage(1); }}
-                  >
-                    🗂 Past
-                  </button>
+              {/* Filters Container */}
+              <div className={`filters-container ${showFilters ? 'filters-visible' : ''}`}>
+                {/* Time Filters (row 1) */}
+                <div
+                  className="workout-filters"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      className={`filter-btn ${timeFilter === 'upcoming' ? 'active' : ''}`}
+                      onClick={() => {
+                        setTimeFilter('upcoming');
+                        setPastPage(1);
+                      }}
+                    >
+                      ⏳ Upcoming
+                    </button>
+                    <button
+                      className={`filter-btn ${timeFilter === 'past' ? 'active' : ''}`}
+                      onClick={() => {
+                        setTimeFilter('past');
+                        setPastPage(1);
+                      }}
+                    >
+                      🗂 Past
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const pagination = getPaginationInfo();
+                    if (!pagination) return null;
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 13, color: '#6b7280' }}>
+                          Page {pagination.currentPage} of {pagination.totalPages} (
+                          {pagination.totalPosts} workouts)
+                        </span>
+                        <button
+                          className="filter-btn"
+                          onClick={() => setPastPage((p) => Math.max(1, p - 1))}
+                          disabled={pagination.currentPage <= 1}
+                        >
+                          Previous
+                        </button>
+                        <button
+                          className="filter-btn"
+                          onClick={() => setPastPage((p) => Math.min(pagination.totalPages, p + 1))}
+                          disabled={pagination.currentPage >= pagination.totalPages}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {(() => {
-                  const pagination = getPaginationInfo();
-                  if (!pagination) return null;
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, color: '#6b7280' }}>Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalPosts} workouts)</span>
-                      <button 
-                        className="filter-btn"
-                        onClick={() => setPastPage(p => Math.max(1, p - 1))}
-                        disabled={pagination.currentPage <= 1}
-                      >
-                        Previous
-                      </button>
-                      <button 
-                        className="filter-btn"
-                        onClick={() => setPastPage(p => Math.min(pagination.totalPages, p + 1))}
-                        disabled={pagination.currentPage >= pagination.totalPages}
-                      >
-                        Next
-                      </button>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Type Filters (row 2) */}
-              <div className="workout-filters">
-                <button 
-                  className={`filter-btn ${workoutFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setWorkoutFilter('all')}
-                >
-                  🏁 All Types
-                </button>
-                <button 
-                  className={`filter-btn ${workoutFilter === 'bike' ? 'active' : ''}`}
-                  onClick={() => setWorkoutFilter('bike')}
-                >
-                  🚴‍♂️ Bike
-                </button>
-                <button 
-                  className={`filter-btn ${workoutFilter === 'swim' ? 'active' : ''}`}
-                  onClick={() => setWorkoutFilter('swim')}
-                >
-                  🏊‍♂️ Swim
-                </button>
-                <button 
-                  className={`filter-btn ${workoutFilter === 'run' ? 'active' : ''}`}
-                  onClick={() => setWorkoutFilter('run')}
-                >
-                  🏃‍♀️ Run
-                </button>
-              </div>
-            </div>
-
-            {(() => {
-              const paginatedWorkouts = getPaginatedWorkouts();
-              const filteredCount = getFilteredWorkouts().length;
-              
-              if (filteredCount === 0) {
-                return (
-                  <p className="no-posts">
-                    {workoutsLoading 
-                      ? 'Loading workouts...'
-                      : (workoutPosts.length === 0 
-                          ? 'No workout posts yet.' 
-                          : `No ${workoutFilter === 'all' ? '' : workoutFilter} workouts found.`)}
-                  </p>
-                );
-              }
-              
-              return (
-                <div className="posts-list">
-                  {paginatedWorkouts.filter(post => post && post.id).map(post => (
-                  <div key={post.id} className="post-card workout-post" onClick={(e) => {
-                      // Only navigate if clicking on the card itself, not on buttons or edit form
-                      if (!e.target.closest('.workout-actions-admin') && !e.target.closest('.workout-edit-form')) {
-                        window.location.href = `/workout/${post.id}`;
-                      }
-                    }}>
-                    <div className="post-header">
-                      {post.title ? (
-                        <div className="workout-title">
-                          <h2>
-                            {post.title}
-                          </h2>
-                        </div>
-                      ) : (
-                        <div className="workout-title">
-                          <h2>Untitled Workout</h2>
-                        </div>
-                      )}
-                      
-                      {/* Edit and Delete buttons for workout author, executives, and administrators */}
-                      {(currentUser.id === post.user_id || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
-                        <div className="workout-actions-admin">
-                          <button 
-                            className="edit-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEdit(post);
-                            }}
-                            disabled={editingWorkout === post.id}
-                          >
-                            ✏️<span className="btn-text"> Edit</span>
-                          </button>
-                          <button 
-                            className="delete-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteWorkout(post.id);
-                            }}
-                            disabled={editingWorkout === post.id}
-                          >
-                            🗑️<span className="btn-text"> Delete</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="workout-author">
-                      <div className="author-info">
-                        {(() => {
-                          const { normalizeProfileImageUrl } = require('../utils/imageUtils');
-                          const url = normalizeProfileImageUrl(post.authorProfilePictureUrl);
-                          return url ? (
-                            <img 
-                              src={url}
-                              alt="Profile" 
-                              className="author-avatar"
-                              loading="lazy"
-                              decoding="async"
-                              fetchpriority="low"
-                              onError={(e) => {
-                                e.target.src = '/images/default_profile.png';
-                              }}
-                            />
-                          ) : (
-                            <img 
-                              src="/images/default_profile.png" 
-                              alt="Profile" 
-                              className="author-avatar"
-                            />
-                          );
-                        })()}
-                        {/* single image handled above; no extra fallback */}
-                        <span className="author-name">Posted by {post.author_name}</span>
-                      </div>
-                    </div>
-                    
-                    {editingWorkout === post.id ? (
-                      <div className="workout-edit-form">
-                        <div className="form-group">
-                          <label htmlFor={`edit-title-${post.id}`}>Title:</label>
-                          <input
-                            id={`edit-title-${post.id}`}
-                            type="text"
-                            value={editForm.title}
-                            onChange={(e) => updateField('title', e.target.value)}
-                            className="form-input"
-                            placeholder="Enter workout title..."
-                          />
-                        </div>
-                        
-                        <div className="form-row">
-                          <div className="form-group">
-                            <label htmlFor={`edit-type-${post.id}`}>Workout Type:</label>
-                            <input
-                              id={`edit-type-${post.id}`}
-                              type="text"
-                                                          value={editForm.workoutType}
-                            onChange={(e) => updateField('workoutType', e.target.value)}
-                              className="form-input"
-                              placeholder="Enter workout type..."
-                            />
-                          </div>
-                          
-                          <div className="form-group">
-                            <label htmlFor={`edit-capacity-${post.id}`}>Capacity:</label>
-                            <input
-                              id={`edit-capacity-${post.id}`}
-                              type="number"
-                              min="1"
-                                                          value={editForm.capacity}
-                            onChange={(e) => updateField('capacity', e.target.value)}
-                              className="form-input"
-                              placeholder="Enter capacity..."
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="form-row">
-                          <div className="form-group">
-                            <label htmlFor={`edit-date-${post.id}`}>Date:</label>
-                            <input
-                              id={`edit-date-${post.id}`}
-                              type="date"
-                                                          value={editForm.workoutDate}
-                            onChange={(e) => updateField('workoutDate', e.target.value)}
-                              className="form-input"
-                            />
-                          </div>
-                          
-                          <div className="form-group">
-                            <label htmlFor={`edit-time-${post.id}`}>Time:</label>
-                            <input
-                              id={`edit-time-${post.id}`}
-                              type="time"
-                                                          value={editForm.workoutTime}
-                            onChange={(e) => updateField('workoutTime', e.target.value)}
-                              className="form-input"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="form-group">
-                          <label htmlFor={`edit-content-${post.id}`}>Description:</label>
-                          <textarea
-                            id={`edit-content-${post.id}`}
-                            value={editForm.content}
-                            onChange={(e) => updateField('content', e.target.value)}
-                            className="form-textarea"
-                            rows="3"
-                            placeholder="Enter workout description..."
-                          />
-                        </div>
-                        
-                        <div className="edit-actions">
-                          <button 
-                            className="btn btn-primary" 
-                            onClick={() => saveWorkout(post.id, loadForumPosts)}
-                            disabled={saving}
-                          >
-                            {saving ? 'Saving...' : 'Save Changes'}
-                          </button>
-                          <button 
-                            className="btn btn-secondary" 
-                            onClick={cancelEdit}
-                            disabled={saving}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {post.workout_type && (
-                          <div className="workout-meta">
-                            <span className="workout-type-badge">{post.workout_type}</span>
-                            {post.workout_date && (
-                              <span className="workout-date">
-                                📅 {formatDateOnlyUTC(post.workout_date)}
-                                {post.workout_time && (
-                                  <span className="workout-time"> • 🕐 {post.workout_time}</span>
-                                )}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Content omitted in list view for performance; open detail to view full description */}
-                      </>
-                    )}
-
-                    {/* Sign-up button positioned at bottom right */}
-                    <div className="workout-signup-section">
-                      <div className="button-group">
-                        <button 
-                          className="signup-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.location.href = `/workout/${post.id}`;
-                          }}
-                        >
-                          View Details
-                        </button>
-                      </div>
-                      <div className="signup-count">
-                        <div className="signup-main">
-                          {post.capacity 
-                            ? `${(post.signup_count ?? 0)}/${post.capacity} signed up`
-                            : `${(post.signup_count ?? 0)} signed up`
-                          }
-                        </div>
-                        {post.capacity && (
-                          <div className="signup-details">
-                            <span className={`capacity-status ${(post.signup_count ?? 0) >= post.capacity ? 'full' : 'available'}`}>
-                              {(post.signup_count ?? 0) >= post.capacity ? 'Full' : 'Available'}
-                            </span>
-                            {(post.waitlist_count ?? 0) > 0 && (
-                              <span className="waitlist-count">
-                                {post.waitlist_count} on waitlist
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-          </div>
-        )}
-        
-
-        {/* Events Section */}
-        {activeTab === 'events' && (
-          <div className="events-section">
-            <div className="section-header">
-              <h2>Event Posts</h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                {/* Offline/Cache Indicator */}
-                {eventsFromCache && (
-                  <span className="cache-indicator" title="Showing cached data">
-                    📦 Cached
-                  </span>
-                )}
-                {eventsOffline && (
-                  <span className="offline-badge" title="You're offline">
-                    📴 Offline
-                  </span>
-                )}
-                {isMember(currentUser) && (
-                  <button 
-                    className="new-post-btn"
-                    onClick={() => setShowEventForm(true)}
+                {/* Type Filters (row 2) */}
+                <div className="workout-filters">
+                  <button
+                    className={`filter-btn ${workoutFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setWorkoutFilter('all')}
                   >
-                    +<span className="btn-text"> New Event</span>
+                    🏁 All Types
                   </button>
-                )}
+                  <button
+                    className={`filter-btn ${workoutFilter === 'bike' ? 'active' : ''}`}
+                    onClick={() => setWorkoutFilter('bike')}
+                  >
+                    🚴‍♂️ Bike
+                  </button>
+                  <button
+                    className={`filter-btn ${workoutFilter === 'swim' ? 'active' : ''}`}
+                    onClick={() => setWorkoutFilter('swim')}
+                  >
+                    🏊‍♂️ Swim
+                  </button>
+                  <button
+                    className={`filter-btn ${workoutFilter === 'run' ? 'active' : ''}`}
+                    onClick={() => setWorkoutFilter('run')}
+                  >
+                    🏃‍♀️ Run
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {sortedEventPosts.length === 0 ? (
-              <p className="no-posts">{eventsLoadingFromCache ? 'Events loading...' : 'No event posts yet.'}</p>
-            ) : (
-              <div className="posts-list">
-                {sortedEventPosts.map(post => (
-                  <div key={post.id} className="post-card event-post" onClick={() => window.location.href = `/event/${post.id}`}>
-                    <div className="post-header">
-                      {editingEvent === post.id ? (
-                        <div className="event-edit-form">
-                          <div className="form-group">
-                            <label htmlFor={`edit-event-title-${post.id}`}>Title:</label>
-                            <input
-                              id={`edit-event-title-${post.id}`}
-                              type="text"
-                              value={eventEditForm.title}
-                              onChange={(e) => updateEventField('title', e.target.value)}
-                              className="form-input"
-                              placeholder="Enter event title..."
-                            />
-                          </div>
+              {(() => {
+                const paginatedWorkouts = getPaginatedWorkouts();
+                const filteredCount = getFilteredWorkouts().length;
 
-                          <div className="form-group">
-                            <label htmlFor={`edit-event-date-${post.id}`}>Date:</label>
-                            <input
-                              id={`edit-event-date-${post.id}`}
-                              type="date"
-                              value={eventEditForm.date}
-                              onChange={(e) => updateEventField('date', e.target.value)}
-                              className="form-input"
-                            />
-                          </div>
+                if (filteredCount === 0) {
+                  return (
+                    <p className="no-posts">
+                      {workoutsLoading
+                        ? 'Loading workouts...'
+                        : workoutPosts.length === 0
+                          ? 'No workout posts yet.'
+                          : `No ${workoutFilter === 'all' ? '' : workoutFilter} workouts found.`}
+                    </p>
+                  );
+                }
 
-                          <div className="form-group">
-                            <label htmlFor={`edit-event-content-${post.id}`}>Details:</label>
-                            <textarea
-                              id={`edit-event-content-${post.id}`}
-                              value={eventEditForm.content}
-                              onChange={(e) => updateEventField('content', e.target.value)}
-                              className="form-textarea"
-                              rows="3"
-                              placeholder="Enter event details..."
-                            />
-                          </div>
-
-                          <div className="edit-actions">
-                            <button 
-                              className="btn btn-primary" 
-                              onClick={(e) => { e.stopPropagation(); saveEvent(post.id); }}
-                              disabled={savingEvent}
-                            >
-                              {savingEvent ? 'Saving...' : 'Save Changes'}
-                            </button>
-                            <button 
-                              className="btn btn-secondary" 
-                              onClick={(e) => { e.stopPropagation(); cancelEventEdit(); }}
-                              disabled={savingEvent}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {post.title && (
-                            <div className="event-title">
-                              <h3>
-                                {post.title}
-                              </h3>
-                            </div>
-                          )}
-
-                          {/* Edit/Delete for author, exec, admin */}
-                          {(currentUser.id === post.user_id || currentUser.role === 'exec' || currentUser.role === 'administrator') && (
-                            <div className="workout-actions-admin">
-                              <button 
-                                className="edit-btn"
-                                onClick={(e) => { e.stopPropagation(); startEventEdit(post); }}
-                                disabled={editingEvent === post.id}
-                              >
-                                ✏️<span className="btn-text"> Edit</span>
-                              </button>
-                              <button 
-                                className="delete-btn"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteEvent(post.id); }}
-                                disabled={editingEvent === post.id}
-                              >
-                                🗑️<span className="btn-text"> Delete</span>
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    
-                    <div className="event-author">
-                      <div className="author-info">
-                        {(() => {
-                          const { normalizeProfileImageUrl } = require('../utils/imageUtils');
-                          const url = normalizeProfileImageUrl(post.authorProfilePictureUrl);
-                          return url ? (
-                            <img 
-                              src={url}
-                              alt="Profile" 
-                              className="author-avatar"
-                              loading="lazy"
-                              decoding="async"
-                              fetchpriority="low"
-                              onError={(e) => {
-                                e.target.src = '/images/default_profile.png';
-                              }}
-                            />
-                          ) : (
-                            <img 
-                              src="/images/default_profile.png" 
-                              alt="Profile" 
-                              className="author-avatar"
-                            />
-                          );
-                        })()}
-                        <span className="author-name">Posted by {post.author_name}</span>
-                      </div>
-                    </div>
-                    
-                    {post.event_date && (
-                      <div className="event-meta">
-                        <span className="event-date">
-                          {(() => {
-                            try {
-                              const base = String(post.event_date).split('T')[0];
-                              const [y, m, d] = base.split('-').map(Number);
-                              const dt = new Date(Date.UTC(y, m - 1, d));
-                              return `📅 ${dt.toLocaleDateString(undefined, { timeZone: 'UTC' })}`;
-                            } catch {
-                              return `📅 ${post.event_date}`;
-                            }
-                          })()}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <div className="post-footer">
-                      <div className="rsvp-buttons">
-                        <button 
-                          className="rsvp-btn going"
+                return (
+                  <div className="posts-list">
+                    {paginatedWorkouts
+                      .filter((post) => post && post.id)
+                      .map((post) => (
+                        <div
+                          key={post.id}
+                          className="post-card workout-post"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            window.location.href = `/event/${post.id}`;
+                            // Only navigate if clicking on the card itself, not on buttons or edit form
+                            if (
+                              !e.target.closest('.workout-actions-admin') &&
+                              !e.target.closest('.workout-edit-form')
+                            ) {
+                              window.location.href = `/workout/${post.id}`;
+                            }
                           }}
                         >
-                          View Details
-                        </button>
+                          <div className="post-header">
+                            {post.title ? (
+                              <div className="workout-title">
+                                <h2>{post.title}</h2>
+                              </div>
+                            ) : (
+                              <div className="workout-title">
+                                <h2>Untitled Workout</h2>
+                              </div>
+                            )}
+
+                            {/* Edit and Delete buttons for workout author, executives, and administrators */}
+                            {(currentUser.id === post.user_id ||
+                              currentUser.role === 'exec' ||
+                              currentUser.role === 'administrator') && (
+                              <div className="workout-actions-admin">
+                                <button
+                                  className="edit-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEdit(post);
+                                  }}
+                                  disabled={editingWorkout === post.id}
+                                >
+                                  ✏️<span className="btn-text"> Edit</span>
+                                </button>
+                                <button
+                                  className="delete-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteWorkout(post.id);
+                                  }}
+                                  disabled={editingWorkout === post.id}
+                                >
+                                  🗑️<span className="btn-text"> Delete</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="workout-author">
+                            <div className="author-info">
+                              {(() => {
+                                const { normalizeProfileImageUrl } = require('../utils/imageUtils');
+                                const url = normalizeProfileImageUrl(post.authorProfilePictureUrl);
+                                return url ? (
+                                  <img
+                                    src={url}
+                                    alt="Profile"
+                                    className="author-avatar"
+                                    loading="lazy"
+                                    decoding="async"
+                                    fetchpriority="low"
+                                    onError={(e) => {
+                                      e.target.src = '/images/default_profile.png';
+                                    }}
+                                  />
+                                ) : (
+                                  <img
+                                    src="/images/default_profile.png"
+                                    alt="Profile"
+                                    className="author-avatar"
+                                  />
+                                );
+                              })()}
+                              {/* single image handled above; no extra fallback */}
+                              <span className="author-name">Posted by {post.author_name}</span>
+                            </div>
+                          </div>
+
+                          {editingWorkout === post.id ? (
+                            <div className="workout-edit-form">
+                              <div className="form-group">
+                                <label htmlFor={`edit-title-${post.id}`}>Title:</label>
+                                <input
+                                  id={`edit-title-${post.id}`}
+                                  type="text"
+                                  value={editForm.title}
+                                  onChange={(e) => updateField('title', e.target.value)}
+                                  className="form-input"
+                                  placeholder="Enter workout title..."
+                                />
+                              </div>
+
+                              <div className="form-row">
+                                <div className="form-group">
+                                  <label htmlFor={`edit-type-${post.id}`}>Workout Type:</label>
+                                  <input
+                                    id={`edit-type-${post.id}`}
+                                    type="text"
+                                    value={editForm.workoutType}
+                                    onChange={(e) => updateField('workoutType', e.target.value)}
+                                    className="form-input"
+                                    placeholder="Enter workout type..."
+                                  />
+                                </div>
+
+                                <div className="form-group">
+                                  <label htmlFor={`edit-capacity-${post.id}`}>Capacity:</label>
+                                  <input
+                                    id={`edit-capacity-${post.id}`}
+                                    type="number"
+                                    min="1"
+                                    value={editForm.capacity}
+                                    onChange={(e) => updateField('capacity', e.target.value)}
+                                    className="form-input"
+                                    placeholder="Enter capacity..."
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="form-row">
+                                <div className="form-group">
+                                  <label htmlFor={`edit-date-${post.id}`}>Date:</label>
+                                  <input
+                                    id={`edit-date-${post.id}`}
+                                    type="date"
+                                    value={editForm.workoutDate}
+                                    onChange={(e) => updateField('workoutDate', e.target.value)}
+                                    className="form-input"
+                                  />
+                                </div>
+
+                                <div className="form-group">
+                                  <label htmlFor={`edit-time-${post.id}`}>Time:</label>
+                                  <input
+                                    id={`edit-time-${post.id}`}
+                                    type="time"
+                                    value={editForm.workoutTime}
+                                    onChange={(e) => updateField('workoutTime', e.target.value)}
+                                    className="form-input"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="form-group">
+                                <label htmlFor={`edit-content-${post.id}`}>Description:</label>
+                                <textarea
+                                  id={`edit-content-${post.id}`}
+                                  value={editForm.content}
+                                  onChange={(e) => updateField('content', e.target.value)}
+                                  className="form-textarea"
+                                  rows="3"
+                                  placeholder="Enter workout description..."
+                                />
+                              </div>
+
+                              <div className="edit-actions">
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => saveWorkout(post.id, loadForumPosts)}
+                                  disabled={saving}
+                                >
+                                  {saving ? 'Saving...' : 'Save Changes'}
+                                </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={cancelEdit}
+                                  disabled={saving}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {post.workout_type && (
+                                <div className="workout-meta">
+                                  <span className="workout-type-badge">{post.workout_type}</span>
+                                  {post.workout_date && (
+                                    <span className="workout-date">
+                                      📅 {formatDateOnlyUTC(post.workout_date)}
+                                      {post.workout_time && (
+                                        <span className="workout-time">
+                                          {' '}
+                                          • 🕐 {post.workout_time}
+                                        </span>
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Content omitted in list view for performance; open detail to view full description */}
+                            </>
+                          )}
+
+                          {/* Sign-up button positioned at bottom right */}
+                          <div className="workout-signup-section">
+                            <div className="button-group">
+                              <button
+                                className="signup-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = `/workout/${post.id}`;
+                                }}
+                              >
+                                View Details
+                              </button>
+                            </div>
+                            <div className="signup-count">
+                              <div className="signup-main">
+                                {post.capacity
+                                  ? `${post.signup_count ?? 0}/${post.capacity} signed up`
+                                  : `${post.signup_count ?? 0} signed up`}
+                              </div>
+                              {post.capacity && (
+                                <div className="signup-details">
+                                  <span
+                                    className={`capacity-status ${(post.signup_count ?? 0) >= post.capacity ? 'full' : 'available'}`}
+                                  >
+                                    {(post.signup_count ?? 0) >= post.capacity
+                                      ? 'Full'
+                                      : 'Available'}
+                                  </span>
+                                  {(post.waitlist_count ?? 0) > 0 && (
+                                    <span className="waitlist-count">
+                                      {post.waitlist_count} on waitlist
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Events Section */}
+          {activeTab === 'events' && (
+            <div className="events-section">
+              <div className="section-header">
+                <h2>Event Posts</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {/* Offline/Cache Indicator */}
+                  {eventsFromCache && (
+                    <span className="cache-indicator" title="Showing cached data">
+                      📦 Cached
+                    </span>
+                  )}
+                  {eventsOffline && (
+                    <span className="offline-badge" title="You're offline">
+                      📴 Offline
+                    </span>
+                  )}
+                  {isMember(currentUser) && (
+                    <button className="new-post-btn" onClick={() => setShowEventForm(true)}>
+                      +<span className="btn-text"> New Event</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {sortedEventPosts.length === 0 ? (
+                <p className="no-posts">
+                  {eventsLoadingFromCache ? 'Events loading...' : 'No event posts yet.'}
+                </p>
+              ) : (
+                <div className="posts-list">
+                  {sortedEventPosts.map((post) => (
+                    <div
+                      key={post.id}
+                      className="post-card event-post"
+                      onClick={() => (window.location.href = `/event/${post.id}`)}
+                    >
+                      <div className="post-header">
+                        {editingEvent === post.id ? (
+                          <div className="event-edit-form">
+                            <div className="form-group">
+                              <label htmlFor={`edit-event-title-${post.id}`}>Title:</label>
+                              <input
+                                id={`edit-event-title-${post.id}`}
+                                type="text"
+                                value={eventEditForm.title}
+                                onChange={(e) => updateEventField('title', e.target.value)}
+                                className="form-input"
+                                placeholder="Enter event title..."
+                              />
+                            </div>
+
+                            <div className="form-group">
+                              <label htmlFor={`edit-event-date-${post.id}`}>Date:</label>
+                              <input
+                                id={`edit-event-date-${post.id}`}
+                                type="date"
+                                value={eventEditForm.date}
+                                onChange={(e) => updateEventField('date', e.target.value)}
+                                className="form-input"
+                              />
+                            </div>
+
+                            <div className="form-group">
+                              <label htmlFor={`edit-event-content-${post.id}`}>Details:</label>
+                              <textarea
+                                id={`edit-event-content-${post.id}`}
+                                value={eventEditForm.content}
+                                onChange={(e) => updateEventField('content', e.target.value)}
+                                className="form-textarea"
+                                rows="3"
+                                placeholder="Enter event details..."
+                              />
+                            </div>
+
+                            <div className="edit-actions">
+                              <button
+                                className="btn btn-primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  saveEvent(post.id);
+                                }}
+                                disabled={savingEvent}
+                              >
+                                {savingEvent ? 'Saving...' : 'Save Changes'}
+                              </button>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  cancelEventEdit();
+                                }}
+                                disabled={savingEvent}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {post.title && (
+                              <div className="event-title">
+                                <h3>{post.title}</h3>
+                              </div>
+                            )}
+
+                            {/* Edit/Delete for author, exec, admin */}
+                            {(currentUser.id === post.user_id ||
+                              currentUser.role === 'exec' ||
+                              currentUser.role === 'administrator') && (
+                              <div className="workout-actions-admin">
+                                <button
+                                  className="edit-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEventEdit(post);
+                                  }}
+                                  disabled={editingEvent === post.id}
+                                >
+                                  ✏️<span className="btn-text"> Edit</span>
+                                </button>
+                                <button
+                                  className="delete-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteEvent(post.id);
+                                  }}
+                                  disabled={editingEvent === post.id}
+                                >
+                                  🗑️<span className="btn-text"> Delete</span>
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="event-author">
+                        <div className="author-info">
+                          {(() => {
+                            const { normalizeProfileImageUrl } = require('../utils/imageUtils');
+                            const url = normalizeProfileImageUrl(post.authorProfilePictureUrl);
+                            return url ? (
+                              <img
+                                src={url}
+                                alt="Profile"
+                                className="author-avatar"
+                                loading="lazy"
+                                decoding="async"
+                                fetchpriority="low"
+                                onError={(e) => {
+                                  e.target.src = '/images/default_profile.png';
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src="/images/default_profile.png"
+                                alt="Profile"
+                                className="author-avatar"
+                              />
+                            );
+                          })()}
+                          <span className="author-name">Posted by {post.author_name}</span>
+                        </div>
+                      </div>
+
+                      {post.event_date && (
+                        <div className="event-meta">
+                          <span className="event-date">
+                            {(() => {
+                              try {
+                                const base = String(post.event_date).split('T')[0];
+                                const [y, m, d] = base.split('-').map(Number);
+                                const dt = new Date(Date.UTC(y, m - 1, d));
+                                return `📅 ${dt.toLocaleDateString(undefined, { timeZone: 'UTC' })}`;
+                              } catch {
+                                return `📅 ${post.event_date}`;
+                              }
+                            })()}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="post-footer">
+                        <div className="rsvp-buttons">
+                          <button
+                            className="rsvp-btn going"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.location.href = `/event/${post.id}`;
+                            }}
+                          >
+                            View Details
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Waitlist Promotion Success Message */}
-        {showPromotionMessage && promotedWorkout && (
-          <div className="promotion-message">
-            <div className="promotion-content">
-              <h3>🎉 Congratulations!</h3>
-              <p>You've been promoted from the waitlist for <strong>{promotedWorkout.title}</strong>!</p>
-              <p>Check your email for details. You're now officially signed up for this workout.</p>
-              <button 
-                className="promotion-close-btn"
-                onClick={() => setShowPromotionMessage(false)}
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Cancel Confirmation Modal */}
-        {showCancelModal && (
-          <div className="modal-overlay">
-            <div className="modal cancel-modal">
-              <h2>Cancel Workout Signup</h2>
-              {workoutPosts.find((post) => post.id === workoutToCancel)?.workout_type !== 'outdoor-ride' && (
-                <div className="cancel-warning">
-                  <p>⚠️ <strong>Important:</strong> If you cancel less than 12 hours in advance, it will count as an absence.</p>
-                  <p>Your absences are recorded and once you have three, you will be suspended from signing up for a week.</p>
-                  <p>This is to keep it fair for all members!</p>
+                  ))}
                 </div>
               )}
-              <div className="modal-actions">
-                <button className="btn-secondary" onClick={handleCancelCancel}>
-                  Keep Booking
-                </button>
-                <button className="btn-danger" onClick={handleCancelConfirm}>
-                  Cancel
+            </div>
+          )}
+
+          {/* Waitlist Promotion Success Message */}
+          {showPromotionMessage && promotedWorkout && (
+            <div className="promotion-message">
+              <div className="promotion-content">
+                <h3>🎉 Congratulations!</h3>
+                <p>
+                  You've been promoted from the waitlist for{' '}
+                  <strong>{promotedWorkout.title}</strong>!
+                </p>
+                <p>
+                  Check your email for details. You're now officially signed up for this workout.
+                </p>
+                <button
+                  className="promotion-close-btn"
+                  onClick={() => setShowPromotionMessage(false)}
+                >
+                  ✕
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Workout Creation Modal */}
-        {showWorkoutForm && createPortal(
-          <div 
-            className="modal-overlay"
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100vw',
-              height: '100vh',
-              minWidth: '100vw',
-              minHeight: '100vh',
-              maxWidth: '100vw',
-              maxHeight: '100vh',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: 0,
-              padding: '1rem',
-              boxSizing: 'border-box',
-              zIndex: 99999,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              overflow: 'hidden'
-            }}
-          >
-            <div className="modal">
-              <h2>Create New Workout Post</h2>
-              <form onSubmit={handleSubmitWorkout}>
-                <div className="form-group">
-                  <label>Workout Title:</label>
-                  <input
-                    type="text"
-                    value={workoutForm.title}
-                    onChange={(e) => setWorkoutForm({...workoutForm, title: e.target.value})}
-                    placeholder="e.g., Tuesday Morning Swim, Weekend Long Run"
-                    maxLength="100"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Workout Type:</label>
-                  <select
-                    value={workoutForm.type}
-                    onChange={(e) => setWorkoutForm({...workoutForm, type: e.target.value})}
-                    required
-                  >
-                    {getAllowedWorkoutTypes().map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Workout Date:</label>
-                  <input
-                    type="date"
-                    value={workoutForm.date}
-                    ref={workoutDateInputRef}
-                    onFocus={(e) => { try { e.target.removeAttribute('min'); } catch (_) {} }}
-                    onChange={(e) => {
-                      console.log('📅 Date selected:', e.target.value);
-                      setWorkoutForm({...workoutForm, date: e.target.value});
-                    }}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Workout Time:</label>
-                  <input
-                    type="time"
-                    value={workoutForm.time}
-                    onChange={(e) => setWorkoutForm({...workoutForm, time: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Additional Details:</label>
-                  <textarea
-                    value={workoutForm.content}
-                    onChange={(e) => setWorkoutForm({...workoutForm, content: e.target.value})}
-                    placeholder="Describe the workout, time, location, requirements, what to bring..."
-                    rows="4"
-                    maxLength="500"
-                    required
-                  />
-                  <small className="char-count">{workoutForm.content.length}/500</small>
-                </div>
-
-                <div className="form-group">
-                  <label>Capacity (Optional):</label>
-                  <input
-                    type="number"
-                    value={workoutForm.capacity}
-                    onChange={(e) => setWorkoutForm({...workoutForm, capacity: e.target.value})}
-                    placeholder="Leave empty for unlimited spots"
-                    min="1"
-                    max="100"
-                  />
-                  <small>Maximum number of people who can sign up. Leave empty for unlimited spots.</small>
-                </div>
-
-                <>
-                  {!showIntervalsSection ? (
-                    <div className="form-group">
-                      <button
-                        type="button"
-                        className="btn btn-secondary forum-add-intervals-btn"
-                        onClick={() => {
-                          hapticImpact('light');
-                          setShowIntervalsSection(true);
-                        }}
-                      >
-                        Add Intervals
-                      </button>
-                    </div>
-                  ) : (
-                      <div className="forum-intervals-section">
-                        <h3 className="forum-intervals-heading">Intervals</h3>
-                        {workoutIntervals.map((interval, index) => (
-                          <div key={index} className="forum-interval-block">
-                            <div className="form-group">
-                              <label>Interval {index + 1} title</label>
-                              <input
-                                type="text"
-                                value={interval.title}
-                                onChange={(e) => {
-                                  const next = [...workoutIntervals];
-                                  next[index] = { ...next[index], title: e.target.value };
-                                  setWorkoutIntervals(next);
-                                }}
-                                placeholder="e.g., 200m, 1km, Lap 1"
-                                maxLength="80"
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label>Interval {index + 1} description</label>
-                              <input
-                                type="text"
-                                value={interval.description}
-                                onChange={(e) => {
-                                  const next = [...workoutIntervals];
-                                  next[index] = { ...next[index], description: e.target.value };
-                                  setWorkoutIntervals(next);
-                                }}
-                                placeholder="e.g., 2:15, 4:32"
-                                maxLength="120"
-                              />
-                            </div>
-                            {index === workoutIntervals.length - 1 && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary forum-add-interval-plus"
-                                onClick={() => {
-                                  hapticImpact('light');
-                                  setWorkoutIntervals([...workoutIntervals, { title: '', description: '' }]);
-                                }}
-                                aria-label="Add another interval"
-                              >
-                                +
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                </>
-
+          {/* Cancel Confirmation Modal */}
+          {showCancelModal && (
+            <div className="modal-overlay">
+              <div className="modal cancel-modal">
+                <h2>Cancel Workout Signup</h2>
+                {workoutPosts.find((post) => post.id === workoutToCancel)?.workout_type !==
+                  'outdoor-ride' && (
+                  <div className="cancel-warning">
+                    <p>
+                      ⚠️ <strong>Important:</strong> If you cancel less than 12 hours in advance, it
+                      will count as an absence.
+                    </p>
+                    <p>
+                      Your absences are recorded and once you have three, you will be suspended from
+                      signing up for a week.
+                    </p>
+                    <p>This is to keep it fair for all members!</p>
+                  </div>
+                )}
                 <div className="modal-actions">
-                  <button type="submit" className="btn btn-primary">Post Workout</button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setShowIntervalsSection(false);
-                      setWorkoutIntervals([{ title: '', description: '' }]);
-                      setShowWorkoutForm(false);
-                    }}
-                  >
+                  <button className="btn-secondary" onClick={handleCancelCancel}>
+                    Keep Booking
+                  </button>
+                  <button className="btn-danger" onClick={handleCancelConfirm}>
                     Cancel
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
-          </div>,
-          document.body
-        )}
+          )}
 
-        {/* Event Creation Modal */}
-        {showEventForm && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h2>Create New Event Post</h2>
-              <form onSubmit={handleSubmitEvent}>
-                <div className="form-group">
-                  <label>Event Title:</label>
-                  <input
-                    type="text"
-                    value={eventForm.title}
-                    onChange={(e) => setEventForm({...eventForm, title: e.target.value})}
-                    placeholder="e.g., Club Social Night, Race Watch Party"
-                    maxLength="100"
-                    required
-                  />
-                </div>
+          {/* Workout Creation Modal */}
+          {showWorkoutForm &&
+            createPortal(
+              <div
+                className="modal-overlay"
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: '100vw',
+                  height: '100vh',
+                  minWidth: '100vw',
+                  minHeight: '100vh',
+                  maxWidth: '100vw',
+                  maxHeight: '100vh',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: 0,
+                  padding: '1rem',
+                  boxSizing: 'border-box',
+                  zIndex: 99999,
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div className="modal">
+                  <h2>Create New Workout Post</h2>
+                  <form onSubmit={handleSubmitWorkout}>
+                    <div className="form-group">
+                      <label>Workout Title:</label>
+                      <input
+                        type="text"
+                        value={workoutForm.title}
+                        onChange={(e) => setWorkoutForm({ ...workoutForm, title: e.target.value })}
+                        placeholder="e.g., Tuesday Morning Swim, Weekend Long Run"
+                        maxLength="100"
+                        required
+                      />
+                    </div>
 
-                                <div className="form-group">
-                  <label>Event Date:</label>
-                  <input
-                    type="date"
-                    value={eventForm.date}
-                    onChange={(e) => setEventForm({...eventForm, date: e.target.value})}
-                    min={new Date().toISOString().split('T')[0]}
-                    required
-                  />
-                </div>
+                    <div className="form-group">
+                      <label>Workout Type:</label>
+                      <select
+                        value={workoutForm.type}
+                        onChange={(e) => setWorkoutForm({ ...workoutForm, type: e.target.value })}
+                        required
+                      >
+                        {getAllowedWorkoutTypes().map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="form-group">
-                  <label>Event Details:</label>
-                  <textarea
-                    value={eventForm.content}
-                    onChange={(e) => setEventForm({...eventForm, content: e.target.value})}
-                    placeholder="Describe the event, time, location, what to bring, RSVP details..."
-                    rows="4"
-                    maxLength="500"
-                    required
-                  />
-                  <small className="char-count">{eventForm.content.length}/500</small>
-                </div>
+                    <div className="form-group">
+                      <label>Workout Date:</label>
+                      <input
+                        type="date"
+                        value={workoutForm.date}
+                        ref={workoutDateInputRef}
+                        onFocus={(e) => {
+                          try {
+                            e.target.removeAttribute('min');
+                          } catch (_) {}
+                        }}
+                        onChange={(e) => {
+                          console.log('📅 Date selected:', e.target.value);
+                          setWorkoutForm({ ...workoutForm, date: e.target.value });
+                        }}
+                        required
+                      />
+                    </div>
 
-                <div className="modal-actions">
-                  <button type="submit" className="btn btn-primary">Post Event</button>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowEventForm(false)}>Cancel</button>
+                    <div className="form-group">
+                      <label>Workout Time:</label>
+                      <input
+                        type="time"
+                        value={workoutForm.time}
+                        onChange={(e) => setWorkoutForm({ ...workoutForm, time: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Additional Details:</label>
+                      <textarea
+                        value={workoutForm.content}
+                        onChange={(e) =>
+                          setWorkoutForm({ ...workoutForm, content: e.target.value })
+                        }
+                        placeholder="Describe the workout, time, location, requirements, what to bring..."
+                        rows="4"
+                        maxLength="500"
+                        required
+                      />
+                      <small className="char-count">{workoutForm.content.length}/500</small>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Capacity (Optional):</label>
+                      <input
+                        type="number"
+                        value={workoutForm.capacity}
+                        onChange={(e) =>
+                          setWorkoutForm({ ...workoutForm, capacity: e.target.value })
+                        }
+                        placeholder="Leave empty for unlimited spots"
+                        min="1"
+                        max="100"
+                      />
+                      <small>
+                        Maximum number of people who can sign up. Leave empty for unlimited spots.
+                      </small>
+                    </div>
+
+                    <>
+                      {!showIntervalsSection ? (
+                        <div className="form-group">
+                          <button
+                            type="button"
+                            className="btn btn-secondary forum-add-intervals-btn"
+                            onClick={() => {
+                              hapticImpact('light');
+                              setShowIntervalsSection(true);
+                            }}
+                          >
+                            Add Intervals
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="forum-intervals-section">
+                          <h3 className="forum-intervals-heading">Intervals</h3>
+                          {workoutIntervals.map((interval, index) => (
+                            <div key={index} className="forum-interval-block">
+                              <div className="form-group">
+                                <label>Interval {index + 1} title</label>
+                                <input
+                                  type="text"
+                                  value={interval.title}
+                                  onChange={(e) => {
+                                    const next = [...workoutIntervals];
+                                    next[index] = { ...next[index], title: e.target.value };
+                                    setWorkoutIntervals(next);
+                                  }}
+                                  placeholder="e.g., 200m, 1km, Lap 1"
+                                  maxLength="80"
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Interval {index + 1} description</label>
+                                <input
+                                  type="text"
+                                  value={interval.description}
+                                  onChange={(e) => {
+                                    const next = [...workoutIntervals];
+                                    next[index] = { ...next[index], description: e.target.value };
+                                    setWorkoutIntervals(next);
+                                  }}
+                                  placeholder="e.g., 2:15, 4:32"
+                                  maxLength="120"
+                                />
+                              </div>
+                              {index === workoutIntervals.length - 1 && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary forum-add-interval-plus"
+                                  onClick={() => {
+                                    hapticImpact('light');
+                                    setWorkoutIntervals([
+                                      ...workoutIntervals,
+                                      { title: '', description: '' },
+                                    ]);
+                                  }}
+                                  aria-label="Add another interval"
+                                >
+                                  +
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+
+                    <div className="modal-actions">
+                      <button type="submit" className="btn btn-primary">
+                        Post Workout
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          setShowIntervalsSection(false);
+                          setWorkoutIntervals([{ title: '', description: '' }]);
+                          setShowWorkoutForm(false);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              </form>
+              </div>,
+              document.body
+            )}
+
+          {/* Event Creation Modal */}
+          {showEventForm && (
+            <div className="modal-overlay">
+              <div className="modal">
+                <h2>Create New Event Post</h2>
+                <form onSubmit={handleSubmitEvent}>
+                  <div className="form-group">
+                    <label>Event Title:</label>
+                    <input
+                      type="text"
+                      value={eventForm.title}
+                      onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                      placeholder="e.g., Club Social Night, Race Watch Party"
+                      maxLength="100"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Event Date:</label>
+                    <input
+                      type="date"
+                      value={eventForm.date}
+                      onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
+                      min={new Date().toISOString().split('T')[0]}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Event Details:</label>
+                    <textarea
+                      value={eventForm.content}
+                      onChange={(e) => setEventForm({ ...eventForm, content: e.target.value })}
+                      placeholder="Describe the event, time, location, what to bring, RSVP details..."
+                      rows="4"
+                      maxLength="500"
+                      required
+                    />
+                    <small className="char-count">{eventForm.content.length}/500</small>
+                  </div>
+
+                  <div className="modal-actions">
+                    <button type="submit" className="btn btn-primary">
+                      Post Event
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowEventForm(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
         <ConfirmModal
           isOpen={deleteWorkoutConfirm.isOpen}
@@ -2428,11 +2615,9 @@ const Forum = () => {
           cancelText="Cancel"
           confirmDanger={true}
         />
-    </div>
+      </div>
     </PullToRefresh>
   );
 };
 
-
 export default Forum;
-

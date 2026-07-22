@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmModal from './ConfirmModal';
+import { getApiBaseUrl } from '../utils/apiConfig';
+import { validatePhoneNumber, formatPhoneNumber, formatPhoneNumberInput } from '../utils/phoneUtils';
 import './Profile.css';
 
 const DEFAULT_PROFILE_IMAGE = '/images/default_profile.png';
@@ -41,7 +43,7 @@ const Profile = () => {
   const [receiptError, setReceiptError] = useState('');
   const [receiptSuccess, setReceiptSuccess] = useState('');
   const receiptFileInputRef = useRef(null);
-  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE = getApiBaseUrl();
   
   console.log('🔍 All URL params:', params);
   console.log('🔍 Role param:', role);
@@ -62,7 +64,7 @@ const Profile = () => {
     const loadTeamMembers = async () => {
       try {
         setTeamLoading(true);
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/profiles`);
+        const response = await fetch(`${getApiBaseUrl()}/profiles`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch team members');
@@ -81,7 +83,7 @@ const Profile = () => {
             }
             // Convert relative image URLs to full URLs for display
             const normalizedImage = image && image.startsWith('/uploads/')
-              ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${image}`
+              ? `${getApiBaseUrl()}/..${image}`
               : image;
             
             membersObject[member.id] = {
@@ -117,7 +119,7 @@ const Profile = () => {
         setError('Not authenticated');
         return;
       }
-      const resp = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile/pause`, {
+      const resp = await fetch(`${getApiBaseUrl()}/users/profile/pause`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -145,7 +147,7 @@ const Profile = () => {
         setError('Not authenticated');
         return;
       }
-      const resp = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile`, {
+      const resp = await fetch(`${getApiBaseUrl()}/users/profile`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -240,39 +242,9 @@ const Profile = () => {
   };
 
   // Phone number formatting functions (same as Login.js)
-  const validatePhoneNumber = (phone) => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    // Check if it's 10 digits (North American format)
-    return digitsOnly.length === 10;
-  };
-
-  const formatPhoneNumber = (phone) => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    // Format as (XXX) XXX-XXXX
-    if (digitsOnly.length === 10) {
-      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
-    }
-    return phone; // Return original if not 10 digits
-  };
-
   const handlePhoneNumberChange = (e) => {
-    const value = e.target.value;
-    // Remove all non-digit characters
-    const digitsOnly = value.replace(/\D/g, '');
-    
-    // Limit to 10 digits
-    if (digitsOnly.length <= 10) {
-      // Format as user types
-      let formatted = digitsOnly;
-      if (digitsOnly.length >= 6) {
-        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
-      } else if (digitsOnly.length >= 3) {
-        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3)}`;
-      } else if (digitsOnly.length > 0) {
-        formatted = `(${digitsOnly}`;
-      }
+    const formatted = formatPhoneNumberInput(e.target.value);
+    if (formatted !== null) {
       setEditedPhone(formatted);
     }
   };
@@ -302,7 +274,7 @@ const Profile = () => {
           profileImage = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001'}${profilePictureUrl}`;
         } else if (profilePictureUrl.startsWith('/uploads/')) {
           // URL starts with /uploads/, prepend API base URL
-          profileImage = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/..${profilePictureUrl}`;
+          profileImage = `${getApiBaseUrl()}/..${profilePictureUrl}`;
         } else if (profilePictureUrl.startsWith('http')) {
           // Full URL, use as is
           profileImage = profilePictureUrl;
@@ -464,7 +436,7 @@ const Profile = () => {
         phone_number: editedPhone
       });
 
-      const profileResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile`, {
+      const profileResponse = await fetch(`${getApiBaseUrl()}/users/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -487,7 +459,7 @@ const Profile = () => {
       console.log('🔍 removeProfileImage:', removeProfileImage);
 
       if (removeProfileImage) {
-        const deleteResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile-picture`, {
+        const deleteResponse = await fetch(`${getApiBaseUrl()}/users/profile-picture`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -514,7 +486,7 @@ const Profile = () => {
         const imageFormData = new FormData();
         imageFormData.append('profilePicture', file);
         
-        const imageResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api'}/users/profile-picture`, {
+        const imageResponse = await fetch(`${getApiBaseUrl()}/users/profile-picture`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -553,7 +525,7 @@ const Profile = () => {
           finalImage = profilePictureUrl;
         } else {
           // Relative path -> prefix with API host once
-          const apiBase = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+          const apiBase = getApiBaseUrl();
           const host = apiBase.replace(/\/?api$/i, '');
           finalImage = `${host}${profilePictureUrl}`;
         }

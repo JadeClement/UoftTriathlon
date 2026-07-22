@@ -1,4 +1,4 @@
-const { pool } = require('./database-pg');
+const { pool } = require('../database-pg');
 
 async function fixUngenderedItems() {
   const client = await pool.connect();

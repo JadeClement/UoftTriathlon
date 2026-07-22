@@ -3,6 +3,7 @@ const { pool } = require('../database-pg');
 const emailService = require('./emailService');
 const { sendWaitlistPromotionNotification } = require('./smsService');
 const { sendPushNotification, sendBulkPushNotifications } = require('./pushSender');
+const logger = require('../utils/logger');
 
 /**
  * Notification Service
@@ -28,7 +29,7 @@ async function getUserDeviceTokens(userId) {
     
     // Log token details for debugging
     result.rows.forEach((row, index) => {
-      console.log(`📱 Token ${index + 1} from database:`, {
+      logger.debug(`📱 Token ${index + 1} from database:`, {
         platform: row.platform,
         tokenLength: row.token ? row.token.length : 0,
         tokenPreview: row.token ? row.token.substring(0, 32) + '...' : 'null',
@@ -56,16 +57,16 @@ async function sendPushNotificationToUser(userId, notification) {
     const tokens = await getUserDeviceTokens(userId);
     
     if (tokens.length === 0) {
-      console.log(`📱 No device tokens found for user ${userId}`);
+      logger.debug(`📱 No device tokens found for user ${userId}`);
       return false;
     }
 
-    console.log(`📱 Sending push notification to user ${userId} with ${tokens.length} device(s):`, notification);
+    logger.debug(`📱 Sending push notification to user ${userId} with ${tokens.length} device(s):`, notification);
 
     // Send notifications to all user's devices
     const results = await sendBulkPushNotifications(tokens, notification);
     
-    console.log(`📱 Push notification results for user ${userId}:`, results);
+    logger.debug(`📱 Push notification results for user ${userId}:`, results);
     
     // Return true if at least one notification was sent successfully
     return results.sent > 0;
@@ -185,14 +186,14 @@ async function notifyWorkoutPosted(workoutType, workoutData) {
     } else if (workoutType === 'run') {
       preferenceType = 'runWorkouts';
     } else {
-      console.log(`⚠️ Unknown workout type: ${workoutType}, skipping notifications`);
+      logger.debug(`⚠️ Unknown workout type: ${workoutType}, skipping notifications`);
       return;
     }
 
     // Get users who want notifications for this workout type
     const users = await getUsersWithPreference(preferenceType);
     
-    console.log(`📢 Notifying ${users.length} users about new ${workoutType} workout: ${workoutData.title}`);
+    logger.debug(`📢 Notifying ${users.length} users about new ${workoutType} workout: ${workoutData.title}`);
 
     // Send push notifications to users
     for (const user of users) {
@@ -215,7 +216,7 @@ async function notifyEventPosted(eventData) {
   try {
     const users = await getUsersWithPreference('events');
     
-    console.log(`📢 Notifying ${users.length} users about new event: ${eventData.title}`);
+    logger.debug(`📢 Notifying ${users.length} users about new event: ${eventData.title}`);
 
     // Send push notifications to users
     for (const user of users) {
@@ -241,18 +242,18 @@ async function notifyForumReply(userId, replyData) {
     const preferences = await getUserNotificationPreferences(userId);
     
     if (!preferences.forumReplies) {
-      console.log(`📢 User ${userId} has forum reply notifications disabled, skipping`);
+      logger.debug(`📢 User ${userId} has forum reply notifications disabled, skipping`);
       return;
     }
 
     // Get user info
     const userResult = await pool.query('SELECT email, name FROM users WHERE id = $1', [userId]);
     if (userResult.rows.length === 0) {
-      console.log(`⚠️ User ${userId} not found, skipping forum reply notification`);
+      logger.debug(`⚠️ User ${userId} not found, skipping forum reply notification`);
       return;
     }
 
-    console.log(`📢 Notifying user ${userId} about forum reply on post: ${replyData.postTitle}`);
+    logger.debug(`📢 Notifying user ${userId} about forum reply on post: ${replyData.postTitle}`);
 
     // Send push notification
     await sendPushNotificationToUser(userId, {
@@ -291,12 +292,12 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
     );
 
     if (signupsResult.rows.length === 0) {
-      console.log(`📢 No users signed up for workout ${postId}, skipping reply notifications`);
+      logger.debug(`📢 No users signed up for workout ${postId}, skipping reply notifications`);
       return;
     }
 
     const signedUpUserIds = signupsResult.rows.map(row => row.user_id);
-    console.log(`📢 Found ${signedUpUserIds.length} users signed up for workout ${postId}`);
+    logger.debug(`📢 Found ${signedUpUserIds.length} users signed up for workout ${postId}`);
 
     // Get users who have forum_replies preference enabled
     const usersWithPreference = await pool.query(
@@ -310,11 +311,11 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
     );
 
     if (usersWithPreference.rows.length === 0) {
-      console.log(`📢 No users with forum_replies preference enabled for workout ${postId}`);
+      logger.debug(`📢 No users with forum_replies preference enabled for workout ${postId}`);
       return;
     }
 
-    console.log(`📢 Notifying ${usersWithPreference.rows.length} users about forum reply on workout ${postId}: ${replyData.postTitle}`);
+    logger.debug(`📢 Notifying ${usersWithPreference.rows.length} users about forum reply on workout ${postId}: ${replyData.postTitle}`);
 
     // Send notifications to each user (non-blocking)
     const notificationPromises = usersWithPreference.rows.map(user => 
@@ -324,7 +325,7 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
     );
 
     await Promise.all(notificationPromises);
-    console.log(`✅ Forum reply notifications sent to ${usersWithPreference.rows.length} users`);
+    logger.debug(`✅ Forum reply notifications sent to ${usersWithPreference.rows.length} users`);
   } catch (error) {
     console.error('❌ Error notifying workout signups about forum reply:', error);
   }
@@ -339,7 +340,7 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
  */
 async function notifyWaitlistPromotion(userData, workoutData) {
   try {
-    console.log(`📢 Notifying user ${userData.name} about waitlist promotion for: ${workoutData.title}`);
+    logger.debug(`📢 Notifying user ${userData.name} about waitlist promotion for: ${workoutData.title}`);
 
     // Always send email/SMS - user needs to know they got in (not controlled by app preferences)
     await sendWaitlistPromotionNotification(

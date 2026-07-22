@@ -38,21 +38,40 @@ const Home = () => {
           <div className="slideshow-container">
             <div className="slideshow">
               <div className={`slide ${currentSlide === 0 ? 'active' : ''}`}>
-                <img 
-                  src="/images/team-photo1.jpeg" 
+                {/* fetchpriority is valid HTML; React 18 doesn't type it yet */}
+                <img
+                  src="/images/team-photo1-1200.jpg"
+                  srcSet="/images/team-photo1-800.jpg 800w, /images/team-photo1-1200.jpg 1200w, /images/team-photo1-1600.jpg 1600w"
+                  sizes="(max-width: 900px) 100vw, 60vw"
                   alt="UofT Triathlon Team 1"
+                  width={1200}
+                  height={1200}
+                  fetchpriority="high"
+                  decoding="async"
                 />
               </div>
               <div className={`slide ${currentSlide === 1 ? 'active' : ''}`}>
-                <img 
-                  src="/images/team-photo2.jpeg" 
+                <img
+                  src="/images/team-photo2-1200.jpg"
+                  srcSet="/images/team-photo2-800.jpg 800w, /images/team-photo2-1200.jpg 1200w, /images/team-photo2-1600.jpg 1600w"
+                  sizes="(max-width: 900px) 100vw, 60vw"
                   alt="UofT Triathlon Team 2"
+                  width={1200}
+                  height={1194}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
               <div className={`slide ${currentSlide === 2 ? 'active' : ''}`}>
-                <img 
-                  src="/images/team-photo3.jpeg" 
+                <img
+                  src="/images/team-photo3-1200.jpg"
+                  srcSet="/images/team-photo3-800.jpg 800w, /images/team-photo3-1200.jpg 1200w"
+                  sizes="(max-width: 900px) 100vw, 60vw"
                   alt="UofT Triathlon Team 3"
+                  width={1200}
+                  height={696}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             </div>

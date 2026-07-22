@@ -18,6 +18,9 @@ backend/uploads/
 backend/.env
 backend/.env.*
 backend/.env.backup
+# Allow committed templates (must come after the ignore rules above)
+!.env.example
+!backend/env-template.txt
 
 # Keys / certificates
 *.key

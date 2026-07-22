@@ -1,5 +1,5 @@
-const { pool } = require('./database-pg');
-const { combineDateTime, isWithinHours, getHoursUntil } = require('./utils/dateUtils');
+const { pool } = require('../database-pg');
+const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
 
 async function diagnoseCancellationTimes() {
   const client = await pool.connect();

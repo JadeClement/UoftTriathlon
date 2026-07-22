@@ -4,8 +4,9 @@ import { showSuccess, showError } from './SimpleNotification';
 import { getApiErrorMessage, parseApiError } from '../utils/apiError';
 import ConfirmModal from './ConfirmModal';
 import './Results.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
-const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+const API_BASE = getApiBaseUrl();
 
 const Results = () => {
   const { currentUser, isMember } = useAuth();

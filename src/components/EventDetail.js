@@ -8,6 +8,7 @@ import { getApiErrorMessage, parseApiError } from '../utils/apiError';
 import { showError, showSuccess } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './EventDetail.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -25,7 +26,7 @@ const EventDetail = () => {
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false });
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
 
   // ESLint: loadEventDetails is defined below and is stable; we only want to rerun when user/auth changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps

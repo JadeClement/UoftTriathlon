@@ -229,7 +229,7 @@ There are several migration scripts that fix historical absence calculations:
 
 1. **`migrate-fix-cancellation-timezones.sql`** - Fixes timezone issues in historical cancellations
 2. **`migrate-fix-cancellation-timezones-apply.sql`** - Applies the fixes
-3. **`migrate-fix-cancellation-timezones.js`** - Node.js version of the migration
+3. **`scripts/migrate-fix-cancellation-timezones.js`** - Node.js version of the migration
 
 These scripts:
 - Recalculate `within_12hrs` based on correct timezone logic

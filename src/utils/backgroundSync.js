@@ -3,7 +3,6 @@
  * Handles queuing and syncing failed requests when offline
  */
 
-const SYNC_QUEUE_KEY = 'sync-queue';
 const MAX_QUEUE_SIZE = 100;
 
 /**
@@ -79,13 +78,11 @@ export async function queueRequest(request, options = {}) {
       await removeOldestFromQueue();
     }
     
-    // Clone request to get body
-    const requestClone = request.clone();
+    // Clone request before reading body (request streams are one-shot)
     let body = null;
-    
     if (request.body) {
       try {
-        body = await request.text();
+        body = await request.clone().text();
       } catch (e) {
         console.warn('Could not read request body:', e);
       }

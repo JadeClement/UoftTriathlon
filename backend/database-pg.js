@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
+const logger = require('./utils/logger');
 
 // PostgreSQL connection configuration
 const pool = new Pool(
@@ -32,7 +33,7 @@ pool.removeAllListeners('connect');
 pool.removeAllListeners('error');
 
 pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL database');
+  logger.debug('✅ Connected to PostgreSQL database');
 });
 
 pool.on('error', (err) => {
@@ -78,19 +79,19 @@ async function migrateSeedRaces2026() {
          VALUES ('seed-races-2026', current_user, '2026 calendar races (see migrations/seed-races-2026-onetime.sql)')`
       );
       await client.query('COMMIT');
-      console.log('✅ Migration seed-races-2026 applied (2026 race calendar)');
+      logger.debug('✅ Migration seed-races-2026 applied (2026 race calendar)');
     } catch (err) {
       try {
         await client.query('ROLLBACK');
       } catch (_) {
         /* ignore */
       }
-      console.log('ℹ️  Migration seed-races-2026 skipped or failed:', err.message);
+      logger.debug('ℹ️  Migration seed-races-2026 skipped or failed:', err.message);
     } finally {
       client.release();
     }
   } catch (err) {
-    console.log('ℹ️  Migration seed-races-2026:', err.message);
+    logger.debug('ℹ️  Migration seed-races-2026:', err.message);
   }
 }
 
@@ -149,7 +150,7 @@ async function migrateRacesMultiDayEndDates() {
         [total]
       );
       await client.query('COMMIT');
-      console.log(
+      logger.debug(
         '✅ Migration migrate-races-multi-day-end-dates applied (rows updated:',
         total,
         ')'
@@ -174,7 +175,7 @@ async function migrateRacesMultiDayEndDates() {
 // Initialize database tables
 async function initializeDatabase() {
   try {
-    console.log('🔧 Initializing PostgreSQL database tables...');
+    logger.debug('🔧 Initializing PostgreSQL database tables...');
     
     // Create terms table first (users table references it)
     await pool.query(`
@@ -185,7 +186,7 @@ async function initializeDatabase() {
         end_date DATE NOT NULL
       )
     `);
-    console.log('✅ Terms table created');
+    logger.debug('✅ Terms table created');
 
     // Create users table
     await pool.query(`
@@ -212,7 +213,7 @@ async function initializeDatabase() {
         last_login TIMESTAMP
       )
     `);
-    console.log('✅ Users table created');
+    logger.debug('✅ Users table created');
 
     // Create forum_posts table
     await pool.query(`
@@ -231,7 +232,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Forum posts table created');
+    logger.debug('✅ Forum posts table created');
 
     // Create forum_comments table
     await pool.query(`
@@ -243,7 +244,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Forum comments table created');
+    logger.debug('✅ Forum comments table created');
 
     // Create workout_signups table
     await pool.query(`
@@ -255,7 +256,7 @@ async function initializeDatabase() {
         UNIQUE(user_id, post_id)
       )
     `);
-    console.log('✅ Workout signups table created');
+    logger.debug('✅ Workout signups table created');
 
     // Create workout_attendance table
     await pool.query(`
@@ -268,7 +269,7 @@ async function initializeDatabase() {
         UNIQUE(post_id, user_id)
       )
     `);
-    console.log('✅ Workout attendance table created');
+    logger.debug('✅ Workout attendance table created');
 
     // Add late column to workout_attendance table if it doesn't exist
     try {
@@ -276,10 +277,10 @@ async function initializeDatabase() {
         ALTER TABLE workout_attendance 
         ADD COLUMN late BOOLEAN DEFAULT FALSE
       `);
-      console.log('✅ Late column added to workout_attendance table');
+      logger.debug('✅ Late column added to workout_attendance table');
     } catch (error) {
       if (error.code === '42701') {
-        console.log('✅ Late column already exists in workout_attendance table');
+        logger.debug('✅ Late column already exists in workout_attendance table');
       } else {
         console.error('❌ Error adding late column:', error.message);
       }
@@ -295,7 +296,7 @@ async function initializeDatabase() {
         UNIQUE(user_id, post_id)
       )
     `);
-    console.log('✅ Workout waitlist table created');
+    logger.debug('✅ Workout waitlist table created');
 
     // Create workout_cancellations table
     await pool.query(`
@@ -309,7 +310,7 @@ async function initializeDatabase() {
         UNIQUE(post_id, user_id)
       )
     `);
-    console.log('✅ Workout cancellations table created');
+    logger.debug('✅ Workout cancellations table created');
 
     // Create races table
     await pool.query(`
@@ -328,7 +329,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Races table created');
+    logger.debug('✅ Races table created');
 
     try {
       await pool.query(`
@@ -351,9 +352,9 @@ async function initializeDatabase() {
         ALTER TABLE races
         ADD COLUMN IF NOT EXISTS end_date DATE
       `);
-      console.log('✅ races optional columns (age_group_qualifying, course_profile, event, link, end_date) applied or already exist');
+      logger.debug('✅ races optional columns (age_group_qualifying, course_profile, event, link, end_date) applied or already exist');
     } catch (error) {
-      console.log('ℹ️  races column migration:', error.message);
+      logger.debug('ℹ️  races column migration:', error.message);
     }
 
     // Create race_signups table
@@ -366,7 +367,7 @@ async function initializeDatabase() {
         UNIQUE(user_id, race_id)
       )
     `);
-    console.log('✅ Race signups table created');
+    logger.debug('✅ Race signups table created');
 
     // Create login_history table
     await pool.query(`
@@ -378,7 +379,7 @@ async function initializeDatabase() {
         login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Login history table created');
+    logger.debug('✅ Login history table created');
 
     // Create notification_preferences table
     await pool.query(`
@@ -395,7 +396,7 @@ async function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Notification preferences table created');
+    logger.debug('✅ Notification preferences table created');
 
     // Create calendar_preferences table
     await pool.query(`
@@ -411,7 +412,7 @@ async function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Calendar preferences table created');
+    logger.debug('✅ Calendar preferences table created');
 
     // Create calendar_synced_workouts table to track which workouts have been added to user calendars
     await pool.query(`
@@ -423,7 +424,7 @@ async function initializeDatabase() {
         UNIQUE(user_id, workout_id)
       )
     `);
-    console.log('✅ Calendar synced workouts table created');
+    logger.debug('✅ Calendar synced workouts table created');
 
     // Create role_change_notifications table
     await pool.query(`
@@ -436,7 +437,7 @@ async function initializeDatabase() {
         is_read BOOLEAN DEFAULT FALSE
       )
     `);
-    console.log('✅ Role change notifications table created');
+    logger.debug('✅ Role change notifications table created');
 
     // Create push_device_tokens table
     await pool.query(`
@@ -450,7 +451,7 @@ async function initializeDatabase() {
         UNIQUE(user_id, token)
       )
     `);
-    console.log('✅ Push device tokens table created');
+    logger.debug('✅ Push device tokens table created');
     
     // Create index on user_id for faster lookups
     try {
@@ -458,7 +459,7 @@ async function initializeDatabase() {
         CREATE INDEX IF NOT EXISTS idx_push_device_tokens_user_id 
         ON push_device_tokens(user_id)
       `);
-      console.log('✅ Index on push_device_tokens.user_id created');
+      logger.debug('✅ Index on push_device_tokens.user_id created');
     } catch (error) {
       if (error.code !== '42P07') { // Index already exists
         console.error('❌ Error creating index on push_device_tokens:', error.message);
@@ -475,7 +476,7 @@ async function initializeDatabase() {
         UNIQUE(post_id, user_id)
       )
     `);
-    console.log('✅ Post likes table created');
+    logger.debug('✅ Post likes table created');
 
     // Create event_rsvps table
     await pool.query(`
@@ -488,7 +489,7 @@ async function initializeDatabase() {
         UNIQUE(post_id, user_id)
       )
     `);
-    console.log('✅ Event RSVPs table created');
+    logger.debug('✅ Event RSVPs table created');
 
     // Create merch_orders table
     await pool.query(`
@@ -503,7 +504,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Merch orders table created');
+    logger.debug('✅ Merch orders table created');
 
     // Create site_settings table (key-value store)
     await pool.query(`
@@ -512,7 +513,7 @@ async function initializeDatabase() {
         value TEXT
       )
     `);
-    console.log('✅ Site settings table created');
+    logger.debug('✅ Site settings table created');
 
     // Track which users have seen specific popups
     await pool.query(`
@@ -523,12 +524,12 @@ async function initializeDatabase() {
         PRIMARY KEY (user_id, popup_id)
       )
     `);
-    console.log('✅ user_popup_views table created');
+    logger.debug('✅ user_popup_views table created');
 
     // Migration: Replace test_events/records with workout_intervals/interval_results
     await pool.query('DROP TABLE IF EXISTS records CASCADE');
     await pool.query('DROP TABLE IF EXISTS test_events CASCADE');
-    console.log('✅ Dropped records and test_events tables');
+    logger.debug('✅ Dropped records and test_events tables');
 
     // Create workout_intervals table (coach-defined intervals per workout)
     await pool.query(`
@@ -541,7 +542,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Workout intervals table created');
+    logger.debug('✅ Workout intervals table created');
 
     // Create interval_results table (user times per interval)
     await pool.query(`
@@ -555,7 +556,7 @@ async function initializeDatabase() {
         UNIQUE(post_id, interval_id, user_id)
       )
     `);
-    console.log('✅ Interval results table created');
+    logger.debug('✅ Interval results table created');
 
     // Add average_hr and average_sc columns to interval_results (optional)
     try {
@@ -567,9 +568,9 @@ async function initializeDatabase() {
         ALTER TABLE interval_results
         ADD COLUMN IF NOT EXISTS average_sc VARCHAR(20)
       `);
-      console.log('✅ average_hr and average_sc columns added to interval_results (or already exist)');
+      logger.debug('✅ average_hr and average_sc columns added to interval_results (or already exist)');
     } catch (error) {
-      console.log('ℹ️  average_hr/average_sc columns may already exist in interval_results');
+      logger.debug('ℹ️  average_hr/average_sc columns may already exist in interval_results');
     }
 
     // Add results_public column to users table if it doesn't exist (migration for existing databases)
@@ -578,9 +579,9 @@ async function initializeDatabase() {
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS results_public BOOLEAN DEFAULT FALSE
       `);
-      console.log('✅ results_public column added to users table (or already exists)');
+      logger.debug('✅ results_public column added to users table (or already exists)');
     } catch (error) {
-      console.log('ℹ️  results_public column may already exist in users table');
+      logger.debug('ℹ️  results_public column may already exist in users table');
     }
 
     // Add races_public column to users table if it doesn't exist
@@ -589,9 +590,9 @@ async function initializeDatabase() {
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS races_public BOOLEAN DEFAULT FALSE
       `);
-      console.log('✅ races_public column added to users table (or already exists)');
+      logger.debug('✅ races_public column added to users table (or already exists)');
     } catch (error) {
-      console.log('ℹ️  races_public column may already exist in users table');
+      logger.debug('ℹ️  races_public column may already exist in users table');
     }
 
     // Profile years: season on team (editable on profile)
@@ -610,7 +611,7 @@ async function initializeDatabase() {
       await pool.query(`
         UPDATE users SET end_year = EXTRACT(YEAR FROM CURRENT_DATE)::int WHERE end_year IS NULL
       `);
-      console.log('✅ joined_year/end_year columns on users table (or already exist)');
+      logger.debug('✅ joined_year/end_year columns on users table (or already exist)');
     } catch (error) {
       console.error('❌ Error adding joined_year/end_year:', error.message);
     }
@@ -628,7 +629,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Merch orders table created');
+    logger.debug('✅ Merch orders table created');
 
     // Create indexes
     await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
@@ -656,10 +657,10 @@ async function initializeDatabase() {
         ALTER TABLE merch_orders 
         ADD COLUMN archived BOOLEAN DEFAULT FALSE
       `);
-      console.log('✅ Archived column added to merch_orders table');
+      logger.debug('✅ Archived column added to merch_orders table');
     } catch (error) {
       if (error.code === '42701') {
-        console.log('✅ Archived column already exists in merch_orders table');
+        logger.debug('✅ Archived column already exists in merch_orders table');
       } else {
         console.error('❌ Error adding archived column:', error.message);
       }
@@ -668,7 +669,7 @@ async function initializeDatabase() {
     // Create index on archived column for better query performance
     try {
       await pool.query('CREATE INDEX IF NOT EXISTS idx_merch_orders_archived ON merch_orders(archived)');
-      console.log('✅ Index on archived column created');
+      logger.debug('✅ Index on archived column created');
     } catch (error) {
       console.error('❌ Error creating archived index:', error.message);
     }
@@ -676,12 +677,12 @@ async function initializeDatabase() {
     // Drop intervals JSONB from forum_posts (replaced by workout_intervals table)
     try {
       await pool.query(`ALTER TABLE forum_posts DROP COLUMN IF EXISTS intervals`);
-      console.log('✅ Dropped intervals column from forum_posts (using workout_intervals)');
+      logger.debug('✅ Dropped intervals column from forum_posts (using workout_intervals)');
     } catch (error) {
-      console.log('ℹ️  intervals column may not exist in forum_posts');
+      logger.debug('ℹ️  intervals column may not exist in forum_posts');
     }
 
-    console.log('✅ Database indexes created');
+    logger.debug('✅ Database indexes created');
 
     // Add sport column to users table if it doesn't exist
     try {
@@ -689,10 +690,10 @@ async function initializeDatabase() {
         ALTER TABLE users
         ADD COLUMN sport VARCHAR(50) DEFAULT 'triathlon' CHECK(sport IN ('triathlon', 'duathlon', 'run_only', 'swim_only'))
       `);
-      console.log('✅ sport column added to users table');
+      logger.debug('✅ sport column added to users table');
     } catch (error) {
       if (error.code === '42701') {
-        console.log('✅ sport column already exists in users table');
+        logger.debug('✅ sport column already exists in users table');
       } else {
         console.error('❌ Error adding sport column:', error.message);
       }
@@ -708,7 +709,7 @@ async function initializeDatabase() {
           end_date DATE NOT NULL
         )
       `);
-      console.log('✅ Terms table created/verified');
+      logger.debug('✅ Terms table created/verified');
       
       // Remove created_at column if it exists (migration)
       const checkCreatedAt = await pool.query(`
@@ -719,7 +720,7 @@ async function initializeDatabase() {
       
       if (checkCreatedAt.rows.length > 0) {
         await pool.query(`ALTER TABLE terms DROP COLUMN created_at`);
-        console.log('✅ Removed created_at column from terms table');
+        logger.debug('✅ Removed created_at column from terms table');
       }
     } catch (error) {
       console.error('❌ Error creating terms table:', error.message);
@@ -745,7 +746,7 @@ async function initializeDatabase() {
           END IF;
         END $$;
       `);
-      console.log('✅ terms.year column + (term, year) unique constraint applied');
+      logger.debug('✅ terms.year column + (term, year) unique constraint applied');
     } catch (error) {
       console.error('❌ Error applying terms.year migration:', error.message);
     }
@@ -771,7 +772,7 @@ async function initializeDatabase() {
       `);
       await pool.query('CREATE INDEX IF NOT EXISTS idx_membership_receipts_user_id ON membership_receipts(user_id)');
       await pool.query('CREATE INDEX IF NOT EXISTS idx_membership_receipts_status ON membership_receipts(status)');
-      console.log('✅ membership_receipts table created');
+      logger.debug('✅ membership_receipts table created');
     } catch (error) {
       console.error('❌ Error creating membership_receipts table:', error.message);
     }
@@ -782,9 +783,9 @@ async function initializeDatabase() {
         ALTER TABLE users
         DROP COLUMN IF EXISTS term
       `);
-      console.log('✅ Removed term column from users table');
+      logger.debug('✅ Removed term column from users table');
     } catch (error) {
-      console.log('ℹ️  term column does not exist or already removed');
+      logger.debug('ℹ️  term column does not exist or already removed');
     }
 
     try {
@@ -792,9 +793,9 @@ async function initializeDatabase() {
         ALTER TABLE users
         DROP COLUMN IF EXISTS term_start_date
       `);
-      console.log('✅ Removed term_start_date column from users table');
+      logger.debug('✅ Removed term_start_date column from users table');
     } catch (error) {
-      console.log('ℹ️  term_start_date column does not exist or already removed');
+      logger.debug('ℹ️  term_start_date column does not exist or already removed');
     }
 
     // Remove expiry_date column if it exists (migration - expiry now determined by term.end_date)
@@ -807,7 +808,7 @@ async function initializeDatabase() {
       
       if (checkExpiryDate.rows.length > 0) {
         await pool.query(`ALTER TABLE users DROP COLUMN expiry_date`);
-        console.log('✅ Removed expiry_date column from users table');
+        logger.debug('✅ Removed expiry_date column from users table');
       }
     } catch (error) {
       console.error('❌ Error removing expiry_date column:', error.message);
@@ -818,9 +819,9 @@ async function initializeDatabase() {
         ALTER TABLE users
         DROP COLUMN IF EXISTS term_end_date
       `);
-      console.log('✅ Removed term_end_date column from users table');
+      logger.debug('✅ Removed term_end_date column from users table');
     } catch (error) {
-      console.log('ℹ️  term_end_date column does not exist or already removed');
+      logger.debug('ℹ️  term_end_date column does not exist or already removed');
     }
 
     // Add term_id foreign key to users table if it doesn't exist
@@ -829,10 +830,10 @@ async function initializeDatabase() {
         ALTER TABLE users
         ADD COLUMN term_id INTEGER
       `);
-      console.log('✅ term_id column added to users table');
+      logger.debug('✅ term_id column added to users table');
     } catch (error) {
       if (error.code === '42701') {
-        console.log('✅ term_id column already exists in users table');
+        logger.debug('✅ term_id column already exists in users table');
       } else {
         console.error('❌ Error adding term_id column:', error.message);
       }
@@ -843,10 +844,10 @@ async function initializeDatabase() {
         ALTER TABLE users
         ADD CONSTRAINT users_term_id_fkey FOREIGN KEY (term_id) REFERENCES terms(id)
       `);
-      console.log('✅ term_id foreign key constraint added to users table');
+      logger.debug('✅ term_id foreign key constraint added to users table');
     } catch (error) {
       if (error.code === '42710' || error.code === '42P16') {
-        console.log('✅ term_id foreign key constraint already exists in users table');
+        logger.debug('✅ term_id foreign key constraint already exists in users table');
       } else {
         console.error('❌ Error adding term_id foreign key constraint:', error.message);
       }
@@ -858,10 +859,10 @@ async function initializeDatabase() {
         ALTER TABLE workout_cancellations
         RENAME COLUMN within_24hrs TO within_12hrs
       `);
-      console.log('✅ within_24hrs column renamed to within_12hrs in workout_cancellations table');
+      logger.debug('✅ within_24hrs column renamed to within_12hrs in workout_cancellations table');
     } catch (error) {
       if (error.code === '42703') {
-        console.log('✅ within_12hrs column already exists in workout_cancellations table');
+        logger.debug('✅ within_12hrs column already exists in workout_cancellations table');
       } else {
         console.error('❌ Error renaming within_24hrs column:', error.message);
       }
@@ -875,9 +876,9 @@ async function initializeDatabase() {
         WHERE role = 'leader'
       `);
       if (result.rowCount > 0) {
-        console.log(`✅ Converted ${result.rowCount} 'leader' roles to 'coach'`);
+        logger.debug(`✅ Converted ${result.rowCount} 'leader' roles to 'coach'`);
       } else {
-        console.log('✅ No users with "leader" role found to convert');
+        logger.debug('✅ No users with "leader" role found to convert');
       }
     } catch (error) {
       console.error('❌ Error converting leader roles to coach:', error.message);
@@ -893,7 +894,7 @@ async function initializeDatabase() {
         ALTER TABLE users
         ADD CONSTRAINT users_role_check CHECK(role IN ('pending', 'member', 'coach', 'exec', 'administrator'))
       `);
-      console.log('✅ Updated role CHECK constraint to remove "leader" role');
+      logger.debug('✅ Updated role CHECK constraint to remove "leader" role');
     } catch (error) {
       console.error('❌ Error updating role CHECK constraint:', error.message);
     }
@@ -926,7 +927,7 @@ async function initializeDatabase() {
         ALTER TABLE users
         ADD CONSTRAINT users_sport_check CHECK(sport IN ('triathlon', 'duathlon', 'run_only', 'swim_only'))
       `);
-      console.log('✅ Updated sport CHECK constraint to include "swim_only"');
+      logger.debug('✅ Updated sport CHECK constraint to include "swim_only"');
     } catch (error) {
       console.error('❌ Error updating sport CHECK constraint:', error.message);
     }
@@ -934,7 +935,7 @@ async function initializeDatabase() {
     await migrateSeedRaces2026();
     await migrateRacesMultiDayEndDates();
 
-    console.log('✅ PostgreSQL database initialization completed');
+    logger.debug('✅ PostgreSQL database initialization completed');
   } catch (error) {
     console.error('❌ Error initializing PostgreSQL database:', error);
     throw error;
@@ -944,7 +945,7 @@ async function initializeDatabase() {
 // Seed initial data
 async function seedDatabase() {
   try {
-    console.log('🌱 Seeding initial data...');
+    logger.debug('🌱 Seeding initial data...');
     
     // Check if admin user already exists
     const adminExists = await pool.query('SELECT id FROM users WHERE email = $1', ['info@uoft-tri.club']);
@@ -955,9 +956,9 @@ async function seedDatabase() {
         INSERT INTO users (name, email, password_hash, role, charter_accepted)
         VALUES ($1, $2, $3, $4, $5)
       `, ['Admin User', 'info@uoft-tri.club', 'temp_password_hash', 'administrator', true]);
-      console.log('✅ Admin user created');
+      logger.debug('✅ Admin user created');
     } else {
-      console.log('✅ Admin user already exists');
+      logger.debug('✅ Admin user already exists');
     }
 
     // Check if Jade's account exists
@@ -969,12 +970,12 @@ async function seedDatabase() {
         INSERT INTO users (name, email, password_hash, role, charter_accepted)
         VALUES ($1, $2, $3, $4, $5)
       `, ['Jade Clement', 'info@uoft-tri.club', 'temp_password_hash', 'administrator', true]);
-      console.log('✅ Jade\'s account created');
+      logger.debug('✅ Jade\'s account created');
     } else {
-      console.log('✅ Jade\'s account already exists');
+      logger.debug('✅ Jade\'s account already exists');
     }
 
-    console.log('✅ Database seeding completed');
+    logger.debug('✅ Database seeding completed');
   } catch (error) {
     console.error('❌ Error seeding database:', error);
     throw error;
@@ -993,16 +994,16 @@ async function checkDatabaseHealth() {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Received SIGINT, closing PostgreSQL connections...');
+  logger.debug('\n🛑 Received SIGINT, closing PostgreSQL connections...');
   await pool.end();
-  console.log('✅ PostgreSQL connections closed successfully');
+  logger.debug('✅ PostgreSQL connections closed successfully');
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🛑 Received SIGTERM, closing PostgreSQL connections...');
+  logger.debug('\n🛑 Received SIGTERM, closing PostgreSQL connections...');
   await pool.end();
-  console.log('✅ PostgreSQL connections closed successfully');
+  logger.debug('✅ PostgreSQL connections closed successfully');
   process.exit(0);
 });
 
@@ -1022,7 +1023,7 @@ if (require.main === module) {
     try {
       await initializeDatabase();
       await seedDatabase();
-      console.log('✅ Database initialization complete!');
+      logger.debug('✅ Database initialization complete!');
       await pool.end();
       process.exit(0);
     } catch (error) {

@@ -1,79 +1,109 @@
-# Twilio Configuration
-# Get these from your Twilio Console: https://console.twilio.com/
-TWILIO_ACCOUNT_SID=your_account_sid_here
-TWILIO_AUTH_TOKEN=your_auth_token_here
-TWILIO_PHONE_NUMBER=+1234567890
+# Copy this file to .env and fill in your actual values.
+# Location: backend/.env
 
-# Example:
-# TWILIO_ACCOUNT_SID=AC1234567890abcdef1234567890abcdef
-# TWILIO_AUTH_TOKEN=1234567890abcdef1234567890abcdef
-# TWILIO_PHONE_NUMBER=+15551234567
+# =============================================================================
+# Server
+# =============================================================================
+PORT=5001
+NODE_ENV=development
 
-# SendGrid Configuration
-# Get your API key from SendGrid Dashboard: https://app.sendgrid.com/settings/api_keys
-SENDGRID_API_KEY=your_sendgrid_api_key_here
-SENDGRID_FROM_EMAIL=info@uoft-tri.club
+# PostgreSQL connection string (Railway/production). When unset, local defaults apply.
+DATABASE_URL=postgresql://user:password@localhost:5432/uofttri
 
-# Example:
-# SENDGRID_API_KEY=SG.1234567890abcdef1234567890abcdef
-# SENDGRID_FROM_EMAIL=info@uoft-tri.club
-
-# JWT Configuration
+# =============================================================================
+# JWT
+# =============================================================================
 # Generate a secure random string for JWT signing
 JWT_SECRET=your_jwt_secret_here
 # How long login sessions last. Examples: 7d, 30d, 90d (default: 24h)
 JWT_EXPIRES_IN=30d
 
-# Frontend URL (for password reset links)
+# =============================================================================
+# Frontend URLs (password reset links, push deep links)
+# =============================================================================
 FRONTEND_URL=http://localhost:3000
+# Fallbacks used if FRONTEND_URL is unset (auth password-reset links):
+# FRONTEND_ORIGIN=http://localhost:3000
+# WEB_URL=http://localhost:3000
+# WEBSITE_URL=http://localhost:3000
+# VERCEL_URL=your-app.vercel.app
 
-# Copy this to .env and fill in your actual values
+# =============================================================================
+# AWS SES (transactional email)
+# =============================================================================
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_aws_access_key_id
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_FROM_EMAIL=info@uoft-tri.club
+AWS_FROM_NAME=UofT Triathlon Club
+# Admin inbox for membership receipt notifications (falls back to AWS_FROM_EMAIL)
+ADMIN_NOTIFY_EMAIL=info@uoft-tri.club
 
-# SMTP (Nodemailer) settings for sending emails
-# Use your provider's SMTP settings (e.g., Gmail, Outlook, custom domain)
-# If using Gmail, you must use an App Password and set SMTP_SECURE=true and SMTP_PORT=465
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=your_smtp_username
-SMTP_PASS=your_smtp_password_or_app_password
-SMTP_SECURE=false
-SMTP_FROM="UofT Triathlon Club" <info@uoft-tri.club>
+# =============================================================================
+# AWS S3 (profile pictures / uploads)
+# Prefer AWS_S3_* over the SES credentials above when keys differ.
+# =============================================================================
+AWS_S3_ACCESS_KEY_ID=your_s3_access_key_id
+AWS_S3_SECRET_ACCESS_KEY=your_s3_secret_access_key
+AWS_S3_REGION=us-east-1
+AWS_S3_BUCKET=your-bucket-name
+# Alias accepted for AWS_S3_BUCKET:
+# S3_BUCKET=your-bucket-name
+# Optional public base URL (auto-derived from bucket/region if unset):
+# AWS_S3_PUBLIC_BASE_URL=https://your-bucket-name.s3.us-east-1.amazonaws.com
 
-# Push Notifications Configuration
-# For Android (FCM) - Use ONE of the following options:
+# =============================================================================
+# Twilio (SMS)
+# Get these from https://console.twilio.com/
+# =============================================================================
+TWILIO_ACCOUNT_SID=your_account_sid_here
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_PHONE_NUMBER=+1234567890
 
-# Option 1: FCM Service Account (Recommended - more secure)
-# Download service account JSON from Firebase Console > Project Settings > Service Accounts
+# =============================================================================
+# SendGrid (legacy; utils/mailer.js — app email currently uses AWS SES)
+# =============================================================================
+SENDGRID_API_KEY=your_sendgrid_api_key_here
+SENDGRID_FROM_EMAIL=info@uoft-tri.club
 
+# =============================================================================
+# RAG chatbot (Pinecone + OpenAI-compatible LLM)
+# =============================================================================
+PINECONE_API_KEY=your_pinecone_api_key
+PINECONE_INDEX=uofttri-website-rag
+OPENAI_API_KEY=your_openai_api_key
+# Optional alternate base URL (e.g. Groq):
+# OPENAI_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_MODEL=gpt-4o-mini
+
+# =============================================================================
+# Push Notifications — Android (FCM)
+# Use ONE of the following options:
+# =============================================================================
+
+# Option 1: FCM Service Account (recommended)
 # Local dev — path to the JSON file:
 FCM_SERVICE_ACCOUNT_PATH=./config/firebase-service-account.json
 
 # Production (Railway) — paste the entire JSON file as one line:
 # FCM_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key":"..."}
 
-# Option 2: FCM Server Key (Legacy - simpler but less secure)
-# Get from Firebase Console > Project Settings > Cloud Messaging > Server Key
+# Option 2: FCM Server Key (legacy)
 # FCM_SERVER_KEY=your_fcm_server_key_here
 
-# For iOS (APNs) - Required for iOS push notifications
-# Create APNs Auth Key in Apple Developer Portal: https://developer.apple.com/account/resources/authkeys/list
-# Download the .p8 file and note the Key ID and Team ID
+# =============================================================================
+# Push Notifications — iOS (APNs)
+# Create an Auth Key at https://developer.apple.com/account/resources/authkeys/list
+# =============================================================================
 
-# For LOCAL DEVELOPMENT: Use file path
+# Local development — path to .p8 key:
 APNS_KEY_PATH=./config/AuthKey_XXXXXXXXXX.p8
 
-# For PRODUCTION (Vercel): Use base64 encoded key (convert with: base64 -i AuthKey_XXX.p8 | tr -d '\n')
+# Production — base64-encoded key (base64 -i AuthKey_XXX.p8 | tr -d '\n'):
 # APNS_KEY_BASE64=LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t...
 
-# Required for both local and production:
-APNS_KEY_ID=your_apns_key_id  # e.g., 9PKQNJ3X73
-APNS_TEAM_ID=your_apple_team_id  # Your Apple Team ID (found in Apple Developer Portal)
+APNS_KEY_ID=your_apns_key_id
+APNS_TEAM_ID=your_apple_team_id
 APNS_BUNDLE_ID=uofttri.club.app
-# CRITICAL: APNs Production vs Development
-# Development builds from Xcode generate tokens for the DEVELOPMENT APNs gateway
-# Production builds (App Store/TestFlight) generate tokens for the PRODUCTION APNs gateway
-# These are NOT interchangeable - using the wrong gateway causes BadDeviceToken errors
-# 
-# For testing with Xcode builds: APNS_PRODUCTION=false
-# For App Store/TestFlight builds: APNS_PRODUCTION=true
+# false for Xcode/dev builds; true for App Store / TestFlight
 APNS_PRODUCTION=false

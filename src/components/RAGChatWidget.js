@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import './RAGChatWidget.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+const API_BASE_URL = getApiBaseUrl();
 
 // Simple markdown: **bold** and newlines
 function formatAnswer(text) {

@@ -13,6 +13,7 @@ import ConfirmModal from './ConfirmModal';
 import { Capacitor } from '@capacitor/core';
 import { addWorkoutToCalendar } from '../services/calendarService';
 import './WorkoutDetail.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const WorkoutDetail = () => {
   const { id } = useParams();
@@ -103,7 +104,7 @@ const WorkoutDetail = () => {
     }
   }, [isIOS, navigate]);
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
   
   const { 
     editForm, 

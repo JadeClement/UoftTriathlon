@@ -1,4 +1,4 @@
-const { pool } = require('./database-pg');
+const { pool } = require('../database-pg');
 
 async function getSequenceName(tableName, idColumn = 'id') {
   const { rows } = await pool.query(

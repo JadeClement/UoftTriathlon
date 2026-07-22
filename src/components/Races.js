@@ -6,6 +6,7 @@ import { parseApiError, getApiErrorMessage } from '../utils/apiError';
 import { showSuccess, showError } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './Races.css';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 /** Race appears in calendar year `year` if start/end range overlaps that year (UTC date). */
 function raceTouchesYear(race, year) {
@@ -76,7 +77,7 @@ const Races = () => {
     course_profile: ''
   });
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+  const API_BASE_URL = getApiBaseUrl();
 
   const cachedUser = React.useMemo(() => {
     try {

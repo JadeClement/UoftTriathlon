@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { pool } = require('../database-pg');
+const logger = require('../utils/logger');
 
 // JWT secret (in production, use environment variable)
 // Force use of environment variable to match the routes
@@ -29,7 +30,7 @@ const authenticateToken = (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    console.log('🔒 Auth Middleware: No token provided');
+    logger.debug('🔒 Auth Middleware: No token provided');
     return res.status(401).json({ error: 'Access token required' });
   }
 
@@ -85,11 +86,11 @@ const requireAdmin = requireRole('administrator');
 
 // Middleware to check if user is member or higher
 const requireMember = async (req, res, next) => {
-  console.log('🔍 requireMember middleware - User:', req.user);
-  console.log('🔍 requireMember middleware - VERSION: v2.1 - WITH TERM EXPIRY CHECK');
+  logger.debug('🔍 requireMember middleware - User:', req.user);
+  logger.debug('🔍 requireMember middleware - VERSION: v2.1 - WITH TERM EXPIRY CHECK');
 
   if (!req.user) {
-    console.log('❌ requireMember: No user found');
+    logger.debug('❌ requireMember: No user found');
     return res.status(401).json({ error: 'Authentication required' });
   }
 
@@ -102,9 +103,9 @@ const requireMember = async (req, res, next) => {
   };
 
   const userRole = req.user.role || 'pending';
-  console.log('🔍 requireMember: User role:', userRole);
-  console.log('🔍 requireMember: User object:', req.user);
-  console.log('🔍 requireMember: Role hierarchy check:', {
+  logger.debug('🔍 requireMember: User role:', userRole);
+  logger.debug('🔍 requireMember: User object:', req.user);
+  logger.debug('🔍 requireMember: Role hierarchy check:', {
     userRole,
     memberLevel: roleHierarchy['member'],
     userLevel: roleHierarchy[userRole],
@@ -135,7 +136,7 @@ const requireMember = async (req, res, next) => {
             endDate.setHours(0, 0, 0, 0);
             
             if (endDate < today) {
-              console.log('❌ requireMember: Term expired for user:', req.user.id);
+              logger.debug('❌ requireMember: Term expired for user:', req.user.id);
               return res.status(403).json({ 
                 error: 'term_expired',
                 message: 'Sorry, your term has expired. To regain access, purchase a membership for the next term, then go to your Profile page and upload your payment receipt. An exec will review it and reactivate your account. If you have questions, email info@uoft-tri.club.'
@@ -149,7 +150,7 @@ const requireMember = async (req, res, next) => {
       }
     }
     
-    console.log('✅ requireMember: Access granted for role:', userRole);
+    logger.debug('✅ requireMember: Access granted for role:', userRole);
     next();
   } else {
     // JWT role is below member — check DB in case they were approved after login
@@ -161,7 +162,7 @@ const requireMember = async (req, res, next) => {
       if (dbRoleResult.rows.length > 0) {
         const dbRole = dbRoleResult.rows[0].role || 'pending';
         if (roleHierarchy[dbRole] >= roleHierarchy['member']) {
-          console.log('❌ requireMember: Stale JWT after approval. JWT:', userRole, 'DB:', dbRole);
+          logger.debug('❌ requireMember: Stale JWT after approval. JWT:', userRole, 'DB:', dbRole);
           return res.status(403).json({
             error: 'stale_token',
             message: 'Your membership was updated. Please log out and log back in to continue.',
@@ -174,7 +175,7 @@ const requireMember = async (req, res, next) => {
       console.error('❌ Error checking DB role for stale token:', error);
     }
 
-    console.log('❌ requireMember: Access denied for role:', userRole);
+    logger.debug('❌ requireMember: Access denied for role:', userRole);
     return res.status(403).json({ 
       error: 'Insufficient permissions',
       required: 'member or higher',
@@ -209,15 +210,15 @@ const requireOwnProfile = () => {
 // Middleware to allow users to edit their own profiles (for profile routes)
 const allowOwnProfile = () => {
   return (req, res, next) => {
-    console.log('🔒 allowOwnProfile middleware: Starting...');
-    console.log('🔒 allowOwnProfile middleware: User ID from token:', req.user?.id);
+    logger.debug('🔒 allowOwnProfile middleware: Starting...');
+    logger.debug('🔒 allowOwnProfile middleware: User ID from token:', req.user?.id);
     
     if (!req.user) {
-      console.log('🔒 allowOwnProfile middleware: No user found, returning 401');
+      logger.debug('🔒 allowOwnProfile middleware: No user found, returning 401');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    console.log('🔒 allowOwnProfile middleware: User authenticated, allowing access');
+    logger.debug('🔒 allowOwnProfile middleware: User authenticated, allowing access');
     // Users can always edit their own profiles
     next();
   };

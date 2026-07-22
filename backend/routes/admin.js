@@ -4,6 +4,7 @@ const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('
 const ExcelJS = require('exceljs');
 const notificationService = require('../services/notificationService');
 const { computeMembershipStatus, formatTermLabel } = require('../utils/membership');
+const logger = require('../utils/logger');
 
 // Function to convert markdown-like formatting to HTML
 const formatText = (text) => {
@@ -62,7 +63,7 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
 // Allow exec and admin to view members; restrict mutating routes to admin below
 router.get('/members', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
-    console.log('🔍 Admin members endpoint called by user:', req.user?.email, 'role:', req.user?.role);
+    logger.debug('🔍 Admin members endpoint called by user:', req.user?.email, 'role:', req.user?.role);
     const { page = 1, limit = 50, search = '', role = '' } = req.query;
     const offset = (page - 1) * limit;
 
@@ -86,7 +87,7 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
     // Get total count (using users table for count)
     const countWhereClause = whereClause.replace(/u\./g, '');
     const countResult = await pool.query(`SELECT COUNT(*) as total FROM users ${countWhereClause}`, params);
-    console.log('🔍 Total members count:', countResult.rows[0].total);
+    logger.debug('🔍 Total members count:', countResult.rows[0].total);
     
     // Get members with term information
     // JOIN is needed to get t.term (term name) for display in the UI
@@ -106,7 +107,7 @@ router.get('/members', authenticateToken, requireRole('exec'), async (req, res) 
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `, [...params, limit, offset]);
 
-    console.log('🔍 Members query returned:', membersResult.rows.length, 'members');
+    logger.debug('🔍 Members query returned:', membersResult.rows.length, 'members');
 
     // Attach a derived membership status + human-friendly term label to each row
     const members = (membersResult.rows || []).map((m) => ({
@@ -508,23 +509,23 @@ router.put('/members/:id/role', authenticateToken, requireAdmin, async (req, res
     `, [id, oldRole, role]);
 
     // Send role change email notification
-    console.log(`🔍 DEBUG: Starting role change email process for user ${id} from ${oldRole} to ${role}`);
+    logger.debug(`🔍 DEBUG: Starting role change email process for user ${id} from ${oldRole} to ${role}`);
     try {
       const emailService = require('../services/emailService');
-      console.log(`🔍 DEBUG: EmailService loaded successfully for role change`);
+      logger.debug(`🔍 DEBUG: EmailService loaded successfully for role change`);
       
       const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
-      console.log(`🔍 DEBUG: User details query result for role change:`, userDetails.rows);
+      logger.debug(`🔍 DEBUG: User details query result for role change:`, userDetails.rows);
       
       if (userDetails.rows.length > 0) {
         const { name, email } = userDetails.rows[0];
-        console.log(`🔍 DEBUG: Found user for role change - Name: ${name}, Email: ${email}, Old Role: ${oldRole}, New Role: ${role}`);
+        logger.debug(`🔍 DEBUG: Found user for role change - Name: ${name}, Email: ${email}, Old Role: ${oldRole}, New Role: ${role}`);
         
         const result = await emailService.sendRoleChangeNotification(email, name, oldRole, role);
-        console.log(`🔍 DEBUG: Role change notification email result:`, result);
-        console.log(`📧 Role change notification email sent to ${email} for role change from ${oldRole} to ${role}`);
+        logger.debug(`🔍 DEBUG: Role change notification email result:`, result);
+        logger.debug(`📧 Role change notification email sent to ${email} for role change from ${oldRole} to ${role}`);
       } else {
-        console.log(`❌ DEBUG: No user found with id ${id} for role change`);
+        logger.debug(`❌ DEBUG: No user found with id ${id} for role change`);
       }
     } catch (emailError) {
       console.error('❌ Failed to send role change email:', emailError);
@@ -571,14 +572,14 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
     const { id } = req.params;
     const { name, email, phone_number, role, charterAccepted, sport, term_id } = req.body;
     
-    console.log('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, term_id });
+    logger.debug('🔧 Admin update member:', { id, name, email, phone_number, role, charterAccepted, term_id });
 
     // Get the current role before updating to check if it actually changed
     let currentRole = null;
     if (role !== undefined) {
       const currentUserResult = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
       currentRole = currentUserResult.rows[0]?.role;
-      console.log(`🔍 DEBUG: Role update requested - Current: ${currentRole}, New: ${role}`);
+      logger.debug(`🔍 DEBUG: Role update requested - Current: ${currentRole}, New: ${role}`);
     }
 
     // Check if this is the last administrator
@@ -642,7 +643,7 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       updates.push(`charter_accepted = $${paramCount}`);
       const charterValue = charterAccepted ? 1 : 0;
       values.push(charterValue);
-      console.log('🔧 Charter update:', { charterAccepted, charterValue });
+      logger.debug('🔧 Charter update:', { charterAccepted, charterValue });
     }
 
     // Note: expiry_date removed - expiry is now determined by term.end_date
@@ -655,7 +656,7 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
       paramCount++;
       updates.push(`sport = $${paramCount}`);
       values.push(sport);
-      console.log('🔧 Sport update:', { sport });
+      logger.debug('🔧 Sport update:', { sport });
     }
 
     if (term_id !== undefined) {
@@ -679,7 +680,7 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
         updates.push(`term_id = $${paramCount}`);
         values.push(null);
       }
-      console.log('🔧 Term update:', { term_id });
+      logger.debug('🔧 Term update:', { term_id });
     }
 
     if (updates.length === 0) {
@@ -699,25 +700,25 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
     if (role !== undefined && currentRole !== null) {
       // Only send notification if the role actually changed
       if (currentRole !== role) {
-        console.log(`🔍 DEBUG: Role actually changed from ${currentRole} to ${role}, sending email notification`);
+        logger.debug(`🔍 DEBUG: Role actually changed from ${currentRole} to ${role}, sending email notification`);
         try {
           const emailService = require('../services/emailService');
           const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
           
           if (userDetails.rows.length > 0) {
             const { name, email } = userDetails.rows[0];
-            console.log(`🔍 DEBUG: Found user for role change email - Name: ${name}, Email: ${email}, New Role: ${role}`);
+            logger.debug(`🔍 DEBUG: Found user for role change email - Name: ${name}, Email: ${email}, New Role: ${role}`);
             
             if (role === 'member') {
               await emailService.sendMemberAcceptance(email, name);
-              console.log(`📧 Member acceptance email sent to ${email}`);
+              logger.debug(`📧 Member acceptance email sent to ${email}`);
             } else {
               // Send role change notification for other roles
               await emailService.sendRoleChangeNotification(email, name, currentRole, role);
-              console.log(`📧 Role change notification email sent to ${email} for role change from ${currentRole} to ${role}`);
+              logger.debug(`📧 Role change notification email sent to ${email} for role change from ${currentRole} to ${role}`);
             }
           } else {
-            console.log(`❌ DEBUG: No user found with id ${id} for role change email`);
+            logger.debug(`❌ DEBUG: No user found with id ${id} for role change email`);
           }
         } catch (emailError) {
           console.error('❌ Failed to send role change email:', emailError);
@@ -725,7 +726,7 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
           // Don't fail the update if email fails
         }
       } else {
-        console.log(`ℹ️ DEBUG: Role unchanged (${currentRole}), skipping email notification`);
+        logger.debug(`ℹ️ DEBUG: Role unchanged (${currentRole}), skipping email notification`);
       }
     }
 
@@ -802,31 +803,31 @@ router.post('/members/:id/approve', authenticateToken, requireAdmin, async (req,
     `, [id, 'pending', role]);
 
     // Send appropriate email based on role
-    console.log(`🔍 DEBUG: Starting email process for user ${id} with role ${role}`);
+    logger.debug(`🔍 DEBUG: Starting email process for user ${id} with role ${role}`);
     try {
       const emailService = require('../services/emailService');
-      console.log(`🔍 DEBUG: EmailService loaded successfully`);
+      logger.debug(`🔍 DEBUG: EmailService loaded successfully`);
       
       const userDetails = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
-      console.log(`🔍 DEBUG: User details query result:`, userDetails.rows);
+      logger.debug(`🔍 DEBUG: User details query result:`, userDetails.rows);
       
       if (userDetails.rows.length > 0) {
         const { name, email } = userDetails.rows[0];
-        console.log(`🔍 DEBUG: Found user - Name: ${name}, Email: ${email}`);
+        logger.debug(`🔍 DEBUG: Found user - Name: ${name}, Email: ${email}`);
         
         if (role === 'member') {
-          console.log(`🔍 DEBUG: Sending member acceptance email to ${email}`);
+          logger.debug(`🔍 DEBUG: Sending member acceptance email to ${email}`);
           const result = await emailService.sendMemberAcceptance(email, name);
-          console.log(`🔍 DEBUG: Member acceptance email result:`, result);
-          console.log(`📧 Member acceptance email sent to ${email}`);
+          logger.debug(`🔍 DEBUG: Member acceptance email result:`, result);
+          logger.debug(`📧 Member acceptance email sent to ${email}`);
         } else {
-          console.log(`🔍 DEBUG: Sending role change notification email to ${email} for role ${role}`);
+          logger.debug(`🔍 DEBUG: Sending role change notification email to ${email} for role ${role}`);
           const result = await emailService.sendRoleChangeNotification(email, name, 'pending', role);
-          console.log(`🔍 DEBUG: Role change notification email result:`, result);
-          console.log(`📧 Role change notification email sent to ${email} for ${role} role`);
+          logger.debug(`🔍 DEBUG: Role change notification email result:`, result);
+          logger.debug(`📧 Role change notification email sent to ${email} for ${role} role`);
         }
       } else {
-        console.log(`❌ DEBUG: No user found with id ${id}`);
+        logger.debug(`❌ DEBUG: No user found with id ${id}`);
       }
     } catch (emailError) {
       console.error('❌ Failed to send role change email:', emailError);
@@ -1126,13 +1127,13 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
     // Get attachments from multer
     const attachments = req.files || [];
     
-    console.log('📎 Bulk email attachments received:', {
+    logger.debug('📎 Bulk email attachments received:', {
       count: attachments.length,
       files: attachments.map(f => ({ name: f.originalname, size: f.size, mimetype: f.mimetype }))
     });
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('🔍 Bulk email request body (sanitized):', { subject, template: !!template });
+      logger.debug('🔍 Bulk email request body (sanitized):', { subject, template: !!template });
     }
 
     if (!subject) {
@@ -1178,14 +1179,14 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
         const query = `SELECT email, name, role, is_active FROM users WHERE is_active = true AND (${whereClause})`;
         
       if (process.env.NODE_ENV !== 'production') {
-        console.log('🔍 Bulk email query (debug)');
+        logger.debug('🔍 Bulk email query (debug)');
       }
         
         const result = await pool.query(query, queryParams);
         recipientEmails = result.rows;
         
       if (process.env.NODE_ENV !== 'production') {
-        console.log('🔍 Found database recipients:', recipientEmails.length);
+        logger.debug('🔍 Found database recipients:', recipientEmails.length);
       }
       }
     }
@@ -1219,12 +1220,12 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
 
       recipientEmails = [...recipientEmails, ...customRecipients];
       if (process.env.NODE_ENV !== 'production') {
-        console.log('🔍 Added custom recipients:', customRecipients.length);
+        logger.debug('🔍 Added custom recipients:', customRecipients.length);
       }
     }
     
     if (process.env.NODE_ENV !== 'production') {
-      console.log('🔍 Total recipients:', recipientEmails.length);
+      logger.debug('🔍 Total recipients:', recipientEmails.length);
     }
 
     if (recipientEmails.length === 0) {
@@ -1320,14 +1321,14 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`📧 Sending ${recipientEmails.length} emails in ${batches.length} batches of ${BATCH_SIZE}`);
+      logger.debug(`📧 Sending ${recipientEmails.length} emails in ${batches.length} batches of ${BATCH_SIZE}`);
     }
 
     // Process each batch
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`📧 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} emails)`);
+        logger.debug(`📧 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} emails)`);
       }
       
       // Send all emails in this batch in parallel
@@ -1340,10 +1341,10 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
           // Send email with attachments if any
           let result;
           if (attachments.length > 0) {
-            console.log(`📧 Sending bulk email with ${attachments.length} attachment(s) to ${recipient.email}`);
+            logger.debug(`📧 Sending bulk email with ${attachments.length} attachment(s) to ${recipient.email}`);
             result = await emailService.sendEmailWithAttachments(recipient.email, subject, personalizedHtml, personalizedText, attachments, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
           } else {
-            console.log(`📧 Sending bulk email without attachments to ${recipient.email}`);
+            logger.debug(`📧 Sending bulk email without attachments to ${recipient.email}`);
             result = await emailService.sendEmail(recipient.email, subject, personalizedHtml, personalizedText, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
           }
           
@@ -1376,7 +1377,7 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
       // Add delay between batches to respect rate limits (except for the last batch)
       if (batchIndex < batches.length - 1) {
         if (process.env.NODE_ENV !== 'production') {
-          console.log(`⏳ Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+          logger.debug(`⏳ Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
         }
         await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
       }
@@ -1694,7 +1695,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
     // Log attendance details for debugging
     const cancelledUsers = attendanceResult.rows.filter(record => record.attendance_type === 'cancelled');
     if (cancelledUsers.length > 0) {
-      console.log(`📋 ATTENDANCE DASHBOARD - Cancelled Users Found:`, {
+      logger.debug(`📋 ATTENDANCE DASHBOARD - Cancelled Users Found:`, {
         workoutId,
         workoutTitle: workout.title,
         cancelledCount: cancelledUsers.length,
@@ -1706,7 +1707,7 @@ router.get('/attendance-dashboard/:workoutId', authenticateToken, requireCoach, 
       });
     }
 
-    console.log(`📊 ATTENDANCE SUMMARY:`, {
+    logger.debug(`📊 ATTENDANCE SUMMARY:`, {
       workoutId,
       workoutTitle: workout.title,
       totalRecords: summaryResult.rows[0].total_records,
@@ -1743,7 +1744,7 @@ router.post('/test-push-notification', authenticateToken, requireAdmin, async (r
       data: { type: 'test', timestamp: new Date().toISOString() }
     };
     
-    console.log(`🧪 Testing push notification for user ${targetUserId}:`, notification);
+    logger.debug(`🧪 Testing push notification for user ${targetUserId}:`, notification);
     
     const success = await notificationService.sendPushNotificationToUser(targetUserId, notification);
     

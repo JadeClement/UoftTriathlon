@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { MEMBERSHIP_FEES, formatFeeAmount } from '../config/membershipFees';
 import './JoinUs.css';
 
 const JoinUs = () => {
@@ -226,30 +227,12 @@ const JoinUs = () => {
                     <h4>Fees:</h4>
                     <p><em>*Half = Fall or Winter only | Full = Both Fall and Winter</em></p>
                     <div className="fee-grid">
-                      <div className="fee-item">
-                        <span className="fee-name">Full Tri:</span>
-                        <span className="fee-amount">$256 + HST</span>
-                      </div>
-                      <div className="fee-item">
-                        <span className="fee-name">Half Tri:</span>
-                        <span className="fee-amount">$136 + HST</span>
-                      </div>
-                      <div className="fee-item">
-                        <span className="fee-name">Full Du:</span>
-                        <span className="fee-amount">$213 + HST</span>
-                      </div>
-                      <div className="fee-item">
-                        <span className="fee-name">Half Du:</span>
-                        <span className="fee-amount">$122 + HST</span>
-                      </div>
-                      <div className="fee-item">
-                        <span className="fee-name">Full Run:</span>
-                        <span className="fee-amount">$182 + HST</span>
-                      </div>
-                      <div className="fee-item">
-                        <span className="fee-name">Half Run:</span>
-                        <span className="fee-amount">$101 + HST</span>
-                      </div>
+                      {MEMBERSHIP_FEES.map((fee) => (
+                        <div className="fee-item" key={fee.id}>
+                          <span className="fee-name">{fee.name}:</span>
+                          <span className="fee-amount">{formatFeeAmount(fee.amount)}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 

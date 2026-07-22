@@ -1,6 +1,6 @@
 require('dotenv').config();
-const { pool } = require('./database-pg');
-const { combineDateTime, isWithinHours } = require('./utils/dateUtils');
+const { pool } = require('../database-pg');
+const { combineDateTime, isWithinHours } = require('../utils/dateUtils');
 
 /**
  * Migration script to fix historical cancellation timezone issues
@@ -11,7 +11,7 @@ const { combineDateTime, isWithinHours } = require('./utils/dateUtils');
  * 3. Fixes marked_absent flags
  * 4. Adjusts users.absences counts accordingly
  * 
- * Run with: node migrate-fix-cancellation-timezones.js
+ * Run with: node scripts/migrate-fix-cancellation-timezones.js
  */
 
 async function fixCancellationTimezones() {

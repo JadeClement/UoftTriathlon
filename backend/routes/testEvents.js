@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../database-pg');
 const { authenticateToken, requireCoach, requireMember } = require('../middleware/auth');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -94,7 +95,7 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
       return res.status(400).json({ error: 'Invalid workout ID' });
     }
 
-    console.log('🔍 Fetching test event for workout ID:', workoutIdInt);
+    logger.debug('🔍 Fetching test event for workout ID:', workoutIdInt);
 
     const testEventResult = await pool.query(`
       SELECT 
@@ -113,7 +114,7 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
       WHERE te.workout_post_id = $1
     `, [workoutIdInt]);
     
-    console.log('🔍 Test event query result:', testEventResult.rows.length, 'events found');
+    logger.debug('🔍 Test event query result:', testEventResult.rows.length, 'events found');
 
     if (testEventResult.rows.length === 0) {
       return res.json({ testEvent: null });
@@ -126,8 +127,8 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
     const userRole = req.user.role;
     const isCoachOrAdmin = ['coach', 'administrator'].includes(userRole);
     
-    console.log('🔍 Fetching records for test event:', testEventResult.rows[0].id);
-    console.log('🔍 User ID:', userId, 'Role:', userRole, 'IsCoachOrAdmin:', isCoachOrAdmin);
+    logger.debug('🔍 Fetching records for test event:', testEventResult.rows[0].id);
+    logger.debug('🔍 User ID:', userId, 'Role:', userRole, 'IsCoachOrAdmin:', isCoachOrAdmin);
     
     // Check if results_public column exists
     let hasResultsPublicColumn = true;
@@ -138,7 +139,7 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
         WHERE table_name = 'users' AND column_name = 'results_public'
       `);
       hasResultsPublicColumn = columnCheck.rows.length > 0;
-      console.log('🔍 results_public column exists:', hasResultsPublicColumn);
+      logger.debug('🔍 results_public column exists:', hasResultsPublicColumn);
     } catch (err) {
       console.warn('⚠️ Error checking for results_public column:', err.message);
       hasResultsPublicColumn = false;
@@ -159,9 +160,9 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
           whereClause = `WHERE r.test_event_id = $1 AND r.user_id = $2`;
         }
         params.push(userId);
-        console.log('🔍 Filtering for regular member - showing public results or own results');
+        logger.debug('🔍 Filtering for regular member - showing public results or own results');
       } else {
-        console.log('🔍 Coach/Admin - showing all results');
+        logger.debug('🔍 Coach/Admin - showing all results');
       }
       
       const selectClause = hasResultsPublicColumn 
@@ -207,9 +208,9 @@ router.get('/by-workout/:workoutId', authenticateToken, requireMember, async (re
         ORDER BY r.created_at DESC
       `, params);
       
-      console.log('🔍 Records query returned:', recordsResult.rows.length, 'records');
+      logger.debug('🔍 Records query returned:', recordsResult.rows.length, 'records');
       if (recordsResult.rows.length > 0) {
-        console.log('🔍 Sample record user results_public values:', recordsResult.rows.slice(0, 3).map(r => ({ user_id: r.user_id, user_name: r.user_name, results_public: r.results_public })));
+        logger.debug('🔍 Sample record user results_public values:', recordsResult.rows.slice(0, 3).map(r => ({ user_id: r.user_id, user_name: r.user_name, results_public: r.results_public })));
       }
     } catch (error) {
       // If 'notes' column doesn't exist, try 'description' instead

@@ -6,7 +6,7 @@
  */
 
 require('dotenv').config();
-const { pool } = require('./database-pg');
+const { pool } = require('../database-pg');
 
 async function createPushDeviceTokensTable() {
   const client = await pool.connect();

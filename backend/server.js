@@ -1,10 +1,11 @@
 // Load environment variables FIRST, before any other imports
 require('dotenv').config();
+const logger = require('./utils/logger');
 
 // Debug: Confirm environment variables are loaded
-console.log('🔧 Server: JWT_SECRET loaded:', !!process.env.JWT_SECRET);
-console.log('🔧 Server: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
-console.log('🔧 Server: JWT_SECRET starts with:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
+logger.debug('🔧 Server: JWT_SECRET loaded:', !!process.env.JWT_SECRET);
+logger.debug('🔧 Server: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
+logger.debug('🔧 Server: JWT_SECRET starts with:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
 
 const express = require('express');
 const cors = require('cors');
@@ -100,15 +101,15 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files statically (BEFORE API routes to avoid conflicts)
 const uploadsPath = path.join(__dirname, 'uploads');
-console.log('📁 Static uploads path:', uploadsPath);
-console.log('🔍 Uploads directory exists:', require('fs').existsSync(uploadsPath));
+logger.debug('📁 Static uploads path:', uploadsPath);
+logger.debug('🔍 Uploads directory exists:', require('fs').existsSync(uploadsPath));
 
 app.use('/uploads', express.static(uploadsPath));
 
 // Debug middleware to log all requests to /api/users/*
 app.use('/api/users', (req, res, next) => {
-  console.log(`📡 [${req.method}] /api/users${req.path}`);
-  console.log('📡 Request headers:', {
+  logger.debug(`📡 [${req.method}] /api/users${req.path}`);
+  logger.debug('📡 Request headers:', {
     authorization: req.headers.authorization ? 'Present' : 'Missing',
     'content-type': req.headers['content-type']
   });
@@ -159,7 +160,7 @@ app.get('/api/health', async (req, res) => {
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
-  console.log(`❌ 404: Route not found - ${req.method} ${req.path}`);
+  logger.debug(`❌ 404: Route not found - ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Route not found' });
 });
 
@@ -210,7 +211,7 @@ const { initializeDatabase, seedDatabase } = require('./database-pg');
 async function startServer() {
   try {
     // Run migration first
-    console.log('🔧 Running database migration...');
+    logger.debug('🔧 Running database migration...');
     try {
       const { pool } = require('./database-pg');
       
@@ -223,9 +224,9 @@ async function startServer() {
       `);
       
       if (columnCheck.rows.length > 0) {
-        console.log('📋 Found workout_id column, renaming to post_id...');
+        logger.debug('📋 Found workout_id column, renaming to post_id...');
         await pool.query('ALTER TABLE workout_waitlist RENAME COLUMN workout_id TO post_id');
-        console.log('✅ Column renamed successfully');
+        logger.debug('✅ Column renamed successfully');
         
         // Update constraints and indexes
         await pool.query('ALTER TABLE workout_waitlist DROP CONSTRAINT IF EXISTS workout_waitlist_workout_id_fkey');
@@ -234,9 +235,9 @@ async function startServer() {
         await pool.query('ALTER TABLE workout_waitlist ADD CONSTRAINT workout_waitlist_user_id_post_id_key UNIQUE (user_id, post_id)');
         await pool.query('DROP INDEX IF EXISTS idx_workout_waitlist_workout_id');
         await pool.query('CREATE INDEX IF NOT EXISTS idx_workout_waitlist_post_id ON workout_waitlist(post_id)');
-        console.log('✅ Migration completed successfully');
+        logger.debug('✅ Migration completed successfully');
       } else {
-        console.log('✅ Database schema is already up to date');
+        logger.debug('✅ Database schema is already up to date');
       }
     } catch (migrationError) {
       console.error('❌ Migration error:', migrationError.message);
@@ -251,10 +252,10 @@ async function startServer() {
     
     // Start server
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 UofT Triathlon Club API running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log('📊 Database: PostgreSQL (uofttriathlon)');
+      logger.debug(`🚀 UofT Triathlon Club API running on port ${PORT}`);
+      logger.debug(`📊 Health check: http://localhost:${PORT}/api/health`);
+      logger.debug(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.debug('📊 Database: PostgreSQL (uofttriathlon)');
       // startAutoBackup(); // Commented out for now
     });
   } catch (error) {

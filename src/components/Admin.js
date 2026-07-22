@@ -7,7 +7,13 @@ import { formatSignupTimeForDisplay } from '../utils/dateUtils';
 import { showError, showSuccess } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import AdminContext from '../context/AdminContext';
-import { AdminLayout } from './admin/index';
+import AdminLayout from './admin/AdminLayout';
+import { getApiBaseUrl } from '../utils/apiConfig';
+import {
+  validatePhoneNumber,
+  formatPhoneNumber,
+  formatPhoneNumberInput,
+} from '../utils/phoneUtils';
 import './Admin.css';
 
 const Admin = () => {
@@ -24,7 +30,7 @@ const Admin = () => {
   const [intervalDateFilter, setIntervalDateFilter] = useState({ startDate: '', endDate: '' });
   const [selectedIntervalUserIds, setSelectedIntervalUserIds] = useState(new Set());
   const [downloadingAllIntervalExports, setDownloadingAllIntervalExports] = useState(false);
-  
+
   // Test Events state (legacy - Interval Results tab replaced this)
   const [testEvents, setTestEvents] = useState([]); // eslint-disable-line no-unused-vars
   const [selectedTestEvent, setSelectedTestEvent] = useState(null);
@@ -37,7 +43,7 @@ const Admin = () => {
     sport: 'swim',
     date: '',
     workout: '',
-    workout_post_id: null
+    workout_post_id: null,
   });
   const [testEventRecordCount, setTestEventRecordCount] = useState(0);
   const [availableWorkouts, setAvailableWorkouts] = useState([]);
@@ -47,22 +53,22 @@ const Admin = () => {
     result: '',
     description: '',
     user_id: null,
-    result_fields: {}
+    result_fields: {},
   });
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  
+
   // Pagination state for members
   const [currentPage, setCurrentPage] = useState(1);
   const [membersPerPage] = useState(15);
-  
+
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [memberSearch]);
-  
+
   // Banner + popup form supports multiple items and rotation interval
   const [bannerForm, setBannerForm] = useState({
     enabled: false,
@@ -70,17 +76,17 @@ const Admin = () => {
     rotationIntervalMs: 6000,
     popupEnabled: false,
     popupDraft: '',
-    popupPreview: ''
+    popupPreview: '',
   });
   const [bannerSnapshot, setBannerSnapshot] = useState({
     enabled: false,
     items: [],
-    rotationIntervalMs: 6000
+    rotationIntervalMs: 6000,
   });
   const [popupPreview, setPopupPreview] = useState({
     enabled: false,
     message: '',
-    popupId: null
+    popupId: null,
   });
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
   const [template, setTemplate] = useState({ bannerTitle: '', title: '', body: '' });
@@ -175,15 +181,15 @@ const Admin = () => {
   const insertText = (text, wrapper = '') => {
     const textarea = document.getElementById('email-body-textarea');
     if (!textarea) return;
-    
+
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = textarea.value.substring(start, end);
     const newText = wrapper ? `${wrapper}${selectedText || text}${wrapper}` : text;
-    
+
     const newValue = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
     setTemplate({ ...template, body: newValue });
-    
+
     // Restore cursor position
     setTimeout(() => {
       textarea.focus();
@@ -194,7 +200,7 @@ const Admin = () => {
   const insertBold = () => insertText('', '**');
   const insertItalic = () => insertText('', '*');
   const insertNumberedList = () => insertText('1. ');
-  
+
   const handleTextareaKeyDown = (e) => {
     if (e.key === 'Enter') {
       const textarea = e.target;
@@ -203,19 +209,20 @@ const Admin = () => {
       const textBeforeCursor = textarea.value.substring(0, start);
       const lines = textBeforeCursor.split('\n');
       const currentLine = lines[lines.length - 1];
-      
+
       // Check if current line starts with a number followed by a dot
       const numberedListMatch = currentLine.match(/^(\d+)\.\s/);
-      
+
       if (numberedListMatch) {
         e.preventDefault();
         const currentNumber = parseInt(numberedListMatch[1]);
         const nextNumber = currentNumber + 1;
         const newText = `\n${nextNumber}. `;
-        
-        const newValue = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+
+        const newValue =
+          textarea.value.substring(0, start) + newText + textarea.value.substring(end);
         setTemplate({ ...template, body: newValue });
-        
+
         // Position cursor after the new number
         setTimeout(() => {
           textarea.focus();
@@ -224,7 +231,7 @@ const Admin = () => {
       }
     }
   };
-  
+
   const insertUrl = () => {
     const url = prompt('Enter URL:');
     const text = prompt('Enter link text (optional):') || url;
@@ -239,7 +246,7 @@ const Admin = () => {
   const [attendanceFilters, setAttendanceFilters] = useState({
     type: 'all',
     status: 'all',
-    page: 1
+    page: 1,
   });
   const [attendancePagination, setAttendancePagination] = useState({});
   // eslint-disable-next-line no-unused-vars
@@ -260,7 +267,12 @@ const Admin = () => {
   // Term management
   const [showTermModal, setShowTermModal] = useState(false);
   const [editingTerm, setEditingTerm] = useState(null);
-  const [termForm, setTermForm] = useState({ term: 'fall', year: new Date().getFullYear(), start_date: '', end_date: '' });
+  const [termForm, setTermForm] = useState({
+    term: 'fall',
+    year: new Date().getFullYear(),
+    start_date: '',
+    end_date: '',
+  });
   const [deleteTermConfirm, setDeleteTermConfirm] = useState({ isOpen: false, termId: null });
   const [editForm, setEditForm] = useState({
     name: '',
@@ -274,7 +286,7 @@ const Admin = () => {
   });
   const [approvingMember, setApprovingMember] = useState(null);
   const [approvalForm, setApprovalForm] = useState({
-    role: 'member'
+    role: 'member',
   });
 
   // Orders state
@@ -291,54 +303,25 @@ const Admin = () => {
     item: '',
     size: '',
     quantity: 1,
-    gender: 'mens' // Add gender field
+    gender: 'mens', // Add gender field
   });
   const [gearItems, setGearItems] = useState([]);
   const [removeBannerConfirm, setRemoveBannerConfirm] = useState({ isOpen: false });
   const [deleteOrderConfirm, setDeleteOrderConfirm] = useState({ isOpen: false, orderId: null });
   const [archiveOrdersConfirm, setArchiveOrdersConfirm] = useState({ isOpen: false, count: 0 });
   const [unarchiveOrdersConfirm, setUnarchiveOrdersConfirm] = useState({ isOpen: false, count: 0 });
-  const [deleteTestEventConfirm, setDeleteTestEventConfirm] = useState({ isOpen: false, eventId: null });
+  const [deleteTestEventConfirm, setDeleteTestEventConfirm] = useState({
+    isOpen: false,
+    eventId: null,
+  });
   const [deleteUserConfirm, setDeleteUserConfirm] = useState({ isOpen: false, userId: null });
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
-
-
-  // Phone number formatting functions (same as Login.js and Profile.js)
-  const validatePhoneNumber = (phone) => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    // Check if it's 10 digits (North American format)
-    return digitsOnly.length === 10;
-  };
-
-  const formatPhoneNumber = (phone) => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    // Format as (XXX) XXX-XXXX
-    if (digitsOnly.length === 10) {
-      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
-    }
-    return phone; // Return original if not 10 digits
-  };
+  const API_BASE_URL = getApiBaseUrl();
 
   const handlePhoneNumberChange = (e) => {
-    const value = e.target.value;
-    // Remove all non-digit characters
-    const digitsOnly = value.replace(/\D/g, '');
-    
-    // Limit to 10 digits
-    if (digitsOnly.length <= 10) {
-      // Format as user types
-      let formatted = digitsOnly;
-      if (digitsOnly.length >= 6) {
-        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
-      } else if (digitsOnly.length >= 3) {
-        formatted = `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3)}`;
-      } else if (digitsOnly.length > 0) {
-        formatted = `(${digitsOnly}`;
-      }
-      setEditForm({...editForm, phoneNumber: formatted});
+    const formatted = formatPhoneNumberInput(e.target.value);
+    if (formatted !== null) {
+      setEditForm({ ...editForm, phoneNumber: formatted });
     }
   };
 
@@ -351,7 +334,7 @@ const Admin = () => {
     loadAdminData();
     loadTerms();
     loadReceipts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, isAdmin]);
 
   // Load attendance data when filters change
@@ -361,7 +344,7 @@ const Admin = () => {
     }
 
     loadAttendanceData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attendanceFilters, currentUser, isAdmin]);
 
   const loadBannerData = async () => {
@@ -370,11 +353,16 @@ const Admin = () => {
       if (response.ok) {
         const data = await response.json();
         const enabled = !!data?.banner?.enabled;
-        const rotationIntervalMs = Number(data?.banner?.rotationIntervalMs) > 0 ? Number(data.banner.rotationIntervalMs) : 6000;
+        const rotationIntervalMs =
+          Number(data?.banner?.rotationIntervalMs) > 0
+            ? Number(data.banner.rotationIntervalMs)
+            : 6000;
         // Normalize items to a flat array of strings
         let items = [];
         if (Array.isArray(data?.banner?.items)) {
-          items = data.banner.items.map((it) => (typeof it === 'string' ? it : String(it?.message || ''))).filter(Boolean);
+          items = data.banner.items
+            .map((it) => (typeof it === 'string' ? it : String(it?.message || '')))
+            .filter(Boolean);
         } else if (data?.banner?.message) {
           items = [String(data.banner.message)];
         }
@@ -386,17 +374,17 @@ const Admin = () => {
           items: items.length > 0 ? items : [''],
           rotationIntervalMs,
           popupEnabled,
-          popupDraft: ''
+          popupDraft: '',
         });
         setBannerSnapshot({
           enabled: enabled && items.length > 0,
           items: items.length ? items : [],
-          rotationIntervalMs
+          rotationIntervalMs,
         });
         setPopupPreview({
           enabled: popupEnabled,
           message: popupMessage,
-          popupId: data?.popup?.popupId || null
+          popupId: data?.popup?.popupId || null,
         });
       }
     } catch (error) {
@@ -417,7 +405,7 @@ const Admin = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('triathlonToken');
-      
+
       // Get non-empty items from form
       const itemsToSend = (bannerForm.items || [])
         .map((m) => String(m || '').trim())
@@ -427,35 +415,42 @@ const Admin = () => {
       // Validate length: if any message is over 50 chars (excluding URL parts), show error
       const hasTooLong = itemsToSend.some((it) => getBannerDisplayLength(it.message) > 50);
       if (hasTooLong) {
-        showNotification('Your message is too long. Banner messages must be 50 characters or less.', 'error');
+        showNotification(
+          'Your message is too long. Banner messages must be 50 characters or less.',
+          'error'
+        );
         return;
       }
-      
-      console.log('Saving banner:', { enabled: bannerForm.enabled, itemsCount: itemsToSend.length, items: itemsToSend });
-      
+
+      console.log('Saving banner:', {
+        enabled: bannerForm.enabled,
+        itemsCount: itemsToSend.length,
+        items: itemsToSend,
+      });
+
       const resp = await fetch(`${API_BASE_URL}/site/banner`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           enabled: !!bannerForm.enabled,
           rotationIntervalMs: Number(bannerForm.rotationIntervalMs) || 6000,
           items: itemsToSend,
           // Preserve current popup settings
           popupEnabled: popupPreview.enabled,
-          popupMessage: popupPreview.message || ''
-        })
+          popupMessage: popupPreview.message || '',
+        }),
       });
-      
+
       if (!resp.ok) {
         const payload = await resp.json().catch(() => ({}));
         throw new Error(payload.error || 'Failed to update banner');
       }
-      
+
       const payload = await resp.json().catch(() => ({}));
       console.log('Banner save response:', payload);
-      
+
       showNotification('Banner updated successfully!', 'success');
-      
+
       // Reload banner data to ensure form is in sync with what's actually saved
       await loadBannerData();
     } catch (err) {
@@ -473,15 +468,15 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const resp = await fetch(`${API_BASE_URL}/site/banner`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           // Preserve current banner settings
           enabled: !!bannerSnapshot.enabled,
           rotationIntervalMs: Number(bannerSnapshot.rotationIntervalMs) || 6000,
           items: (bannerSnapshot.items || []).map((message) => ({ message })),
           popupEnabled: !!bannerForm.popupEnabled,
-          popupMessage: bannerForm.popupDraft.trim()
-        })
+          popupMessage: bannerForm.popupDraft.trim(),
+        }),
       });
       const payload = await resp.json().catch(() => null);
       if (!resp.ok) {
@@ -493,12 +488,12 @@ const Admin = () => {
         setPopupPreview({
           enabled: !!payload.popup.enabled && !!payload.popup.message,
           message: payload.popup.message || '',
-          popupId: payload.popup.popupId || null
+          popupId: payload.popup.popupId || null,
         });
       }
       setBannerForm((prev) => ({
         ...prev,
-        popupDraft: ''
+        popupDraft: '',
       }));
     } catch (err) {
       showNotification(err.message, 'error');
@@ -520,14 +515,14 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const resp = await fetch(`${API_BASE_URL}/site/banner`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           enabled: !!bannerSnapshot.enabled,
           rotationIntervalMs: Number(bannerSnapshot.rotationIntervalMs) || 6000,
           items: (bannerSnapshot.items || []).map((message) => ({ message })),
           popupEnabled: false,
-          popupMessage: ''
-        })
+          popupMessage: '',
+        }),
       });
       const payload = await resp.json().catch(() => null);
       if (!resp.ok) {
@@ -556,7 +551,7 @@ const Admin = () => {
   const handleSendEmail = async () => {
     setEmailStatus(null);
     setBulkEmailStatus(null);
-    
+
     // For individual emails, check if there's a subject and message
     if (emailType === 'individual') {
       if (!emailForm.subject.trim()) {
@@ -568,39 +563,39 @@ const Admin = () => {
         return;
       }
     }
-    
+
     // For bulk emails, check template content
     if (emailType === 'everyone' && !template.title && !template.body) {
       setBulkEmailStatus({ type: 'error', text: 'Please provide template content.' });
       return;
     }
-    
+
     if (emailType === 'individual' && !emailForm.to) {
       setEmailStatus({ type: 'error', text: 'Please provide recipient email.' });
       return;
     }
-    
+
     try {
       if (emailType === 'individual') {
         setSendingEmail(true);
         const token = localStorage.getItem('triathlonToken');
-        
+
         // Prepare form data for file uploads
         const formData = new FormData();
         formData.append('to', emailForm.to);
         formData.append('subject', emailForm.subject);
         formData.append('message', emailForm.message);
         formData.append('template', JSON.stringify(template));
-        
+
         // Add attachments if any
         emailAttachments.forEach((file) => {
           formData.append('attachments', file);
         });
-        
+
         const resp = await fetch(`${API_BASE_URL}/admin/send-email`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
         });
         const data = await resp.json();
         if (resp.ok) {
@@ -615,35 +610,48 @@ const Admin = () => {
       } else {
         setSendingBulkEmail(true);
         const token = localStorage.getItem('triathlonToken');
-        
+
         // Prepare form data for file uploads
         const formData = new FormData();
         formData.append('subject', template.title || 'UofT Tri Club Update');
         formData.append('message', template.body || '');
         formData.append('template', JSON.stringify(template));
-        formData.append('recipients', JSON.stringify({
-          members: true,
-          coach: true,
-          exec: true,
-          admin: true,
-          pending: false
-        }));
-        
+        formData.append(
+          'recipients',
+          JSON.stringify({
+            members: true,
+            coach: true,
+            exec: true,
+            admin: true,
+            pending: false,
+          })
+        );
+
         // Add attachments if any
-        console.log('📎 Frontend: Preparing to send bulk email with attachments:', emailAttachments.length);
+        console.log(
+          '📎 Frontend: Preparing to send bulk email with attachments:',
+          emailAttachments.length
+        );
         emailAttachments.forEach((file, idx) => {
-          console.log(`📎 Frontend: Adding attachment ${idx + 1}:`, file.name, `(${(file.size / 1024).toFixed(1)} KB)`);
+          console.log(
+            `📎 Frontend: Adding attachment ${idx + 1}:`,
+            file.name,
+            `(${(file.size / 1024).toFixed(1)} KB)`
+          );
           formData.append('attachments', file);
         });
-        
+
         const resp = await fetch(`${API_BASE_URL}/admin/send-bulk-email`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
         });
         const data = await resp.json();
         if (resp.ok) {
-          setBulkEmailStatus({ type: 'success', text: `Bulk email sent successfully to ${data.recipientCount || data.sentCount || 0} recipients!` });
+          setBulkEmailStatus({
+            type: 'success',
+            text: `Bulk email sent successfully to ${data.recipientCount || data.sentCount || 0} recipients!`,
+          });
           setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
           setEmailAttachments([]);
         } else {
@@ -667,8 +675,8 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/terms`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (response.ok) {
         const data = await response.json();
@@ -685,7 +693,7 @@ const Admin = () => {
       setReceiptsLoading(true);
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/receipts?status=${status}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -703,8 +711,8 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/receipts/${receipt.id}/approve`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'member', term_id: receipt.term_id || null })
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'member', term_id: receipt.term_id || null }),
       });
       if (response.ok) {
         showSuccess('Receipt approved and member activated');
@@ -730,8 +738,8 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/receipts/${rejectingReceipt.id}/reject`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectReason })
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectReason }),
       });
       if (response.ok) {
         showSuccess('Receipt rejected');
@@ -759,9 +767,13 @@ const Admin = () => {
     setEditingTerm(term);
     setTermForm({
       term: term.term,
-      year: term.year || (term.start_date ? new Date(`${term.start_date}T00:00:00`).getFullYear() : new Date().getFullYear()),
+      year:
+        term.year ||
+        (term.start_date
+          ? new Date(`${term.start_date}T00:00:00`).getFullYear()
+          : new Date().getFullYear()),
       start_date: term.start_date ? String(term.start_date).slice(0, 10) : '',
-      end_date: term.end_date ? String(term.end_date).slice(0, 10) : ''
+      end_date: term.end_date ? String(term.end_date).slice(0, 10) : '',
     });
     setShowTermModal(true);
   };
@@ -775,13 +787,13 @@ const Admin = () => {
       const method = editingTerm ? 'PUT' : 'POST';
       const response = await fetch(url, {
         method,
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           term: termForm.term,
           year: parseInt(termForm.year, 10),
           start_date: termForm.start_date,
-          end_date: termForm.end_date
-        })
+          end_date: termForm.end_date,
+        }),
       });
       if (response.ok) {
         showSuccess(editingTerm ? 'Term updated' : 'Term created');
@@ -816,7 +828,7 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/terms/${termId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         showSuccess('Term deleted');
@@ -841,45 +853,55 @@ const Admin = () => {
 
       // Load banner data
       await loadBannerData();
-      
+
       // Load gear items for order form
       await loadGearItems();
 
       // Load all members (set high limit to get all members)
       const membersResponse = await fetch(`${API_BASE_URL}/admin/members?limit=1000`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      
+
       if (membersResponse.ok) {
         const membersData = await membersResponse.json();
         console.log('📊 Members data received:', membersData.members);
-        
+
         // Transform backend data to frontend format (snake_case to camelCase)
-        const transformedMembers = membersData.members.map(member => ({
+        const transformedMembers = membersData.members.map((member) => ({
           ...member,
           joinDate: member.join_date || member.created_at, // Use created_at as fallback if join_date is null
           term: member.term || null, // Term name (fall, winter, etc.)
           term_id: member.term_id || null, // Term ID for editing
           absences: member.absences || 0,
-          charterAccepted: member.charter_accepted || 0
+          charterAccepted: member.charter_accepted || 0,
         }));
-        
+
         console.log('🔄 Transformed members data:', transformedMembers);
         console.log('📊 Raw backend data:', membersData.members);
-        console.log('🔍 Sample member with absences:', transformedMembers.find(m => m.id)?.absences);
-        console.log('🔍 Sample member with charter:', transformedMembers.find(m => m.id)?.charterAccepted);
-        console.log('🔍 Raw charter_accepted values:', membersData.members.map(m => ({ id: m.id, charter_accepted: m.charter_accepted })));
+        console.log(
+          '🔍 Sample member with absences:',
+          transformedMembers.find((m) => m.id)?.absences
+        );
+        console.log(
+          '🔍 Sample member with charter:',
+          transformedMembers.find((m) => m.id)?.charterAccepted
+        );
+        console.log(
+          '🔍 Raw charter_accepted values:',
+          membersData.members.map((m) => ({ id: m.id, charter_accepted: m.charter_accepted }))
+        );
         console.log('🔍 Full transformed members:', JSON.stringify(transformedMembers, null, 2));
-        
+
         // Debug: Check for jade members
-        const jadeMembers = transformedMembers.filter(m => 
-          (m.name && m.name.toLowerCase().includes('jade')) || 
-          (m.email && m.email.toLowerCase().includes('jade'))
+        const jadeMembers = transformedMembers.filter(
+          (m) =>
+            (m.name && m.name.toLowerCase().includes('jade')) ||
+            (m.email && m.email.toLowerCase().includes('jade'))
         );
         console.log('🔍 Jade members found:', jadeMembers);
-        
+
         setMembers(transformedMembers);
       }
     } catch (error) {
@@ -893,8 +915,8 @@ const Admin = () => {
       if (!currentUser || !isAdmin(currentUser)) return;
       setOrdersLoading(true);
       const token = localStorage.getItem('triathlonToken');
-      const res = await fetch(`${API_BASE_URL}/merch-orders?filter=${orderFilter}`, { 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      const res = await fetch(`${API_BASE_URL}/merch-orders?filter=${orderFilter}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Failed to load orders');
@@ -915,11 +937,20 @@ const Admin = () => {
     if (isOnOrdersRoute && currentUser && isAdmin(currentUser)) {
       loadOrders();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnOrdersRoute, orderFilter, currentUser]);
 
   const openNewOrder = () => {
-    setOrderForm({ id: null, firstName: '', lastName: '', email: '', item: '', size: '', quantity: 1, gender: 'mens' });
+    setOrderForm({
+      id: null,
+      firstName: '',
+      lastName: '',
+      email: '',
+      item: '',
+      size: '',
+      quantity: 1,
+      gender: 'mens',
+    });
     setShowOrderModal(true);
   };
 
@@ -944,16 +975,22 @@ const Admin = () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       const isEdit = !!orderForm.id;
-      const url = isEdit ? `${API_BASE_URL}/merch-orders/${orderForm.id}` : `${API_BASE_URL}/merch-orders`;
+      const url = isEdit
+        ? `${API_BASE_URL}/merch-orders/${orderForm.id}`
+        : `${API_BASE_URL}/merch-orders`;
       const method = isEdit ? 'PUT' : 'POST';
-      
+
       // Prepare data for backend - combine firstName and lastName into name for now
       const orderData = {
         ...orderForm,
-        name: `${orderForm.firstName} ${orderForm.lastName}`.trim()
+        name: `${orderForm.firstName} ${orderForm.lastName}`.trim(),
       };
-      
-      const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) });
+
+      const res = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData),
+      });
 
       if (!res.ok) throw new Error('Failed to save order');
       await loadOrders();
@@ -970,11 +1007,14 @@ const Admin = () => {
   const confirmDeleteOrder = async () => {
     const { orderId } = deleteOrderConfirm;
     setDeleteOrderConfirm({ isOpen: false, orderId: null });
-    
+
     if (!orderId) return;
     try {
       const token = localStorage.getItem('triathlonToken');
-      const res = await fetch(`${API_BASE_URL}/merch-orders/${orderId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE_URL}/merch-orders/${orderId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!res.ok) throw new Error('Failed to delete order');
       await loadOrders();
@@ -998,7 +1038,7 @@ const Admin = () => {
     if (selectedOrders.size === orders.length) {
       setSelectedOrders(new Set());
     } else {
-      setSelectedOrders(new Set(orders.map(o => o.id)));
+      setSelectedOrders(new Set(orders.map((o) => o.id)));
     }
   };
 
@@ -1014,7 +1054,7 @@ const Admin = () => {
     // eslint-disable-next-line no-unused-vars
     const count = archiveOrdersConfirm.count;
     setArchiveOrdersConfirm({ isOpen: false, count: 0 });
-    
+
     // Use the state instead of reading from DOM
     if (selectedOrders.size === 0) {
       showError('Please select at least one order to archive');
@@ -1027,11 +1067,11 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const res = await fetch(`${API_BASE_URL}/merch-orders/archive`, {
         method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderIds })
+        body: JSON.stringify({ orderIds }),
       });
 
       if (!res.ok) {
@@ -1060,7 +1100,7 @@ const Admin = () => {
     // eslint-disable-next-line no-unused-vars
     const count = unarchiveOrdersConfirm.count;
     setUnarchiveOrdersConfirm({ isOpen: false, count: 0 });
-    
+
     // Use the state instead of reading from DOM
     if (selectedOrders.size === 0) {
       showError('Please select at least one order to unarchive');
@@ -1073,11 +1113,11 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const res = await fetch(`${API_BASE_URL}/merch-orders/unarchive`, {
         method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderIds })
+        body: JSON.stringify({ orderIds }),
       });
 
       if (!res.ok) {
@@ -1099,11 +1139,11 @@ const Admin = () => {
     try {
       setAttendanceLoading(true);
       const token = localStorage.getItem('triathlonToken');
-      
+
       const params = new URLSearchParams({
         page: attendanceFilters.page,
         type: attendanceFilters.type,
-        status: attendanceFilters.status
+        status: attendanceFilters.status,
       });
 
       console.log('🔍 Loading attendance data with params:', params.toString());
@@ -1111,8 +1151,8 @@ const Admin = () => {
 
       const response = await fetch(`${API_BASE_URL}/admin/attendance-dashboard?${params}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       console.log('🔍 Response status:', response.status);
@@ -1139,7 +1179,7 @@ const Admin = () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/test-events`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -1156,7 +1196,7 @@ const Admin = () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/test-events/${testEventId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -1183,11 +1223,11 @@ const Admin = () => {
       if (date) {
         params.append('date', date);
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/test-events/workouts/search?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setAvailableWorkouts(data.workouts || []);
@@ -1210,20 +1250,26 @@ const Admin = () => {
   const confirmDeleteTestEvent = async () => {
     const { eventId } = deleteTestEventConfirm;
     setDeleteTestEventConfirm({ isOpen: false, eventId: null });
-    
+
     if (!eventId) return;
 
     try {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/test-events/${eventId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (response.ok) {
         showNotification('Test event deleted successfully', 'success');
         setShowTestEventModal(false);
-        setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+        setTestEventForm({
+          title: '',
+          sport: 'swim',
+          date: '',
+          workout: '',
+          workout_post_id: null,
+        });
         setTestEventRecordCount(0);
         await loadTestEvents();
       } else {
@@ -1240,28 +1286,39 @@ const Admin = () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       const isEdit = !!testEventForm.id;
-      const url = isEdit ? `${API_BASE_URL}/test-events/${testEventForm.id}` : `${API_BASE_URL}/test-events`;
+      const url = isEdit
+        ? `${API_BASE_URL}/test-events/${testEventForm.id}`
+        : `${API_BASE_URL}/test-events`;
       const method = isEdit ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(testEventForm)
+        body: JSON.stringify(testEventForm),
       });
       if (response.ok) {
         showNotification(`Test event ${isEdit ? 'updated' : 'created'} successfully`, 'success');
         setShowTestEventModal(false);
-        setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
+        setTestEventForm({
+          title: '',
+          sport: 'swim',
+          date: '',
+          workout: '',
+          workout_post_id: null,
+        });
         await loadTestEvents();
       } else {
         const error = await response.json();
         throw new Error(error.error || `Failed to ${isEdit ? 'update' : 'create'} test event`);
       }
     } catch (error) {
-      showNotification(`Failed to ${testEventForm.id ? 'update' : 'create'} test event: ${error.message}`, 'error');
+      showNotification(
+        `Failed to ${testEventForm.id ? 'update' : 'create'} test event: ${error.message}`,
+        'error'
+      );
     }
   };
 
@@ -1274,9 +1331,12 @@ const Admin = () => {
 
     try {
       const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/admin/members?search=${encodeURIComponent(query)}&limit=10`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/admin/members?search=${encodeURIComponent(query)}&limit=10`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setUserSearchResults(data.members || []);
@@ -1317,16 +1377,16 @@ const Admin = () => {
       const response = await fetch(`${API_BASE_URL}/records`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...recordForm,
           test_event_id: selectedTestEvent.id,
           title: recordForm.title || selectedTestEvent.title,
           user_id: recordForm.user_id || currentUser?.id,
-          result_fields: recordForm.result_fields || {}
-        })
+          result_fields: recordForm.result_fields || {},
+        }),
       });
       if (response.ok) {
         showNotification('Record created successfully', 'success');
@@ -1378,8 +1438,13 @@ const Admin = () => {
       }
     };
     loadIntervalUsers();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- buildIntervalQueryString is stable
-  }, [isOnIntervalResultsRoute, API_BASE_URL, intervalDateFilter.startDate, intervalDateFilter.endDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- buildIntervalQueryString is stable
+  }, [
+    isOnIntervalResultsRoute,
+    API_BASE_URL,
+    intervalDateFilter.startDate,
+    intervalDateFilter.endDate,
+  ]);
 
   // Load workouts when sport or date changes in test event form
   // ESLint: loadAvailableWorkouts is stable; we only want to rerun when form fields change.
@@ -1388,7 +1453,7 @@ const Admin = () => {
     if (showTestEventModal && testEventForm.sport) {
       loadAvailableWorkouts(testEventForm.sport, testEventForm.date || null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTestEventModal, testEventForm.sport, testEventForm.date]);
 
   // Close user dropdown when clicking outside
@@ -1406,14 +1471,14 @@ const Admin = () => {
   const loadAttendanceDetails = async (workoutId) => {
     try {
       const token = localStorage.getItem('triathlonToken');
-      
+
       console.log('🔍 Loading attendance details for workout:', workoutId);
       console.log('🔍 API URL:', `${API_BASE_URL}/admin/attendance-dashboard/${workoutId}`);
-      
+
       const response = await fetch(`${API_BASE_URL}/admin/attendance-dashboard/${workoutId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       console.log('🔍 Details response status:', response.status);
@@ -1434,18 +1499,18 @@ const Admin = () => {
 
   // Handle attendance filter changes
   const handleAttendanceFilterChange = (filterType, value) => {
-    setAttendanceFilters(prev => ({
+    setAttendanceFilters((prev) => ({
       ...prev,
       [filterType]: value,
-      page: 1 // Reset to first page when changing filters
+      page: 1, // Reset to first page when changing filters
     }));
   };
 
   // Handle attendance pagination
   const handleAttendancePageChange = (newPage) => {
-    setAttendanceFilters(prev => ({
+    setAttendanceFilters((prev) => ({
       ...prev,
-      page: newPage
+      page: newPage,
     }));
   };
 
@@ -1455,8 +1520,8 @@ const Admin = () => {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/admin/merch/export?filter=${orderFilter}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!response.ok) {
         const text = await response.text().catch(() => '');
@@ -1466,7 +1531,12 @@ const Admin = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       const dateStr = new Date().toISOString().split('T')[0];
-      const filterSuffix = orderFilter === 'archived' ? '_archived' : orderFilter === 'not_archived' ? '_not_archived' : '';
+      const filterSuffix =
+        orderFilter === 'archived'
+          ? '_archived'
+          : orderFilter === 'not_archived'
+            ? '_not_archived'
+            : '';
       a.href = url;
       a.download = `merch_orders${filterSuffix}_${dateStr}.xlsx`;
       document.body.appendChild(a);
@@ -1481,7 +1551,7 @@ const Admin = () => {
   const approveMember = (member) => {
     setApprovingMember(member);
     setApprovalForm({
-      role: 'member'
+      role: 'member',
     });
   };
 
@@ -1496,12 +1566,12 @@ const Admin = () => {
       const response = await fetch(`${API_BASE_URL}/admin/members/${approvingMember.id}/approve`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          role: approvalForm.role
-        })
+        body: JSON.stringify({
+          role: approvalForm.role,
+        }),
       });
 
       if (response.ok) {
@@ -1522,8 +1592,6 @@ const Admin = () => {
     setApprovalForm({ role: 'member' });
   };
 
-
-
   const removeMember = async (memberId) => {
     setDeleteUserConfirm({ isOpen: true, userId: memberId });
   };
@@ -1531,7 +1599,7 @@ const Admin = () => {
   const confirmDeleteUser = async () => {
     const { userId } = deleteUserConfirm;
     setDeleteUserConfirm({ isOpen: false, userId: null });
-    
+
     if (!userId) return;
 
     try {
@@ -1539,9 +1607,9 @@ const Admin = () => {
       const response = await fetch(`${API_BASE_URL}/admin/members/${userId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (response.ok) {
@@ -1564,10 +1632,10 @@ const Admin = () => {
       const response = await fetch(`${API_BASE_URL}/admin/members/${memberId}/reject`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ reason: 'Application rejected' })
+        body: JSON.stringify({ reason: 'Application rejected' }),
       });
 
       if (response.ok) {
@@ -1584,10 +1652,10 @@ const Admin = () => {
   const editMember = (member) => {
     console.log('🔄 Editing member:', member);
     console.log('🔍 Member charterAccepted value:', member.charterAccepted);
-    
+
     const initialCharterAccepted = member.charterAccepted || false;
     console.log('🔍 Initial charterAccepted value:', initialCharterAccepted);
-    
+
     setEditingMember(member);
     setEditForm({
       name: member.name,
@@ -1604,7 +1672,7 @@ const Admin = () => {
       email: member.email,
       role: member.role,
       phoneNumber: member.phone_number || '',
-      charterAccepted: initialCharterAccepted
+      charterAccepted: initialCharterAccepted,
     });
   };
 
@@ -1626,9 +1694,8 @@ const Admin = () => {
       setEditForm({ ...editForm, membershipStatus, role: 'pending', term_id: null });
       return;
     }
-    const role = editForm.role === 'pending' || editForm.role === 'member'
-      ? 'member'
-      : editForm.role;
+    const role =
+      editForm.role === 'pending' || editForm.role === 'member' ? 'member' : editForm.role;
     setEditForm({ ...editForm, membershipStatus, role });
   };
 
@@ -1645,14 +1712,16 @@ const Admin = () => {
       console.log('❌ No editingMember, returning early');
       return;
     }
-    
+
     console.log('🔄 Saving member edit for:', editingMember.id);
     console.log('📝 Form data:', editForm);
 
     const selectedTerm = terms.find((t) => t.id === editForm.term_id);
     if (editForm.role === 'member') {
       if (editForm.membershipStatus === 'active' && selectedTerm && isTermExpired(selectedTerm)) {
-        showError('Active membership requires a term that has not ended. Choose a current or future term.');
+        showError(
+          'Active membership requires a term that has not ended. Choose a current or future term.'
+        );
         return;
       }
       if (editForm.membershipStatus === 'expired' && selectedTerm && !isTermExpired(selectedTerm)) {
@@ -1660,61 +1729,64 @@ const Admin = () => {
         return;
       }
     }
-    
+
     // Clean up the form data - convert empty strings to null for optional fields
     const cleanFormData = {
       name: editForm.name,
       email: editForm.email,
       role: editForm.role,
-      phone_number: editForm.phoneNumber?.trim()
-        ? formatPhoneNumber(editForm.phoneNumber)
-        : null,
+      phone_number: editForm.phoneNumber?.trim() ? formatPhoneNumber(editForm.phoneNumber) : null,
       charterAccepted: editForm.charterAccepted ? 1 : 0,
       sport: editForm.sport || 'triathlon',
-      term_id: editForm.term_id || null
+      term_id: editForm.term_id || null,
     };
-    
+
     console.log('🧹 Cleaned form data:', cleanFormData);
-    console.log('🔍 Charter accepted value being sent:', editForm.charterAccepted, '→', cleanFormData.charterAccepted);
-    
+    console.log(
+      '🔍 Charter accepted value being sent:',
+      editForm.charterAccepted,
+      '→',
+      cleanFormData.charterAccepted
+    );
+
     try {
       const token = localStorage.getItem('triathlonToken');
       console.log('🔑 Token:', token ? 'Present' : 'Missing');
-      
+
       const response = await fetch(`${API_BASE_URL}/admin/members/${editingMember.id}/update`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(cleanFormData)
+        body: JSON.stringify(cleanFormData),
       });
 
       console.log('📡 Response status:', response.status);
-      
+
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Update successful:', result);
-        
+
         // Check if role was changed and notify the user
         if (editForm.role !== editingMember.role) {
           console.log('🔄 Role changed from', editingMember.role, 'to', editForm.role);
-          
+
           // Send notification to the user about role change
           try {
             const notifyResponse = await fetch(`${API_BASE_URL}/admin/notify-role-change`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
               },
               body: JSON.stringify({
                 userId: editingMember.id,
                 oldRole: editingMember.role,
-                newRole: editForm.role
-              })
+                newRole: editForm.role,
+              }),
             });
-            
+
             if (notifyResponse.ok) {
               console.log('✅ Role change notification sent');
             } else {
@@ -1724,13 +1796,13 @@ const Admin = () => {
             console.log('⚠️ Error sending role change notification:', error);
           }
         }
-        
+
         console.log('🔄 Reloading admin data...');
-        
+
         // Reload data to get updated information
         await loadAdminData();
         console.log('✅ Admin data reloaded');
-        
+
         setEditingMember(null);
         setEditForm({
           name: '',
@@ -1767,8 +1839,6 @@ const Admin = () => {
     });
   };
 
-
-
   // Debug: Log current user info
   console.log('Current user:', currentUser);
   console.log('Is admin check:', isAdmin(currentUser));
@@ -1789,1150 +1859,1528 @@ const Admin = () => {
   }
 
   const adminContextValue = {
-    members, setMembers, memberSearch, setMemberSearch,
-    currentPage, setCurrentPage, membersPerPage, terms, loadAdminData, formatTermName,
-    receipts, receiptsLoading, receiptStatusFilter, setReceiptStatusFilter, loadReceipts,
-    approveReceipt, openRejectReceipt,
-    openNewTerm, openEditTerm, deleteTerm,
-    currentUser, isAdmin, isCoach, isExec, API_BASE_URL, showError, showSuccess,
-    editMember, removeMember, editingMember, setEditingMember, editForm, setEditForm,
-    saveMemberEdit, cancelEdit, formatPhoneNumber, handlePhoneNumberChange, validatePhoneNumber,
-    approveMember, rejectMember, approvingMember, setApprovingMember, approvalForm, setApprovalForm,
-    handleApprovalSubmit, cancelApproval,
-    bannerForm, setBannerForm, handleSaveBanner, handleSavePopup, handleRemovePopup, getBannerDisplayLength, popupPreview, setPopupPreview,
-    emailForm, setEmailForm, template, setTemplate, emailType, setEmailType,
-    emailAttachments, setEmailAttachments, insertBold, insertItalic, insertNumberedList, insertUrl,
-    handleTextareaKeyDown, handleSendEmail, emailStatus, bulkEmailStatus, sendingEmail, sendingBulkEmail,
-    attendanceWorkouts, attendanceLoading, attendanceFilters, attendancePagination,
-    handleAttendanceFilterChange, handleAttendancePageChange, loadAttendanceDetails,
-    showAttendanceModal, setShowAttendanceModal, attendanceDetails, formatSignupTimeForDisplay,
-    orders, ordersLoading, orderFilter, setOrderFilter, selectedOrders, handleOrderSelect,
-    archiveSelectedOrders, unarchiveSelectedOrders, openNewOrder, exportMerchToExcel,
-    intervalUsers, intervalUsersLoading, selectedIntervalUser, setSelectedIntervalUser,
-    selectedUserResults, setSelectedUserResults, selectedUserResultsLoading, setSelectedUserResultsLoading,
-    intervalDateFilter, setIntervalDateFilter,
-    selectedIntervalUserIds, setSelectedIntervalUserIds, downloadingAllIntervalExports, setDownloadingAllIntervalExports,
-    buildIntervalQueryString, gearItems,
-    orderForm, setOrderForm, showOrderModal, setShowOrderModal, saveOrder, editOrder, deleteOrder,
-    removeBannerConfirm, setRemoveBannerConfirm, confirmRemoveBanner,
-    deleteOrderConfirm, setDeleteOrderConfirm, confirmDeleteOrder,
-    archiveOrdersConfirm, setArchiveOrdersConfirm, confirmArchiveOrders,
-    unarchiveOrdersConfirm, setUnarchiveOrdersConfirm, confirmUnarchiveOrders,
-    deleteTestEventConfirm, setDeleteTestEventConfirm, confirmDeleteTestEvent,
-    deleteUserConfirm, setDeleteUserConfirm, confirmDeleteUser,
+    members,
+    setMembers,
+    memberSearch,
+    setMemberSearch,
+    currentPage,
+    setCurrentPage,
+    membersPerPage,
+    terms,
+    loadAdminData,
+    formatTermName,
+    receipts,
+    receiptsLoading,
+    receiptStatusFilter,
+    setReceiptStatusFilter,
+    loadReceipts,
+    approveReceipt,
+    openRejectReceipt,
+    openNewTerm,
+    openEditTerm,
+    deleteTerm,
+    currentUser,
+    isAdmin,
+    isCoach,
+    isExec,
+    API_BASE_URL,
+    showError,
+    showSuccess,
+    editMember,
+    removeMember,
+    editingMember,
+    setEditingMember,
+    editForm,
+    setEditForm,
+    saveMemberEdit,
+    cancelEdit,
+    formatPhoneNumber,
+    handlePhoneNumberChange,
+    validatePhoneNumber,
+    approveMember,
+    rejectMember,
+    approvingMember,
+    setApprovingMember,
+    approvalForm,
+    setApprovalForm,
+    handleApprovalSubmit,
+    cancelApproval,
+    bannerForm,
+    setBannerForm,
+    handleSaveBanner,
+    handleSavePopup,
+    handleRemovePopup,
+    getBannerDisplayLength,
+    popupPreview,
+    setPopupPreview,
+    emailForm,
+    setEmailForm,
+    template,
+    setTemplate,
+    emailType,
+    setEmailType,
+    emailAttachments,
+    setEmailAttachments,
+    insertBold,
+    insertItalic,
+    insertNumberedList,
+    insertUrl,
+    handleTextareaKeyDown,
+    handleSendEmail,
+    emailStatus,
+    bulkEmailStatus,
+    sendingEmail,
+    sendingBulkEmail,
+    attendanceWorkouts,
+    attendanceLoading,
+    attendanceFilters,
+    attendancePagination,
+    handleAttendanceFilterChange,
+    handleAttendancePageChange,
+    loadAttendanceDetails,
+    showAttendanceModal,
+    setShowAttendanceModal,
+    attendanceDetails,
+    formatSignupTimeForDisplay,
+    orders,
+    ordersLoading,
+    orderFilter,
+    setOrderFilter,
+    selectedOrders,
+    handleOrderSelect,
+    archiveSelectedOrders,
+    unarchiveSelectedOrders,
+    openNewOrder,
+    exportMerchToExcel,
+    intervalUsers,
+    intervalUsersLoading,
+    selectedIntervalUser,
+    setSelectedIntervalUser,
+    selectedUserResults,
+    setSelectedUserResults,
+    selectedUserResultsLoading,
+    setSelectedUserResultsLoading,
+    intervalDateFilter,
+    setIntervalDateFilter,
+    selectedIntervalUserIds,
+    setSelectedIntervalUserIds,
+    downloadingAllIntervalExports,
+    setDownloadingAllIntervalExports,
+    buildIntervalQueryString,
+    gearItems,
+    orderForm,
+    setOrderForm,
+    showOrderModal,
+    setShowOrderModal,
+    saveOrder,
+    editOrder,
+    deleteOrder,
+    removeBannerConfirm,
+    setRemoveBannerConfirm,
+    confirmRemoveBanner,
+    deleteOrderConfirm,
+    setDeleteOrderConfirm,
+    confirmDeleteOrder,
+    archiveOrdersConfirm,
+    setArchiveOrdersConfirm,
+    confirmArchiveOrders,
+    unarchiveOrdersConfirm,
+    setUnarchiveOrdersConfirm,
+    confirmUnarchiveOrders,
+    deleteTestEventConfirm,
+    setDeleteTestEventConfirm,
+    confirmDeleteTestEvent,
+    deleteUserConfirm,
+    setDeleteUserConfirm,
+    confirmDeleteUser,
   };
 
   return (
     <AdminContext.Provider value={adminContextValue}>
-    <div className="admin-container">
-      {/* Notification Toast */}
-      {notification.show && (
-        <div className={`notification-toast notification-${notification.type}`}>
-          <div className="notification-content">
-            <span className="notification-icon">
-              {notification.type === 'success' ? '✓' : '✕'}
-            </span>
-            <span className="notification-message">{notification.message}</span>
+      <div className="admin-container">
+        {/* Notification Toast */}
+        {notification.show && (
+          <div className={`notification-toast notification-${notification.type}`}>
+            <div className="notification-content">
+              <span className="notification-icon">
+                {notification.type === 'success' ? '✓' : '✕'}
+              </span>
+              <span className="notification-message">{notification.message}</span>
+            </div>
           </div>
+        )}
+
+        <div className="admin-header">
+          <h1>Admin Dashboard</h1>
+          <p>Manage club members and monitor activity</p>
         </div>
-      )}
 
-      <div className="admin-header">
-        <h1>Admin Dashboard</h1>
-        <p>Manage club members and monitor activity</p>
-      </div>
-
-      <div className="admin-content">
-        <AdminLayout />
-      </div>
-
-      {/* Section content is rendered by nested routes (AdminMembers, etc.) via Outlet inside AdminLayout */}
-      {/* Edit Member Modal */}
-      {editingMember && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>Edit Member: {editingMember.name}</h2>
-            {console.log('🔍 Modal rendering with editForm:', editForm)}
-            <form onSubmit={(e) => { e.preventDefault(); saveMemberEdit(); }}>
-              <div className="form-group">
-                <label>Name:</label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Email:</label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) => setEditForm({...editForm, email: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Role:</label>
-                <select
-                  value={editForm.role}
-                  onChange={(e) => handleRoleChange(e.target.value)}
-                  required
-                >
-                  <option value="pending">Pending</option>
-                  <option value="member">Member</option>
-                  <option value="coach">Coach</option>
-                  <option value="exec">Executive</option>
-                  <option value="administrator">Administrator</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Membership Status:</label>
-                {editForm.membershipStatus === 'pending_review' ? (
-                  <>
-                    <div style={{ marginBottom: '6px' }}>
-                      <span className="membership-status pending_review">
-                        {MEMBERSHIP_STATUS_LABELS.pending_review}
-                      </span>
-                    </div>
-                    <small>Receipt awaiting review — approve or reject in the Receipts tab.</small>
-                  </>
-                ) : NON_EXPIRING_ROLES.includes(editForm.role) ? (
-                  <>
-                    <div style={{ marginBottom: '6px' }}>
-                      <span className="membership-status active">{MEMBERSHIP_STATUS_LABELS.active}</span>
-                    </div>
-                    <small>Coaches, executives, and administrators do not expire with terms.</small>
-                  </>
-                ) : (
-                  <>
-                    <select
-                      value={editForm.membershipStatus}
-                      onChange={(e) => handleMembershipStatusChange(e.target.value)}
-                    >
-                      <option value="active">Active</option>
-                      <option value="expired">Expired</option>
-                      <option value="not_member">Not a member</option>
-                    </select>
-                    {(() => {
-                      const selectedTerm = terms.find((t) => t.id === editForm.term_id);
-                      const preview = previewMembershipStatus(
-                        editForm.role,
-                        selectedTerm?.end_date,
-                        editingMember?.has_pending_receipt
-                      );
-                      if (preview === 'expiring_soon') {
-                        return (
-                          <div style={{ marginTop: '8px' }}>
-                            <span className="membership-status expiring_soon">
-                              {MEMBERSHIP_STATUS_LABELS.expiring_soon}
-                            </span>
-                            <small style={{ display: 'block', marginTop: '4px' }}>
-                              Based on the selected term ending within 7 days.
-                            </small>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                    <small>
-                      {editForm.membershipStatus === 'active' && 'Set role to member and assign a current term.'}
-                      {editForm.membershipStatus === 'expired' && 'Set role to member and assign a term that has already ended.'}
-                      {editForm.membershipStatus === 'not_member' && 'Sets role to pending and clears the term.'}
-                    </small>
-                  </>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label>Phone Number:</label>
-                <input
-                  type="tel"
-                  value={editForm.phoneNumber}
-                  onChange={handlePhoneNumberChange}
-                  placeholder="(123) 456-7890"
-                />
-                {editForm.phoneNumber && !validatePhoneNumber(editForm.phoneNumber) && (
-                  <div className="error-message">
-                    Please enter a valid 10-digit phone number
-                  </div>
-                )}
-                <small>For SMS notifications when promoted from waitlists</small>
-              </div>
-              
-              <div className="form-group">
-                <label>Sport:</label>
-                <select
-                  value={editForm.sport}
-                  onChange={(e) => setEditForm({...editForm, sport: e.target.value})}
-                >
-                  <option value="triathlon">Triathlon</option>
-                  <option value="duathlon">Duathlon</option>
-                  <option value="run_only">Run Only</option>
-                  <option value="swim_only">Swim Only</option>
-                </select>
-                <small>Determines which workout types the member can see and create</small>
-              </div>
-
-              <div className="form-group">
-                <label>Term:</label>
-                <select
-                  value={editForm.term_id || ''}
-                  onChange={(e) => handleTermChange(e.target.value)}
-                >
-                  <option value="">No term assigned</option>
-                  {terms.map(term => (
-                    <option key={term.id} value={term.id}>
-                      {formatTermName(term)}
-                    </option>
-                  ))}
-                </select>
-                <small>Determines membership expiry date</small>
-              </div>
-
-              <div className="form-group">
-                <label>Charter Accepted:</label>
-                <select
-                  value={editForm.charterAccepted ? '1' : '0'}
-                  onChange={(e) => {
-                    const newValue = e.target.value === '1';
-                    console.log('🔍 Charter dropdown changed:', e.target.value, '→', newValue);
-                    setEditForm({...editForm, charterAccepted: newValue});
-                  }}
-                >
-                  <option value="0">No</option>
-                  <option value="1">Yes</option>
-                </select>
-                <small>Whether the member has accepted the team charter</small>
-                <div style={{fontSize: '0.8em', color: '#666', marginTop: '4px'}}>
-                  Current value: {editForm.charterAccepted ? 'Yes (1)' : 'No (0)'}
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button type="submit" className="btn btn-primary">Save Changes</button>
-                <button type="button" className="btn btn-secondary" onClick={cancelEdit}>Cancel</button>
-              </div>
-            </form>
-          </div>
+        <div className="admin-content">
+          <AdminLayout />
         </div>
-      )}
 
-      {/* Approval Modal */}
-      {approvingMember && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>Approve Member: {approvingMember.name}</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleApprovalSubmit(); }}>
-              <div className="form-group">
-                <label>Role:</label>
-                <select
-                  value={approvalForm.role}
-                  onChange={(e) => setApprovalForm({...approvalForm, role: e.target.value})}
-                  required
-                >
-                  <option value="member">Member</option>
-                  <option value="coach">Coach</option>
-                  <option value="exec">Executive</option>
-                  <option value="administrator">Administrator</option>
-                </select>
-              </div>
-
-
-              <div className="modal-actions">
-                <button type="submit" className="btn btn-primary">Approve Member</button>
-                <button type="button" className="btn btn-secondary" onClick={cancelApproval}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Attendance Details Modal */}
-      {showAttendanceModal && attendanceDetails && (
-        <div className="modal-overlay">
-          <div className="modal attendance-modal">
-            <div className="modal-header">
-              <button 
-                className="close-btn"
-                onClick={() => setShowAttendanceModal(false)}
+        {/* Section content is rendered by nested routes (AdminMembers, etc.) via Outlet inside AdminLayout */}
+        {/* Edit Member Modal */}
+        {editingMember && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>Edit Member: {editingMember.name}</h2>
+              {console.log('🔍 Modal rendering with editForm:', editForm)}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveMemberEdit();
+                }}
               >
-                ×
-              </button>
-              <h2>Attendance Details: {attendanceDetails.workout.title}</h2>
-            </div>
-            
-            <div className="attendance-details-content">
-              {/* Workout Info */}
-              <div className="workout-info-section">
-                <h3>Workout Information</h3>
-                <div className="workout-info-grid">
-                  <div><strong>Type:</strong> {attendanceDetails.workout.workout_type}</div>
-                  <div><strong>Date:</strong> {attendanceDetails.workout.workout_date && new Date(attendanceDetails.workout.workout_date).toLocaleDateString()}</div>
-                  <div><strong>Time:</strong> {attendanceDetails.workout.workout_time || 'Not specified'}</div>
-                  <div><strong>Capacity:</strong> {attendanceDetails.workout.capacity || 'Unlimited'}</div>
+                <div className="form-group">
+                  <label>Name:</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    required
+                  />
                 </div>
-                {attendanceDetails.workout.content && (
-                  <div className="workout-description">
-                    <strong>Description:</strong>
-                    <p>{attendanceDetails.workout.content}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Attendance Summary */}
-              {attendanceDetails.summary && (
-                <div className="attendance-summary-section">
-                  <h3>Attendance Summary</h3>
-                  <div className="summary-stats">
-                    <div className="stat-item">
-                      <span className="stat-number">{attendanceDetails.summary.attended_count}</span>
-                      <span className="stat-label">Attended</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-number">{attendanceDetails.summary.absent_count}</span>
-                      <span className="stat-label">Absent</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-number">{attendanceDetails.summary.total_records}</span>
-                      <span className="stat-label">Total Records</span>
-                    </div>
-                    {attendanceDetails.summary.cancelled_count > 0 && (
-                      <div className="stat-item">
-                        <span className="stat-number">{attendanceDetails.summary.cancelled_count}</span>
-                        <span className="stat-label">Cancelled</span>
-                      </div>
-                    )}
-                    {attendanceDetails.summary.late_count > 0 && (
-                      <div className="stat-item">
-                        <span className="stat-number">{attendanceDetails.summary.late_count}</span>
-                        <span className="stat-label">Late</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="submission-info">
-                    <div><strong>First Submitted:</strong> {attendanceDetails.summary.first_submitted ? new Date(attendanceDetails.summary.first_submitted).toLocaleString() : 'N/A'}</div>
-                    <div><strong>Last Updated:</strong> {attendanceDetails.summary.last_submitted ? new Date(attendanceDetails.summary.last_submitted).toLocaleString() : 'N/A'}</div>
-                  </div>
+                <div className="form-group">
+                  <label>Email:</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    required
+                  />
                 </div>
-              )}
-
-              {/* Signups List */}
-              {attendanceDetails.signups.length > 0 && (
-                <div className="signups-section">
-                  <h3>Signups ({attendanceDetails.signups.length})</h3>
-                  <div className="signups-list">
-                    {attendanceDetails.signups.map(signup => (
-                      <div key={signup.id} className="signup-item">
-                        <div className="signup-user-info">
-                          {signup.profile_picture_url ? (
-                            <img 
-                              src={`${API_BASE_URL.replace('/api', '')}${signup.profile_picture_url}`} 
-                              alt="Profile" 
-                              className="user-avatar"
-                            />
-                          ) : (
-                            <div className="user-avatar-placeholder">
-                              <img 
-                                src="/images/default_profile.png" 
-                                alt="Profile" 
-                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
-                              />
-                            </div>
-                          )}
-                          <div className="user-details">
-                            <span className="user-name">{signup.user_name}</span>
-                            <span className="user-role">{signup.role}</span>
-                          </div>
-                        </div>
-                        <div className="signup-time">
-                          {formatSignupTimeForDisplay(signup.signup_time)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="form-group">
+                  <label>Role:</label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => handleRoleChange(e.target.value)}
+                    required
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="member">Member</option>
+                    <option value="coach">Coach</option>
+                    <option value="exec">Executive</option>
+                    <option value="administrator">Administrator</option>
+                  </select>
                 </div>
-              )}
 
-              {/* Who Was There - Attended Members */}
-              {attendanceDetails.attendance.filter(record => record.attended).length > 0 && (
-                <div className="attended-section">
-                  <h3>✅ Who Was There ({attendanceDetails.attendance.filter(record => record.attended).length})</h3>
-                  <div className="attendance-list">
-                    {attendanceDetails.attendance
-                      .filter(record => record.attended)
-                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
-                      .map(record => (
-                      <div key={record.id} className="attendance-item attended">
-                        <div className="attendance-user-info">
-                          {record.profile_picture_url ? (
-                            <img 
-                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
-                              alt="Profile" 
-                              className="user-avatar"
-                            />
-                          ) : (
-                            <div className="user-avatar-placeholder">
-                              <img 
-                                src="/images/default_profile.png" 
-                                alt="Profile" 
-                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
-                              />
-                            </div>
-                          )}
-                          <div className="user-details">
-                            <span className="user-name">{record.user_name}</span>
-                            <span className="user-role">{record.role}</span>
-                          </div>
-                        </div>
-                        <div className="attendance-status">
-                          <div className="status-badges">
-                            <span className="status-badge attended">
-                              ✓ Attended
-                            </span>
-                            {record.late && (
-                              <span className="status-badge late">
-                                ⏰ Late
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Who Was Late - Only Late Members */}
-              {attendanceDetails.attendance.filter(record => record.attended && record.late).length > 0 && (
-                <div className="late-section">
-                  <h3>⏰ Who Was Late ({attendanceDetails.attendance.filter(record => record.attended && record.late).length})</h3>
-                  <div className="attendance-list">
-                    {attendanceDetails.attendance
-                      .filter(record => record.attended && record.late)
-                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
-                      .map(record => (
-                      <div key={record.id} className="attendance-item late-member">
-                        <div className="attendance-user-info">
-                          {record.profile_picture_url ? (
-                            <img 
-                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
-                              alt="Profile" 
-                              className="user-avatar"
-                            />
-                          ) : (
-                            <div className="user-avatar-placeholder">
-                              <img 
-                                src="/images/default_profile.png" 
-                                alt="Profile" 
-                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
-                              />
-                            </div>
-                          )}
-                          <div className="user-details">
-                            <span className="user-name">{record.user_name}</span>
-                            <span className="user-role">{record.role}</span>
-                          </div>
-                        </div>
-                        <div className="attendance-status">
-                          <span className="status-badge late">
-                            ⏰ Late
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Who Cancelled Within 24 Hours */}
-              {attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length > 0 && (
-                <div className="cancelled-section">
-                  <h3>🚫 Who Cancelled Within 24 Hours ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type === 'cancelled').length})</h3>
-                  <div className="attendance-list">
-                    {attendanceDetails.attendance
-                      .filter(record => !record.attended && record.attendance_type === 'cancelled')
-                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
-                      .map(record => (
-                      <div key={record.id} className="attendance-item cancelled">
-                        <div className="attendance-user-info">
-                          {record.profile_picture_url ? (
-                            <img 
-                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
-                              alt="Profile" 
-                              className="user-avatar"
-                            />
-                          ) : (
-                            <div className="user-avatar-placeholder">
-                              <img 
-                                src="/images/default_profile.png" 
-                                alt="Profile" 
-                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
-                              />
-                            </div>
-                          )}
-                          <div className="user-details">
-                            <span className="user-name">{record.user_name}</span>
-                            <span className="user-role">{record.role}</span>
-                          </div>
-                        </div>
-                        <div className="attendance-status">
-                          <span className="status-badge cancelled">
-                            🚫 Cancelled (Absent)
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Who Was Absent (Not Cancelled) */}
-              {attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type !== 'cancelled').length > 0 && (
-                <div className="absent-section">
-                  <h3>❌ Who Was Absent ({attendanceDetails.attendance.filter(record => !record.attended && record.attendance_type !== 'cancelled').length})</h3>
-                  <div className="attendance-list">
-                    {attendanceDetails.attendance
-                      .filter(record => !record.attended && record.attendance_type !== 'cancelled')
-                      .sort((a, b) => a.user_name.localeCompare(b.user_name))
-                      .map(record => (
-                      <div key={record.id} className="attendance-item absent">
-                        <div className="attendance-user-info">
-                          {record.profile_picture_url ? (
-                            <img 
-                              src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`} 
-                              alt="Profile" 
-                              className="user-avatar"
-                            />
-                          ) : (
-                            <div className="user-avatar-placeholder">
-                              <img 
-                                src="/images/default_profile.png" 
-                                alt="Profile" 
-                                style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }}
-                              />
-                            </div>
-                          )}
-                          <div className="user-details">
-                            <span className="user-name">{record.user_name}</span>
-                            <span className="user-role">{record.role}</span>
-                          </div>
-                        </div>
-                        <div className="attendance-status">
-                          <span className="status-badge absent">
-                            ✗ Absent
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Order Modal */}
-      {showOrderModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>{orderForm.id ? 'Edit Order' : 'New Order'}</h2>
-            <form onSubmit={(e) => { e.preventDefault(); saveOrder(); }}>
-              <div className="form-group">
-                <label>First Name:</label>
-                <input
-                  type="text"
-                  value={orderForm.firstName}
-                  onChange={(e) => setOrderForm({...orderForm, firstName: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Last Name:</label>
-                <input
-                  type="text"
-                  value={orderForm.lastName}
-                  onChange={(e) => setOrderForm({...orderForm, lastName: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Email:</label>
-                <input
-                  type="email"
-                  value={orderForm.email}
-                  onChange={(e) => setOrderForm({...orderForm, email: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Gender:</label>
-                <select
-                  value={orderForm.gender}
-                  onChange={(e) => setOrderForm({...orderForm, gender: e.target.value})}
-                  required
-                >
-                  <option value="mens">Men's</option>
-                  <option value="womens">Women's</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Item:</label>
-                <select
-                  value={orderForm.item}
-                  onChange={(e) => setOrderForm({...orderForm, item: e.target.value})}
-                  required
-                >
-                  <option value="">Select an item...</option>
-                  {gearItems.map(item => (
-                    <option key={item.id} value={item.title}>
-                      {item.title} - ${item.price}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Size:</label>
-                <select
-                  value={orderForm.size}
-                  onChange={(e) => setOrderForm({...orderForm, size: e.target.value})}
-                  required
-                >
-                  <option value="">Select a size...</option>
-                  {orderForm.gender === 'womens' ? (
-                    // Women's sizes: XS, S, M, L, XL, 2XL
+                <div className="form-group">
+                  <label>Membership Status:</label>
+                  {editForm.membershipStatus === 'pending_review' ? (
                     <>
-                      <option value="XS">XS</option>
-                      <option value="S">S</option>
-                      <option value="M">M</option>
-                      <option value="L">L</option>
-                      <option value="XL">XL</option>
-                      <option value="2XL">2XL</option>
+                      <div style={{ marginBottom: '6px' }}>
+                        <span className="membership-status pending_review">
+                          {MEMBERSHIP_STATUS_LABELS.pending_review}
+                        </span>
+                      </div>
+                      <small>
+                        Receipt awaiting review — approve or reject in the Receipts tab.
+                      </small>
+                    </>
+                  ) : NON_EXPIRING_ROLES.includes(editForm.role) ? (
+                    <>
+                      <div style={{ marginBottom: '6px' }}>
+                        <span className="membership-status active">
+                          {MEMBERSHIP_STATUS_LABELS.active}
+                        </span>
+                      </div>
+                      <small>
+                        Coaches, executives, and administrators do not expire with terms.
+                      </small>
                     </>
                   ) : (
-                    // Men's sizes: S, M, L, XL, 2XL (no XS, no XXS)
                     <>
-                      <option value="S">S</option>
-                      <option value="M">M</option>
-                      <option value="L">L</option>
-                      <option value="XL">XL</option>
-                      <option value="2XL">2XL</option>
+                      <select
+                        value={editForm.membershipStatus}
+                        onChange={(e) => handleMembershipStatusChange(e.target.value)}
+                      >
+                        <option value="active">Active</option>
+                        <option value="expired">Expired</option>
+                        <option value="not_member">Not a member</option>
+                      </select>
+                      {(() => {
+                        const selectedTerm = terms.find((t) => t.id === editForm.term_id);
+                        const preview = previewMembershipStatus(
+                          editForm.role,
+                          selectedTerm?.end_date,
+                          editingMember?.has_pending_receipt
+                        );
+                        if (preview === 'expiring_soon') {
+                          return (
+                            <div style={{ marginTop: '8px' }}>
+                              <span className="membership-status expiring_soon">
+                                {MEMBERSHIP_STATUS_LABELS.expiring_soon}
+                              </span>
+                              <small style={{ display: 'block', marginTop: '4px' }}>
+                                Based on the selected term ending within 7 days.
+                              </small>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                      <small>
+                        {editForm.membershipStatus === 'active' &&
+                          'Set role to member and assign a current term.'}
+                        {editForm.membershipStatus === 'expired' &&
+                          'Set role to member and assign a term that has already ended.'}
+                        {editForm.membershipStatus === 'not_member' &&
+                          'Sets role to pending and clears the term.'}
+                      </small>
                     </>
                   )}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Quantity:</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={orderForm.quantity}
-                  onChange={(e) => setOrderForm({...orderForm, quantity: parseInt(e.target.value) || 1})}
-                  required
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowOrderModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {orderForm.id ? 'Update Order' : 'Create Order'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                </div>
 
-      {/* Test Event Modal */}
-      {showTestEventModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>{testEventForm.id ? 'Edit Test Event' : 'New Test Event'}</h2>
-            <form onSubmit={(e) => { e.preventDefault(); createTestEvent(); }}>
-              <div className="form-group">
-                <label>Title:</label>
-                <input
-                  type="text"
-                  value={testEventForm.title}
-                  onChange={(e) => setTestEventForm({...testEventForm, title: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Sport:</label>
-                <select
-                  value={testEventForm.sport}
-                  onChange={(e) => setTestEventForm({...testEventForm, sport: e.target.value})}
-                  required
-                >
-                  <option value="swim">Swim</option>
-                  <option value="bike">Bike</option>
-                  <option value="run">Run</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Date:</label>
-                <input
-                  type="date"
-                  value={testEventForm.date}
-                  onChange={(e) => setTestEventForm({...testEventForm, date: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Workout Description:</label>
-                <textarea
-                  rows="3"
-                  value={testEventForm.workout}
-                  onChange={(e) => setTestEventForm({...testEventForm, workout: e.target.value})}
-                  placeholder="e.g., 5 400ms fast on the track"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Link to Workout (optional):</label>
-                {testEventForm.sport && testEventForm.date ? (
+                <div className="form-group">
+                  <label>Phone Number:</label>
+                  <input
+                    type="tel"
+                    value={editForm.phoneNumber}
+                    onChange={handlePhoneNumberChange}
+                    placeholder="(123) 456-7890"
+                  />
+                  {editForm.phoneNumber && !validatePhoneNumber(editForm.phoneNumber) && (
+                    <div className="error-message">Please enter a valid 10-digit phone number</div>
+                  )}
+                  <small>For SMS notifications when promoted from waitlists</small>
+                </div>
+
+                <div className="form-group">
+                  <label>Sport:</label>
                   <select
-                    value={testEventForm.workout_post_id || ''}
-                    onChange={(e) => setTestEventForm({...testEventForm, workout_post_id: e.target.value ? parseInt(e.target.value) : null})}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                    disabled={loadingWorkouts}
+                    value={editForm.sport}
+                    onChange={(e) => setEditForm({ ...editForm, sport: e.target.value })}
                   >
-                    <option value="">No workout linked</option>
-                    {availableWorkouts.map(workout => (
-                      <option key={workout.id} value={workout.id}>
-                        {workout.title} - {workout.workout_type} ({new Date(workout.workout_date).toLocaleDateString()} {workout.workout_time ? workout.workout_time.substring(0, 5) : ''})
+                    <option value="triathlon">Triathlon</option>
+                    <option value="duathlon">Duathlon</option>
+                    <option value="run_only">Run Only</option>
+                    <option value="swim_only">Swim Only</option>
+                  </select>
+                  <small>Determines which workout types the member can see and create</small>
+                </div>
+
+                <div className="form-group">
+                  <label>Term:</label>
+                  <select
+                    value={editForm.term_id || ''}
+                    onChange={(e) => handleTermChange(e.target.value)}
+                  >
+                    <option value="">No term assigned</option>
+                    {terms.map((term) => (
+                      <option key={term.id} value={term.id}>
+                        {formatTermName(term)}
                       </option>
                     ))}
                   </select>
-                ) : (
-                  <div style={{ padding: '0.75rem', background: '#f3f4f6', borderRadius: '4px', color: '#6b7280' }}>
-                    {!testEventForm.sport && !testEventForm.date ? 'Select sport and date to see available workouts' :
-                     !testEventForm.sport ? 'Select sport to see available workouts' :
-                     'Select date to see available workouts'}
+                  <small>Determines membership expiry date</small>
+                </div>
+
+                <div className="form-group">
+                  <label>Charter Accepted:</label>
+                  <select
+                    value={editForm.charterAccepted ? '1' : '0'}
+                    onChange={(e) => {
+                      const newValue = e.target.value === '1';
+                      console.log('🔍 Charter dropdown changed:', e.target.value, '→', newValue);
+                      setEditForm({ ...editForm, charterAccepted: newValue });
+                    }}
+                  >
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                  </select>
+                  <small>Whether the member has accepted the team charter</small>
+                  <div style={{ fontSize: '0.8em', color: '#666', marginTop: '4px' }}>
+                    Current value: {editForm.charterAccepted ? 'Yes (1)' : 'No (0)'}
                   </div>
-                )}
-                {loadingWorkouts && (
-                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Loading workouts...</small>
-                )}
-                {!loadingWorkouts && testEventForm.sport && testEventForm.date && availableWorkouts.length === 0 && (
-                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>No workouts found for {testEventForm.sport} on {(() => {
-                    // Format date string directly to avoid timezone issues
-                    const dateStr = testEventForm.date;
-                    if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                      const [year, month, day] = dateStr.split('-');
-                      return `${month}/${day}/${year}`;
-                    }
-                    return new Date(testEventForm.date).toLocaleDateString();
-                  })()}</small>
-                )}
-                <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>Optional: Link this test event to a specific workout</small>
+                </div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn btn-primary">
+                    Save Changes
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={cancelEdit}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Approval Modal */}
+        {approvingMember && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>Approve Member: {approvingMember.name}</h2>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleApprovalSubmit();
+                }}
+              >
+                <div className="form-group">
+                  <label>Role:</label>
+                  <select
+                    value={approvalForm.role}
+                    onChange={(e) => setApprovalForm({ ...approvalForm, role: e.target.value })}
+                    required
+                  >
+                    <option value="member">Member</option>
+                    <option value="coach">Coach</option>
+                    <option value="exec">Executive</option>
+                    <option value="administrator">Administrator</option>
+                  </select>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="submit" className="btn btn-primary">
+                    Approve Member
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={cancelApproval}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Attendance Details Modal */}
+        {showAttendanceModal && attendanceDetails && (
+          <div className="modal-overlay">
+            <div className="modal attendance-modal">
+              <div className="modal-header">
+                <button className="close-btn" onClick={() => setShowAttendanceModal(false)}>
+                  ×
+                </button>
+                <h2>Attendance Details: {attendanceDetails.workout.title}</h2>
               </div>
-              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  {testEventForm.id && (
-                    <button 
-                      type="button" 
-                      className="btn" 
-                      onClick={deleteTestEvent}
-                      style={{ 
-                        background: '#dc2626', 
-                        color: 'white',
-                        border: 'none'
-                      }}
-                    >
-                      Delete Event
-                    </button>
+
+              <div className="attendance-details-content">
+                {/* Workout Info */}
+                <div className="workout-info-section">
+                  <h3>Workout Information</h3>
+                  <div className="workout-info-grid">
+                    <div>
+                      <strong>Type:</strong> {attendanceDetails.workout.workout_type}
+                    </div>
+                    <div>
+                      <strong>Date:</strong>{' '}
+                      {attendanceDetails.workout.workout_date &&
+                        new Date(attendanceDetails.workout.workout_date).toLocaleDateString()}
+                    </div>
+                    <div>
+                      <strong>Time:</strong>{' '}
+                      {attendanceDetails.workout.workout_time || 'Not specified'}
+                    </div>
+                    <div>
+                      <strong>Capacity:</strong> {attendanceDetails.workout.capacity || 'Unlimited'}
+                    </div>
+                  </div>
+                  {attendanceDetails.workout.content && (
+                    <div className="workout-description">
+                      <strong>Description:</strong>
+                      <p>{attendanceDetails.workout.content}</p>
+                    </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => {
-                    setShowTestEventModal(false);
-                    setTestEventForm({ title: '', sport: 'swim', date: '', workout: '', workout_post_id: null });
-                    setTestEventRecordCount(0);
-                    setAvailableWorkouts([]);
-                  }}>
+
+                {/* Attendance Summary */}
+                {attendanceDetails.summary && (
+                  <div className="attendance-summary-section">
+                    <h3>Attendance Summary</h3>
+                    <div className="summary-stats">
+                      <div className="stat-item">
+                        <span className="stat-number">
+                          {attendanceDetails.summary.attended_count}
+                        </span>
+                        <span className="stat-label">Attended</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-number">
+                          {attendanceDetails.summary.absent_count}
+                        </span>
+                        <span className="stat-label">Absent</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-number">
+                          {attendanceDetails.summary.total_records}
+                        </span>
+                        <span className="stat-label">Total Records</span>
+                      </div>
+                      {attendanceDetails.summary.cancelled_count > 0 && (
+                        <div className="stat-item">
+                          <span className="stat-number">
+                            {attendanceDetails.summary.cancelled_count}
+                          </span>
+                          <span className="stat-label">Cancelled</span>
+                        </div>
+                      )}
+                      {attendanceDetails.summary.late_count > 0 && (
+                        <div className="stat-item">
+                          <span className="stat-number">
+                            {attendanceDetails.summary.late_count}
+                          </span>
+                          <span className="stat-label">Late</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="submission-info">
+                      <div>
+                        <strong>First Submitted:</strong>{' '}
+                        {attendanceDetails.summary.first_submitted
+                          ? new Date(attendanceDetails.summary.first_submitted).toLocaleString()
+                          : 'N/A'}
+                      </div>
+                      <div>
+                        <strong>Last Updated:</strong>{' '}
+                        {attendanceDetails.summary.last_submitted
+                          ? new Date(attendanceDetails.summary.last_submitted).toLocaleString()
+                          : 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Signups List */}
+                {attendanceDetails.signups.length > 0 && (
+                  <div className="signups-section">
+                    <h3>Signups ({attendanceDetails.signups.length})</h3>
+                    <div className="signups-list">
+                      {attendanceDetails.signups.map((signup) => (
+                        <div key={signup.id} className="signup-item">
+                          <div className="signup-user-info">
+                            {signup.profile_picture_url ? (
+                              <img
+                                src={`${API_BASE_URL.replace('/api', '')}${signup.profile_picture_url}`}
+                                alt="Profile"
+                                className="user-avatar"
+                              />
+                            ) : (
+                              <div className="user-avatar-placeholder">
+                                <img
+                                  src="/images/default_profile.png"
+                                  alt="Profile"
+                                  style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    filter: 'brightness(0) invert(1)',
+                                  }}
+                                />
+                              </div>
+                            )}
+                            <div className="user-details">
+                              <span className="user-name">{signup.user_name}</span>
+                              <span className="user-role">{signup.role}</span>
+                            </div>
+                          </div>
+                          <div className="signup-time">
+                            {formatSignupTimeForDisplay(signup.signup_time)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Who Was There - Attended Members */}
+                {attendanceDetails.attendance.filter((record) => record.attended).length > 0 && (
+                  <div className="attended-section">
+                    <h3>
+                      ✅ Who Was There (
+                      {attendanceDetails.attendance.filter((record) => record.attended).length})
+                    </h3>
+                    <div className="attendance-list">
+                      {attendanceDetails.attendance
+                        .filter((record) => record.attended)
+                        .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                        .map((record) => (
+                          <div key={record.id} className="attendance-item attended">
+                            <div className="attendance-user-info">
+                              {record.profile_picture_url ? (
+                                <img
+                                  src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`}
+                                  alt="Profile"
+                                  className="user-avatar"
+                                />
+                              ) : (
+                                <div className="user-avatar-placeholder">
+                                  <img
+                                    src="/images/default_profile.png"
+                                    alt="Profile"
+                                    style={{
+                                      width: '16px',
+                                      height: '16px',
+                                      filter: 'brightness(0) invert(1)',
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <div className="user-details">
+                                <span className="user-name">{record.user_name}</span>
+                                <span className="user-role">{record.role}</span>
+                              </div>
+                            </div>
+                            <div className="attendance-status">
+                              <div className="status-badges">
+                                <span className="status-badge attended">✓ Attended</span>
+                                {record.late && <span className="status-badge late">⏰ Late</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Who Was Late - Only Late Members */}
+                {attendanceDetails.attendance.filter((record) => record.attended && record.late)
+                  .length > 0 && (
+                  <div className="late-section">
+                    <h3>
+                      ⏰ Who Was Late (
+                      {
+                        attendanceDetails.attendance.filter(
+                          (record) => record.attended && record.late
+                        ).length
+                      }
+                      )
+                    </h3>
+                    <div className="attendance-list">
+                      {attendanceDetails.attendance
+                        .filter((record) => record.attended && record.late)
+                        .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                        .map((record) => (
+                          <div key={record.id} className="attendance-item late-member">
+                            <div className="attendance-user-info">
+                              {record.profile_picture_url ? (
+                                <img
+                                  src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`}
+                                  alt="Profile"
+                                  className="user-avatar"
+                                />
+                              ) : (
+                                <div className="user-avatar-placeholder">
+                                  <img
+                                    src="/images/default_profile.png"
+                                    alt="Profile"
+                                    style={{
+                                      width: '16px',
+                                      height: '16px',
+                                      filter: 'brightness(0) invert(1)',
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <div className="user-details">
+                                <span className="user-name">{record.user_name}</span>
+                                <span className="user-role">{record.role}</span>
+                              </div>
+                            </div>
+                            <div className="attendance-status">
+                              <span className="status-badge late">⏰ Late</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Who Cancelled Within 24 Hours */}
+                {attendanceDetails.attendance.filter(
+                  (record) => !record.attended && record.attendance_type === 'cancelled'
+                ).length > 0 && (
+                  <div className="cancelled-section">
+                    <h3>
+                      🚫 Who Cancelled Within 24 Hours (
+                      {
+                        attendanceDetails.attendance.filter(
+                          (record) => !record.attended && record.attendance_type === 'cancelled'
+                        ).length
+                      }
+                      )
+                    </h3>
+                    <div className="attendance-list">
+                      {attendanceDetails.attendance
+                        .filter(
+                          (record) => !record.attended && record.attendance_type === 'cancelled'
+                        )
+                        .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                        .map((record) => (
+                          <div key={record.id} className="attendance-item cancelled">
+                            <div className="attendance-user-info">
+                              {record.profile_picture_url ? (
+                                <img
+                                  src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`}
+                                  alt="Profile"
+                                  className="user-avatar"
+                                />
+                              ) : (
+                                <div className="user-avatar-placeholder">
+                                  <img
+                                    src="/images/default_profile.png"
+                                    alt="Profile"
+                                    style={{
+                                      width: '16px',
+                                      height: '16px',
+                                      filter: 'brightness(0) invert(1)',
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <div className="user-details">
+                                <span className="user-name">{record.user_name}</span>
+                                <span className="user-role">{record.role}</span>
+                              </div>
+                            </div>
+                            <div className="attendance-status">
+                              <span className="status-badge cancelled">🚫 Cancelled (Absent)</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Who Was Absent (Not Cancelled) */}
+                {attendanceDetails.attendance.filter(
+                  (record) => !record.attended && record.attendance_type !== 'cancelled'
+                ).length > 0 && (
+                  <div className="absent-section">
+                    <h3>
+                      ❌ Who Was Absent (
+                      {
+                        attendanceDetails.attendance.filter(
+                          (record) => !record.attended && record.attendance_type !== 'cancelled'
+                        ).length
+                      }
+                      )
+                    </h3>
+                    <div className="attendance-list">
+                      {attendanceDetails.attendance
+                        .filter(
+                          (record) => !record.attended && record.attendance_type !== 'cancelled'
+                        )
+                        .sort((a, b) => a.user_name.localeCompare(b.user_name))
+                        .map((record) => (
+                          <div key={record.id} className="attendance-item absent">
+                            <div className="attendance-user-info">
+                              {record.profile_picture_url ? (
+                                <img
+                                  src={`${API_BASE_URL.replace('/api', '')}${record.profile_picture_url}`}
+                                  alt="Profile"
+                                  className="user-avatar"
+                                />
+                              ) : (
+                                <div className="user-avatar-placeholder">
+                                  <img
+                                    src="/images/default_profile.png"
+                                    alt="Profile"
+                                    style={{
+                                      width: '16px',
+                                      height: '16px',
+                                      filter: 'brightness(0) invert(1)',
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <div className="user-details">
+                                <span className="user-name">{record.user_name}</span>
+                                <span className="user-role">{record.role}</span>
+                              </div>
+                            </div>
+                            <div className="attendance-status">
+                              <span className="status-badge absent">✗ Absent</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Order Modal */}
+        {showOrderModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>{orderForm.id ? 'Edit Order' : 'New Order'}</h2>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveOrder();
+                }}
+              >
+                <div className="form-group">
+                  <label>First Name:</label>
+                  <input
+                    type="text"
+                    value={orderForm.firstName}
+                    onChange={(e) => setOrderForm({ ...orderForm, firstName: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Last Name:</label>
+                  <input
+                    type="text"
+                    value={orderForm.lastName}
+                    onChange={(e) => setOrderForm({ ...orderForm, lastName: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Email:</label>
+                  <input
+                    type="email"
+                    value={orderForm.email}
+                    onChange={(e) => setOrderForm({ ...orderForm, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Gender:</label>
+                  <select
+                    value={orderForm.gender}
+                    onChange={(e) => setOrderForm({ ...orderForm, gender: e.target.value })}
+                    required
+                  >
+                    <option value="mens">Men's</option>
+                    <option value="womens">Women's</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Item:</label>
+                  <select
+                    value={orderForm.item}
+                    onChange={(e) => setOrderForm({ ...orderForm, item: e.target.value })}
+                    required
+                  >
+                    <option value="">Select an item...</option>
+                    {gearItems.map((item) => (
+                      <option key={item.id} value={item.title}>
+                        {item.title} - ${item.price}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Size:</label>
+                  <select
+                    value={orderForm.size}
+                    onChange={(e) => setOrderForm({ ...orderForm, size: e.target.value })}
+                    required
+                  >
+                    <option value="">Select a size...</option>
+                    {orderForm.gender === 'womens' ? (
+                      // Women's sizes: XS, S, M, L, XL, 2XL
+                      <>
+                        <option value="XS">XS</option>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="2XL">2XL</option>
+                      </>
+                    ) : (
+                      // Men's sizes: S, M, L, XL, 2XL (no XS, no XXS)
+                      <>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="2XL">2XL</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Quantity:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={orderForm.quantity}
+                    onChange={(e) =>
+                      setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })
+                    }
+                    required
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowOrderModal(false)}
+                  >
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary">
-                    {testEventForm.id ? 'Update Test Event' : 'Create Test Event'}
+                    {orderForm.id ? 'Update Order' : 'Create Order'}
                   </button>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Record Modal */}
-      {showRecordModal && selectedTestEvent && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>New Record</h2>
-            <form onSubmit={(e) => { e.preventDefault(); createRecord(); }}>
-              <div className="form-group user-search-container" style={{ position: 'relative', marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>User:</label>
-                <input
-                  type="text"
-                  value={userSearchQuery}
-                  onChange={handleUserSearchChange}
-                  onFocus={() => userSearchQuery && setShowUserDropdown(true)}
-                  placeholder="Start typing user's name..."
-                  style={{ 
-                    width: '100%', 
-                    padding: '8px 12px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                />
-                {showUserDropdown && userSearchResults.length > 0 && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    backgroundColor: 'white',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    zIndex: 1000,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    marginTop: '4px'
-                  }}>
-                    {userSearchResults.map(user => (
-                      <div
-                        key={user.id}
-                        onClick={() => selectUser(user)}
-                        style={{
-                          padding: '8px 12px',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid #eee',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
-                      >
-                        <div style={{ fontWeight: '500' }}>{user.name || user.email}</div>
-                        {user.name && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{user.email}</div>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {selectedUser && (
-                  <small style={{ display: 'block', marginTop: '4px', color: '#059669' }}>
-                    Selected: {selectedUser.name || selectedUser.email}
+        {/* Test Event Modal */}
+        {showTestEventModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>{testEventForm.id ? 'Edit Test Event' : 'New Test Event'}</h2>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createTestEvent();
+                }}
+              >
+                <div className="form-group">
+                  <label>Title:</label>
+                  <input
+                    type="text"
+                    value={testEventForm.title}
+                    onChange={(e) => setTestEventForm({ ...testEventForm, title: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Sport:</label>
+                  <select
+                    value={testEventForm.sport}
+                    onChange={(e) => setTestEventForm({ ...testEventForm, sport: e.target.value })}
+                    required
+                  >
+                    <option value="swim">Swim</option>
+                    <option value="bike">Bike</option>
+                    <option value="run">Run</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Date:</label>
+                  <input
+                    type="date"
+                    value={testEventForm.date}
+                    onChange={(e) => setTestEventForm({ ...testEventForm, date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Workout Description:</label>
+                  <textarea
+                    rows="3"
+                    value={testEventForm.workout}
+                    onChange={(e) =>
+                      setTestEventForm({ ...testEventForm, workout: e.target.value })
+                    }
+                    placeholder="e.g., 5 400ms fast on the track"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Link to Workout (optional):</label>
+                  {testEventForm.sport && testEventForm.date ? (
+                    <select
+                      value={testEventForm.workout_post_id || ''}
+                      onChange={(e) =>
+                        setTestEventForm({
+                          ...testEventForm,
+                          workout_post_id: e.target.value ? parseInt(e.target.value) : null,
+                        })
+                      }
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                      }}
+                      disabled={loadingWorkouts}
+                    >
+                      <option value="">No workout linked</option>
+                      {availableWorkouts.map((workout) => (
+                        <option key={workout.id} value={workout.id}>
+                          {workout.title} - {workout.workout_type} (
+                          {new Date(workout.workout_date).toLocaleDateString()}{' '}
+                          {workout.workout_time ? workout.workout_time.substring(0, 5) : ''})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div
+                      style={{
+                        padding: '0.75rem',
+                        background: '#f3f4f6',
+                        borderRadius: '4px',
+                        color: '#6b7280',
+                      }}
+                    >
+                      {!testEventForm.sport && !testEventForm.date
+                        ? 'Select sport and date to see available workouts'
+                        : !testEventForm.sport
+                          ? 'Select sport to see available workouts'
+                          : 'Select date to see available workouts'}
+                    </div>
+                  )}
+                  {loadingWorkouts && (
+                    <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>
+                      Loading workouts...
+                    </small>
+                  )}
+                  {!loadingWorkouts &&
+                    testEventForm.sport &&
+                    testEventForm.date &&
+                    availableWorkouts.length === 0 && (
+                      <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>
+                        No workouts found for {testEventForm.sport} on{' '}
+                        {(() => {
+                          // Format date string directly to avoid timezone issues
+                          const dateStr = testEventForm.date;
+                          if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            const [year, month, day] = dateStr.split('-');
+                            return `${month}/${day}/${year}`;
+                          }
+                          return new Date(testEventForm.date).toLocaleDateString();
+                        })()}
+                      </small>
+                    )}
+                  <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>
+                    Optional: Link this test event to a specific workout
                   </small>
-                )}
-                <small style={{ display: 'block', marginTop: '4px', color: '#6b7280' }}>
-                  {!selectedUser && 'Leave empty to create record for yourself'}
-                </small>
-              </div>
-              <div className="form-group">
-                <label>Title:</label>
-                <input
-                  type="text"
-                  value={recordForm.title}
-                  onChange={(e) => setRecordForm({...recordForm, title: e.target.value})}
-                  placeholder={selectedTestEvent.title}
-                  required
-                />
-                <small>Defaults to test event title</small>
-              </div>
-              
-              {/* Sport-specific fields */}
-              {selectedTestEvent && (() => {
-                const sport = selectedTestEvent.sport;
-                const sportFields = sport ? getFieldsForSport(sport) : [];
-                
-                if (sportFields.length > 0) {
-                  return (
-                    <div className="form-group" style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                      <label style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#374151', display: 'block' }}>
-                        {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
-                      </label>
-                      {sportFields.map(field => (
-                        <div key={field.key} style={{ marginBottom: '1rem' }}>
-                          <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
-                            {field.label}:
-                          </label>
-                          {field.type === 'array' ? (
-                            <input
-                              type="text"
-                              value={Array.isArray(recordForm.result_fields?.[field.key]) 
-                                ? recordForm.result_fields[field.key].join(', ') 
-                                : (recordForm.result_fields?.[field.key] || '')}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                const arrayValue = value ? value.split(',').map(v => v.trim()).filter(v => v) : [];
-                                setRecordForm({
-                                  ...recordForm,
-                                  result_fields: {
-                                    ...recordForm.result_fields,
-                                    [field.key]: arrayValue.length > 0 ? arrayValue : null
-                                  }
-                                });
-                              }}
-                              placeholder={field.placeholder}
-                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                            />
-                          ) : field.type === 'number' ? (
-                            <input
-                              type="number"
-                              value={recordForm.result_fields?.[field.key] || ''}
-                              onChange={(e) => {
-                                const value = e.target.value === '' ? null : parseFloat(e.target.value);
-                                setRecordForm({
-                                  ...recordForm,
-                                  result_fields: {
-                                    ...recordForm.result_fields,
-                                    [field.key]: value
-                                  }
-                                });
-                              }}
-                              placeholder={field.placeholder}
-                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              value={recordForm.result_fields?.[field.key] || ''}
-                              onChange={(e) => {
-                                setRecordForm({
-                                  ...recordForm,
-                                  result_fields: {
-                                    ...recordForm.result_fields,
-                                    [field.key]: e.target.value || null
-                                  }
-                                });
-                              }}
-                              placeholder={field.placeholder}
-                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                            />
-                          )}
-                          {field.helpText && (
-                            <small style={{ color: '#6b7280', display: 'block', marginTop: '0.25rem', fontSize: '0.75rem' }}>
-                              {field.helpText}
-                            </small>
+                </div>
+                <div
+                  className="modal-actions"
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <div>
+                    {testEventForm.id && (
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={deleteTestEvent}
+                        style={{
+                          background: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                        }}
+                      >
+                        Delete Event
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setShowTestEventModal(false);
+                        setTestEventForm({
+                          title: '',
+                          sport: 'swim',
+                          date: '',
+                          workout: '',
+                          workout_post_id: null,
+                        });
+                        setTestEventRecordCount(0);
+                        setAvailableWorkouts([]);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      {testEventForm.id ? 'Update Test Event' : 'Create Test Event'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Record Modal */}
+        {showRecordModal && selectedTestEvent && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>New Record</h2>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createRecord();
+                }}
+              >
+                <div
+                  className="form-group user-search-container"
+                  style={{ position: 'relative', marginBottom: '16px' }}
+                >
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                    User:
+                  </label>
+                  <input
+                    type="text"
+                    value={userSearchQuery}
+                    onChange={handleUserSearchChange}
+                    onFocus={() => userSearchQuery && setShowUserDropdown(true)}
+                    placeholder="Start typing user's name..."
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                    }}
+                  />
+                  {showUserDropdown && userSearchResults.length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        backgroundColor: 'white',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        zIndex: 1000,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        marginTop: '4px',
+                      }}
+                    >
+                      {userSearchResults.map((user) => (
+                        <div
+                          key={user.id}
+                          onClick={() => selectUser(user)}
+                          style={{
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #eee',
+                            transition: 'background-color 0.2s',
+                          }}
+                          onMouseEnter={(e) => (e.target.style.backgroundColor = '#f3f4f6')}
+                          onMouseLeave={(e) => (e.target.style.backgroundColor = 'white')}
+                        >
+                          <div style={{ fontWeight: '500' }}>{user.name || user.email}</div>
+                          {user.name && (
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                              {user.email}
+                            </div>
                           )}
                         </div>
                       ))}
                     </div>
-                  );
-                }
-                return null;
-              })()}
-              
+                  )}
+                  {selectedUser && (
+                    <small style={{ display: 'block', marginTop: '4px', color: '#059669' }}>
+                      Selected: {selectedUser.name || selectedUser.email}
+                    </small>
+                  )}
+                  <small style={{ display: 'block', marginTop: '4px', color: '#6b7280' }}>
+                    {!selectedUser && 'Leave empty to create record for yourself'}
+                  </small>
+                </div>
+                <div className="form-group">
+                  <label>Title:</label>
+                  <input
+                    type="text"
+                    value={recordForm.title}
+                    onChange={(e) => setRecordForm({ ...recordForm, title: e.target.value })}
+                    placeholder={selectedTestEvent.title}
+                    required
+                  />
+                  <small>Defaults to test event title</small>
+                </div>
+
+                {/* Sport-specific fields */}
+                {selectedTestEvent &&
+                  (() => {
+                    const sport = selectedTestEvent.sport;
+                    const sportFields = sport ? getFieldsForSport(sport) : [];
+
+                    if (sportFields.length > 0) {
+                      return (
+                        <div
+                          className="form-group"
+                          style={{
+                            marginTop: '1rem',
+                            padding: '1rem',
+                            background: '#f8fafc',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                          }}
+                        >
+                          <label
+                            style={{
+                              fontWeight: 600,
+                              marginBottom: '0.75rem',
+                              color: '#374151',
+                              display: 'block',
+                            }}
+                          >
+                            {sport.charAt(0).toUpperCase() + sport.slice(1)}-Specific Details:
+                          </label>
+                          {sportFields.map((field) => (
+                            <div key={field.key} style={{ marginBottom: '1rem' }}>
+                              <label
+                                style={{
+                                  display: 'block',
+                                  marginBottom: '0.25rem',
+                                  fontSize: '0.875rem',
+                                  fontWeight: 500,
+                                  color: '#374151',
+                                }}
+                              >
+                                {field.label}:
+                              </label>
+                              {field.type === 'array' ? (
+                                <input
+                                  type="text"
+                                  value={
+                                    Array.isArray(recordForm.result_fields?.[field.key])
+                                      ? recordForm.result_fields[field.key].join(', ')
+                                      : recordForm.result_fields?.[field.key] || ''
+                                  }
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    const arrayValue = value
+                                      ? value
+                                          .split(',')
+                                          .map((v) => v.trim())
+                                          .filter((v) => v)
+                                      : [];
+                                    setRecordForm({
+                                      ...recordForm,
+                                      result_fields: {
+                                        ...recordForm.result_fields,
+                                        [field.key]: arrayValue.length > 0 ? arrayValue : null,
+                                      },
+                                    });
+                                  }}
+                                  placeholder={field.placeholder}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.5rem',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px',
+                                  }}
+                                />
+                              ) : field.type === 'number' ? (
+                                <input
+                                  type="number"
+                                  value={recordForm.result_fields?.[field.key] || ''}
+                                  onChange={(e) => {
+                                    const value =
+                                      e.target.value === '' ? null : parseFloat(e.target.value);
+                                    setRecordForm({
+                                      ...recordForm,
+                                      result_fields: {
+                                        ...recordForm.result_fields,
+                                        [field.key]: value,
+                                      },
+                                    });
+                                  }}
+                                  placeholder={field.placeholder}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.5rem',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px',
+                                  }}
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={recordForm.result_fields?.[field.key] || ''}
+                                  onChange={(e) => {
+                                    setRecordForm({
+                                      ...recordForm,
+                                      result_fields: {
+                                        ...recordForm.result_fields,
+                                        [field.key]: e.target.value || null,
+                                      },
+                                    });
+                                  }}
+                                  placeholder={field.placeholder}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.5rem',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px',
+                                  }}
+                                />
+                              )}
+                              {field.helpText && (
+                                <small
+                                  style={{
+                                    color: '#6b7280',
+                                    display: 'block',
+                                    marginTop: '0.25rem',
+                                    fontSize: '0.75rem',
+                                  }}
+                                >
+                                  {field.helpText}
+                                </small>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                <div className="form-group">
+                  <label>Result:</label>
+                  <textarea
+                    rows="3"
+                    value={recordForm.result}
+                    onChange={(e) => setRecordForm({ ...recordForm, result: e.target.value })}
+                    placeholder="e.g., 1:20, 1:18, 1:19, 1:17, 1:16"
+                  />
+                  <small>Text description of times/results</small>
+                </div>
+                <div className="form-group">
+                  <label>Description (optional):</label>
+                  <textarea
+                    rows="3"
+                    value={recordForm.description}
+                    onChange={(e) => setRecordForm({ ...recordForm, description: e.target.value })}
+                    placeholder="Additional notes..."
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowRecordModal(false);
+                      setRecordForm({
+                        title: '',
+                        result: '',
+                        description: '',
+                        user_id: null,
+                        result_fields: {},
+                      });
+                      setUserSearchQuery('');
+                      setSelectedUser(null);
+                      setShowUserDropdown(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Create Record
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <ConfirmModal
+          isOpen={removeBannerConfirm.isOpen}
+          onConfirm={confirmRemoveBanner}
+          onCancel={() => setRemoveBannerConfirm({ isOpen: false })}
+          title="Remove Banner"
+          message="Remove the current pop up message?"
+          confirmText="Remove"
+          cancelText="Cancel"
+          confirmDanger={false}
+        />
+
+        <ConfirmModal
+          isOpen={deleteOrderConfirm.isOpen}
+          onConfirm={confirmDeleteOrder}
+          onCancel={() => setDeleteOrderConfirm({ isOpen: false, orderId: null })}
+          title="Delete Order"
+          message="Delete this order?"
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDanger={true}
+        />
+
+        <ConfirmModal
+          isOpen={archiveOrdersConfirm.isOpen}
+          onConfirm={confirmArchiveOrders}
+          onCancel={() => setArchiveOrdersConfirm({ isOpen: false, count: 0 })}
+          title="Archive Orders"
+          message={`Archive ${archiveOrdersConfirm.count} selected order(s)?`}
+          confirmText="Archive"
+          cancelText="Cancel"
+          confirmDanger={false}
+        />
+
+        <ConfirmModal
+          isOpen={unarchiveOrdersConfirm.isOpen}
+          onConfirm={confirmUnarchiveOrders}
+          onCancel={() => setUnarchiveOrdersConfirm({ isOpen: false, count: 0 })}
+          title="Unarchive Orders"
+          message={`Unarchive ${unarchiveOrdersConfirm.count} selected order(s)?`}
+          confirmText="Unarchive"
+          cancelText="Cancel"
+          confirmDanger={false}
+        />
+
+        <ConfirmModal
+          isOpen={deleteTestEventConfirm.isOpen}
+          onConfirm={confirmDeleteTestEvent}
+          onCancel={() => setDeleteTestEventConfirm({ isOpen: false, eventId: null })}
+          title="Delete Test Event"
+          message={`Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDanger={true}
+        />
+
+        <ConfirmModal
+          isOpen={deleteUserConfirm.isOpen}
+          onConfirm={confirmDeleteUser}
+          onCancel={() => setDeleteUserConfirm({ isOpen: false, userId: null })}
+          title="Delete User"
+          message="⚠️ WARNING: This will PERMANENTLY DELETE this user and all their data! This action cannot be undone. Are you sure you want to continue?"
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDanger={true}
+        />
+
+        <ConfirmModal
+          isOpen={deleteTermConfirm.isOpen}
+          onConfirm={confirmDeleteTerm}
+          onCancel={() => setDeleteTermConfirm({ isOpen: false, termId: null })}
+          title="Delete Term"
+          message="Are you sure you want to delete this term? This cannot be undone. Members currently assigned to it must be reassigned first."
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDanger={true}
+        />
+
+        {/* Reject Receipt Modal */}
+        {rejectingReceipt && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>Reject Receipt</h2>
+              <p>
+                Rejecting the receipt from <strong>{rejectingReceipt.user_name}</strong>. They'll be
+                emailed and can upload a new one.
+              </p>
               <div className="form-group">
-                <label>Result:</label>
+                <label>Reason (optional, included in the email):</label>
                 <textarea
-                  rows="3"
-                  value={recordForm.result}
-                  onChange={(e) => setRecordForm({...recordForm, result: e.target.value})}
-                  placeholder="e.g., 1:20, 1:18, 1:19, 1:17, 1:16"
-                />
-                <small>Text description of times/results</small>
-              </div>
-              <div className="form-group">
-                <label>Description (optional):</label>
-                <textarea
-                  rows="3"
-                  value={recordForm.description}
-                  onChange={(e) => setRecordForm({...recordForm, description: e.target.value})}
-                  placeholder="Additional notes..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="e.g. The receipt was unreadable, or the amount didn't match the membership fee."
+                  rows={4}
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => {
-                  setShowRecordModal(false);
-                  setRecordForm({ title: '', result: '', description: '', user_id: null, result_fields: {} });
-                  setUserSearchQuery('');
-                  setSelectedUser(null);
-                  setShowUserDropdown(false);
-                }}>
+                <button type="button" className="btn btn-danger" onClick={submitRejectReceipt}>
+                  Reject &amp; Notify
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setRejectingReceipt(null);
+                    setRejectReason('');
+                  }}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Create Record
-                </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <ConfirmModal
-        isOpen={removeBannerConfirm.isOpen}
-        onConfirm={confirmRemoveBanner}
-        onCancel={() => setRemoveBannerConfirm({ isOpen: false })}
-        title="Remove Banner"
-        message="Remove the current pop up message?"
-        confirmText="Remove"
-        cancelText="Cancel"
-        confirmDanger={false}
-      />
-
-      <ConfirmModal
-        isOpen={deleteOrderConfirm.isOpen}
-        onConfirm={confirmDeleteOrder}
-        onCancel={() => setDeleteOrderConfirm({ isOpen: false, orderId: null })}
-        title="Delete Order"
-        message="Delete this order?"
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmDanger={true}
-      />
-
-      <ConfirmModal
-        isOpen={archiveOrdersConfirm.isOpen}
-        onConfirm={confirmArchiveOrders}
-        onCancel={() => setArchiveOrdersConfirm({ isOpen: false, count: 0 })}
-        title="Archive Orders"
-        message={`Archive ${archiveOrdersConfirm.count} selected order(s)?`}
-        confirmText="Archive"
-        cancelText="Cancel"
-        confirmDanger={false}
-      />
-
-      <ConfirmModal
-        isOpen={unarchiveOrdersConfirm.isOpen}
-        onConfirm={confirmUnarchiveOrders}
-        onCancel={() => setUnarchiveOrdersConfirm({ isOpen: false, count: 0 })}
-        title="Unarchive Orders"
-        message={`Unarchive ${unarchiveOrdersConfirm.count} selected order(s)?`}
-        confirmText="Unarchive"
-        cancelText="Cancel"
-        confirmDanger={false}
-      />
-
-      <ConfirmModal
-        isOpen={deleteTestEventConfirm.isOpen}
-        onConfirm={confirmDeleteTestEvent}
-        onCancel={() => setDeleteTestEventConfirm({ isOpen: false, eventId: null })}
-        title="Delete Test Event"
-        message={`Are you sure you want to delete this test? There ${testEventRecordCount === 1 ? 'is' : 'are'} ${testEventRecordCount} result${testEventRecordCount === 1 ? '' : 's'} of this test that will be deleted if you do.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmDanger={true}
-      />
-
-      <ConfirmModal
-        isOpen={deleteUserConfirm.isOpen}
-        onConfirm={confirmDeleteUser}
-        onCancel={() => setDeleteUserConfirm({ isOpen: false, userId: null })}
-        title="Delete User"
-        message="⚠️ WARNING: This will PERMANENTLY DELETE this user and all their data! This action cannot be undone. Are you sure you want to continue?"
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmDanger={true}
-      />
-
-      <ConfirmModal
-        isOpen={deleteTermConfirm.isOpen}
-        onConfirm={confirmDeleteTerm}
-        onCancel={() => setDeleteTermConfirm({ isOpen: false, termId: null })}
-        title="Delete Term"
-        message="Are you sure you want to delete this term? This cannot be undone. Members currently assigned to it must be reassigned first."
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmDanger={true}
-      />
-
-      {/* Reject Receipt Modal */}
-      {rejectingReceipt && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>Reject Receipt</h2>
-            <p>Rejecting the receipt from <strong>{rejectingReceipt.user_name}</strong>. They'll be emailed and can upload a new one.</p>
-            <div className="form-group">
-              <label>Reason (optional, included in the email):</label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="e.g. The receipt was unreadable, or the amount didn't match the membership fee."
-                rows={4}
-              />
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="btn btn-danger" onClick={submitRejectReceipt}>Reject &amp; Notify</button>
-              <button type="button" className="btn btn-secondary" onClick={() => { setRejectingReceipt(null); setRejectReason(''); }}>Cancel</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Term Create/Edit Modal */}
-      {showTermModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>{editingTerm ? 'Edit Term' : 'Add Term'}</h2>
-            <form onSubmit={(e) => { e.preventDefault(); saveTerm(); }}>
-              <div className="form-group">
-                <label>Season:</label>
-                <select
-                  value={termForm.term}
-                  onChange={(e) => setTermForm({ ...termForm, term: e.target.value })}
-                  required
-                >
-                  <option value="fall">Fall</option>
-                  <option value="winter">Winter</option>
-                  <option value="fall/winter">Fall/Winter</option>
-                  <option value="spring">Spring</option>
-                  <option value="summer">Summer</option>
-                  <option value="spring/summer">Spring/Summer</option>
-                </select>
-                <small>
-                  Spring/Summer and Summer are different signup options. Members pick one when uploading a receipt.
-                </small>
-              </div>
-              <div className="form-group">
-                <label>Year {termForm.term.includes('/') ? '(starting academic year)' : ''}:</label>
-                <input
-                  type="number"
-                  min={2000}
-                  max={2100}
-                  value={termForm.year}
-                  onChange={(e) => setTermForm({ ...termForm, year: e.target.value })}
-                  required
-                />
-                <small>Preview: {formatTermName({ term: termForm.term, year: parseInt(termForm.year, 10) })}</small>
-              </div>
-              <div className="form-group">
-                <label>Start date:</label>
-                <input
-                  type="date"
-                  value={termForm.start_date}
-                  onChange={(e) => {
-                    const start_date = e.target.value;
-                    const yearFromDate = start_date
-                      ? new Date(`${start_date}T00:00:00`).getFullYear()
-                      : termForm.year;
-                    setTermForm({ ...termForm, start_date, year: yearFromDate });
-                  }}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>End date (membership expiry):</label>
-                <input
-                  type="date"
-                  value={termForm.end_date}
-                  onChange={(e) => setTermForm({ ...termForm, end_date: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="submit" className="btn btn-primary">{editingTerm ? 'Save Changes' : 'Create Term'}</button>
-                <button type="button" className="btn btn-secondary" onClick={() => { setShowTermModal(false); setEditingTerm(null); }}>Cancel</button>
-              </div>
-            </form>
+        {/* Term Create/Edit Modal */}
+        {showTermModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h2>{editingTerm ? 'Edit Term' : 'Add Term'}</h2>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveTerm();
+                }}
+              >
+                <div className="form-group">
+                  <label>Season:</label>
+                  <select
+                    value={termForm.term}
+                    onChange={(e) => setTermForm({ ...termForm, term: e.target.value })}
+                    required
+                  >
+                    <option value="fall">Fall</option>
+                    <option value="winter">Winter</option>
+                    <option value="fall/winter">Fall/Winter</option>
+                    <option value="spring">Spring</option>
+                    <option value="summer">Summer</option>
+                    <option value="spring/summer">Spring/Summer</option>
+                  </select>
+                  <small>
+                    Spring/Summer and Summer are different signup options. Members pick one when
+                    uploading a receipt.
+                  </small>
+                </div>
+                <div className="form-group">
+                  <label>
+                    Year {termForm.term.includes('/') ? '(starting academic year)' : ''}:
+                  </label>
+                  <input
+                    type="number"
+                    min={2000}
+                    max={2100}
+                    value={termForm.year}
+                    onChange={(e) => setTermForm({ ...termForm, year: e.target.value })}
+                    required
+                  />
+                  <small>
+                    Preview:{' '}
+                    {formatTermName({ term: termForm.term, year: parseInt(termForm.year, 10) })}
+                  </small>
+                </div>
+                <div className="form-group">
+                  <label>Start date:</label>
+                  <input
+                    type="date"
+                    value={termForm.start_date}
+                    onChange={(e) => {
+                      const start_date = e.target.value;
+                      const yearFromDate = start_date
+                        ? new Date(`${start_date}T00:00:00`).getFullYear()
+                        : termForm.year;
+                      setTermForm({ ...termForm, start_date, year: yearFromDate });
+                    }}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>End date (membership expiry):</label>
+                  <input
+                    type="date"
+                    value={termForm.end_date}
+                    onChange={(e) => setTermForm({ ...termForm, end_date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn btn-primary">
+                    {editingTerm ? 'Save Changes' : 'Create Term'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowTermModal(false);
+                      setEditingTerm(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </AdminContext.Provider>
   );
 };

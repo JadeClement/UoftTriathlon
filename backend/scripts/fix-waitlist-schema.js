@@ -1,8 +1,8 @@
-const { pool } = require('./database-pg');
+const { pool } = require('../database-pg');
 
-async function runMigration() {
+async function fixWaitlistSchema() {
   try {
-    console.log('🔧 Running migration on production database...');
+    console.log('🔧 Starting waitlist schema fix...');
     
     // Check if workout_id column exists
     const columnCheck = await pool.query(`
@@ -38,13 +38,13 @@ async function runMigration() {
       console.log('✅ Column already renamed or doesn\'t exist');
     }
     
-    console.log('🎉 Migration completed successfully!');
+    console.log('🎉 Waitlist schema fix completed successfully!');
     
   } catch (error) {
-    console.error('❌ Error running migration:', error);
+    console.error('❌ Error fixing waitlist schema:', error);
   } finally {
     await pool.end();
   }
 }
 
-runMigration();
+fixWaitlistSchema();

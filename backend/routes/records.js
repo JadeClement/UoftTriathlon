@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../database-pg');
 const { authenticateToken, requireMember } = require('../middleware/auth');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -105,7 +106,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
 
     // Log sample records to debug result_fields
     if (result.rows.length > 0) {
-      console.log('📊 GET /records - Sample record result_fields:', {
+      logger.debug('📊 GET /records - Sample record result_fields:', {
         record_id: result.rows[0].id,
         result_fields: result.rows[0].result_fields,
         result_fields_type: typeof result.rows[0].result_fields,
@@ -114,7 +115,7 @@ router.get('/', authenticateToken, requireMember, async (req, res) => {
       });
       // Log all records
       result.rows.forEach((row, idx) => {
-        console.log(`📊 Record ${idx + 1} (ID: ${row.id}):`, {
+        logger.debug(`📊 Record ${idx + 1} (ID: ${row.id}):`, {
           title: row.title,
           result_fields: row.result_fields,
           result_fields_type: typeof row.result_fields,
@@ -215,7 +216,7 @@ router.post('/', authenticateToken, requireMember, async (req, res) => {
       }
     }
 
-    console.log('📊 POST /records - Created record with result_fields:', {
+    logger.debug('📊 POST /records - Created record with result_fields:', {
       record_id: insertResult.rows[0].id,
       result_fields: insertResult.rows[0].result_fields,
       result_fields_type: typeof insertResult.rows[0].result_fields
