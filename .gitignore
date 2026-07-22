@@ -7,13 +7,17 @@ backend/data/team-profiles.json
 # Upload directories that should not be tracked
 backend/uploads/
 
-# Env files (never commit real secrets)
+# Env files / secret backups (never commit real secrets)
 .env
 *.env
 *.env.*
 .env.local
+.env.backup
+*.env.backup
+*.env.bak
 backend/.env
 backend/.env.*
+backend/.env.backup
 
 # Keys / certificates
 *.key

@@ -12,9 +12,13 @@ node_modules/
 *.log
 npm-debug.log*
 
-# Environment variables
+# Environment variables / secret backups (never commit)
 .env
+.env.*
 .env.local
+.env.backup
+*.env.backup
+*.env.bak
 
 # Database
 *.db
