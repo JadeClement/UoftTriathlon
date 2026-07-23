@@ -837,13 +837,11 @@ const Profile = () => {
   return (
     <div className="profile-container">
       <div className="container">
-        <div className="profile-top-bar">
-          {isUserProfile ? (
-            <Link to="/dashboard" className="back-link">← Back to Dashboard</Link>
-          ) : (
+        {!isUserProfile && (
+          <div className="profile-top-bar">
             <Link to="/coaches-exec" className="back-link">← Back to Team</Link>
-          )}
-        </div>
+          </div>
+        )}
         
         <div className="profile-content">
           {isUserProfile && (
