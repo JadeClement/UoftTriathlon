@@ -53,14 +53,6 @@ AWS_S3_BUCKET=your-bucket-name
 # AWS_S3_PUBLIC_BASE_URL=https://your-bucket-name.s3.us-east-1.amazonaws.com
 
 # =============================================================================
-# Twilio (SMS)
-# Get these from https://console.twilio.com/
-# =============================================================================
-TWILIO_ACCOUNT_SID=your_account_sid_here
-TWILIO_AUTH_TOKEN=your_auth_token_here
-TWILIO_PHONE_NUMBER=+1234567890
-
-# =============================================================================
 # SendGrid (legacy; utils/mailer.js — app email currently uses AWS SES)
 # =============================================================================
 SENDGRID_API_KEY=your_sendgrid_api_key_here

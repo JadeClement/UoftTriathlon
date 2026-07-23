@@ -2,7 +2,6 @@ const express = require('express');
 const { pool } = require('../database-pg');
 const { authenticateToken, requireMember, requireAdmin, requireExec, requireCoach, requireRole } = require('../middleware/auth');
 const emailService = require('../services/emailService');
-const { sendWaitlistPromotionNotification } = require('../services/smsService');
 const { combineDateTime, isWithinHours, getHoursUntil } = require('../utils/dateUtils');
 const notificationService = require('../services/notificationService');
 const logger = require('../utils/logger');

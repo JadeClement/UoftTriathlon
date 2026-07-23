@@ -1,7 +1,6 @@
 require('dotenv').config();
 const { pool } = require('../database-pg');
 const emailService = require('./emailService');
-const { sendWaitlistPromotionNotification } = require('./smsService');
 const { sendPushNotification, sendBulkPushNotifications } = require('./pushSender');
 const logger = require('../utils/logger');
 
@@ -333,7 +332,7 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
 
 /**
  * Send waitlist promotion notification
- * Email/SMS: Always sent (user must know they got in)
+ * Email: Always sent (user must know they got in)
  * Push: Only if user has waitlist_promotions preference enabled (Settings controls iOS push only)
  * @param {Object} userData - { id, email, phone, name }
  * @param {Object} workoutData - { id, title, workoutDate, workoutTime }
@@ -342,14 +341,14 @@ async function notifyWaitlistPromotion(userData, workoutData) {
   try {
     logger.debug(`📢 Notifying user ${userData.name} about waitlist promotion for: ${workoutData.title}`);
 
-    // Always send email/SMS - user needs to know they got in (not controlled by app preferences)
-    await sendWaitlistPromotionNotification(
+    // Always send email - user needs to know they got in (not controlled by app preferences)
+    await emailService.sendWaitlistPromotion(
       userData.email,
-      userData.phone,
       userData.name,
       workoutData.title,
       workoutData.workoutDate,
-      workoutData.workoutTime
+      workoutData.workoutTime,
+      null
     );
 
     // Push notification: only if user has waitlist promotions enabled in Settings (iOS push prefs)

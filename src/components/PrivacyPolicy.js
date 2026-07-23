@@ -38,7 +38,7 @@ const PrivacyPolicy = () => {
 
         <h2>Sharing</h2>
         <p>
-          We share data only with service providers who help us run the service (hosting, email/SMS,
+          We share data only with service providers who help us run the service (hosting, email,
           push notifications, analytics), under agreements that restrict their use of your data. We
           may disclose information if required by law or to protect safety.
         </p>

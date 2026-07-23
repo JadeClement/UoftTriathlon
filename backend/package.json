@@ -36,8 +36,7 @@
     "nodemailer": "^7.0.5",
     "openai": "^4.77.0",
     "pg": "^8.16.3",
-    "sqlite3": "^5.1.6",
-    "twilio": "^5.8.0"
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",

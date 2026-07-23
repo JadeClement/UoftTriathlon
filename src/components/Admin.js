@@ -2143,7 +2143,7 @@ const Admin = () => {
                   {editForm.phoneNumber && !validatePhoneNumber(editForm.phoneNumber) && (
                     <div className="error-message">Please enter a valid 10-digit phone number</div>
                   )}
-                  <small>For SMS notifications when promoted from waitlists</small>
+                  <small>Optional contact number (SMS notifications are not used)</small>
                 </div>
 
                 <div className="form-group">
