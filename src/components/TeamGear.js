@@ -1,89 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { showError, showSuccess } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './TeamGear.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
-
-// Auto-resizing text component that shrinks font until it fits
-const AutoResizeText = ({ text, className = '', style = {}, inline = false }) => {
-  const textRef = useRef(null);
-  const containerRef = useRef(null);
-  const [fontSize, setFontSize] = useState(inline ? 14 : 16);
-
-  useEffect(() => {
-    const adjustFontSize = () => {
-      if (!textRef.current || !containerRef.current) return;
-      
-      const container = containerRef.current;
-      const textElement = textRef.current;
-      const containerWidth = container.offsetWidth;
-      
-      // Start with a reasonable font size
-      let currentSize = inline ? 14 : 16;
-      textElement.style.fontSize = `${currentSize}px`;
-      
-      // Keep reducing font size until text fits
-      while (textElement.scrollWidth > containerWidth && currentSize > 10) {
-        currentSize -= 0.5;
-        textElement.style.fontSize = `${currentSize}px`;
-      }
-      
-      setFontSize(currentSize);
-    };
-
-    // Small delay to ensure DOM is ready
-    const timeoutId = setTimeout(adjustFontSize, 10);
-    
-    // Adjust on mount and window resize
-    window.addEventListener('resize', adjustFontSize);
-    
-    // Use ResizeObserver for more accurate detection
-    const resizeObserver = new ResizeObserver(() => {
-      setTimeout(adjustFontSize, 10);
-    });
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', adjustFontSize);
-      resizeObserver.disconnect();
-    };
-  }, [text, inline]);
-
-  const containerStyle = inline ? {
-    display: 'inline',
-    ...style 
-  } : {
-    display: 'inline-block',
-    width: '100%',
-    minWidth: 0,
-    ...style 
-  };
-
-  return (
-    <span 
-      ref={containerRef}
-      style={containerStyle}
-    >
-      <span
-        ref={textRef}
-        className={className}
-        style={{
-          fontSize: `${fontSize}px`,
-          wordBreak: 'break-word',
-          overflowWrap: 'break-word',
-          display: inline ? 'inline' : 'inline-block',
-          maxWidth: inline ? 'none' : '100%'
-        }}
-      >
-        {text}
-      </span>
-    </span>
-  );
-};
 
 const TeamGear = () => {
   const { currentUser, isAdmin, getUserRole, needsReauth } = useAuth();
@@ -1356,14 +1276,11 @@ const TeamGear = () => {
       <div className="gear-modal-overlay" onClick={closeSuccessModal}>
         <div className="gear-modal success-modal" onClick={(e) => e.stopPropagation()}>
           <div className="gear-modal-header success-header">
-            <div style={{ flex: 1 }}></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', flex: 1, minWidth: 0 }}>
-              <div className="success-icon" style={{ flexShrink: 0 }}>🎉</div>
-              <h2 style={{ margin: 0, whiteSpace: 'nowrap', fontSize: 'clamp(1.1rem, 4vw, 1.5rem)' }}>Order Confirmed!</h2>
+            <div className="success-header-title">
+              <span className="success-icon" aria-hidden="true">🎉</span>
+              <h2>Order Confirmed!</h2>
             </div>
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" className="gear-modal-close" onClick={closeSuccessModal} aria-label="Close">×</button>
-            </div>
+            <button type="button" className="gear-modal-close" onClick={closeSuccessModal} aria-label="Close">×</button>
           </div>
           <div className="gear-modal-body success-body">
             <div className="success-message">
@@ -1374,27 +1291,28 @@ const TeamGear = () => {
               <div className="order-recap">
                 <h3>📋 Order Summary</h3>
                 <div className="recap-item">
-                  <strong>Item:</strong> {orderSuccessData.item.title}
+                  <strong>Item:</strong>
+                  <span className="recap-value">{orderSuccessData.item.title}</span>
                 </div>
                 {orderSuccessData.size && (
                   <div className="recap-item">
-                    <strong>Size:</strong> {orderSuccessData.size.toUpperCase()}
+                    <strong>Size:</strong>
+                    <span className="recap-value">{orderSuccessData.size.toUpperCase()}</span>
                   </div>
                 )}
                 {orderSuccessData.fit && (
                   <div className="recap-item">
-                    <strong>Fit:</strong> {orderSuccessData.fit === 'mens' ? "Men's" : "Women's"}
+                    <strong>Fit:</strong>
+                    <span className="recap-value">{orderSuccessData.fit === 'mens' ? "Men's" : "Women's"}</span>
                   </div>
                 )}
                 <div className="recap-item">
-                  <strong>Email:</strong> 
-                  <AutoResizeText 
-                    text={orderSuccessData.email} 
-                    className="email-text"
-                  />
+                  <strong>Email:</strong>
+                  <span className="recap-value">{orderSuccessData.email}</span>
                 </div>
                 <div className="recap-item">
-                  <strong>Price:</strong> {orderSuccessData.item.price || 'Contact for pricing'}
+                  <strong>Price:</strong>
+                  <span className="recap-value">{orderSuccessData.item.price || 'Contact for pricing'}</span>
                 </div>
               </div>
 
@@ -1430,121 +1348,16 @@ const TeamGear = () => {
       </div>
     )}
 
-    <style jsx>{`
-      /* Success Modal Styles */
-      .success-modal {
-        max-width: 500px;
-        width: 95%;
-      }
-
-      .success-header {
-        text-align: center;
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: white;
-        border-radius: 8px 8px 0 0;
-        padding: 16px 20px;
-        position: relative;
-      }
-
-      .success-icon {
-        font-size: 3rem;
-        margin-bottom: 10px;
-      }
-
-      .success-header h2 {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 600;
-        white-space: nowrap;
-      }
-
-      .success-body {
-        padding: 12px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-        flex: 1;
-        min-height: 0;
-      }
-
-      .success-main-text {
-        font-size: 1.1rem;
-        color: #374151;
-        margin-bottom: 24px;
-        text-align: center;
-        line-height: 1.6;
-      }
-
-      .order-recap, .next-steps, .help-section {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-      }
-
-      .order-recap h3, .next-steps h3, .help-section h3 {
-        margin: 0 0 12px 0;
-        font-size: 1rem;
-        font-weight: 600;
-        color: #374151;
-      }
-
-      .recap-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        padding: 8px 0;
-        border-bottom: 1px solid #e5e7eb;
-        gap: 8px;
-      }
-      
-      .recap-item strong {
-        flex-shrink: 0;
-      }
-      
-      .recap-item .email-text {
-        text-align: right;
-        flex: 1;
-        min-width: 0;
-        word-break: break-all;
-        overflow-wrap: break-word;
-      }
-
-      .recap-item:last-child {
-        border-bottom: none;
-      }
-
-      .recap-item strong {
-        color: #374151;
-        font-weight: 600;
-      }
-
-      .next-steps p, .help-section p {
-        margin: 0;
-        color: #6b7280;
-        line-height: 1.5;
-      }
-
-      .help-section a {
-        text-decoration: none;
-        transition: color 0.2s ease;
-      }
-
-      .help-section a:hover {
-        text-decoration: underline;
-      }
-    `}</style>
-      <ConfirmModal
-        isOpen={deleteGearConfirm.isOpen}
-        onConfirm={confirmDeleteGearItem}
-        onCancel={() => setDeleteGearConfirm({ isOpen: false, itemId: null })}
-        title="Delete Gear Item"
-        message="Are you sure you want to delete this gear item? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmDanger={true}
-      />
+    <ConfirmModal
+      isOpen={deleteGearConfirm.isOpen}
+      onConfirm={confirmDeleteGearItem}
+      onCancel={() => setDeleteGearConfirm({ isOpen: false, itemId: null })}
+      title="Delete Gear Item"
+      message="Are you sure you want to delete this gear item? This action cannot be undone."
+      confirmText="Delete"
+      cancelText="Cancel"
+      confirmDanger={true}
+    />
   </div>
 );
 };
