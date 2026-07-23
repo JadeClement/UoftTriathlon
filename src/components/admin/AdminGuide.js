@@ -244,18 +244,25 @@ const AdminGuide = () => {
         <section id="terms" className="admin-guide-section">
           <h3>Membership terms</h3>
           <p>
-            Terms define membership seasons (Fall, Fall/Winter, Spring/Summer, etc.) and when access
-            expires. Each term has a <strong>year</strong> so seasons stay unambiguous across years.
+            Terms define membership seasons and when access expires. Each term has a <strong>year</strong>
+            so seasons stay unambiguous across years.
+          </p>
+          <p>
+            The six signup options — <strong>Fall/Winter</strong>, <strong>Fall</strong>, <strong>Winter</strong>,
+            <strong> Spring</strong>, <strong>Spring/Summer</strong>, and <strong>Summer</strong> — are
+            created automatically for the current and next academic year when the server starts.
+            Admins only need to use the Terms page to adjust dates or add one-off terms.
           </p>
           {isAdministrator ? (
             <>
               <p>
-                Manage terms on the <NavLink to="/admin/terms">Terms</NavLink> page. When creating a term:
+                On the <NavLink to="/admin/terms">Terms</NavLink> page you can edit dates or add extra terms:
               </p>
               <ul>
-                <li>Set the season and starting year (Fall/Winter spans two calendar years and shows as 2025–26)</li>
-                <li>Set start and end dates — the <strong>end date</strong> is when member access expires</li>
-                <li>Members pick from active/upcoming terms when uploading a receipt</li>
+                <li>Fall/Winter spans two calendar years and shows as 2025–26</li>
+                <li>The <strong>end date</strong> is when member access expires</li>
+                <li>Spring/Summer and Summer may overlap — that is expected</li>
+                <li>Auto-created terms are never overwritten; edits you save persist</li>
               </ul>
               <p>You cannot delete a term that still has members assigned to it.</p>
             </>

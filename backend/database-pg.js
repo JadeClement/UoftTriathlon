@@ -777,6 +777,14 @@ async function initializeDatabase() {
       console.error('❌ Error applying terms.year migration:', error.message);
     }
 
+    // Auto-create signup terms for current + next academic cycle (idempotent).
+    try {
+      const { ensureMembershipTerms } = require('./utils/ensureTerms');
+      await ensureMembershipTerms(pool);
+    } catch (error) {
+      console.error('❌ Error ensuring membership terms:', error.message);
+    }
+
     // Membership receipts: members upload proof of payment; admins review and
     // approve/reject. Kept as its own table to preserve renewal history.
     try {

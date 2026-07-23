@@ -21,9 +21,9 @@ const AdminTerms = () => {
         </div>
         <p style={{ color: '#64748b' }}>
           Each term has a season and a year. The end date determines when a member's access expires.
-          <strong> Spring/Summer</strong> and <strong>Summer</strong> are separate signup options — you
-          can have both for the same year (e.g. Spring/Summer 2026 and Summer 2026), and their date
-          ranges may overlap.
+          Signup terms for the <strong>current and next academic year</strong> are created automatically
+          on server startup (Fall/Winter, Fall, Winter, Spring, Spring/Summer, and Summer).
+          Use this page to adjust dates or add one-off terms — existing rows are not overwritten.
         </p>
 
         {terms.length === 0 ? (
