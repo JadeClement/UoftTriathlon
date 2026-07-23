@@ -181,7 +181,7 @@ async function initializeDatabase() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS terms (
         id SERIAL PRIMARY KEY,
-        term VARCHAR(50) NOT NULL UNIQUE CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
+        term VARCHAR(50) NOT NULL CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
         start_date DATE NOT NULL,
         end_date DATE NOT NULL
       )
@@ -704,7 +704,7 @@ async function initializeDatabase() {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS terms (
           id SERIAL PRIMARY KEY,
-          term VARCHAR(50) NOT NULL UNIQUE CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
+          term VARCHAR(50) NOT NULL CHECK(term IN ('fall', 'winter', 'fall/winter', 'spring', 'summer', 'spring/summer')),
           start_date DATE NOT NULL,
           end_date DATE NOT NULL
         )
@@ -733,8 +733,34 @@ async function initializeDatabase() {
       await pool.query(`ALTER TABLE terms ADD COLUMN IF NOT EXISTS year INTEGER`);
       // Backfill year from start_date for any existing rows
       await pool.query(`UPDATE terms SET year = EXTRACT(YEAR FROM start_date)::int WHERE year IS NULL`);
-      // Drop the old single-column unique on term (auto-named terms_term_key)
+
+      // Drop legacy single-column UNIQUE on terms.term. The original schema only
+      // allowed one row per season name (e.g. one "summer" total), which blocks
+      // Summer 2025 and Summer 2026 from coexisting even though they are different years.
       await pool.query(`ALTER TABLE terms DROP CONSTRAINT IF EXISTS terms_term_key`);
+      await pool.query(`
+        DO $$
+        DECLARE r RECORD;
+        BEGIN
+          FOR r IN
+            SELECT c.conname
+            FROM pg_constraint c
+            JOIN pg_class t ON c.conrelid = t.oid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            WHERE n.nspname = 'public'
+              AND t.relname = 'terms'
+              AND c.contype = 'u'
+              AND array_length(c.conkey, 1) = 1
+              AND (
+                SELECT a.attname FROM pg_attribute a
+                WHERE a.attrelid = t.oid AND a.attnum = c.conkey[1]
+              ) = 'term'
+          LOOP
+            EXECUTE format('ALTER TABLE terms DROP CONSTRAINT IF EXISTS %I', r.conname);
+          END LOOP;
+        END $$;
+      `);
+
       // Add composite unique (term, year) if it doesn't already exist
       await pool.query(`
         DO $$

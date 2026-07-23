@@ -172,7 +172,8 @@ router.post('/terms', authenticateToken, requireAdmin, async (req, res) => {
     }
 
     const existing = await pool.query(
-      'SELECT id, term, year, start_date, end_date FROM terms WHERE term = $1 AND year = $2',
+      `SELECT id, term, year, start_date, end_date FROM terms
+       WHERE term = $1 AND COALESCE(year, EXTRACT(YEAR FROM start_date)::int) = $2`,
       [term, yearInt]
     );
     if (existing.rows.length > 0) {
@@ -192,7 +193,35 @@ router.post('/terms', authenticateToken, requireAdmin, async (req, res) => {
 
     res.status(201).json({ message: 'Term created successfully', term: result.rows[0] });
   } catch (error) {
-    if (error.code === '23505') {
+    const { term, year, start_date, end_date } = req.body || {};
+    const yearInt = parseInt(year, 10);
+    if (error.code === '23505' && term) {
+      const sameSeason = await pool.query(
+        'SELECT id, term, year, start_date, end_date FROM terms WHERE term = $1 ORDER BY year DESC NULLS LAST',
+        [term]
+      );
+      if (sameSeason.rows.length > 0) {
+        const rowYear = (r) => (
+          r.year != null
+            ? parseInt(r.year, 10)
+            : new Date(`${String(r.start_date).slice(0, 10)}T00:00:00`).getFullYear()
+        );
+        const exactYear = sameSeason.rows.find((r) => rowYear(r) === yearInt);
+        const row = exactYear || sameSeason.rows[0];
+        const label = formatTermLabel(row);
+        const requestedLabel = formatTermLabel({ term, year: yearInt, start_date, end_date });
+        if (exactYear) {
+          return res.status(400).json({
+            error: `${label} already exists. Edit the existing term instead of creating a duplicate.`,
+            existingTerm: row
+          });
+        }
+        return res.status(400).json({
+          error: `Cannot create ${requestedLabel} — ${label} already exists for the "${term}" season. Only one row per season was allowed in the old schema; redeploy the latest backend to fix this, then try again.`,
+          existingTerm: row,
+          legacyConstraint: true
+        });
+      }
       return res.status(400).json({ error: 'A term with this season and year already exists' });
     }
     console.error('Create term error:', error);
