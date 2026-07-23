@@ -53,12 +53,6 @@ AWS_S3_BUCKET=your-bucket-name
 # AWS_S3_PUBLIC_BASE_URL=https://your-bucket-name.s3.us-east-1.amazonaws.com
 
 # =============================================================================
-# SendGrid (legacy; utils/mailer.js — app email currently uses AWS SES)
-# =============================================================================
-SENDGRID_API_KEY=your_sendgrid_api_key_here
-SENDGRID_FROM_EMAIL=info@uoft-tri.club
-
-# =============================================================================
 # RAG chatbot (Pinecone + OpenAI-compatible LLM)
 # =============================================================================
 PINECONE_API_KEY=your_pinecone_api_key

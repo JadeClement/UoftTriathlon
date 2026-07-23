@@ -532,7 +532,8 @@ Migrate to a fully native React Native app if Capacitor performance is insuffici
 - **Authentication:** JWT
 - **Deployment:** Vercel (frontend), Backend (TBD)
 - **File Storage:** AWS S3 (optional, with local fallback)
-- **Email/SMS:** SendGrid, Twilio
+- **Email:** AWS SES
+- **Push:** FCM / APNs
 
 ### Phase 1 Additions
 - IndexedDB (browser API)
