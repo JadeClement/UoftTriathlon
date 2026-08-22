@@ -806,7 +806,7 @@ const Navbar = () => {
                       >
                         Results
                       </Link>
-                      {isIOS && (
+                      {(isIOS || isAndroid) && (
                         <Link 
                           to="/settings" 
                           className="profile-menu-item"
@@ -885,7 +885,7 @@ const Navbar = () => {
                     >
                       Results
                     </Link>
-                    {isIOS && (
+                    {(isIOS || isAndroid) && (
                       <Link 
                         to="/settings" 
                         className="profile-menu-item"
@@ -960,7 +960,7 @@ const Navbar = () => {
                   >
                     Results
                   </Link>
-                  {isIOS && (
+                  {(isIOS || isAndroid) && (
                     <Link 
                       to="/settings" 
                       className="profile-menu-item"

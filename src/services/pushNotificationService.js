@@ -691,7 +691,9 @@ export async function unregisterFromPushNotifications() {
     }
 
     isRegistered = false;
+    listenersSetup = false;
     pushToken = null;
+    currentUserId = null;
     console.log('✅ Unregistered from push notifications');
   } catch (error) {
     console.error('❌ Error unregistering from push notifications:', error);

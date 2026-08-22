@@ -96,13 +96,13 @@ async function getUserNotificationPreferences(userId) {
     );
 
     if (result.rows.length === 0) {
-      // Return default preferences (waitlist promotions true so users get "you're in" emails unless they opt out)
+      // Default to opted-in so Android/iOS users receive pushes until they turn categories off
       return {
-        spinBrickWorkouts: false,
-        swimWorkouts: false,
-        runWorkouts: false,
-        events: false,
-        forumReplies: false,
+        spinBrickWorkouts: true,
+        swimWorkouts: true,
+        runWorkouts: true,
+        events: true,
+        forumReplies: true,
         waitlistPromotions: true
       };
     }
@@ -118,13 +118,13 @@ async function getUserNotificationPreferences(userId) {
     };
   } catch (error) {
     console.error('❌ Error fetching notification preferences:', error);
-    // Return default preferences on error (waitlist promotions true so we don't drop "you're in" emails)
+    // Default to opted-in on error so we don't silently drop pushes
     return {
-      spinBrickWorkouts: false,
-      swimWorkouts: false,
-      runWorkouts: false,
-      events: false,
-      forumReplies: false,
+      spinBrickWorkouts: true,
+      swimWorkouts: true,
+      runWorkouts: true,
+      events: true,
+      forumReplies: true,
       waitlistPromotions: true
     };
   }
@@ -156,8 +156,8 @@ async function getUsersWithPreference(preferenceType) {
     const result = await pool.query(
       `SELECT u.id, u.email, u.name, u.phone_number
       FROM users u
-      INNER JOIN notification_preferences np ON u.id = np.user_id
-      WHERE np.${columnName} = true
+      LEFT JOIN notification_preferences np ON u.id = np.user_id
+      WHERE COALESCE(np.${columnName}, true) = true
       AND u.role IN ('member', 'coach', 'exec', 'administrator')`,
       []
     );
@@ -178,7 +178,7 @@ async function notifyWorkoutPosted(workoutType, workoutData) {
   try {
     // Determine which preference to check based on workout type
     let preferenceType;
-    if (workoutType === 'bike' || workoutType === 'spin' || workoutType === 'brick') {
+    if (workoutType === 'bike' || workoutType === 'spin' || workoutType === 'brick' || workoutType === 'outdoor-ride') {
       preferenceType = 'spinBrickWorkouts';
     } else if (workoutType === 'swim') {
       preferenceType = 'swimWorkouts';
@@ -302,9 +302,9 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
     const usersWithPreference = await pool.query(
       `SELECT u.id, u.email, u.name
        FROM users u
-       INNER JOIN notification_preferences np ON u.id = np.user_id
+       LEFT JOIN notification_preferences np ON u.id = np.user_id
        WHERE u.id = ANY($1::int[])
-       AND np.forum_replies = true
+       AND COALESCE(np.forum_replies, true) = true
        AND u.role IN ('member', 'coach', 'exec', 'administrator')`,
       [signedUpUserIds]
     );

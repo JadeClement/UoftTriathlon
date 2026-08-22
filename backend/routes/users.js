@@ -394,17 +394,22 @@ router.get('/notification-preferences', authenticateToken, allowOwnProfile(), as
     `, [userId]);
     
     if (result.rows.length === 0) {
-      // Return default preferences if none exist
-      return res.json({
-        preferences: {
-          spin_brick_workouts: false,
-          swim_workouts: false,
-          run_workouts: false,
-          events: false,
-          forum_replies: false,
-          waitlist_promotions: false
-        }
-      });
+      // Default to opted-in; create the row so subsequent sends and Settings stay consistent
+      const defaults = {
+        spin_brick_workouts: true,
+        swim_workouts: true,
+        run_workouts: true,
+        events: true,
+        forum_replies: true,
+        waitlist_promotions: true
+      };
+      await pool.query(`
+        INSERT INTO notification_preferences (
+          user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions
+        ) VALUES ($1, true, true, true, true, true, true)
+        ON CONFLICT (user_id) DO NOTHING
+      `, [userId]);
+      return res.json({ preferences: defaults });
     }
     
     res.json({ preferences: result.rows[0] });
@@ -763,6 +768,12 @@ router.post('/push-token', authenticateToken, async (req, res) => {
         [userId, cleanToken]
       );
       logger.debug(`✅ Device token updated for user ${userId}`);
+      await pool.query(`
+        INSERT INTO notification_preferences (
+          user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions
+        ) VALUES ($1, true, true, true, true, true, true)
+        ON CONFLICT (user_id) DO NOTHING
+      `, [userId]);
       return res.json({ message: 'Device token updated successfully' });
     }
     
@@ -776,6 +787,16 @@ router.post('/push-token', authenticateToken, async (req, res) => {
     );
     
     logger.debug(`✅ Device token saved successfully for user ${userId}, platform: ${platform}`);
+
+    // Ensure notification prefs exist (default opted-in) so Android users get pushes
+    // even if they never opened Settings
+    await pool.query(`
+      INSERT INTO notification_preferences (
+        user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions
+      ) VALUES ($1, true, true, true, true, true, true)
+      ON CONFLICT (user_id) DO NOTHING
+    `, [userId]);
+
     res.json({ message: 'Device token saved successfully' });
   } catch (error) {
     console.error('❌ Save push token error:', error);

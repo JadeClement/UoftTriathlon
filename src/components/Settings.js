@@ -11,6 +11,8 @@ const Settings = () => {
   const navigate = useNavigate();
   const { currentUser, isMember, updateUser } = useAuth();
   const isIOS = Capacitor.getPlatform() === 'ios';
+  const isAndroid = Capacitor.getPlatform() === 'android';
+  const isNativeApp = Capacitor.isNativePlatform();
 
   const [resultsPublic, setResultsPublic] = useState(false);
   const [racesPublic, setRacesPublic] = useState(false);
@@ -33,8 +35,8 @@ const Settings = () => {
   const API_BASE_URL = getApiBaseUrl();
 
   useEffect(() => {
-    // Settings page is iOS only - redirect if not on iOS
-    if (!isIOS) {
+    // Push/settings UI is for the native apps (iOS + Android)
+    if (!isNativeApp) {
       navigate('/profile');
       return;
     }
@@ -53,7 +55,7 @@ const Settings = () => {
     setResultsPublic(currentUser?.results_public ?? currentUser?.resultsPublic ?? false);
     setRacesPublic(currentUser?.races_public ?? currentUser?.racesPublic ?? false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, navigate, isMember]);
+  }, [currentUser, navigate, isMember, isNativeApp]);
 
   // Load notification preferences
   const loadNotificationPrefs = async () => {
@@ -229,7 +231,30 @@ const Settings = () => {
           <div className="settings-section">
             <h2 className="settings-section-title">Push Notification Preferences</h2>
             <p className="settings-section-description">
-              Choose which push notifications you&apos;d like to receive in the iOS app. Emails (e.g. waitlist promotions, role changes) are always sent and cannot be turned off here.
+              Choose which push notifications you&apos;d like to receive in the app. Emails (e.g. waitlist promotions, role changes) are always sent and cannot be turned off here.
+            </p>
+            <p className="settings-system-notice">
+              {isIOS ? (
+                <>
+                  If you aren&apos;t receiving notifications, also turn them on in your phone&apos;s Settings:
+                  {' '}
+                  <strong>Settings → Notifications → UofT Triathlon</strong>
+                  {' '}
+                  (or search for the app), and enable Allow Notifications.
+                </>
+              ) : isAndroid ? (
+                <>
+                  If you aren&apos;t receiving notifications, also turn them on in your phone&apos;s system settings:
+                  {' '}
+                  <strong>Settings → Apps → UofT Triathlon → Notifications</strong>
+                  {' '}
+                  and enable notifications for the app.
+                </>
+              ) : (
+                <>
+                  If you aren&apos;t receiving notifications, also enable them for this app in your device&apos;s system Settings.
+                </>
+              )}
             </p>
 
             <div className="settings-preferences">
