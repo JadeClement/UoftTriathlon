@@ -1041,6 +1041,11 @@ body.capacitor-android-body .waitlist-time {
   transition: border-color 0.3s ease;
 }
 
+select.form-input {
+  background: white;
+  cursor: pointer;
+}
+
 .form-input:focus, .form-textarea:focus {
   outline: none;
   border-color: #4169E1;

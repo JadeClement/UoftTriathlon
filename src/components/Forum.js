@@ -12,6 +12,7 @@ import { hapticImpact } from '../utils/haptics';
 import { isTermExpiredError, TERM_EXPIRED_DEFAULT } from '../utils/apiError';
 import './Forum.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
+import { getWorkoutTypeOptions } from '../utils/workoutTypes';
 
 const Forum = () => {
   const { currentUser, isMember, isExec, isCoach } = useAuth();
@@ -1937,14 +1938,24 @@ const Forum = () => {
                               <div className="form-row">
                                 <div className="form-group">
                                   <label htmlFor={`edit-type-${post.id}`}>Workout Type:</label>
-                                  <input
+                                  <select
                                     id={`edit-type-${post.id}`}
-                                    type="text"
                                     value={editForm.workoutType}
                                     onChange={(e) => updateField('workoutType', e.target.value)}
                                     className="form-input"
-                                    placeholder="Enter workout type..."
-                                  />
+                                    required
+                                  >
+                                    {!editForm.workoutType && (
+                                      <option value="" disabled>
+                                        Select workout type
+                                      </option>
+                                    )}
+                                    {getWorkoutTypeOptions(editForm.workoutType).map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
                                 </div>
 
                                 <div className="form-group">

@@ -14,6 +14,7 @@ import { Capacitor } from '@capacitor/core';
 import { addWorkoutToCalendar } from '../services/calendarService';
 import './WorkoutDetail.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
+import { getWorkoutTypeOptions } from '../utils/workoutTypes';
 
 const WorkoutDetail = () => {
   const { id } = useParams();
@@ -1399,15 +1400,25 @@ const WorkoutDetail = () => {
               
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="workout-type-input">Workout Type:</label>
-                  <input
-                    id="workout-type-input"
-                    type="text"
-                                                value={editForm.workoutType}
-                            onChange={(e) => updateField('workoutType', e.target.value)}
+                  <label htmlFor="workout-type-select">Workout Type:</label>
+                  <select
+                    id="workout-type-select"
+                    value={editForm.workoutType}
+                    onChange={(e) => updateField('workoutType', e.target.value)}
                     className="form-input"
-                    placeholder="Enter workout type..."
-                  />
+                    required
+                  >
+                    {!editForm.workoutType && (
+                      <option value="" disabled>
+                        Select workout type
+                      </option>
+                    )}
+                    {getWorkoutTypeOptions(editForm.workoutType).map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 
                 <div className="form-group">
