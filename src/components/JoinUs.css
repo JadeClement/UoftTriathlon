@@ -568,3 +568,189 @@
     text-align: center;
   }
 }
+
+.joinus-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.joinus-section-header .goal-title,
+.joinus-section-header .section-subtitle {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.joinus-edit-btn {
+  flex-shrink: 0;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.joinus-edit-btn:hover {
+  background: #e5e7eb;
+}
+
+.joinus-loading {
+  text-align: center;
+  color: #6b7280;
+  padding: 1rem 0 2rem;
+}
+
+.joinus-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+}
+
+.joinus-modal {
+  background: white;
+  border-radius: 12px;
+  width: min(820px, 100%);
+  max-height: min(90vh, 900px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.joinus-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.joinus-modal-header h3 {
+  margin: 0;
+  color: #1E3A8A;
+}
+
+.joinus-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.joinus-modal-body {
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.joinus-modal-body label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.joinus-modal-body input,
+.joinus-modal-body textarea,
+.joinus-edit-card input,
+.joinus-edit-card textarea {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 400;
+}
+
+.joinus-edit-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.joinus-edit-list-header h4,
+.joinus-modal-body > h4 {
+  margin: 0;
+  color: #1E3A8A;
+}
+
+.joinus-edit-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.85rem;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.joinus-edit-step-title {
+  font-weight: 700;
+  color: #1E3A8A;
+}
+
+.joinus-checkbox-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+  font-weight: 500 !important;
+}
+
+.btn-joinus-add,
+.btn-joinus-delete {
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+  align-self: flex-start;
+}
+
+.btn-joinus-add {
+  color: #1E3A8A;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.btn-joinus-delete {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.joinus-edit-hint {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.joinus-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
