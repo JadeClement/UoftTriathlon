@@ -1,8 +1,149 @@
 const express = require('express');
 const { pool } = require('../database-pg');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WORKOUT_TYPES = ['swim', 'bike', 'run', 'brick', 'long', 'recovery'];
+
+const emptyDays = () =>
+  DAYS.reduce((acc, day) => {
+    acc[day] = [];
+    return acc;
+  }, {});
+
+const DEFAULT_SCHEDULE = {
+  seasons: {
+    Spring: {
+      title: 'Weekly Spring Schedule',
+      dates: 'April 29 - June 25',
+      days: {
+        Monday: [{ id: 'sp-mon-1', label: 'Outdoor Ride 6:15-7:30am', type: 'bike' }],
+        Tuesday: [
+          { id: 'sp-tue-1', label: 'Swim 8:30-10:30am', type: 'swim' },
+          { id: 'sp-tue-2', label: 'Track Run 6:15pm', type: 'run' },
+        ],
+        Wednesday: [{ id: 'sp-wed-1', label: 'Outdoor Ride 6:15-7:30pm', type: 'bike' }],
+        Thursday: [
+          { id: 'sp-thu-1', label: 'Swim 8:30-10:30am', type: 'swim' },
+          { id: 'sp-thu-2', label: 'Tempo Run 6:15pm', type: 'run' },
+        ],
+        Friday: [],
+        Saturday: [{ id: 'sp-sat-1', label: 'Group Ride?', type: 'long' }],
+        Sunday: [{ id: 'sp-sun-1', label: 'Swim 10:00-12:00pm', type: 'swim' }],
+      },
+    },
+    Summer: {
+      title: 'Weekly Summer Schedule',
+      dates: 'June 25 - August 20',
+      days: {
+        Monday: [
+          {
+            id: 'su-mon-1',
+            label: 'Outdoor Ride 6:30-7:30am',
+            type: 'bike',
+            note: 'Check forum for exact times and location.',
+          },
+        ],
+        Tuesday: [
+          { id: 'su-tue-1', label: 'Swim 7:00-9:00am', type: 'swim' },
+          { id: 'su-tue-2', label: 'Track Run 6:15pm', type: 'run' },
+        ],
+        Wednesday: [
+          {
+            id: 'su-wed-1',
+            label: 'Outdoor Ride 6:15-7:30pm',
+            type: 'bike',
+            note: 'Check forum for exact times and location.',
+          },
+        ],
+        Thursday: [
+          { id: 'su-thu-1', label: 'Swim 7:00-9:00am', type: 'swim' },
+          { id: 'su-thu-2', label: 'Tempo Run 6:15pm', type: 'run' },
+        ],
+        Friday: [],
+        Saturday: [{ id: 'su-sat-1', label: 'Group Ride?', type: 'recovery' }],
+        Sunday: [{ id: 'su-sun-1', label: 'Swim 10:00-12:00pm', type: 'swim' }],
+      },
+    },
+    'Fall/Winter': {
+      title: 'Weekly Winter Schedule',
+      dates: 'September 1 - April 29',
+      days: {
+        Monday: [{ id: 'fw-mon-1', label: 'Spin 7-8am', type: 'bike' }],
+        Tuesday: [
+          { id: 'fw-tue-1', label: 'Swim 8:30-10:30am', type: 'swim' },
+          { id: 'fw-tue-2', label: 'Track 6:15pm', type: 'run' },
+        ],
+        Wednesday: [{ id: 'fw-wed-1', label: 'Spin 7-8am', type: 'bike' }],
+        Thursday: [
+          { id: 'fw-thu-1', label: 'Swim 8:30-10:30am', type: 'swim' },
+          { id: 'fw-thu-2', label: 'Tempo Run 6:15pm', type: 'run' },
+        ],
+        Friday: [{ id: 'fw-fri-1', label: 'Brick 6:30-8pm', type: 'brick' }],
+        Saturday: [],
+        Sunday: [{ id: 'fw-sun-1', label: 'Swim 10:00-12:00pm', type: 'recovery' }],
+      },
+    },
+  },
+};
+
+const normalizeWorkout = (workout, index = 0) => {
+  if (!workout || typeof workout !== 'object') return null;
+  const label = String(workout.label || '').trim();
+  if (!label) return null;
+  const type = WORKOUT_TYPES.includes(workout.type) ? workout.type : 'bike';
+  const note = String(workout.note || '').trim();
+  return {
+    id: String(workout.id || `w-${Date.now()}-${index}`),
+    label: label.slice(0, 120),
+    type,
+    ...(note ? { note: note.slice(0, 200) } : {}),
+  };
+};
+
+const normalizeSeason = (seasonKey, rawSeason, fallbackSeason) => {
+  const base = fallbackSeason || {
+    title: `Weekly ${seasonKey} Schedule`,
+    dates: '',
+    days: emptyDays(),
+  };
+  const source = rawSeason && typeof rawSeason === 'object' ? rawSeason : {};
+  const days = emptyDays();
+  DAYS.forEach((day) => {
+    const list = Array.isArray(source.days?.[day])
+      ? source.days[day]
+      : Array.isArray(base.days?.[day])
+        ? base.days[day]
+        : [];
+    days[day] = list.map((item, idx) => normalizeWorkout(item, idx)).filter(Boolean);
+  });
+  return {
+    title: String(source.title || base.title || `Weekly ${seasonKey} Schedule`).trim().slice(0, 80),
+    dates: String(source.dates ?? base.dates ?? '').trim().slice(0, 80),
+    days,
+  };
+};
+
+const normalizeSchedule = (raw) => {
+  const seasons = {};
+  Object.keys(DEFAULT_SCHEDULE.seasons).forEach((key) => {
+    seasons[key] = normalizeSeason(key, raw?.seasons?.[key], DEFAULT_SCHEDULE.seasons[key]);
+  });
+  return { seasons };
+};
+
+const loadSchedule = async () => {
+  const result = await pool.query('SELECT value FROM site_settings WHERE key = $1', ['schedule_json']);
+  const raw = result.rows[0]?.value || '';
+  if (!raw) return normalizeSchedule(DEFAULT_SCHEDULE);
+  try {
+    return normalizeSchedule(JSON.parse(raw));
+  } catch (_err) {
+    return normalizeSchedule(DEFAULT_SCHEDULE);
+  }
+};
 
 const parsePopupSettings = (rawValue) => {
   let popup = { enabled: false, message: '', popupId: null };
@@ -13,7 +154,7 @@ const parsePopupSettings = (rawValue) => {
       popup = {
         enabled: !!parsed.enabled && !!parsed.message,
         message: parsed.message || '',
-        popupId: parsed.popupId || null
+        popupId: parsed.popupId || null,
       };
     }
   } catch (_err) {
@@ -50,11 +191,9 @@ router.get('/banner', async (req, res) => {
         const items = parsed.items
           .map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
           .filter((it) => it.message);
-        // Preserve enabled state as saved, don't force it off
         banner = { enabled: enabled, items, rotationIntervalMs };
       } else if (typeof parsed.message === 'string') {
         const items = parsed.message ? [{ message: parsed.message }] : [];
-        // Preserve enabled state as saved, don't force it off
         banner = { enabled: enabled, items, rotationIntervalMs };
       }
     }
@@ -84,15 +223,12 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
       ? itemsInput.map((it) => (typeof it === 'string' ? { message: it } : { message: String(it?.message || '') }))
       : [];
 
-    // Helper function to calculate display length (excluding URLs in links)
     const getDisplayLength = (text) => {
       if (!text) return 0;
-      // Replace [text](url) with just the display text for counting
       const withoutUrls = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
       return withoutUrls.length;
     };
 
-    // Enforce constraints: trim, max display length 50, drop empties, cap at 10 items
     const processedItems = items
       .map((it) => {
         const message = (it.message || '').toString().trim();
@@ -100,7 +236,6 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
       })
       .filter((it) => it && it.message);
 
-    // If any item is too long, return a clear error instead of silently dropping it
     const hasTooLongItem = processedItems.some((it) => getDisplayLength(it.message) > 50);
     if (hasTooLongItem) {
       return res.status(400).json({ error: 'Your message is too long. Banner messages must be 50 characters or less.' });
@@ -108,7 +243,6 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
 
     items = processedItems.slice(0, 10);
 
-    // Preserve the enabled state as sent by the user, even if there are no items
     const banner = { enabled: enabled, items, rotationIntervalMs };
     const value = JSON.stringify(banner);
 
@@ -120,7 +254,6 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
       ['banner_json', value]
     );
 
-    // Handle popup settings
     const popupEnabled = !!body.popupEnabled;
     const popupMessage = (body.popupMessage || '').toString().trim();
     const previousPopup = await loadPopupSettings();
@@ -134,7 +267,7 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
       popupPayload = {
         enabled: true,
         message: popupMessage,
-        popupId
+        popupId,
       };
     }
 
@@ -149,6 +282,35 @@ router.put('/banner', authenticateToken, requireAdmin, async (req, res) => {
     res.json({ message: 'Banner updated', banner, popup: popupPayload });
   } catch (error) {
     console.error('Update banner error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Public: weekly workout schedule by season
+router.get('/schedule', async (_req, res) => {
+  try {
+    const schedule = await loadSchedule();
+    res.json({ schedule });
+  } catch (error) {
+    console.error('Get schedule error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Admin/exec: replace full weekly schedule
+router.put('/schedule', authenticateToken, requireRole('exec'), async (req, res) => {
+  try {
+    const schedule = normalizeSchedule(req.body?.schedule || req.body || {});
+    await pool.query(
+      `
+      INSERT INTO site_settings(key, value) VALUES ($1, $2)
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    `,
+      ['schedule_json', JSON.stringify(schedule)]
+    );
+    res.json({ message: 'Schedule updated', schedule });
+  } catch (error) {
+    console.error('Update schedule error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -170,8 +332,8 @@ router.get('/popup/status', authenticateToken, async (req, res) => {
     res.json({
       popup: {
         ...popup,
-        shouldShow: result.rowCount === 0
-      }
+        shouldShow: result.rowCount === 0,
+      },
     });
   } catch (error) {
     console.error('Get popup status error:', error);
@@ -204,5 +366,3 @@ router.post('/popup/seen', authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
-
-

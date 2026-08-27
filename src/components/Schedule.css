@@ -230,13 +230,63 @@
 /* Season Schedule */
 .season-schedule {
   margin-top: 1.5rem;
+  position: relative;
+}
+
+.season-schedule-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.season-schedule-heading {
+  text-align: center;
+  flex: 1;
 }
 
 .season-schedule h2 {
   color: #1E3A8A;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.35rem;
   text-align: center;
   font-size: 1.3rem;
+}
+
+.season-dates {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.schedule-edit-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.schedule-edit-btn:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.schedule-loading {
+  text-align: center;
+  color: #6b7280;
+  padding: 2rem 0;
 }
 
 .schedule-grid {
@@ -303,6 +353,166 @@
   font-size: 0.75rem;
   font-style: italic;
   border: 1px solid #ffeaa7;
+}
+
+/* Edit modal */
+.schedule-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+}
+
+.schedule-modal {
+  background: white;
+  border-radius: 12px;
+  width: min(920px, 100%);
+  max-height: min(90vh, 900px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.schedule-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.schedule-modal-header h3 {
+  margin: 0;
+  color: #1E3A8A;
+  font-size: 1.25rem;
+}
+
+.schedule-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0 0.25rem;
+}
+
+.schedule-modal-body {
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.schedule-modal-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.schedule-modal-meta label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.schedule-modal-meta input,
+.schedule-edit-row input,
+.schedule-edit-row select {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 400;
+}
+
+.schedule-edit-day {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.85rem;
+  margin-bottom: 0.85rem;
+  background: #f9fafb;
+}
+
+.schedule-edit-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.schedule-edit-day-header h4 {
+  margin: 0;
+  color: #1E3A8A;
+}
+
+.schedule-edit-empty {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.schedule-edit-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 1fr auto;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+}
+
+.btn-schedule-add,
+.btn-schedule-delete {
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.btn-schedule-add {
+  color: #1E3A8A;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.btn-schedule-delete {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.schedule-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  .schedule-edit-btn {
+    position: static;
+    flex-shrink: 0;
+  }
+
+  .season-schedule-header {
+    justify-content: space-between;
+  }
+
+  .schedule-modal-meta,
+  .schedule-edit-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
