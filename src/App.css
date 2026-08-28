@@ -11,7 +11,8 @@ body {
   line-height: 1.6;
   color: #333;
   margin: 0;
-  padding-top: var(--navbar-height, 70px);
+  /* Always clear the fixed banner + navbar stack (measured in Navbar.js) */
+  padding-top: var(--app-header-offset, var(--navbar-height, 70px));
   overflow-x: hidden; /* Prevent horizontal scroll */
   overflow-y: auto; /* Allow vertical scroll */
   touch-action: pan-y; /* Allow vertical panning (scrolling) */
@@ -19,12 +20,17 @@ body {
 
 @media (max-width: 768px) {
   body {
-    padding-top: calc(var(--navbar-height-mobile, 100px) + env(safe-area-inset-top, 0px)); /* Use taller navbar on mobile, account for safe area */
+    padding-top: var(
+      --app-header-offset,
+      calc(var(--navbar-height-mobile, 48px) + env(safe-area-inset-top, 0px))
+    );
   }
 
-  /* Android: safe-area insets report 0, so add the fixed status-bar allowance */
   body.capacitor-android-body {
-    padding-top: calc(var(--navbar-height-mobile, 48px) + var(--android-status-bar, 24px));
+    padding-top: var(
+      --app-header-offset,
+      calc(var(--navbar-height-mobile, 48px) + var(--android-status-bar, 24px))
+    );
   }
 }
 

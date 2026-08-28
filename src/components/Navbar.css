@@ -2,6 +2,8 @@
   --navbar-height: 70px;
   --navbar-height-mobile: 48px; /* 44px profile + small top inset below status bar */
   --banner-offset: 0px;
+  /* Measured bottom of fixed header stack (banner + navbar). Body padding uses this. */
+  --app-header-offset: var(--navbar-height);
   --navbar-content-top: 2px;
   /* Android WebView often reports safe-area-inset-top as 0; JS may bump this further. */
   --android-status-bar: max(24px, env(safe-area-inset-top, 0px));
@@ -19,13 +21,15 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1010;
+  z-index: 1000; /* Same layer as navbar; navbar is placed below via --banner-offset */
   font-size: 14px;
   line-height: 1.2;
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
-  height: 28px;
+  min-height: 28px;
+  height: auto;
+  box-sizing: border-box;
   display: none; /* Hidden by default */
   align-items: center;
   justify-content: center;
@@ -35,11 +39,54 @@
   display: flex; /* Only show when active */
 }
 
+/* On Android/web, keep banner clear of the status bar / notch */
+body.has-top-banner {
+  --top-banner-inset: env(safe-area-inset-top, 0px);
+}
+
+body.has-top-banner .site-banner.active:not(.ios-banner) {
+  top: 0;
+  padding-top: calc(6px + var(--top-banner-inset, 0px));
+}
+
+body.capacitor-android-body.has-top-banner {
+  --top-banner-inset: var(--android-status-bar, 24px);
+}
+
+/* Push fixed header below the measured banner height */
+body.has-top-banner .navbar {
+  top: var(--banner-offset, 0px) !important;
+  margin-top: 0 !important;
+}
+
+/* Status bar / safe-area inset lives in the banner; keep navbar content-height only */
+body.has-top-banner .navbar.capacitor-android {
+  height: var(--navbar-height-mobile) !important;
+  min-height: var(--navbar-height-mobile) !important;
+}
+
+body.has-top-banner .navbar.capacitor-android .navbar-container {
+  top: 0 !important;
+}
+
+@media (max-width: 768px) {
+  body.has-top-banner .navbar,
+  body.has-top-banner .navbar.capacitor-navbar {
+    height: var(--navbar-height-mobile) !important;
+    min-height: var(--navbar-height-mobile) !important;
+  }
+
+  body.has-top-banner .navbar .navbar-container {
+    top: 0 !important;
+  }
+}
+
 /* Rotating banner container and items */
 .site-banner-rotator {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 1.2em;
+  min-height: 1.2em;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -48,15 +95,19 @@
 
 .site-banner-item {
   position: absolute;
+  left: 0;
+  right: 0;
   opacity: 0;
   transition: opacity 300ms ease-in-out;
   width: 100%;
   text-align: center;
   padding: 0 12px;
+  pointer-events: none;
 }
 
 .site-banner-item.visible {
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* Make links in the banner look clickable with underline */
@@ -77,7 +128,11 @@
     font-size: 12px;
     padding: 4px 8px;
     line-height: 1.2;
-    height: 24px;
+    min-height: 24px;
+  }
+
+  body.has-top-banner .site-banner.active:not(.ios-banner) {
+    padding-top: calc(4px + var(--top-banner-inset, 0px));
   }
 }
 
@@ -235,8 +290,12 @@
     padding: 0 !important;
     position: fixed !important; /* Keep it fixed at top */
     background: linear-gradient(135deg, #1E3A8A, #1E40AF) !important; /* Ensure blue background extends fully */
-    margin-top: 0 !important; /* Override any inline styles that might add space */
+    margin-top: 0 !important; /* No extra margin; banner uses top offset instead */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  body.has-top-banner .navbar {
+    top: var(--banner-offset, 0px) !important;
   }
   
   /* Capacitor apps keep the taller mobile height */
@@ -405,7 +464,7 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     padding: 0.5rem 0;
     min-width: 120px;
-    z-index: 1001;
+    z-index: 1100;
   }
 
   .profile-dropdown-mobile .profile-menu-item {
@@ -546,7 +605,7 @@ button.profile-picture-nav {
   min-width: 180px;
   margin-top: 0.5rem;
   overflow: hidden;
-  z-index: 1001;
+  z-index: 1100; /* Above site banner */
   animation: slideDown 0.2s ease-out;
 }
 
@@ -620,7 +679,7 @@ button.profile-picture-nav {
   min-width: 180px;
   margin-top: 0.5rem;
   overflow: hidden;
-  z-index: 1002; /* Increase z-index to be above navbar */
+  z-index: 1100; /* Above site banner / navbar */
   animation: slideDown 0.2s ease-out;
   pointer-events: auto;
 }
@@ -687,7 +746,7 @@ button.profile-picture-nav {
   padding: 0.5rem 0;
   margin-top: 0.5rem;
   overflow: hidden;
-  z-index: 1001;
+  z-index: 1100;
   animation: slideDown 0.2s ease-out;
 }
 

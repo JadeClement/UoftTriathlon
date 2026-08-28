@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePendingReceipts } from '../context/PendingReceiptsContext';
@@ -91,6 +91,7 @@ const Navbar = () => {
   const logoRef = useRef(null);
   const navbarContainerRef = useRef(null);
   const navbarMenuRef = useRef(null);
+  const bannerRef = useRef(null);
   
   // Refs for each nav item to measure widths
   const navItemRefs = useRef({});
@@ -212,9 +213,9 @@ const Navbar = () => {
 
   // Add/remove class on body for iOS banner at bottom
   useEffect(() => {
-    const isIOS = Capacitor.getPlatform() === 'ios';
+    const isIOSPlatform = Capacitor.getPlatform() === 'ios';
     const hasBanner = banner.enabled && (banner.items?.length > 0);
-    if (isIOS && hasBanner) {
+    if (isIOSPlatform && hasBanner) {
       document.body.classList.add('ios-banner-active');
     } else {
       document.body.classList.remove('ios-banner-active');
@@ -223,6 +224,65 @@ const Navbar = () => {
       document.body.classList.remove('ios-banner-active');
     };
   }, [banner.enabled, banner.items]);
+
+  // Keep page content below the fixed banner + navbar stack on every page
+  useLayoutEffect(() => {
+    const isIOSPlatform = Capacitor.getPlatform() === 'ios';
+    const hasTopBanner = !isIOSPlatform && banner.enabled && (banner.items?.length > 0);
+
+    const syncHeaderOffsets = () => {
+      if (hasTopBanner) {
+        document.body.classList.add('has-top-banner');
+        const el = bannerRef.current;
+        const measured = el ? Math.ceil(el.getBoundingClientRect().height) : 0;
+        const fallback = window.innerWidth <= 768 ? 24 : 28;
+        document.documentElement.style.setProperty(
+          '--banner-offset',
+          `${Math.max(measured, fallback)}px`
+        );
+      } else {
+        document.body.classList.remove('has-top-banner');
+        document.documentElement.style.setProperty('--banner-offset', '0px');
+      }
+
+      // Measure after the navbar has moved under the banner
+      const applyAppHeaderOffset = () => {
+        const nav = document.querySelector('.navbar');
+        const navBottom = nav ? Math.ceil(nav.getBoundingClientRect().bottom) : 0;
+        const minFallback =
+          window.innerWidth <= 768
+            ? (document.body.classList.contains('capacitor-android-body') ? 72 : 48)
+            : 70;
+        const offset = Math.max(navBottom, minFallback);
+        document.documentElement.style.setProperty('--app-header-offset', `${offset}px`);
+      };
+
+      applyAppHeaderOffset();
+      requestAnimationFrame(applyAppHeaderOffset);
+    };
+
+    syncHeaderOffsets();
+
+    const observer =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncHeaderOffsets) : null;
+    if (observer) {
+      if (bannerRef.current) observer.observe(bannerRef.current);
+      const nav = document.querySelector('.navbar');
+      if (nav) observer.observe(nav);
+    }
+
+    window.addEventListener('resize', syncHeaderOffsets);
+    window.visualViewport?.addEventListener('resize', syncHeaderOffsets);
+
+    return () => {
+      document.body.classList.remove('has-top-banner');
+      document.documentElement.style.setProperty('--banner-offset', '0px');
+      document.documentElement.style.removeProperty('--app-header-offset');
+      window.removeEventListener('resize', syncHeaderOffsets);
+      window.visualViewport?.removeEventListener('resize', syncHeaderOffsets);
+      observer?.disconnect();
+    };
+  }, [banner.enabled, banner.items, activeBannerIndex]);
 
   useEffect(() => {
     if (!currentUser?.id) {
@@ -256,14 +316,6 @@ const Navbar = () => {
 
     loadPopupStatus();
   }, [API_BASE_URL, currentUser?.id]);
-
-  // Reflect banner height to CSS variable for page spacing
-  useEffect(() => {
-    const isMobile = window.innerWidth <= 768;
-    const hasBanner = banner.enabled && (banner.items?.length > 0);
-    const offset = hasBanner ? (isMobile ? '24px' : '28px') : '0px';
-    document.documentElement.style.setProperty('--banner-offset', offset);
-  }, [banner.enabled, banner.items]);
 
   // Auto-rotate banners
   useEffect(() => {
@@ -638,6 +690,7 @@ const Navbar = () => {
     )}
     {banner.enabled && (banner.items?.length > 0) && (
       <div 
+        ref={bannerRef}
         className={`site-banner active ${isIOS ? 'ios-banner' : ''}`}
         role="status"
         aria-live="polite"
@@ -656,7 +709,7 @@ const Navbar = () => {
         </div>
       </div>
     )}
-    <nav className={`navbar ${isNativeApp ? 'capacitor-navbar' : ''} ${isAndroid ? 'capacitor-android' : ''}`} style={{ marginTop: (banner.enabled && (banner.items?.length > 0) && !isIOS) ? (window.innerWidth <= 768 ? '24px' : '28px') : 0 }}>
+    <nav className={`navbar ${isNativeApp ? 'capacitor-navbar' : ''} ${isAndroid ? 'capacitor-android' : ''}`}>
       <div className="navbar-container" ref={navbarContainerRef}>
         <Link to="/" className="navbar-logo" onClick={closeMenu} ref={logoRef}>
           <img src="/images/icon.png" alt="UofT Triathlon Logo" className="navbar-icon" />

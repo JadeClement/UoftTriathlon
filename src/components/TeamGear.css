@@ -2,7 +2,7 @@
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem 1rem;
-  padding-top: calc(2rem + var(--banner-offset, 0px));
+  padding-top: 2rem;
 }
 
 @media (max-width: 768px) {
