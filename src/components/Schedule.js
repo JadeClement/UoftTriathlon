@@ -6,6 +6,93 @@ import './Schedule.css';
 
 const SEASONS = ['Spring', 'Summer', 'Fall/Winter'];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const MONTH_INDEX = {
+  january: 0,
+  february: 1,
+  march: 2,
+  april: 3,
+  may: 4,
+  june: 5,
+  july: 6,
+  august: 7,
+  september: 8,
+  october: 9,
+  november: 10,
+  december: 11,
+};
+// Club defaults when a season has no parseable date range.
+const DEFAULT_SEASON_RANGES = {
+  Spring: { start: { month: 3, day: 29 }, end: { month: 5, day: 25 } },
+  Summer: { start: { month: 5, day: 25 }, end: { month: 7, day: 20 } },
+  'Fall/Winter': { start: { month: 8, day: 1 }, end: { month: 3, day: 29 } },
+};
+
+const parseMonthDay = (value) => {
+  const match = String(value || '').match(/([A-Za-z]+)\s+(\d{1,2})/);
+  if (!match) return null;
+  const month = MONTH_INDEX[match[1].toLowerCase()];
+  const day = Number(match[2]);
+  if (month == null || !Number.isInteger(day) || day < 1 || day > 31) return null;
+  return { month, day };
+};
+
+const parseSeasonRange = (dates) => {
+  const parts = String(dates || '').split(/\s*[-–—]\s*/);
+  if (parts.length !== 2) return null;
+  const start = parseMonthDay(parts[0]);
+  const end = parseMonthDay(parts[1]);
+  if (!start || !end) return null;
+  return { start, end };
+};
+
+const rangeWrapsYear = (range) =>
+  range.start.month > range.end.month ||
+  (range.start.month === range.end.month && range.start.day > range.end.day);
+
+const getRangeBounds = (now, range) => {
+  const year = now.getFullYear();
+  let start = new Date(year, range.start.month, range.start.day);
+  let end = new Date(year, range.end.month, range.end.day, 23, 59, 59, 999);
+  if (rangeWrapsYear(range)) {
+    if (now >= start) {
+      end = new Date(year + 1, range.end.month, range.end.day, 23, 59, 59, 999);
+    } else {
+      start = new Date(year - 1, range.start.month, range.start.day);
+    }
+  }
+  return { start, end };
+};
+
+const rangeContains = (now, range) => {
+  const { start, end } = getRangeBounds(now, range);
+  return now >= start && now <= end;
+};
+
+const getCurrentSeason = (schedule, now = new Date()) => {
+  const ranges = SEASONS.map((name) => ({
+    name,
+    range: parseSeasonRange(schedule?.seasons?.[name]?.dates) || DEFAULT_SEASON_RANGES[name],
+  }));
+
+  const matching = ranges.filter((season) => rangeContains(now, season.range));
+  if (matching.length === 1) return matching[0].name;
+  if (matching.length > 1) {
+    matching.sort((a, b) => getRangeBounds(now, b.range).start - getRangeBounds(now, a.range).start);
+    return matching[0].name;
+  }
+
+  const upcoming = ranges
+    .map((season) => {
+      const year = now.getFullYear();
+      let start = new Date(year, season.range.start.month, season.range.start.day);
+      if (start < now) start = new Date(year + 1, season.range.start.month, season.range.start.day);
+      return { name: season.name, start };
+    })
+    .sort((a, b) => a.start - b.start);
+
+  return upcoming[0]?.name || 'Fall/Winter';
+};
+
 const WORKOUT_TYPES = [
   { value: 'swim', label: 'Swim' },
   { value: 'bike', label: 'Bike / Ride / Spin' },
@@ -33,13 +120,14 @@ const cloneSeason = (season) => ({
 const Schedule = () => {
   const { currentUser, isAdmin } = useAuth();
   const canEdit = !!(currentUser && isAdmin(currentUser));
-  const [activeSeason, setActiveSeason] = useState('Spring');
+  const [activeSeason, setActiveSeason] = useState(() => getCurrentSeason());
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [draftSeason, setDraftSeason] = useState(null);
   const [saving, setSaving] = useState(false);
   const seasonTabRefs = useRef({});
+  const userPickedSeason = useRef(false);
   const API_BASE = getApiBaseUrl();
 
   useEffect(() => {
@@ -50,6 +138,9 @@ const Schedule = () => {
         if (!res.ok) throw new Error('Failed to load schedule');
         const data = await res.json();
         setSchedule(data.schedule);
+        if (!userPickedSeason.current) {
+          setActiveSeason(getCurrentSeason(data.schedule));
+        }
       } catch (err) {
         console.error(err);
         showError('Could not load the workout schedule.');
@@ -64,27 +155,26 @@ const Schedule = () => {
     seasonTabRefs.current[season]?.focus();
   };
 
+  const selectSeason = (season) => {
+    userPickedSeason.current = true;
+    setActiveSeason(season);
+    focusSeasonTab(season);
+  };
+
   const handleSeasonKeyDown = (event, season) => {
     const index = SEASONS.indexOf(season);
     if (event.key === 'ArrowRight') {
       event.preventDefault();
-      const next = SEASONS[(index + 1) % SEASONS.length];
-      setActiveSeason(next);
-      focusSeasonTab(next);
+      selectSeason(SEASONS[(index + 1) % SEASONS.length]);
     } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      const prev = SEASONS[(index - 1 + SEASONS.length) % SEASONS.length];
-      setActiveSeason(prev);
-      focusSeasonTab(prev);
+      selectSeason(SEASONS[(index - 1 + SEASONS.length) % SEASONS.length]);
     } else if (event.key === 'Home') {
       event.preventDefault();
-      setActiveSeason(SEASONS[0]);
-      focusSeasonTab(SEASONS[0]);
+      selectSeason(SEASONS[0]);
     } else if (event.key === 'End') {
       event.preventDefault();
-      const last = SEASONS[SEASONS.length - 1];
-      setActiveSeason(last);
-      focusSeasonTab(last);
+      selectSeason(SEASONS[SEASONS.length - 1]);
     }
   };
 
@@ -191,7 +281,10 @@ const Schedule = () => {
               aria-controls={`season-panel-${seasonName.replace('/', '-')}`}
               tabIndex={activeSeason === seasonName ? 0 : -1}
               className={`season-tab ${activeSeason === seasonName ? 'active' : ''}`}
-              onClick={() => setActiveSeason(seasonName)}
+              onClick={() => {
+                userPickedSeason.current = true;
+                setActiveSeason(seasonName);
+              }}
               onKeyDown={(event) => handleSeasonKeyDown(event, seasonName)}
             >
               {seasonName}
