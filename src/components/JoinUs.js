@@ -18,7 +18,7 @@ const escapeJoinHtml = (value) =>
 const normalizeJoinUrl = (rawUrl) => {
   let url = String(rawUrl || '').trim();
   if (!url) return null;
-  if (JOIN_EMAIL_RE.test(url) && !/^mailto:/i.test(url) && !/^https?:\/\//i.test(url)) {
+  if (new RegExp(`^${JOIN_EMAIL_RE.source}$`).test(url)) {
     url = `mailto:${url}`;
   } else if (/^www\./i.test(url)) {
     url = `https://${url}`;
@@ -203,15 +203,22 @@ const JoinUs = () => {
     if (!content?.[section]) return;
     const cloned = JSON.parse(JSON.stringify(content[section]));
     if (section === 'howToJoin') {
-      cloned.steps = (cloned.steps || []).map((step) => ({
-        ...step,
-        fees:
-          step.fees?.length > 0
-            ? step.fees
-            : step.showPackages
-              ? MEMBERSHIP_FEES.map((fee) => ({ ...fee }))
-              : [],
-      }));
+      cloned.steps = (cloned.steps || []).map((step) => {
+        const shouldHaveFees =
+          step.showPackages ||
+          step.fees?.length > 0 ||
+          step.feesHeading ||
+          step.registrationBody;
+        return {
+          ...step,
+          fees:
+            step.fees?.length > 0
+              ? step.fees
+              : shouldHaveFees
+                ? MEMBERSHIP_FEES.map((fee) => ({ ...fee }))
+                : [],
+        };
+      });
     }
     setDraft(cloned);
     setEditSection(section);
@@ -345,19 +352,12 @@ const JoinUs = () => {
                     <h3>{step.title}</h3>
                     <RichText text={step.body} />
 
-                    {step.showPackages && (
+                    {(step.fees?.length > 0 ||
+                      step.feesHeading ||
+                      step.feesNote ||
+                      step.registrationHeading ||
+                      step.registrationBody) && (
                       <div className="packages-info">
-                        {step.packagesHeading ? <h4>{step.packagesHeading}</h4> : null}
-                        {(step.packages || []).length > 0 && (
-                          <ul>
-                            {step.packages.map((pkg, i) => (
-                              <li key={`${pkg}-${i}`}>
-                                <strong>{pkg}</strong>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
                         <div className="fees-section">
                           {step.feesHeading ? <h4>{step.feesHeading}</h4> : null}
                           {step.feesNote ? (
@@ -365,20 +365,24 @@ const JoinUs = () => {
                               <em>{step.feesNote}</em>
                             </p>
                           ) : null}
-                          <div className="fee-grid">
-                            {(step.fees?.length ? step.fees : MEMBERSHIP_FEES).map((fee) => (
-                              <div className="fee-item" key={fee.id}>
-                                <span className="fee-name">{fee.name}:</span>
-                                <span className="fee-amount">{formatFeeAmount(fee.amount)}</span>
-                              </div>
-                            ))}
-                          </div>
+                          {(step.fees?.length ? step.fees : []).length > 0 && (
+                            <div className="fee-grid">
+                              {step.fees.map((fee) => (
+                                <div className="fee-item" key={fee.id}>
+                                  <span className="fee-name">{fee.name}:</span>
+                                  <span className="fee-amount">{formatFeeAmount(fee.amount)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
-                        <div className="registration-info">
-                          {step.registrationHeading ? <h4>{step.registrationHeading}</h4> : null}
-                          <RichText text={step.registrationBody} />
-                        </div>
+                        {(step.registrationHeading || step.registrationBody) && (
+                          <div className="registration-info">
+                            {step.registrationHeading ? <h4>{step.registrationHeading}</h4> : null}
+                            <RichText text={step.registrationBody} />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -833,7 +837,7 @@ const JoinUs = () => {
               onClick={() =>
                 setDraft({
                   ...draft,
-                  steps: [...(draft.steps || []), { title: '', body: '', showPackages: false, packages: [] }],
+                  steps: [...(draft.steps || []), { title: '', body: '', fees: [] }],
                 })
               }
             >
@@ -864,164 +868,117 @@ const JoinUs = () => {
                   setDraft({ ...draft, steps });
                 }}
               />
-              <label className="joinus-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={!!step.showPackages}
-                  onChange={(e) => {
+
+              <input
+                type="text"
+                value={step.feesHeading || ''}
+                placeholder="Fees heading (optional)"
+                onChange={(e) => {
+                  const steps = [...draft.steps];
+                  steps[idx] = { ...steps[idx], feesHeading: e.target.value };
+                  setDraft({ ...draft, steps });
+                }}
+              />
+              <input
+                type="text"
+                value={step.feesNote || ''}
+                placeholder="Fees note (optional)"
+                onChange={(e) => {
+                  const steps = [...draft.steps];
+                  steps[idx] = { ...steps[idx], feesNote: e.target.value };
+                  setDraft({ ...draft, steps });
+                }}
+              />
+
+              <div className="joinus-edit-list-header">
+                <h4>Fee amounts (CAD before HST)</h4>
+                <button
+                  type="button"
+                  className="btn-joinus-add"
+                  onClick={() => {
                     const steps = [...draft.steps];
-                    const checked = e.target.checked;
-                    steps[idx] = {
-                      ...steps[idx],
-                      showPackages: checked,
-                      fees:
-                        checked && !(steps[idx].fees?.length)
-                          ? MEMBERSHIP_FEES.map((fee) => ({ ...fee }))
-                          : steps[idx].fees,
-                    };
+                    const fees = [...(steps[idx].fees || [])];
+                    fees.push({
+                      id: `fee-${Date.now()}`,
+                      name: '',
+                      amount: 0,
+                    });
+                    steps[idx] = { ...steps[idx], fees };
                     setDraft({ ...draft, steps });
                   }}
-                />
-                Show packages + fees block
-              </label>
-
-              {step.showPackages && (
-                <>
+                >
+                  + Add fee
+                </button>
+              </div>
+              {(step.fees || []).map((fee, feeIdx) => (
+                <div className="joinus-fee-row" key={fee.id || `fee-${feeIdx}`}>
                   <input
                     type="text"
-                    value={step.packagesHeading || ''}
-                    placeholder="Packages heading"
+                    value={fee.name || ''}
+                    placeholder="Label (e.g. Full Tri)"
                     onChange={(e) => {
                       const steps = [...draft.steps];
-                      steps[idx] = { ...steps[idx], packagesHeading: e.target.value };
+                      const fees = [...(steps[idx].fees || [])];
+                      fees[feeIdx] = { ...fees[feeIdx], name: e.target.value };
+                      steps[idx] = { ...steps[idx], fees };
                       setDraft({ ...draft, steps });
                     }}
                   />
-                  <textarea
-                    rows={3}
-                    value={(step.packages || []).join('\n')}
-                    placeholder="One package per line"
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={fee.amount ?? ''}
+                    placeholder="Amount"
                     onChange={(e) => {
                       const steps = [...draft.steps];
+                      const fees = [...(steps[idx].fees || [])];
+                      fees[feeIdx] = {
+                        ...fees[feeIdx],
+                        amount: e.target.value === '' ? '' : Number(e.target.value),
+                      };
+                      steps[idx] = { ...steps[idx], fees };
+                      setDraft({ ...draft, steps });
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn-joinus-delete"
+                    onClick={() => {
+                      const steps = [...draft.steps];
+                      const fees = [...(steps[idx].fees || [])];
                       steps[idx] = {
                         ...steps[idx],
-                        packages: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean),
+                        fees: fees.filter((_, i) => i !== feeIdx),
                       };
                       setDraft({ ...draft, steps });
                     }}
-                  />
-                  <input
-                    type="text"
-                    value={step.feesHeading || ''}
-                    placeholder="Fees heading"
-                    onChange={(e) => {
-                      const steps = [...draft.steps];
-                      steps[idx] = { ...steps[idx], feesHeading: e.target.value };
-                      setDraft({ ...draft, steps });
-                    }}
-                  />
-                  <input
-                    type="text"
-                    value={step.feesNote || ''}
-                    placeholder="Fees note"
-                    onChange={(e) => {
-                      const steps = [...draft.steps];
-                      steps[idx] = { ...steps[idx], feesNote: e.target.value };
-                      setDraft({ ...draft, steps });
-                    }}
-                  />
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
 
-                  <div className="joinus-edit-list-header">
-                    <h4>Fee amounts (CAD before HST)</h4>
-                    <button
-                      type="button"
-                      className="btn-joinus-add"
-                      onClick={() => {
-                        const steps = [...draft.steps];
-                        const fees = [...(steps[idx].fees || [])];
-                        fees.push({
-                          id: `fee-${Date.now()}`,
-                          name: '',
-                          amount: 0,
-                        });
-                        steps[idx] = { ...steps[idx], fees };
-                        setDraft({ ...draft, steps });
-                      }}
-                    >
-                      + Add fee
-                    </button>
-                  </div>
-                  {(step.fees?.length ? step.fees : MEMBERSHIP_FEES).map((fee, feeIdx) => (
-                    <div className="joinus-fee-row" key={fee.id || `fee-${feeIdx}`}>
-                      <input
-                        type="text"
-                        value={fee.name || ''}
-                        placeholder="Label (e.g. Full Tri)"
-                        onChange={(e) => {
-                          const steps = [...draft.steps];
-                          const fees = [...(steps[idx].fees?.length ? steps[idx].fees : MEMBERSHIP_FEES)];
-                          fees[feeIdx] = { ...fees[feeIdx], name: e.target.value };
-                          steps[idx] = { ...steps[idx], fees };
-                          setDraft({ ...draft, steps });
-                        }}
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={fee.amount ?? ''}
-                        placeholder="Amount"
-                        onChange={(e) => {
-                          const steps = [...draft.steps];
-                          const fees = [...(steps[idx].fees?.length ? steps[idx].fees : MEMBERSHIP_FEES)];
-                          fees[feeIdx] = {
-                            ...fees[feeIdx],
-                            amount: e.target.value === '' ? '' : Number(e.target.value),
-                          };
-                          steps[idx] = { ...steps[idx], fees };
-                          setDraft({ ...draft, steps });
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="btn-joinus-delete"
-                        onClick={() => {
-                          const steps = [...draft.steps];
-                          const fees = [...(steps[idx].fees?.length ? steps[idx].fees : MEMBERSHIP_FEES)];
-                          steps[idx] = {
-                            ...steps[idx],
-                            fees: fees.filter((_, i) => i !== feeIdx),
-                          };
-                          setDraft({ ...draft, steps });
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ))}
-
-                  <input
-                    type="text"
-                    value={step.registrationHeading || ''}
-                    placeholder="Registration heading"
-                    onChange={(e) => {
-                      const steps = [...draft.steps];
-                      steps[idx] = { ...steps[idx], registrationHeading: e.target.value };
-                      setDraft({ ...draft, steps });
-                    }}
-                  />
-                  <textarea
-                    rows={2}
-                    value={step.registrationBody || ''}
-                    placeholder="Registration body"
-                    onChange={(e) => {
-                      const steps = [...draft.steps];
-                      steps[idx] = { ...steps[idx], registrationBody: e.target.value };
-                      setDraft({ ...draft, steps });
-                    }}
-                  />
-                </>
-              )}
+              <input
+                type="text"
+                value={step.registrationHeading || ''}
+                placeholder="Registration heading (optional)"
+                onChange={(e) => {
+                  const steps = [...draft.steps];
+                  steps[idx] = { ...steps[idx], registrationHeading: e.target.value };
+                  setDraft({ ...draft, steps });
+                }}
+              />
+              <textarea
+                rows={2}
+                value={step.registrationBody || ''}
+                placeholder="Registration body (optional)"
+                onChange={(e) => {
+                  const steps = [...draft.steps];
+                  steps[idx] = { ...steps[idx], registrationBody: e.target.value };
+                  setDraft({ ...draft, steps });
+                }}
+              />
 
               <button
                 type="button"
