@@ -340,13 +340,26 @@ const JoinUs = () => {
                     <h3>{step.title}</h3>
                     <RichText text={step.body} />
 
-                    {(step.showPackages ||
+                    {(step.packagesHeading ||
+                      (step.packages || []).length > 0 ||
+                      step.showPackages ||
                       step.feesHeading ||
                       step.feesNote ||
                       step.registrationHeading ||
                       step.registrationBody) && (
                       <div className="packages-info">
-                        {(step.feesHeading || step.feesNote || step.showPackages) && (
+                        {step.packagesHeading ? <h4>{step.packagesHeading}</h4> : null}
+                        {(step.packages || []).length > 0 && (
+                          <ul>
+                            {step.packages.map((pkg, i) => (
+                              <li key={`${pkg}-${i}`}>
+                                <strong>{pkg}</strong>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        {(step.feesHeading || step.feesNote || (step.fees || []).length > 0) && (
                           <div className="fees-section">
                             {step.feesHeading ? <h4>{step.feesHeading}</h4> : null}
                             {step.feesNote ? (
@@ -855,6 +868,30 @@ const JoinUs = () => {
                 onChange={(e) => {
                   const steps = [...draft.steps];
                   steps[idx] = { ...steps[idx], body: e.target.value };
+                  setDraft({ ...draft, steps });
+                }}
+              />
+
+              <input
+                type="text"
+                value={step.packagesHeading || ''}
+                placeholder="Packages heading (optional)"
+                onChange={(e) => {
+                  const steps = [...draft.steps];
+                  steps[idx] = { ...steps[idx], packagesHeading: e.target.value };
+                  setDraft({ ...draft, steps });
+                }}
+              />
+              <textarea
+                rows={3}
+                value={(step.packages || []).join('\n')}
+                placeholder="Packages — one per line (e.g. Triathlon, Duathlon, Run only)"
+                onChange={(e) => {
+                  const steps = [...draft.steps];
+                  steps[idx] = {
+                    ...steps[idx],
+                    packages: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean),
+                  };
                   setDraft({ ...draft, steps });
                 }}
               />
