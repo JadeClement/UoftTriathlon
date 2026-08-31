@@ -62,6 +62,18 @@ const RichText = ({ text, className }) => (
   <p className={className} dangerouslySetInnerHTML={{ __html: formatJoinText(text) }} />
 );
 
+/** Packages, fees, and registration belong on the Join the Tri Club step. */
+const stepHasJoinExtras = (step) =>
+  !!(
+    step?.showPackages ||
+    step?.packagesHeading ||
+    (step?.packages || []).length ||
+    step?.feesHeading ||
+    step?.feesNote ||
+    step?.registrationHeading ||
+    step?.registrationBody
+  );
+
 const JoinUs = () => {
   const { currentUser, isAdmin } = useAuth();
   const canEdit = !!(currentUser && isAdmin(currentUser));
@@ -872,140 +884,147 @@ const JoinUs = () => {
                 }}
               />
 
-              <input
-                type="text"
-                value={step.packagesHeading || ''}
-                placeholder="Packages heading (optional)"
-                onChange={(e) => {
-                  const steps = [...draft.steps];
-                  steps[idx] = { ...steps[idx], packagesHeading: e.target.value };
-                  setDraft({ ...draft, steps });
-                }}
-              />
-              <textarea
-                rows={3}
-                value={(step.packages || []).join('\n')}
-                placeholder="Packages — one per line (e.g. Triathlon, Duathlon, Run only)"
-                onChange={(e) => {
-                  const steps = [...draft.steps];
-                  steps[idx] = {
-                    ...steps[idx],
-                    packages: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean),
-                  };
-                  setDraft({ ...draft, steps });
-                }}
-              />
-
-              <input
-                type="text"
-                value={step.feesHeading || ''}
-                placeholder="Fees heading (optional)"
-                onChange={(e) => {
-                  const steps = [...draft.steps];
-                  steps[idx] = { ...steps[idx], feesHeading: e.target.value };
-                  setDraft({ ...draft, steps });
-                }}
-              />
-              <input
-                type="text"
-                value={step.feesNote || ''}
-                placeholder="Fees note (optional)"
-                onChange={(e) => {
-                  const steps = [...draft.steps];
-                  steps[idx] = { ...steps[idx], feesNote: e.target.value };
-                  setDraft({ ...draft, steps });
-                }}
-              />
-
-              <div className="joinus-edit-list-header">
-                <h4>Fee amounts (CAD before HST)</h4>
-                <button
-                  type="button"
-                  className="btn-joinus-add"
-                  onClick={() => {
-                    const steps = [...draft.steps];
-                    const fees = [...(steps[idx].fees || [])];
-                    fees.push({
-                      id: `fee-${Date.now()}`,
-                      name: '',
-                      amount: 0,
-                    });
-                    steps[idx] = { ...steps[idx], fees };
-                    setDraft({ ...draft, steps });
-                  }}
-                >
-                  + Add fee
-                </button>
-              </div>
-              {(step.fees || []).map((fee, feeIdx) => (
-                <div className="joinus-fee-row" key={fee.id || `fee-${feeIdx}`}>
+              {(idx === 2 || stepHasJoinExtras(step)) && (
+                <>
                   <input
                     type="text"
-                    value={fee.name || ''}
-                    placeholder="Label (e.g. Full Tri)"
+                    value={step.packagesHeading || ''}
+                    placeholder="Packages heading (optional)"
                     onChange={(e) => {
                       const steps = [...draft.steps];
-                      const fees = [...(steps[idx].fees || [])];
-                      fees[feeIdx] = { ...fees[feeIdx], name: e.target.value };
-                      steps[idx] = { ...steps[idx], fees };
+                      steps[idx] = { ...steps[idx], packagesHeading: e.target.value };
+                      setDraft({ ...draft, steps });
+                    }}
+                  />
+                  <textarea
+                    rows={3}
+                    value={(step.packages || []).join('\n')}
+                    placeholder="Packages — one per line (e.g. Triathlon, Duathlon, Run only)"
+                    onChange={(e) => {
+                      const steps = [...draft.steps];
+                      steps[idx] = {
+                        ...steps[idx],
+                        packages: e.target.value
+                          .split('\n')
+                          .map((line) => line.trim())
+                          .filter(Boolean),
+                      };
+                      setDraft({ ...draft, steps });
+                    }}
+                  />
+
+                  <input
+                    type="text"
+                    value={step.feesHeading || ''}
+                    placeholder="Fees heading (optional)"
+                    onChange={(e) => {
+                      const steps = [...draft.steps];
+                      steps[idx] = { ...steps[idx], feesHeading: e.target.value };
                       setDraft({ ...draft, steps });
                     }}
                   />
                   <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={fee.amount ?? ''}
-                    placeholder="Amount"
+                    type="text"
+                    value={step.feesNote || ''}
+                    placeholder="Fees note (optional)"
                     onChange={(e) => {
                       const steps = [...draft.steps];
-                      const fees = [...(steps[idx].fees || [])];
-                      fees[feeIdx] = {
-                        ...fees[feeIdx],
-                        amount: e.target.value === '' ? '' : Number(e.target.value),
-                      };
-                      steps[idx] = { ...steps[idx], fees };
+                      steps[idx] = { ...steps[idx], feesNote: e.target.value };
                       setDraft({ ...draft, steps });
                     }}
                   />
-                  <button
-                    type="button"
-                    className="btn-joinus-delete"
-                    onClick={() => {
+
+                  <div className="joinus-edit-list-header">
+                    <h4>Fee amounts (CAD before HST)</h4>
+                    <button
+                      type="button"
+                      className="btn-joinus-add"
+                      onClick={() => {
+                        const steps = [...draft.steps];
+                        const fees = [...(steps[idx].fees || [])];
+                        fees.push({
+                          id: `fee-${Date.now()}`,
+                          name: '',
+                          amount: 0,
+                        });
+                        steps[idx] = { ...steps[idx], fees };
+                        setDraft({ ...draft, steps });
+                      }}
+                    >
+                      + Add fee
+                    </button>
+                  </div>
+                  {(step.fees || []).map((fee, feeIdx) => (
+                    <div className="joinus-fee-row" key={fee.id || `fee-${feeIdx}`}>
+                      <input
+                        type="text"
+                        value={fee.name || ''}
+                        placeholder="Label (e.g. Full Tri)"
+                        onChange={(e) => {
+                          const steps = [...draft.steps];
+                          const fees = [...(steps[idx].fees || [])];
+                          fees[feeIdx] = { ...fees[feeIdx], name: e.target.value };
+                          steps[idx] = { ...steps[idx], fees };
+                          setDraft({ ...draft, steps });
+                        }}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={fee.amount ?? ''}
+                        placeholder="Amount"
+                        onChange={(e) => {
+                          const steps = [...draft.steps];
+                          const fees = [...(steps[idx].fees || [])];
+                          fees[feeIdx] = {
+                            ...fees[feeIdx],
+                            amount: e.target.value === '' ? '' : Number(e.target.value),
+                          };
+                          steps[idx] = { ...steps[idx], fees };
+                          setDraft({ ...draft, steps });
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-joinus-delete"
+                        onClick={() => {
+                          const steps = [...draft.steps];
+                          const fees = [...(steps[idx].fees || [])];
+                          steps[idx] = {
+                            ...steps[idx],
+                            fees: fees.filter((_, i) => i !== feeIdx),
+                          };
+                          setDraft({ ...draft, steps });
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+
+                  <input
+                    type="text"
+                    value={step.registrationHeading || ''}
+                    placeholder="Registration heading (optional)"
+                    onChange={(e) => {
                       const steps = [...draft.steps];
-                      const fees = [...(steps[idx].fees || [])];
-                      steps[idx] = {
-                        ...steps[idx],
-                        fees: fees.filter((_, i) => i !== feeIdx),
-                      };
+                      steps[idx] = { ...steps[idx], registrationHeading: e.target.value };
                       setDraft({ ...draft, steps });
                     }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-
-              <input
-                type="text"
-                value={step.registrationHeading || ''}
-                placeholder="Registration heading (optional)"
-                onChange={(e) => {
-                  const steps = [...draft.steps];
-                  steps[idx] = { ...steps[idx], registrationHeading: e.target.value };
-                  setDraft({ ...draft, steps });
-                }}
-              />
-              <textarea
-                rows={2}
-                value={step.registrationBody || ''}
-                placeholder="Registration body (optional)"
-                onChange={(e) => {
-                  const steps = [...draft.steps];
-                  steps[idx] = { ...steps[idx], registrationBody: e.target.value };
-                  setDraft({ ...draft, steps });
-                }}
-              />
+                  />
+                  <textarea
+                    rows={2}
+                    value={step.registrationBody || ''}
+                    placeholder="Registration body (optional)"
+                    onChange={(e) => {
+                      const steps = [...draft.steps];
+                      steps[idx] = { ...steps[idx], registrationBody: e.target.value };
+                      setDraft({ ...draft, steps });
+                    }}
+                  />
+                </>
+              )}
 
               <button
                 type="button"
