@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MEMBERSHIP_FEES, formatFeeAmount } from '../config/membershipFees';
+import { formatFeeAmount } from '../config/membershipFees';
 import { useAuth } from '../context/AuthContext';
 import { getApiBaseUrl } from '../utils/apiConfig';
 import { showError, showSuccess } from './SimpleNotification';
@@ -203,22 +203,10 @@ const JoinUs = () => {
     if (!content?.[section]) return;
     const cloned = JSON.parse(JSON.stringify(content[section]));
     if (section === 'howToJoin') {
-      cloned.steps = (cloned.steps || []).map((step) => {
-        const shouldHaveFees =
-          step.showPackages ||
-          step.fees?.length > 0 ||
-          step.feesHeading ||
-          step.registrationBody;
-        return {
-          ...step,
-          fees:
-            step.fees?.length > 0
-              ? step.fees
-              : shouldHaveFees
-                ? MEMBERSHIP_FEES.map((fee) => ({ ...fee }))
-                : [],
-        };
-      });
+      cloned.steps = (cloned.steps || []).map((step) => ({
+        ...step,
+        fees: Array.isArray(step.fees) ? step.fees : [],
+      }));
     }
     setDraft(cloned);
     setEditSection(section);
@@ -352,30 +340,32 @@ const JoinUs = () => {
                     <h3>{step.title}</h3>
                     <RichText text={step.body} />
 
-                    {(step.fees?.length > 0 ||
+                    {(step.showPackages ||
                       step.feesHeading ||
                       step.feesNote ||
                       step.registrationHeading ||
                       step.registrationBody) && (
                       <div className="packages-info">
-                        <div className="fees-section">
-                          {step.feesHeading ? <h4>{step.feesHeading}</h4> : null}
-                          {step.feesNote ? (
-                            <p>
-                              <em>{step.feesNote}</em>
-                            </p>
-                          ) : null}
-                          {(step.fees?.length ? step.fees : []).length > 0 && (
-                            <div className="fee-grid">
-                              {step.fees.map((fee) => (
-                                <div className="fee-item" key={fee.id}>
-                                  <span className="fee-name">{fee.name}:</span>
-                                  <span className="fee-amount">{formatFeeAmount(fee.amount)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        {(step.feesHeading || step.feesNote || step.showPackages) && (
+                          <div className="fees-section">
+                            {step.feesHeading ? <h4>{step.feesHeading}</h4> : null}
+                            {step.feesNote ? (
+                              <p>
+                                <em>{step.feesNote}</em>
+                              </p>
+                            ) : null}
+                            {(step.fees || []).length > 0 && (
+                              <div className="fee-grid">
+                                {step.fees.map((fee) => (
+                                  <div className="fee-item" key={fee.id}>
+                                    <span className="fee-name">{fee.name}:</span>
+                                    <span className="fee-amount">{formatFeeAmount(fee.amount)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {(step.registrationHeading || step.registrationBody) && (
                           <div className="registration-info">

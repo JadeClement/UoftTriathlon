@@ -156,8 +156,9 @@ const DEFAULT_MEMBERSHIP_FEES = [
 
 const clampText = (value, max) => String(value ?? '').trim().slice(0, max);
 
-const normalizeFees = (feesInput, fallbackFees = DEFAULT_MEMBERSHIP_FEES) => {
-  const source = Array.isArray(feesInput) && feesInput.length ? feesInput : fallbackFees;
+const normalizeFees = (feesInput, fallbackFees = []) => {
+  // Empty arrays must stay empty — do not copy default club fees onto every step.
+  const source = Array.isArray(feesInput) ? feesInput : fallbackFees;
   return source
     .map((fee, index) => {
       const amount = Number(fee?.amount);
@@ -268,10 +269,10 @@ const normalizeJoinUsContent = (raw) => {
         ? step.packages.map((p) => clampText(p, 200)).filter(Boolean).slice(0, 10)
         : [];
       const fallbackStep = fallback.howToJoin.steps[stepIndex] || {};
-      const fallbackFees =
-        Array.isArray(fallbackStep.fees) && fallbackStep.fees.length
-          ? fallbackStep.fees
-          : DEFAULT_MEMBERSHIP_FEES;
+      // Only inherit default fees from the matching default step (Join the Tri Club).
+      // Missing or empty fees on other steps must stay empty.
+      const fallbackFees = Array.isArray(fallbackStep.fees) ? fallbackStep.fees : [];
+      const hasOwnFees = Array.isArray(step?.fees) && step.fees.length > 0;
       return {
         title: clampText(step?.title, 120),
         body: clampText(step?.body, 4000),
@@ -280,7 +281,7 @@ const normalizeJoinUsContent = (raw) => {
         packages,
         feesHeading: clampText(step?.feesHeading, 80),
         feesNote: clampText(step?.feesNote, 200),
-        fees: normalizeFees(step?.fees, fallbackFees),
+        fees: normalizeFees(hasOwnFees ? step.fees : undefined, fallbackFees),
         registrationHeading: clampText(step?.registrationHeading, 120),
         registrationBody: clampText(step?.registrationBody, 1000),
       };
