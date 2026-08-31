@@ -741,6 +741,19 @@
   background: #fef2f2;
 }
 
+.joinus-fee-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .joinus-fee-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .joinus-edit-hint {
   margin: 0;
   color: #6b7280;

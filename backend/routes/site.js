@@ -145,6 +145,34 @@ const loadSchedule = async () => {
   }
 };
 
+const DEFAULT_MEMBERSHIP_FEES = [
+  { id: 'full-tri', name: 'Full Tri', amount: 256 },
+  { id: 'half-tri', name: 'Half Tri', amount: 136 },
+  { id: 'full-du', name: 'Full Du', amount: 213 },
+  { id: 'half-du', name: 'Half Du', amount: 122 },
+  { id: 'full-run', name: 'Full Run', amount: 182 },
+  { id: 'half-run', name: 'Half Run', amount: 101 },
+];
+
+const clampText = (value, max) => String(value ?? '').trim().slice(0, max);
+
+const normalizeFees = (feesInput, fallbackFees = DEFAULT_MEMBERSHIP_FEES) => {
+  const source = Array.isArray(feesInput) && feesInput.length ? feesInput : fallbackFees;
+  return source
+    .map((fee, index) => {
+      const amount = Number(fee?.amount);
+      const name = clampText(fee?.name, 80);
+      if (!name || !Number.isFinite(amount) || amount < 0) return null;
+      return {
+        id: clampText(fee?.id, 40) || `fee-${index + 1}`,
+        name,
+        amount: Math.round(amount * 100) / 100,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 20);
+};
+
 const DEFAULT_JOIN_US = {
   goal: {
     title: 'Our Goal',
@@ -199,6 +227,7 @@ const DEFAULT_JOIN_US = {
         ],
         feesHeading: 'Fees:',
         feesNote: '*Half = Fall or Winter only | Full = Both Fall and Winter',
+        fees: DEFAULT_MEMBERSHIP_FEES,
         registrationHeading: 'Current 2025/26 Registration Links:',
         registrationBody:
           '[Register here](https://recreation.utoronto.ca). "Club Sports: Triathlon Club" You must have a AC membership to join the Triathlon Club.',
@@ -214,8 +243,6 @@ const DEFAULT_JOIN_US = {
     ],
   },
 };
-
-const clampText = (value, max) => String(value ?? '').trim().slice(0, max);
 
 const normalizeJoinUsContent = (raw) => {
   const source = raw && typeof raw === 'object' ? raw : {};
@@ -236,10 +263,15 @@ const normalizeJoinUsContent = (raw) => {
     ? source.howToJoin.steps
     : fallback.howToJoin.steps;
   const steps = stepsSource
-    .map((step) => {
+    .map((step, stepIndex) => {
       const packages = Array.isArray(step?.packages)
         ? step.packages.map((p) => clampText(p, 200)).filter(Boolean).slice(0, 10)
         : [];
+      const fallbackStep = fallback.howToJoin.steps[stepIndex] || {};
+      const fallbackFees =
+        Array.isArray(fallbackStep.fees) && fallbackStep.fees.length
+          ? fallbackStep.fees
+          : DEFAULT_MEMBERSHIP_FEES;
       return {
         title: clampText(step?.title, 120),
         body: clampText(step?.body, 4000),
@@ -248,6 +280,7 @@ const normalizeJoinUsContent = (raw) => {
         packages,
         feesHeading: clampText(step?.feesHeading, 80),
         feesNote: clampText(step?.feesNote, 200),
+        fees: normalizeFees(step?.fees, fallbackFees),
         registrationHeading: clampText(step?.registrationHeading, 120),
         registrationBody: clampText(step?.registrationBody, 1000),
       };

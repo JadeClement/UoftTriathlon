@@ -5,30 +5,57 @@ import { getApiBaseUrl } from '../utils/apiConfig';
 import { showError, showSuccess } from './SimpleNotification';
 import './JoinUs.css';
 
+const JOIN_EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+const JOIN_EMAIL_GLOBAL_RE = new RegExp(JOIN_EMAIL_RE.source, 'g');
+
+const escapeJoinHtml = (value) =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+const normalizeJoinUrl = (rawUrl) => {
+  let url = String(rawUrl || '').trim();
+  if (!url) return null;
+  if (JOIN_EMAIL_RE.test(url) && !/^mailto:/i.test(url) && !/^https?:\/\//i.test(url)) {
+    url = `mailto:${url}`;
+  } else if (/^www\./i.test(url)) {
+    url = `https://${url}`;
+  }
+  const isMail = /^mailto:/i.test(url);
+  const isHttp = /^https?:\/\//i.test(url);
+  const isInternal = url.startsWith('/');
+  if (!isMail && !isHttp && !isInternal) return null;
+  return { url, isHttp };
+};
+
 /** Convert plain text + [label](url) markdown into safe HTML. */
 function formatJoinText(text) {
   if (!text) return '';
-  let html = String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
-    const safeUrl = String(url || '').trim();
-    const isMail = safeUrl.startsWith('mailto:');
-    const isHttp = /^https?:\/\//i.test(safeUrl);
-    const isInternal = safeUrl.startsWith('/');
-    if (!isMail && !isHttp && !isInternal) return label;
-    const attrs = isHttp ? ' target="_blank" rel="noopener noreferrer"' : '';
-    return `<a href="${safeUrl}"${attrs}>${label}</a>`;
+  const parts = [];
+  const stash = (html) => {
+    parts.push(html);
+    return `%%JOINLINK${parts.length - 1}%%`;
+  };
+
+  // Pull markdown links out first so later email auto-linking cannot rewrite hrefs.
+  let html = String(text).replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, rawUrl) => {
+    const normalized = normalizeJoinUrl(rawUrl);
+    if (!normalized) return label;
+    const attrs = normalized.isHttp ? ' target="_blank" rel="noopener noreferrer"' : '';
+    return stash(`<a href="${escapeJoinHtml(normalized.url)}"${attrs}>${escapeJoinHtml(label)}</a>`);
   });
 
-  html = html.replace(
-    /(^|[^">])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-    (_m, pre, email) => `${pre}<a href="mailto:${email}">${email}</a>`
+  html = escapeJoinHtml(html);
+
+  html = html.replace(JOIN_EMAIL_GLOBAL_RE, (email) =>
+    stash(`<a href="mailto:${escapeJoinHtml(email)}">${escapeJoinHtml(email)}</a>`)
   );
 
-  return html.replace(/\n/g, '<br/>');
+  html = html.replace(/\n/g, '<br/>');
+  return html.replace(/%%JOINLINK(\d+)%%/g, (_m, index) => parts[Number(index)] || '');
 }
 
 const RichText = ({ text, className }) => (
@@ -174,7 +201,19 @@ const JoinUs = () => {
 
   const openEditor = (section) => {
     if (!content?.[section]) return;
-    setDraft(JSON.parse(JSON.stringify(content[section])));
+    const cloned = JSON.parse(JSON.stringify(content[section]));
+    if (section === 'howToJoin') {
+      cloned.steps = (cloned.steps || []).map((step) => ({
+        ...step,
+        fees:
+          step.fees?.length > 0
+            ? step.fees
+            : step.showPackages
+              ? MEMBERSHIP_FEES.map((fee) => ({ ...fee }))
+              : [],
+      }));
+    }
+    setDraft(cloned);
     setEditSection(section);
   };
 
@@ -327,7 +366,7 @@ const JoinUs = () => {
                             </p>
                           ) : null}
                           <div className="fee-grid">
-                            {MEMBERSHIP_FEES.map((fee) => (
+                            {(step.fees?.length ? step.fees : MEMBERSHIP_FEES).map((fee) => (
                               <div className="fee-item" key={fee.id}>
                                 <span className="fee-name">{fee.name}:</span>
                                 <span className="fee-amount">{formatFeeAmount(fee.amount)}</span>
@@ -831,7 +870,15 @@ const JoinUs = () => {
                   checked={!!step.showPackages}
                   onChange={(e) => {
                     const steps = [...draft.steps];
-                    steps[idx] = { ...steps[idx], showPackages: e.target.checked };
+                    const checked = e.target.checked;
+                    steps[idx] = {
+                      ...steps[idx],
+                      showPackages: checked,
+                      fees:
+                        checked && !(steps[idx].fees?.length)
+                          ? MEMBERSHIP_FEES.map((fee) => ({ ...fee }))
+                          : steps[idx].fees,
+                    };
                     setDraft({ ...draft, steps });
                   }}
                 />
@@ -883,6 +930,76 @@ const JoinUs = () => {
                       setDraft({ ...draft, steps });
                     }}
                   />
+
+                  <div className="joinus-edit-list-header">
+                    <h4>Fee amounts (CAD before HST)</h4>
+                    <button
+                      type="button"
+                      className="btn-joinus-add"
+                      onClick={() => {
+                        const steps = [...draft.steps];
+                        const fees = [...(steps[idx].fees || [])];
+                        fees.push({
+                          id: `fee-${Date.now()}`,
+                          name: '',
+                          amount: 0,
+                        });
+                        steps[idx] = { ...steps[idx], fees };
+                        setDraft({ ...draft, steps });
+                      }}
+                    >
+                      + Add fee
+                    </button>
+                  </div>
+                  {(step.fees?.length ? step.fees : MEMBERSHIP_FEES).map((fee, feeIdx) => (
+                    <div className="joinus-fee-row" key={fee.id || `fee-${feeIdx}`}>
+                      <input
+                        type="text"
+                        value={fee.name || ''}
+                        placeholder="Label (e.g. Full Tri)"
+                        onChange={(e) => {
+                          const steps = [...draft.steps];
+                          const fees = [...(steps[idx].fees?.length ? steps[idx].fees : MEMBERSHIP_FEES)];
+                          fees[feeIdx] = { ...fees[feeIdx], name: e.target.value };
+                          steps[idx] = { ...steps[idx], fees };
+                          setDraft({ ...draft, steps });
+                        }}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={fee.amount ?? ''}
+                        placeholder="Amount"
+                        onChange={(e) => {
+                          const steps = [...draft.steps];
+                          const fees = [...(steps[idx].fees?.length ? steps[idx].fees : MEMBERSHIP_FEES)];
+                          fees[feeIdx] = {
+                            ...fees[feeIdx],
+                            amount: e.target.value === '' ? '' : Number(e.target.value),
+                          };
+                          steps[idx] = { ...steps[idx], fees };
+                          setDraft({ ...draft, steps });
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-joinus-delete"
+                        onClick={() => {
+                          const steps = [...draft.steps];
+                          const fees = [...(steps[idx].fees?.length ? steps[idx].fees : MEMBERSHIP_FEES)];
+                          steps[idx] = {
+                            ...steps[idx],
+                            fees: fees.filter((_, i) => i !== feeIdx),
+                          };
+                          setDraft({ ...draft, steps });
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+
                   <input
                     type="text"
                     value={step.registrationHeading || ''}
@@ -920,7 +1037,6 @@ const JoinUs = () => {
               </button>
             </div>
           ))}
-          <p className="joinus-edit-hint">Fee amounts still come from the membership fees config.</p>
         </JoinUsEditModal>
       )}
     </div>
