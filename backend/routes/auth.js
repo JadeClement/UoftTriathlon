@@ -8,19 +8,22 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
 // CORS is handled by main server middleware
 // Register new user
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, phoneNumber } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!name || !email || !password) {
+    if (!name || !normalizedEmail || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({ error: 'Please enter a valid email address' });
     }
 
@@ -35,7 +38,10 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists with this email
-    const existingUserByEmail = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    const existingUserByEmail = await pool.query(
+      'SELECT id FROM users WHERE LOWER(TRIM(email)) = $1',
+      [normalizedEmail]
+    );
     if (existingUserByEmail.rows.length > 0) {
       return res.status(400).json({ error: 'User already exists with this email' });
     }
@@ -58,7 +64,7 @@ router.post('/register', async (req, res) => {
       INSERT INTO users (name, email, password_hash, phone_number, role, sport, created_at, joined_year, end_year)
       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7, $7)
       RETURNING id, name, email, phone_number, role, sport, joined_year, end_year
-    `, [name, email, hashedPassword, normalizedPhone, 'pending', 'triathlon', signupYear]);
+    `, [name, normalizedEmail, hashedPassword, normalizedPhone, 'pending', 'triathlon', signupYear]);
 
     const user = result.rows[0];
 
@@ -107,16 +113,20 @@ router.post('/login', async (req, res) => {
   try {
     logger.debug('🔐 LOGIN DEBUG - Backend received request');
     const { email, password } = req.body;
-    logger.debug('🔐 Email received:', email);
+    const normalizedEmail = normalizeEmail(email);
+    logger.debug('🔐 Email received:', normalizedEmail);
     logger.debug('🔐 Password length:', password ? password.length : 'null');
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Find user by email
-    logger.debug('🔍 Looking for user with email:', email);
-    const userResult = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [email]);
+    logger.debug('🔍 Looking for user with email:', normalizedEmail);
+    const userResult = await pool.query(
+      'SELECT * FROM users WHERE LOWER(TRIM(email)) = $1 AND is_active = true',
+      [normalizedEmail]
+    );
     logger.debug('🔍 User query result:', userResult.rows.length, 'rows found');
     
     if (userResult.rows.length === 0) {
@@ -242,72 +252,59 @@ router.put('/change-password', authenticateToken, async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     logger.debug('🔑 FORGOT PASSWORD DEBUG - Backend received request');
-    const { email } = req.body;
-    logger.debug('🔑 Email received:', email);
+    const normalizedEmail = normalizeEmail(req.body?.email);
+    logger.debug('🔑 Email received:', normalizedEmail);
 
-    if (!email) {
+    if (!normalizedEmail) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Check if user exists
-    logger.debug('🔍 Checking if user exists for email:', email);
-    const userResult = await pool.query('SELECT id, name FROM users WHERE email = $1 AND is_active = true', [email]);
-    logger.debug('🔍 User query result:', userResult.rows.length, 'rows found');
+    // Check if user exists (case-insensitive; extra spaces ignored)
+    const userResult = await pool.query(
+      'SELECT id, name FROM users WHERE LOWER(TRIM(email)) = $1 AND is_active = true',
+      [normalizedEmail]
+    );
     
     if (userResult.rows.length === 0) {
-      logger.debug('❌ No user found with email:', email);
+      logger.warn(`Forgot password: no active user matched ${normalizedEmail}`);
       // Don't reveal if user exists or not for security
       return res.json({ message: 'If you have an account with us, you\'ll receive an email with instructions to reset your password.' });
     }
 
     const user = userResult.rows[0];
 
-    // Generate reset token
+    // Generate reset token (expiry is DB-local so timezone cannot expire the link immediately)
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000).toISOString(); // 1 hour from now, UTC
+    await pool.query(
+      `
+      UPDATE users
+      SET reset_token = $1, reset_token_expiry = NOW() + INTERVAL '1 hour'
+      WHERE id = $2
+    `,
+      [resetToken, user.id]
+    );
 
-    // Store reset token in database
-    await pool.query(`
-      UPDATE users 
-      SET reset_token = $1, reset_token_expiry = $2
-      WHERE id = $3
-    `, [resetToken, resetTokenExpiry, user.id]);
-
-    // Build reset link with explicit logging and flexible env fallbacks
-    const candidateFrontend = (
+    let frontendOrigin = (
       process.env.FRONTEND_URL ||
       process.env.FRONTEND_ORIGIN ||
-      process.env.WEB_URL ||
-      process.env.WEBSITE_URL ||
-      process.env.VERCEL_URL ||
-      'http://localhost:3000'
-    );
-    let frontendOrigin = candidateFrontend;
-    // If VERCEL_URL style (no protocol), add https://
-    if (/^[^.]+\.[^/]+$/.test(frontendOrigin) && !/^https?:\/\//i.test(frontendOrigin)) {
+      'https://uoft-tri.club'
+    ).trim();
+    if (frontendOrigin && !/^https?:\/\//i.test(frontendOrigin)) {
       frontendOrigin = `https://${frontendOrigin}`;
     }
-    // Remove trailing slash
     frontendOrigin = frontendOrigin.replace(/\/$/, '');
     const resetLink = `${frontendOrigin}/reset-password?token=${resetToken}`;
-    logger.debug('✉️  Forgot-password: using FRONTEND origin =', frontendOrigin, ' resetLink =', resetLink);
 
-    // Send email with reset link
-    logger.debug('📧 Attempting to send password reset email...');
     try {
       const emailService = require('../services/emailService');
-      logger.debug('📧 Email service loaded, calling sendPasswordReset...');
-      const result = await emailService.sendPasswordReset(email, resetToken);
-      logger.debug('📧 Email service result:', result);
-      
+      const result = await emailService.sendPasswordReset(normalizedEmail, resetToken, resetLink);
       if (result.success) {
-        logger.debug('✅ Password reset email sent successfully:', result.messageId);
+        logger.debug(`Forgot password: reset email sent to ${normalizedEmail} (${result.messageId})`);
       } else {
-        console.error('❌ Failed to send password reset email:', result.error);
+        logger.error(`Forgot password: SES failed for ${normalizedEmail}:`, result.error);
       }
     } catch (mailError) {
-      console.error('❌ Exception sending password reset email:', mailError);
-      // Do not leak email send failures to client for security; still respond with success message
+      logger.error(`Forgot password: exception sending email to ${normalizedEmail}:`, mailError);
     }
 
     res.json({ message: 'If you have an account with us, you\'ll receive an email with instructions to reset your password.' });
@@ -330,7 +327,7 @@ router.get('/get-user-email', async (req, res) => {
     const userResult = await pool.query(`
       SELECT email 
       FROM users 
-      WHERE reset_token = $1 AND reset_token_expiry > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+      WHERE reset_token = $1 AND reset_token_expiry > NOW()
     `, [token]);
 
     if (userResult.rows.length === 0) {
@@ -363,7 +360,7 @@ router.post('/reset-password', async (req, res) => {
     const userResult = await pool.query(`
       SELECT id, email, reset_token_expiry 
       FROM users 
-      WHERE reset_token = $1 AND reset_token_expiry > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+      WHERE reset_token = $1 AND reset_token_expiry > NOW()
     `, [token]);
 
     logger.debug('🔍 User query result:', userResult.rows.length, 'rows found');

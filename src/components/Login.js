@@ -345,7 +345,7 @@ const Login = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: forgotPasswordEmail }),
+        body: JSON.stringify({ email: forgotPasswordEmail.trim() }),
       });
 
       console.log('🔑 Forgot password response status:', response.status);

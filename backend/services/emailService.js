@@ -2,32 +2,66 @@ require('dotenv').config();
 const { SESClient, SendEmailCommand, SendRawEmailCommand } = require('@aws-sdk/client-ses');
 const logger = require('../utils/logger');
 
-// Configure AWS SES
-logger.debug('🔑 EmailService: Setting up AWS SES...');
-logger.debug('🔑 EmailService: AWS Region:', process.env.AWS_REGION || 'us-east-1');
-logger.debug('🔑 EmailService: AWS Access Key ID:', process.env.AWS_ACCESS_KEY_ID ? `SET (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)` : 'NOT SET');
-logger.debug('🔑 EmailService: AWS Secret Access Key:', process.env.AWS_SECRET_ACCESS_KEY ? `SET (${process.env.AWS_SECRET_ACCESS_KEY.substring(0, 8)}...)` : 'NOT SET');
-logger.debug('🔑 EmailService: AWS From Email:', process.env.AWS_FROM_EMAIL || 'NOT SET');
-logger.debug('🔑 EmailService: AWS From Name:', process.env.AWS_FROM_NAME || 'NOT SET');
+function envValue(...names) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (!value) continue;
+    const trimmed = String(value).trim();
+    if (!trimmed || trimmed.startsWith('your_') || trimmed.startsWith('your-')) continue;
+    return trimmed;
+  }
+  return undefined;
+}
 
-const sesClient = new SESClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
+function getSesConfig() {
+  const accessKeyId = envValue('AWS_SES_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID', 'AWS_S3_ACCESS_KEY_ID');
+  const secretAccessKey = envValue(
+    'AWS_SES_SECRET_ACCESS_KEY',
+    'AWS_SECRET_ACCESS_KEY',
+    'AWS_S3_SECRET_ACCESS_KEY'
+  );
+  const region = envValue('AWS_SES_REGION', 'AWS_REGION', 'AWS_S3_REGION') || 'us-east-2';
+  const fromEmail = envValue('AWS_FROM_EMAIL') || 'info@uoft-tri.club';
+  const fromName = envValue('AWS_FROM_NAME') || 'UofT Triathlon Club';
+  return { accessKeyId, secretAccessKey, region, fromEmail, fromName };
+}
+
+let sesClient;
+function getSesClient() {
+  if (sesClient) return sesClient;
+  const { accessKeyId, secretAccessKey, region } = getSesConfig();
+  logger.debug('🔑 EmailService: Setting up AWS SES...');
+  logger.debug('🔑 EmailService: AWS Region:', region);
+  logger.debug('🔑 EmailService: AWS Access Key ID:', accessKeyId ? 'SET' : 'NOT SET');
+  logger.debug('🔑 EmailService: AWS Secret Access Key:', secretAccessKey ? 'SET' : 'NOT SET');
+  logger.debug('🔑 EmailService: AWS From Email:', getSesConfig().fromEmail);
+
+  const clientConfig = { region };
+  if (accessKeyId && secretAccessKey) {
+    clientConfig.credentials = { accessKeyId, secretAccessKey };
+  }
+  sesClient = new SESClient(clientConfig);
+  return sesClient;
+}
 
 // Email service class
 class EmailService {
   constructor() {
-    this.fromEmail = process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club';
-    this.fromName = process.env.AWS_FROM_NAME || 'UofT Triathlon Club';
+    const { fromEmail, fromName } = getSesConfig();
+    this.fromEmail = fromEmail;
+    this.fromName = fromName;
   }
 
   // Send email using AWS SES
   async sendEmail(to, subject, htmlContent, textContent = null, replyTo = null) {
     try {
+      const { accessKeyId, secretAccessKey, fromEmail } = getSesConfig();
+      if (!accessKeyId || !secretAccessKey) {
+        logger.error('EmailService: AWS SES credentials are not set; email was not sent');
+        return { success: false, error: 'SES credentials are not configured' };
+      }
+
+      this.fromEmail = fromEmail || this.fromEmail;
       logger.debug('📧 EmailService.sendEmail called with:', { to, subject, fromEmail: this.fromEmail, replyTo });
       
       const params = {
@@ -59,8 +93,8 @@ class EmailService {
       };
 
       const command = new SendEmailCommand(params);
-      logger.debug('🔍 DEBUG: About to send email via AWS SES with params:', JSON.stringify(params, null, 2));
-      const result = await sesClient.send(command);
+      logger.debug('🔍 DEBUG: About to send email via AWS SES');
+      const result = await getSesClient().send(command);
       
       logger.debug('✅ Email sent successfully:', result.MessageId);
       logger.debug('🔍 DEBUG: Full AWS SES result:', JSON.stringify(result, null, 2));
@@ -140,7 +174,7 @@ class EmailService {
       };
       
       const command = new SendRawEmailCommand(params);
-      const result = await sesClient.send(command);
+      const result = await getSesClient().send(command);
       
       logger.debug('✅ Email with attachments sent successfully:', result.MessageId);
       return { success: true, messageId: result.MessageId };
@@ -327,11 +361,13 @@ class EmailService {
   }
 
   // Send password reset email
-  async sendPasswordReset(userEmail, resetToken) {
+  async sendPasswordReset(userEmail, resetToken, resetUrlOverride) {
     try {
-      logger.debug('📧 EmailService.sendPasswordReset called with:', { userEmail, resetToken, fromEmail: this.fromEmail });
+      logger.debug('📧 EmailService.sendPasswordReset called for:', userEmail);
       
-      const resetUrl = `${process.env.FRONTEND_URL || 'https://uoft-tri.club'}/reset-password?token=${resetToken}`;
+      const resetUrl =
+        resetUrlOverride ||
+        `${process.env.FRONTEND_URL || 'https://uoft-tri.club'}/reset-password?token=${resetToken}`;
       const subject = 'Reset Your Password - UofT Triathlon Club';
       
       const htmlContent = `
