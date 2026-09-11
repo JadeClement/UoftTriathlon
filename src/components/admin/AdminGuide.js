@@ -55,6 +55,7 @@ const AdminGuide = () => {
               <ul>
                 <li><strong>Approve or reject</strong> membership receipts</li>
                 <li>Edit member roles, terms, and profile details</li>
+                <li>Create a one-time password reset link (not emailed) for a member</li>
                 <li>Create and manage membership terms</li>
                 <li>Manage merch orders</li>
                 <li>Delete members and other sensitive actions</li>
@@ -139,6 +140,11 @@ const AdminGuide = () => {
               <p>
                 For renewals, members should upload a receipt. You can also manually assign a term
                 when editing a member if needed.
+              </p>
+              <p>
+                If someone cannot get a reset email, use <strong>Reset password</strong> on their row.
+                That creates a one-time link you copy and send yourself (text, iMessage, etc.). It is
+                not emailed, expires in one hour, and replaces any unused previous link.
               </p>
             </>
           ) : (
@@ -229,8 +235,9 @@ const AdminGuide = () => {
                   {isAdministrator ? (
                     <>
                       <strong>Edit</strong> opens the member editor (role, term, sport, charter).{' '}
-                      <strong>Delete</strong> permanently removes the user and all their data — this
-                      cannot be undone.
+                      <strong>Reset password</strong> creates a one-time link you copy and share —
+                      it is not emailed. <strong>Delete</strong> permanently removes the user and
+                      all their data — this cannot be undone.
                     </>
                   ) : (
                     <>Edit and Delete are only available to administrators.</>

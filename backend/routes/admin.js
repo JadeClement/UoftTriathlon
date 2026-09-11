@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const { pool } = require('../database-pg');
 const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('../middleware/auth');
 const ExcelJS = require('exceljs');
@@ -762,6 +763,59 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
     res.json({ message: 'Member updated successfully' });
   } catch (error) {
     console.error('Update member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Administrator: create a one-time password reset link (not emailed)
+router.post('/members/:id/reset-link', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userResult = await pool.query(
+      'SELECT id, name, email, role, is_active FROM users WHERE id = $1',
+      [id]
+    );
+    const target = userResult.rows[0];
+    if (!target || !target.is_active) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (target.role === 'administrator' && String(target.id) !== String(req.user.id)) {
+      return res.status(403).json({
+        error: 'You cannot create a reset link for another administrator.',
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const updated = await pool.query(
+      `
+      UPDATE users
+      SET reset_token = $1, reset_token_expiry = NOW() + INTERVAL '1 hour'
+      WHERE id = $2
+      RETURNING id, name, email, reset_token_expiry
+    `,
+      [resetToken, target.id]
+    );
+    const row = updated.rows[0];
+
+    let frontendOrigin = (process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || 'https://uoft-tri.club').trim();
+    if (frontendOrigin && !/^https?:\/\//i.test(frontendOrigin)) {
+      frontendOrigin = `https://${frontendOrigin}`;
+    }
+    frontendOrigin = frontendOrigin.replace(/\/$/, '');
+    const resetLink = `${frontendOrigin}/reset-password?token=${resetToken}`;
+
+    logger.warn(
+      `Admin ${req.user.id} created a password reset link for user ${row.id} (${row.email})`
+    );
+
+    res.json({
+      resetLink,
+      expiresAt: row.reset_token_expiry,
+      member: { id: row.id, name: row.name, email: row.email },
+    });
+  } catch (error) {
+    console.error('Create member reset link error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

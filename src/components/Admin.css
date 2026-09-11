@@ -337,6 +337,28 @@
   background: #b91c1c;
 }
 
+.member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.admin-reset-note {
+  color: #4b5563;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.admin-reset-link-input {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
 /* Admin Warning */
 .admin-warning {
   background: #fef3c7;
