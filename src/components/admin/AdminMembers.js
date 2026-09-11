@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAdminContext } from '../../context/AdminContext';
 
 const MEMBERSHIP_STATUS_LABELS = {
@@ -19,67 +19,7 @@ const AdminMembers = () => {
     membersPerPage,
     editMember,
     removeMember,
-    currentUser,
-    API_BASE_URL,
-    showError,
-    showSuccess,
   } = useAdminContext();
-  const isAdministrator = currentUser?.role === 'administrator';
-  const [resetTarget, setResetTarget] = useState(null);
-  const [resetLink, setResetLink] = useState('');
-  const [resetExpiresAt, setResetExpiresAt] = useState(null);
-  const [resetLoading, setResetLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const closeResetModal = () => {
-    setResetTarget(null);
-    setResetLink('');
-    setResetExpiresAt(null);
-    setCopied(false);
-  };
-
-  const generateResetLink = async () => {
-    if (!resetTarget) return;
-    setResetLoading(true);
-    setCopied(false);
-    try {
-      const token = localStorage.getItem('triathlonToken');
-      const response = await fetch(`${API_BASE_URL}/admin/members/${resetTarget.id}/reset-link`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create reset link');
-      }
-      setResetLink(data.resetLink || '');
-      setResetExpiresAt(data.expiresAt || null);
-    } catch (error) {
-      showError(error.message || 'Failed to create reset link');
-      closeResetModal();
-    } finally {
-      setResetLoading(false);
-    }
-  };
-
-  const copyResetLink = async () => {
-    if (!resetLink) return;
-    try {
-      await navigator.clipboard.writeText(resetLink);
-      setCopied(true);
-      showSuccess('Reset link copied');
-    } catch (_err) {
-      const input = document.getElementById('admin-reset-link-input');
-      if (input) {
-        input.focus();
-        input.select();
-      }
-      showError('Could not copy automatically — select the link and copy it.');
-    }
-  };
 
   return (
     <div className="admin-main-content">
@@ -266,22 +206,6 @@ const AdminMembers = () => {
                     </td>
                     <td>
                       <div className="member-actions">
-                        {isAdministrator &&
-                          (member.role !== 'administrator' ||
-                            String(member.id) === String(currentUser?.id)) && (
-                          <button
-                            type="button"
-                            className="action-btn small"
-                            onClick={() => {
-                              setResetLink('');
-                              setResetExpiresAt(null);
-                              setCopied(false);
-                              setResetTarget(member);
-                            }}
-                          >
-                            Reset password
-                          </button>
-                        )}
                         <button type="button" className="action-btn small" onClick={() => editMember(member)}>
                           Edit
                         </button>
@@ -392,77 +316,6 @@ const AdminMembers = () => {
           })()}
         </div>
       </div>
-
-      {resetTarget && (
-        <div className="modal-overlay" onClick={resetLoading ? undefined : closeResetModal}>
-          <div
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="admin-reset-password-title"
-          >
-            <h2 id="admin-reset-password-title">Reset password</h2>
-            {!resetLink ? (
-              <>
-                <p>
-                  Create a one-time reset link for <strong>{resetTarget.name}</strong> ({resetTarget.email})?
-                </p>
-                <p className="admin-reset-note">
-                  This is not emailed. Copy the link and send it yourself (text, iMessage, etc.). Any unused
-                  link from a previous reset will stop working. It expires in 1 hour.
-                </p>
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={closeResetModal}
-                    disabled={resetLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={generateResetLink}
-                    disabled={resetLoading}
-                  >
-                    {resetLoading ? 'Creating…' : 'Create link'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p>
-                  Share this link with <strong>{resetTarget.name}</strong>. It works once and expires
-                  {resetExpiresAt
-                    ? ` ${new Date(resetExpiresAt).toLocaleString()}.`
-                    : ' in 1 hour.'}
-                </p>
-                <label htmlFor="admin-reset-link-input" className="sr-only">
-                  Password reset link
-                </label>
-                <input
-                  id="admin-reset-link-input"
-                  className="admin-reset-link-input"
-                  type="text"
-                  readOnly
-                  value={resetLink}
-                  onFocus={(e) => e.target.select()}
-                />
-                <div className="modal-actions">
-                  <button type="button" className="btn btn-secondary" onClick={closeResetModal}>
-                    Done
-                  </button>
-                  <button type="button" className="btn btn-primary" onClick={copyResetLink}>
-                    {copied ? 'Copied' : 'Copy link'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

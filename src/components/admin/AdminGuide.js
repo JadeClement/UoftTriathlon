@@ -142,9 +142,10 @@ const AdminGuide = () => {
                 when editing a member if needed.
               </p>
               <p>
-                If someone cannot get a reset email, use <strong>Reset password</strong> on their row.
-                That creates a one-time link you copy and send yourself (text, iMessage, etc.). It is
-                not emailed, expires in one hour, and replaces any unused previous link.
+                If someone cannot get a reset email, open <strong>Edit</strong> and use{' '}
+                <strong>Reset password</strong> at the bottom of the form. That creates a one-time
+                link you copy and send yourself (text, iMessage, etc.). It is not emailed, expires in
+                one hour, and replaces any unused previous link.
               </p>
             </>
           ) : (
@@ -234,10 +235,11 @@ const AdminGuide = () => {
                 <dd>
                   {isAdministrator ? (
                     <>
-                      <strong>Edit</strong> opens the member editor (role, term, sport, charter).{' '}
-                      <strong>Reset password</strong> creates a one-time link you copy and share —
-                      it is not emailed. <strong>Delete</strong> permanently removes the user and
-                      all their data — this cannot be undone.
+                      <strong>Edit</strong> opens the member editor (role, term, sport, charter).
+                      Use <strong>Reset password</strong> at the bottom of that form to create a
+                      one-time link you copy and share — it is not emailed.{' '}
+                      <strong>Delete</strong> permanently removes the user and all their data — this
+                      cannot be undone.
                     </>
                   ) : (
                     <>Edit and Delete are only available to administrators.</>

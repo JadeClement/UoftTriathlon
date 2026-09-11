@@ -255,6 +255,10 @@ const Admin = () => {
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
 
   const [editingMember, setEditingMember] = useState(null);
+  const [memberResetLink, setMemberResetLink] = useState('');
+  const [memberResetExpiresAt, setMemberResetExpiresAt] = useState(null);
+  const [memberResetLoading, setMemberResetLoading] = useState(false);
+  const [copiedMemberResetLink, setCopiedMemberResetLink] = useState(false);
   const [terms, setTerms] = useState([]);
 
   // Membership receipts (review queue)
@@ -1657,6 +1661,9 @@ const Admin = () => {
     console.log('🔍 Initial charterAccepted value:', initialCharterAccepted);
 
     setEditingMember(member);
+    setMemberResetLink('');
+    setMemberResetExpiresAt(null);
+    setCopiedMemberResetLink(false);
     setEditForm({
       name: member.name,
       email: member.email,
@@ -1804,6 +1811,9 @@ const Admin = () => {
         console.log('✅ Admin data reloaded');
 
         setEditingMember(null);
+        setMemberResetLink('');
+        setMemberResetExpiresAt(null);
+        setCopiedMemberResetLink(false);
         setEditForm({
           name: '',
           email: '',
@@ -1827,6 +1837,9 @@ const Admin = () => {
 
   const cancelEdit = () => {
     setEditingMember(null);
+    setMemberResetLink('');
+    setMemberResetExpiresAt(null);
+    setCopiedMemberResetLink(false);
     setEditForm({
       name: '',
       email: '',
@@ -1837,6 +1850,48 @@ const Admin = () => {
       term_id: null,
       membershipStatus: 'not_member',
     });
+  };
+
+  const generateMemberResetLink = async () => {
+    if (!editingMember) return;
+    setMemberResetLoading(true);
+    setCopiedMemberResetLink(false);
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/admin/members/${editingMember.id}/reset-link`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create reset link');
+      }
+      setMemberResetLink(data.resetLink || '');
+      setMemberResetExpiresAt(data.expiresAt || null);
+    } catch (error) {
+      showError(error.message || 'Failed to create reset link');
+    } finally {
+      setMemberResetLoading(false);
+    }
+  };
+
+  const copyMemberResetLink = async () => {
+    if (!memberResetLink) return;
+    try {
+      await navigator.clipboard.writeText(memberResetLink);
+      setCopiedMemberResetLink(true);
+      showSuccess('Reset link copied');
+    } catch (_err) {
+      const input = document.getElementById('admin-reset-link-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+      showError('Could not copy automatically — select the link and copy it.');
+    }
   };
 
   // Debug: Log current user info
@@ -2194,6 +2249,57 @@ const Admin = () => {
                     Current value: {editForm.charterAccepted ? 'Yes (1)' : 'No (0)'}
                   </div>
                 </div>
+                {currentUser?.role === 'administrator' &&
+                  (editingMember.role !== 'administrator' ||
+                    String(editingMember.id) === String(currentUser?.id)) && (
+                    <div className="admin-reset-section">
+                      <h3>Password reset</h3>
+                      {!memberResetLink ? (
+                        <>
+                          <p className="admin-reset-note">
+                            Create a one-time link to copy and send yourself (text, iMessage, etc.).
+                            It is not emailed, expires in 1 hour, and replaces any unused previous
+                            link.
+                          </p>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={generateMemberResetLink}
+                            disabled={memberResetLoading}
+                          >
+                            {memberResetLoading ? 'Creating…' : 'Reset password'}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="admin-reset-note">
+                            Share this link with {editingMember.name}. It works once and expires
+                            {memberResetExpiresAt
+                              ? ` ${new Date(memberResetExpiresAt).toLocaleString()}.`
+                              : ' in 1 hour.'}
+                          </p>
+                          <label htmlFor="admin-reset-link-input" className="sr-only">
+                            Password reset link
+                          </label>
+                          <input
+                            id="admin-reset-link-input"
+                            className="admin-reset-link-input"
+                            type="text"
+                            readOnly
+                            value={memberResetLink}
+                            onFocus={(e) => e.target.select()}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={copyMemberResetLink}
+                          >
+                            {copiedMemberResetLink ? 'Copied' : 'Copy link'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 <div className="modal-actions">
                   <button type="submit" className="btn btn-primary">
                     Save Changes

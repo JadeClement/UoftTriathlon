@@ -343,9 +343,27 @@
   gap: 0.35rem;
 }
 
+.admin-reset-section {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.admin-reset-section h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.admin-reset-section .btn {
+  margin-top: 0.75rem;
+}
+
 .admin-reset-note {
+  margin: 0;
   color: #4b5563;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.45;
 }
 
