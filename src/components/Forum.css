@@ -12,6 +12,21 @@
   padding-bottom: 0 !important;
 }
 
+.forum-container .forum-gate .section-title {
+  margin-bottom: 1.25rem !important;
+  line-height: 1.2 !important;
+}
+
+.forum-container .forum-gate .notice-card {
+  margin-top: 0.5rem;
+}
+
+.forum-container .notice-inline-link {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .forum-container .container .section-subtitle {
   margin-top: 2rem !important;
   margin-bottom: 0 !important;

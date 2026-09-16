@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { formatFeeAmount } from '../config/membershipFees';
+import { DEFAULT_JOIN_US_CONTENT } from '../config/joinUsDefaults';
 import { useAuth } from '../context/AuthContext';
 import { getApiBaseUrl } from '../utils/apiConfig';
 import { showError, showSuccess } from './SimpleNotification';
@@ -78,7 +80,7 @@ const JoinUs = () => {
   const { currentUser, isAdmin } = useAuth();
   const canEdit = !!(currentUser && isAdmin(currentUser));
   const [isSticky, setIsSticky] = useState(false);
-  const [content, setContent] = useState(null);
+  const [content, setContent] = useState(DEFAULT_JOIN_US_CONTENT);
   const [loading, setLoading] = useState(true);
   const [editSection, setEditSection] = useState(null); // 'goal' | 'whoCanJoin' | 'howToJoin'
   const [draft, setDraft] = useState(null);
@@ -95,10 +97,14 @@ const JoinUs = () => {
         const res = await fetch(`${API_BASE}/site/join-us`);
         if (!res.ok) throw new Error('Failed to load Join Us content');
         const data = await res.json();
-        setContent(data.content);
+        if (data?.content?.goal || data?.content?.whoCanJoin || data?.content?.howToJoin) {
+          setContent(data.content);
+        } else {
+          setContent(DEFAULT_JOIN_US_CONTENT);
+        }
       } catch (err) {
         console.error(err);
-        showError('Could not load Join Us content.');
+        setContent(DEFAULT_JOIN_US_CONTENT);
       } finally {
         setLoading(false);
       }
@@ -160,7 +166,10 @@ const JoinUs = () => {
 
       const scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
       const estimate = getHeadingTop() + scrollY - (getHeaderBottom() + GAP);
-      window.scrollTo({ top: Math.max(estimate, 0), behavior: 'smooth' });
+      // Android WebView often ignores smooth window.scrollTo, which makes the
+      // Goal / Who Can Join / How to Join buttons look like they do nothing.
+      const behavior = Capacitor.getPlatform() === 'android' ? 'auto' : 'smooth';
+      window.scrollTo({ top: Math.max(estimate, 0), behavior });
 
       let tries = 0;
       const correct = () => {
@@ -171,7 +180,7 @@ const JoinUs = () => {
           setTimeout(correct, 60);
         }
       };
-      setTimeout(correct, 380);
+      setTimeout(correct, behavior === 'smooth' ? 380 : 50);
     },
     [applyOffsetVars]
   );
@@ -296,7 +305,7 @@ const JoinUs = () => {
 
         {loading && <p className="joinus-loading">Loading…</p>}
 
-        {!loading && goal && (
+        {goal && (
           <div id="goal" className="goal-section">
             <div className="joinus-section-header">
               <h2 className="goal-title">{goal.title}</h2>
@@ -306,7 +315,7 @@ const JoinUs = () => {
           </div>
         )}
 
-        {!loading && who && (
+        {who && (
           <div id="who-can-join" className="who-can-join-section">
             <div className="joinus-section-header">
               <h2 className="section-subtitle">{who.title}</h2>
@@ -337,7 +346,7 @@ const JoinUs = () => {
           </div>
         )}
 
-        {!loading && how && (
+        {how && (
           <div id="how-to-join" className="joining-instructions-section">
             <div className="joinus-section-header">
               <h2 className="section-subtitle">{how.title}</h2>

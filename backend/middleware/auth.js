@@ -254,7 +254,7 @@ const generateToken = (user) => {
       role: user.role 
     },
     JWT_SECRET,
-    { expiresIn: '7d' } // Token expires in 7 days
+    { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
   );
 };
 

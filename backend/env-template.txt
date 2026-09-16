@@ -15,7 +15,7 @@ DATABASE_URL=postgresql://user:password@localhost:5432/uofttri
 # =============================================================================
 # Generate a secure random string for JWT signing
 JWT_SECRET=your_jwt_secret_here
-# How long login sessions last. Examples: 7d, 30d, 90d (default: 24h)
+# How long login sessions last. Examples: 7d, 30d, 90d (default: 30d)
 JWT_EXPIRES_IN=30d
 
 # =============================================================================

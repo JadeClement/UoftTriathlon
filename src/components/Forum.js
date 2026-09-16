@@ -9,10 +9,26 @@ import ConfirmModal from './ConfirmModal';
 import PullToRefresh from './PullToRefresh';
 import { PostSkeleton } from './LoadingSkeleton';
 import { hapticImpact } from '../utils/haptics';
+import { Link } from 'react-router-dom';
 import { isTermExpiredError, TERM_EXPIRED_DEFAULT } from '../utils/apiError';
 import './Forum.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
 import { getWorkoutTypeOptions } from '../utils/workoutTypes';
+
+const renderTermExpiredMessage = (message) => {
+  const text = message || TERM_EXPIRED_DEFAULT;
+  const parts = text.split(/(profile page)/i);
+  if (parts.length < 3) return text;
+  return parts.map((part, index) =>
+    /profile page/i.test(part) ? (
+      <Link key={index} to="/profile" className="notice-inline-link">
+        {part}
+      </Link>
+    ) : (
+      part
+    )
+  );
+};
 
 const Forum = () => {
   const { currentUser, isMember, isExec, isCoach } = useAuth();
@@ -1500,7 +1516,7 @@ const Forum = () => {
     console.log('🧭 Forum render: unauthenticated gate');
     return (
       <div className="forum-container">
-        <div className="container">
+        <div className="container forum-gate">
           <h1 className="section-title">Team Forum</h1>
           <div
             className="notice-card"
@@ -1536,7 +1552,7 @@ const Forum = () => {
     console.log('🧭 Forum render: pending/non-member gate', { role: effectiveUser?.role });
     return (
       <div className="forum-container">
-        <div className="container">
+        <div className="container forum-gate">
           <h1 className="section-title">Team Forum</h1>
           <div
             className="notice-card"
@@ -1571,7 +1587,7 @@ const Forum = () => {
   if (termExpired) {
     return (
       <div className="forum-container">
-        <div className="container">
+        <div className="container forum-gate">
           <h1 className="section-title">Team Forum</h1>
           <div
             className="notice-card"
@@ -1584,7 +1600,7 @@ const Forum = () => {
               lineHeight: 1.6,
             }}
           >
-            <p style={{ margin: 0 }}>{termExpiredMessage}</p>
+            <p style={{ margin: 0 }}>{renderTermExpiredMessage(termExpiredMessage)}</p>
           </div>
         </div>
       </div>

@@ -475,11 +475,12 @@ class EmailService {
           </div>
           
           <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border: 1px solid #f59e0b; margin-bottom: 25px;">
-            <h3 style="color: #92400e; margin-top: 0;">⚠️ Important Club Rules</h3>
+            <h3 style="color: #92400e; margin-top: 0;">⚠️ Important Club Rules — Indoor Spins &amp; Brick Sessions</h3>
+            <p style="color: #92400e; margin: 0 0 12px 0;">These signup and attendance rules apply to indoor spins and brick sessions only (not swim or run workouts):</p>
             <ul style="color: #92400e; margin: 0; padding-left: 20px;">
-              <li><strong>Attendance Policy:</strong> 3 absences = 1 week ban from signups</li>
-              <li><strong>Space is Limited:</strong> Sign up early for popular workouts</li>
-              <li><strong>Cancel if Needed:</strong> Give others a chance if you can't make it</li>
+              <li><strong>Attendance Policy:</strong> 3 absences = 1 week ban from spin/brick signups</li>
+              <li><strong>Space is Limited:</strong> Bikes are limited — sign up early</li>
+              <li><strong>Cancel if Needed:</strong> If you can't make it, cancel so someone else can take the spot</li>
             </ul>
           </div>
           
@@ -514,10 +515,11 @@ class EmailService {
         - Connect with other club members
         - Stay updated on club events and races
         
-        ⚠️ Important Club Rules:
-        - Attendance Policy: 3 absences = 1 week ban from signups
-        - Space is Limited: Sign up early for popular workouts
-        - Cancel if Needed: Give others a chance if you can't make it
+        ⚠️ Important Club Rules — Indoor Spins & Brick Sessions
+        These signup and attendance rules apply to indoor spins and brick sessions only (not swim or run workouts):
+        - Attendance Policy: 3 absences = 1 week ban from spin/brick signups
+        - Space is Limited: Bikes are limited — sign up early
+        - Cancel if Needed: If you can't make it, cancel so someone else can take the spot
         
         🔄 Important: Logout & Login
         To see all the new features, please logout and log back in to your account.

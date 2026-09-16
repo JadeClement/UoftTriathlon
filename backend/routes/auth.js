@@ -73,7 +73,7 @@ router.post('/register', async (req, res) => {
     logger.debug('🔒 Registration Route: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
     logger.debug('🔒 Registration Route: Using JWT_SECRET:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
     
-    const tokenExpiry = process.env.JWT_EXPIRES_IN || '24h';
+    const tokenExpiry = process.env.JWT_EXPIRES_IN || '30d';
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
@@ -156,7 +156,7 @@ router.post('/login', async (req, res) => {
     logger.debug('🔒 Login Route: JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'undefined');
     logger.debug('🔒 Login Route: Using JWT_SECRET:', process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'undefined');
     
-    const tokenExpiry = process.env.JWT_EXPIRES_IN || '24h';
+    const tokenExpiry = process.env.JWT_EXPIRES_IN || '30d';
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
