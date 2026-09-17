@@ -34,6 +34,7 @@ import SimpleNotification from './components/SimpleNotification';
 import { setNavigationFunction, getPendingNavigation } from './utils/notificationNavigation';
 import { startPeriodicSync, stopPeriodicSync } from './services/calendarSyncService';
 import { useSwipeNavigation } from './hooks/useSwipeNavigation';
+import { useNativeBackButton } from './hooks/useNativeBackButton';
 import { getApiBaseUrl } from './utils/apiConfig';
 
 // Lazy-load Admin + Settings so the main bundle stays lean for public pages
@@ -168,6 +169,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const swipeHandlers = useSwipeNavigation(navigate, location);
+  useNativeBackButton(navigate, location);
   
   // Start periodic calendar sync for iOS users
   useEffect(() => {

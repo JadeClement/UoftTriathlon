@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { showSuccess, showError } from './SimpleNotification';
 import { getApiErrorMessage, parseApiError } from '../utils/apiError';
 import ConfirmModal from './ConfirmModal';
 import './Results.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
+import { getDetailBackNav } from '../utils/swipeNavigation';
 
 const API_BASE = getApiBaseUrl();
 
 const Results = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const backNav = getDetailBackNav(location.pathname) || {
+    backTo: '/profile',
+    label: '← Back to Profile',
+  };
   const { currentUser, isMember } = useAuth();
 
   const [intervalResults, setIntervalResults] = useState([]);
@@ -302,6 +310,13 @@ const Results = () => {
   return (
     <div className="profile-container">
       <div className="container">
+        <button
+          type="button"
+          className="results-back-btn"
+          onClick={() => navigate(backNav.backTo)}
+        >
+          {backNav.label}
+        </button>
         {!currentUser ? (
           <div>
             <h2>Your interval results</h2>

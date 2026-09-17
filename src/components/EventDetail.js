@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText } from '../utils/linkUtils';
 import { formatSignupDateForDisplay } from '../utils/dateUtils';
@@ -9,10 +9,13 @@ import { showError, showSuccess } from './SimpleNotification';
 import ConfirmModal from './ConfirmModal';
 import './EventDetail.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
+import { getDetailBackNav } from '../utils/swipeNavigation';
 
 const EventDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backNav = getDetailBackNav(location.pathname) || { backTo: '/forum?tab=events', label: '← Back to Forum' };
   const { currentUser, isMember } = useAuth();
   const [event, setEvent] = useState(null);
   const [rsvps, setRsvps] = useState([]);
@@ -300,8 +303,9 @@ const EventDetail = () => {
     return (
       <div className="event-detail-container">
         <div className="container">
-          <button className="back-btn" onClick={() => navigate('/forum?tab=events')}>
-            ← Back to Forum
+          <button className="back-btn" onClick={() => navigate(backNav.backTo)}>
+            <span className="back-btn-arrow" aria-hidden="true">←</span>
+            {backNav.label.replace(/^←\s*/, '')}
           </button>
           <div className="error" style={{ 
             padding: '2rem', 
@@ -327,8 +331,9 @@ const EventDetail = () => {
   return (
     <div className="event-detail-container">
       <div className="container">
-        <button className="back-btn" onClick={() => navigate('/forum?tab=events')}>
-          ← Back to Forum
+        <button className="back-btn" onClick={() => navigate(backNav.backTo)}>
+          <span className="back-btn-arrow" aria-hidden="true">←</span>
+          {backNav.label.replace(/^←\s*/, '')}
         </button>
 
         <div className="event-detail-card">

@@ -1,6 +1,6 @@
 // Force fresh Vercel build - clear build cache
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkoutEdit } from '../hooks/useWorkoutEdit';
 import { useWorkout, useOnlineStatus } from '../hooks/useOfflineData';
@@ -15,10 +15,13 @@ import { addWorkoutToCalendar } from '../services/calendarService';
 import './WorkoutDetail.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
 import { getWorkoutTypeOptions } from '../utils/workoutTypes';
+import { getDetailBackNav } from '../utils/swipeNavigation';
 
 const WorkoutDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backNav = getDetailBackNav(location.pathname) || { backTo: '/forum', label: '← Back to Forum' };
   const { currentUser, isMember } = useAuth();
   const isIOS = Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.getPlatform && Capacitor.getPlatform() === 'ios';
   
@@ -101,9 +104,9 @@ const WorkoutDetail = () => {
 
     if (startedNearEdge && isHorizontal && isRightSwipe) {
       // Use the same navigation as the Back button
-      navigate('/forum');
+      navigate(backNav.backTo);
     }
-  }, [isIOS, navigate]);
+  }, [isIOS, navigate, backNav.backTo]);
 
   const API_BASE_URL = getApiBaseUrl();
   
@@ -1183,8 +1186,9 @@ const WorkoutDetail = () => {
     return (
       <div className="workout-detail-container">
         <div className="container">
-          <button className="back-btn" onClick={() => navigate('/forum')}>
-            ← Back to Forum
+          <button className="back-btn" onClick={() => navigate(backNav.backTo)}>
+            <span className="back-btn-arrow" aria-hidden="true">←</span>
+            {backNav.label.replace(/^←\s*/, '')}
           </button>
           <div className="error" style={{ 
             padding: '2rem', 
@@ -1226,8 +1230,9 @@ const WorkoutDetail = () => {
     return (
       <div className="workout-detail-container">
         <div className="container">
-          <button className="back-btn" onClick={() => navigate('/forum')}>
-            ← Back to Forum
+          <button className="back-btn" onClick={() => navigate(backNav.backTo)}>
+            <span className="back-btn-arrow" aria-hidden="true">←</span>
+            {backNav.label.replace(/^←\s*/, '')}
           </button>
           <div className="error" style={{ 
             padding: '2rem', 
@@ -1243,7 +1248,7 @@ const WorkoutDetail = () => {
               : 'The workout you\'re looking for doesn\'t exist or has been deleted.'}
             </p>
             <button 
-              onClick={() => navigate('/forum')}
+              onClick={() => navigate(backNav.backTo)}
               style={{
                 marginTop: '1rem',
                 padding: '0.5rem 1rem',
@@ -1254,7 +1259,7 @@ const WorkoutDetail = () => {
                 cursor: 'pointer'
               }}
             >
-              Go to Forum
+              {backNav.label}
             </button>
           </div>
         </div>
@@ -1279,8 +1284,9 @@ const WorkoutDetail = () => {
       onTouchEnd={handleTouchEnd}
     >
       <div className="container">
-        <button className="back-btn" onClick={() => navigate('/forum')}>
-          ← Back to Forum
+        <button className="back-btn" onClick={() => navigate(backNav.backTo)}>
+          <span className="back-btn-arrow" aria-hidden="true">←</span>
+          {backNav.label.replace(/^←\s*/, '')}
         </button>
         
         {/* Offline Indicator */}

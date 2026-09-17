@@ -1,6 +1,6 @@
 .workout-detail-container {
   margin-top: 0;
-  padding: 2rem 0;
+  padding: 1rem 0 2rem;
   background: #f8f9fa;
   min-height: calc(100vh - 70px);
 }
@@ -54,15 +54,30 @@
 }
 
 .back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   background: #6c757d;
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 0.7rem 1.35rem 0.7rem 1.15rem;
   border-radius: 8px;
   font-size: 16px;
+  line-height: 1;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
+}
+
+.back-btn-arrow {
+  font-size: 1.45em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-0.5px);
+  font-weight: 600;
 }
 
 .back-btn:hover {
@@ -170,16 +185,39 @@
 .button-group {
   display: flex;
   gap: 0.5rem;
+  align-items: stretch;
+  flex-wrap: nowrap;
+}
+
+.workout-detail-container .button-group .signup-btn,
+.workout-detail-container .button-group .waitlist-btn,
+.workout-detail-container .button-group .cancel-btn {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 44px;
+  height: auto;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.2;
+  padding: 0.7rem 1.1rem;
+  font-size: 0.9rem;
+}
+
+.workout-detail-container .button-group .waitlist-btn {
+  padding: 0.7rem 0.9rem;
 }
 
 .signup-btn {
-  padding: 0.5rem 0.1rem;
+  padding: 0.7rem 1.1rem;
   background: #4169E1;
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -213,15 +251,16 @@
 
 /* Waitlist button styling */
 .waitlist-btn {
-  padding: 0.75rem 2rem;
+  padding: 0.7rem 0.9rem;
   background: #f59e0b;
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .waitlist-btn:hover {
@@ -927,6 +966,10 @@
 
 /* Mobile: Show only emoji icons for edit/delete buttons */
 @media (max-width: 768px) {
+  .workout-detail-container {
+    padding-top: 0.75rem;
+  }
+
   .signup-item,
   .waitlist-item {
     flex-wrap: wrap;

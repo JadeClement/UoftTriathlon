@@ -1,6 +1,6 @@
 .race-detail-container {
   margin-top: 0;
-  padding: 2rem 0;
+  padding: 1rem 0 2rem;
   background: #f8fafc;
   min-height: calc(100vh - 70px);
 }
@@ -21,15 +21,31 @@
 }
 
 .back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   background: #6b7280;
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 0.7rem 1.35rem 0.7rem 1.15rem;
   border-radius: 8px;
   font-weight: 500;
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.3s ease;
   margin-bottom: 1rem;
+}
+
+.back-btn-arrow {
+  font-size: 1.45em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-0.5px);
+  font-weight: 600;
 }
 
 .back-btn:hover {
@@ -227,7 +243,8 @@
   text-align: center;
 }
 
-.signup-btn, .cancel-btn {
+.race-detail-container .signup-btn,
+.race-detail-container .cancel-btn {
   padding: 1rem 2rem;
   border: none;
   border-radius: 8px;
@@ -238,29 +255,30 @@
   min-width: 200px;
 }
 
-.signup-btn {
+.race-detail-container .signup-btn {
   background: #10b981;
   color: white;
 }
 
-.signup-btn:hover:not(:disabled) {
+.race-detail-container .signup-btn:hover:not(:disabled) {
   background: #059669;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
-.cancel-btn {
+.race-detail-container .cancel-btn {
   background: #ef4444;
   color: white;
 }
 
-.cancel-btn:hover:not(:disabled) {
+.race-detail-container .cancel-btn:hover:not(:disabled) {
   background: #dc2626;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-.signup-btn:disabled, .cancel-btn:disabled {
+.race-detail-container .signup-btn:disabled,
+.race-detail-container .cancel-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -278,6 +296,10 @@
 }
 
 @media (max-width: 768px) {
+  .race-detail-container {
+    padding-top: 0.75rem;
+  }
+
   .race-detail-content {
     padding: 0 1rem;
   }
@@ -299,7 +321,8 @@
     height: 40px;
   }
   
-  .signup-btn, .cancel-btn {
+  .race-detail-container .signup-btn,
+  .race-detail-container .cancel-btn {
     width: 100%;
     min-width: auto;
   }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { linkifyText, normalizeRaceLink } from '../utils/linkUtils';
 import { formatSignupDateForDisplay } from '../utils/dateUtils';
@@ -7,10 +7,13 @@ import { parseApiError, getApiErrorMessage } from '../utils/apiError';
 import { showError } from './SimpleNotification';
 import './RaceDetail.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
+import { getDetailBackNav } from '../utils/swipeNavigation';
 
 const RaceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backNav = getDetailBackNav(location.pathname) || { backTo: '/races', label: '← Back to Races' };
   const { currentUser, isMember } = useAuth();
   const [race, setRace] = useState(null);
   const [signups, setSignups] = useState([]);
@@ -209,8 +212,9 @@ const RaceDetail = () => {
     return (
       <div className="race-detail-container">
         <div className="container">
-          <button onClick={() => navigate('/races')} className="back-btn">
-            ← Back to Races
+          <button onClick={() => navigate(backNav.backTo)} className="back-btn">
+            <span className="back-btn-arrow" aria-hidden="true">←</span>
+            {backNav.label.replace(/^←\s*/, '')}
           </button>
           <div className="error" style={{ 
             padding: '2rem', 
@@ -242,8 +246,9 @@ const RaceDetail = () => {
     <div className="race-detail-container">
       <div className="race-detail-content">
         <div className="race-header">
-          <button onClick={() => navigate('/races')} className="back-btn">
-            ← Back to Races
+          <button onClick={() => navigate(backNav.backTo)} className="back-btn">
+            <span className="back-btn-arrow" aria-hidden="true">←</span>
+            {backNav.label.replace(/^←\s*/, '')}
           </button>
           <div className="race-title-section">
             <h1>{race.name}</h1>

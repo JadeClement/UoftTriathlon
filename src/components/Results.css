@@ -1,4 +1,21 @@
 /* Results page - modal styles for edit (profile-container from Profile.css) */
+.results-back-btn {
+  display: inline-block;
+  background: none;
+  border: none;
+  color: #1E3A8A;
+  font: inherit;
+  font-weight: 500;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.results-back-btn:hover {
+  text-decoration: underline;
+}
+
 .results-modal-overlay {
   position: fixed;
   top: 0;

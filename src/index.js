@@ -25,94 +25,54 @@ root.render(
 // Skip in Capacitor native apps — SW caching can interfere with API requests in WebView.
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production' && !isNativeApp) {
   window.addEventListener('load', () => {
-    let updatePrompted = false; // Track if we've already prompted for this update
-    let userAcceptedUpdate = false; // Track if user accepted the update
-    let reloadAttempted = false; // Prevent infinite reload loops
-    
+    const pageLoadedAt = Date.now();
+    let reloading = false;
+
+    const activateWorker = (worker) => {
+      if (worker) {
+        worker.postMessage({ type: 'SKIP_WAITING' });
+      }
+    };
+
     navigator.serviceWorker
       .register('/service-worker.js', {
         scope: '/'
       })
       .then((registration) => {
         console.log('✅ Service Worker registered successfully');
-        console.log('🔍 Service Worker scope:', registration.scope);
-        console.log('🔍 Service Worker state:', registration.active?.state || registration.installing?.state || 'pending');
-        
-        // Check for updates periodically
+
         setInterval(() => {
           registration.update();
-        }, 60 * 60 * 1000); // Check every hour
-        
-        // Handle service worker updates
+        }, 60 * 60 * 1000);
+
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
-          
+          if (!newWorker) return;
+
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // New service worker available
-              console.log('🔄 New service worker available');
-              
-              // Only show prompt once per update
-              if (!updatePrompted) {
-                updatePrompted = true;
-                
-                // Optionally show update notification to user
-                // Note: Service worker update confirmation - keeping as is for now
-                // Could be replaced with a custom modal if needed
-                if (window.confirm('A new version is available. Reload to update?')) {
-                  userAcceptedUpdate = true;
-                  newWorker.postMessage({ type: 'SKIP_WAITING' });
-                  // Don't reload here - let controllerchange handle it
-                } else {
-                  // User declined - reset flag after a delay to allow future updates
-                  setTimeout(() => {
-                    updatePrompted = false;
-                  }, 5000);
-                }
-              }
+              activateWorker(newWorker);
             }
           });
         });
-        
-        // Check if there's already a waiting service worker on page load
+
+        // Already reloading/opening the page — activate the new worker instead of asking.
         if (registration.waiting) {
-          console.log('🔄 Waiting service worker detected on page load');
-          if (!updatePrompted) {
-            updatePrompted = true;
-            if (window.confirm('A new version is available. Reload to update?')) {
-              userAcceptedUpdate = true;
-              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            } else {
-              setTimeout(() => {
-                updatePrompted = false;
-              }, 5000);
-            }
-          }
+          activateWorker(registration.waiting);
         }
-        
-        // Listen for controller change (service worker updated)
-        // Only auto-reload if user accepted the update
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          console.log('🔄 Service worker controller changed');
-          if (userAcceptedUpdate && !reloadAttempted) {
-            console.log('🔄 Reloading due to accepted update...');
-            reloadAttempted = true; // Prevent multiple reloads
-            userAcceptedUpdate = false; // Reset flag
-            updatePrompted = false; // Reset prompt flag
-            // Use a small delay to ensure the new service worker is ready
-            setTimeout(() => {
-              window.location.reload();
-            }, 100);
-          } else {
-            console.log('🔄 Controller changed but user did not accept update, skipping reload');
-            updatePrompted = false; // Reset so they can be prompted again if needed
-          }
-        });
       })
       .catch((error) => {
         console.error('❌ Service Worker registration failed:', error);
         console.error('❌ Error details:', error.message);
       });
+
+    // Reload only for updates found while this tab is already open.
+    // A waiting worker on load must not trigger another reload (that loops the prompt/reload).
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading || Date.now() - pageLoadedAt < 3000) return;
+      reloading = true;
+      window.location.reload();
+    });
   });
 } else if (process.env.NODE_ENV === 'development') {
   // Unregister any existing service workers in development

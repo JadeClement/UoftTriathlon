@@ -261,6 +261,8 @@ async function deleteOldCaches() {
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker installing...');
+  // Activate immediately so a reload is not blocked waiting for confirmation.
+  self.skipWaiting();
   event.waitUntil(
     Promise.all([
       caches.open(CACHE_NAMES.STATIC).then(cache => cache.addAll(STATIC_ASSETS)),
@@ -269,7 +271,6 @@ self.addEventListener('install', (event) => {
       caches.open(CACHE_NAMES.DYNAMIC)
     ]).then(() => {
       console.log('✅ Service Worker installed');
-      return self.skipWaiting();
     })
   );
 });

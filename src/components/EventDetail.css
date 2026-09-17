@@ -1,20 +1,35 @@
 .event-detail-container {
   margin-top: 0;
-  padding: 2rem 0;
+  padding: 1rem 0 2rem;
   background: #f8f9fa;
   min-height: calc(100vh - 70px);
 }
 
 .back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   background: #6c757d;
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 0.7rem 1.35rem 0.7rem 1.15rem;
   border-radius: 8px;
   font-size: 16px;
+  line-height: 1;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
+}
+
+.back-btn-arrow {
+  font-size: 1.45em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-0.5px);
+  font-weight: 600;
 }
 
 .back-btn:hover {
@@ -430,6 +445,10 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .event-detail-container {
+    padding-top: 0.75rem;
+  }
+
   .rsvp-categories {
     grid-template-columns: 1fr;
   }

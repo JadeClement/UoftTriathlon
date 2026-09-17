@@ -189,6 +189,26 @@
   transform: scale(1.2);
 }
 
+/* Global mobile button min-size (44px) would inflate these dots. Keep them
+   visually the same as desktop, with an invisible larger tap target. */
+@media (max-width: 768px) {
+  .indicator {
+    min-width: 10px;
+    min-height: 10px;
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    font-size: inherit;
+    position: relative;
+  }
+
+  .indicator::after {
+    content: '';
+    position: absolute;
+    inset: -17px;
+  }
+}
+
 /* About Section */
 .about {
   padding: 80px 0;

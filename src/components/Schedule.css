@@ -172,7 +172,7 @@
   justify-content: flex-end;
 }
 
-.signup-btn {
+.schedule-container .signup-btn {
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 8px;
@@ -182,22 +182,22 @@
   font-size: 1rem;
 }
 
-.signup-btn:not(.disabled):not(.signed-up) {
+.schedule-container .signup-btn:not(.disabled):not(.signed-up) {
   background: linear-gradient(135deg, #1E3A8A, #1E40AF);
   color: white;
 }
 
-.signup-btn:hover:not(.disabled) {
+.schedule-container .signup-btn:hover:not(.disabled) {
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(30, 58, 138, 0.3);
 }
 
-.signup-btn.signed-up {
+.schedule-container .signup-btn.signed-up {
   background: #28a745;
   color: white;
 }
 
-.signup-btn.disabled {
+.schedule-container .signup-btn.disabled {
   background: #e9ecef;
   color: #666;
   cursor: not-allowed;
@@ -556,7 +556,7 @@
     justify-content: center;
   }
   
-  .signup-btn {
+  .schedule-container .signup-btn {
     width: 100%;
   }
 }

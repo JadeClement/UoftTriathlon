@@ -216,8 +216,8 @@ const Settings = () => {
     }
   };
 
-  // Don't render Settings page if not on iOS
-  if (!isIOS) {
+  // Settings (push prefs, privacy, account) are for native apps only
+  if (!isNativeApp) {
     return null;
   }
 
@@ -225,9 +225,16 @@ const Settings = () => {
     <div className="settings-container">
       <div className="container">
         <div className="settings-content">
+          <button
+            type="button"
+            className="settings-back-btn"
+            onClick={() => navigate('/profile')}
+          >
+            ← Back to Profile
+          </button>
           <h1 className="settings-title">Settings</h1>
 
-          {/* Notification Preferences Section - iOS push only; no email opt-out exists */}
+          {/* Notification Preferences Section - native push; no email opt-out exists */}
           <div className="settings-section">
             <h2 className="settings-section-title">Push Notification Preferences</h2>
             <p className="settings-section-description">

@@ -29,6 +29,16 @@
   line-height: 1.6;
 }
 
+.teamgear-page > p a {
+  color: #2563eb;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.teamgear-page > p a:hover {
+  color: #1d4ed8;
+}
+
 /* Gear Grid */
 .gear-grid {
   display: grid;

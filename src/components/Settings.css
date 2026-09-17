@@ -18,6 +18,23 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.settings-back-btn {
+  display: inline-block;
+  background: none;
+  border: none;
+  color: #1E3A8A;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-back-btn:hover {
+  text-decoration: underline;
+}
+
 .settings-title {
   color: #1E3A8A;
   font-size: 2.5rem;

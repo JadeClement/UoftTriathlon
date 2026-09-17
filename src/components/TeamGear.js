@@ -617,15 +617,18 @@ const TeamGear = () => {
       </p>
       <h2>Triathlon Specific Gear</h2>
       <p>
-      The tri suits, bike kits and running singletsre from Champion Systems. The main reference for triathlon is here
-      https://www.champ-sys.ca/pages/triathlon, but you may look at cycling and running items. 
-
-      
+        The tri suits, bike kits and running singletsre from Champion Systems. The main reference for triathlon is here{' '}
+        <a
+          href="https://www.champ-sys.ca/pages/triathlon"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          https://www.champ-sys.ca/pages/triathlon
+        </a>
+        , but you may look at cycling and running items.
       </p>
       
       <h2 style={{ marginTop: '2rem' }}>Under Armour Gear</h2>
-      <p>Please order through website by October 19th. After this you will receive an invoice from the university.</p>
-      <p>Under construction, please check back later today.</p>
       <div className="gear-grid">
         {gearItems.map(item => (
           <div key={item.id} className="gear-item">

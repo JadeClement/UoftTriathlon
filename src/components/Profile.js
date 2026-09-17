@@ -1,16 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmModal from './ConfirmModal';
 import { getApiBaseUrl } from '../utils/apiConfig';
 import { validatePhoneNumber, formatPhoneNumber, formatPhoneNumberInput } from '../utils/phoneUtils';
+import { getDetailBackNav } from '../utils/swipeNavigation';
 import './Profile.css';
 
 const DEFAULT_PROFILE_IMAGE = '/images/default_profile.png';
 
 const Profile = () => {
   const params = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { role, name } = params;
+  const teamBackNav = getDetailBackNav(location.pathname) || {
+    backTo: '/coaches-exec',
+    label: '← Back to Team',
+  };
   const { currentUser, updateUser, isMember, refreshUserData } = useAuth();
   const [teamMembers, setTeamMembers] = useState({});
   const [teamLoading, setTeamLoading] = useState(true);
@@ -673,7 +680,13 @@ const Profile = () => {
           <div className="error-state">
             <h2>Profile Not Found</h2>
             <p>Sorry, we couldn't find the profile you're looking for.</p>
-            <Link to="/coaches-exec" className="back-link">← Back to Team</Link>
+            <button
+              type="button"
+              className="back-link"
+              onClick={() => navigate(teamBackNav.backTo)}
+            >
+              {teamBackNav.label}
+            </button>
           </div>
         </div>
       </div>
@@ -839,7 +852,13 @@ const Profile = () => {
       <div className="container">
         {!isUserProfile && (
           <div className="profile-top-bar">
-            <Link to="/coaches-exec" className="back-link">← Back to Team</Link>
+            <button
+              type="button"
+              className="back-link"
+              onClick={() => navigate(teamBackNav.backTo)}
+            >
+              {teamBackNav.label}
+            </button>
           </div>
         )}
         
