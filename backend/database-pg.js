@@ -3,13 +3,30 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('./utils/logger');
 
+/**
+ * Railway/production Postgres expects SSL; local/CI Postgres (localhost) does not.
+ * Always forcing SSL when DATABASE_URL is set breaks GitHub Actions.
+ */
+function getSslConfig(connectionString) {
+  if (process.env.DATABASE_SSL === 'true') {
+    return { rejectUnauthorized: false };
+  }
+  if (process.env.DATABASE_SSL === 'false') {
+    return false;
+  }
+  if (!connectionString) return false;
+  if (/localhost|127\.0\.0\.1/i.test(connectionString)) {
+    return false;
+  }
+  return { rejectUnauthorized: false };
+}
+
 // PostgreSQL connection configuration
 const pool = new Pool(
-  process.env.DATABASE_URL 
+  process.env.DATABASE_URL
     ? {
-        // Production (Railway) - use DATABASE_URL
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
+        ssl: getSslConfig(process.env.DATABASE_URL),
         max: 20, // Maximum number of clients in the pool
         idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
         connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
