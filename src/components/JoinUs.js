@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { formatFeeAmount } from '../config/membershipFees';
 import { DEFAULT_JOIN_US_CONTENT } from '../config/joinUsDefaults';
@@ -78,6 +79,7 @@ const stepHasJoinExtras = (step) =>
 
 const JoinUs = () => {
   const { currentUser, isAdmin } = useAuth();
+  const location = useLocation();
   const canEdit = !!(currentUser && isAdmin(currentUser));
   const [isSticky, setIsSticky] = useState(false);
   const [content, setContent] = useState(DEFAULT_JOIN_US_CONTENT);
@@ -184,6 +186,17 @@ const JoinUs = () => {
     },
     [applyOffsetVars]
   );
+
+  // Honor /join-us#how-to-join (and other section hashes) after content loads.
+  useEffect(() => {
+    if (loading) return;
+    const id = (location.hash || '').replace(/^#/, '');
+    if (!id) return;
+    const timer = setTimeout(() => {
+      handleNavClick({ preventDefault() {} }, id);
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [loading, location.hash, handleNavClick]);
 
   useEffect(() => {
     const nav = navRef.current;

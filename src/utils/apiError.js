@@ -4,7 +4,7 @@
  */
 
 export const TERM_EXPIRED_DEFAULT =
-  'Sorry, your term has expired. To regain access, purchase a membership for the next term, then go to your Profile page and upload your payment receipt. An exec will review it and reactivate your account. If you have questions, email info@uoft-tri.club.';
+  'Sorry, your term has expired. To regain access, purchase a membership for the next term (see instructions here), then go to your Profile page and upload your payment receipt. An exec will review it and reactivate your account. If you have questions, email info@uoft-tri.club.';
 
 export const STALE_TOKEN_DEFAULT =
   'Your membership was updated. Please log out and log back in to continue.';

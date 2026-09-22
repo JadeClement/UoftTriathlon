@@ -17,17 +17,31 @@ import { getWorkoutTypeOptions } from '../utils/workoutTypes';
 
 const renderTermExpiredMessage = (message) => {
   const text = message || TERM_EXPIRED_DEFAULT;
-  const parts = text.split(/(profile page)/i);
-  if (parts.length < 3) return text;
-  return parts.map((part, index) =>
-    /profile page/i.test(part) ? (
-      <Link key={index} to="/profile" className="notice-inline-link">
-        {part}
-      </Link>
-    ) : (
-      part
-    )
-  );
+  const parts = text.split(/(see instructions here|profile page|info@uoft-tri\.club)/gi);
+  return parts.map((part, index) => {
+    if (/^see instructions here$/i.test(part)) {
+      return (
+        <Link key={index} to="/join-us#how-to-join" className="notice-inline-link">
+          {part}
+        </Link>
+      );
+    }
+    if (/^profile page$/i.test(part)) {
+      return (
+        <Link key={index} to="/profile" className="notice-inline-link">
+          {part}
+        </Link>
+      );
+    }
+    if (/^info@uoft-tri\.club$/i.test(part)) {
+      return (
+        <a key={index} href="mailto:info@uoft-tri.club" className="notice-inline-link">
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
 };
 
 const Forum = () => {
@@ -1531,10 +1545,7 @@ const Forum = () => {
             }}
           >
             <p style={{ margin: 0 }}>
-              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are
-              already signed in, go to your <a href="/profile">Profile</a> page and upload your
-              membership payment receipt. An exec will review it and confirm your registration—no
-              need to email it. After approval, log out and log back in to see this page.
+              You don't have access to the forum. Please <a href="/login">sign in</a>.
             </p>
             <p style={{ margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9 }}>
               <strong>Note:</strong> If you were a member on our old website, you'll be
@@ -1567,10 +1578,10 @@ const Forum = () => {
             }}
           >
             <p style={{ margin: 0 }}>
-              You don't have access to the forum. Please <a href="/login">sign in</a>. If you are
-              already signed in, go to your <a href="/profile">Profile</a> page and upload your
-              membership payment receipt. An exec will review it and confirm your registration—no
-              need to email it. After approval, log out and log back in to see this page.
+              You don't have access to the forum. Please go to your{' '}
+              <a href="/profile">Profile</a> page and upload your membership payment receipt. An
+              exec will review it and confirm your registration—no need to email it. After
+              approval, log out and log back in to see this page.
             </p>
             <p style={{ margin: '12px 0 0 0', fontSize: '14px', opacity: 0.9 }}>
               <strong>Note:</strong> If you were a member on our old website, you'll be

@@ -139,7 +139,7 @@ const requireMember = async (req, res, next) => {
               logger.debug('❌ requireMember: Term expired for user:', req.user.id);
               return res.status(403).json({ 
                 error: 'term_expired',
-                message: 'Sorry, your term has expired. To regain access, purchase a membership for the next term, then go to your Profile page and upload your payment receipt. An exec will review it and reactivate your account. If you have questions, email info@uoft-tri.club.'
+                message: 'Sorry, your term has expired. To regain access, purchase a membership for the next term (see instructions here), then go to your Profile page and upload your payment receipt. An exec will review it and reactivate your account. If you have questions, email info@uoft-tri.club.'
               });
             }
           }
