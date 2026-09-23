@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { syncForumPosts, syncWorkout, syncRaces } from '../services/dataSync';
+import { syncForumPosts, syncWorkout, syncRaces, syncTeamProfiles } from '../services/dataSync';
 
 /**
  * Hook for forum posts with offline support
@@ -253,6 +253,82 @@ export function useRaces() {
 
   return {
     races,
+    loading,
+    error,
+    fromCache,
+    isOffline,
+    refresh
+  };
+}
+
+/**
+ * Hook for coaches & exec team profiles with offline support
+ */
+export function useTeamProfiles() {
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [fromCache, setFromCache] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  const loadTeamProfiles = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await syncTeamProfiles();
+
+      setTeamMembers(result.teamMembers || []);
+      setFromCache(result.fromCache || false);
+      setIsOffline(result.offline || !navigator.onLine);
+
+      if (result.error && (!result.teamMembers || result.teamMembers.length === 0)) {
+        setError(result.error);
+      }
+
+      if (result.fromCache && navigator.onLine) {
+        syncTeamProfiles()
+          .then((updated) => {
+            if (updated.teamMembers && updated.teamMembers.length > 0) {
+              setTeamMembers(updated.teamMembers);
+              setFromCache(false);
+              setError(null);
+            }
+          })
+          .catch((err) => {
+            console.warn('Background team profiles sync failed:', err);
+          });
+      }
+    } catch (err) {
+      console.error('Error loading team profiles:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTeamProfiles();
+
+    const handleOnline = () => {
+      setIsOffline(false);
+      loadTeamProfiles();
+    };
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [loadTeamProfiles]);
+
+  const refresh = useCallback(() => loadTeamProfiles(), [loadTeamProfiles]);
+
+  return {
+    teamMembers,
     loading,
     error,
     fromCache,

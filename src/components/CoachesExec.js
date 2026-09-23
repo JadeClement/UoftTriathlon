@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTeamProfiles } from '../hooks/useOfflineData';
+import { teamProfiles as teamProfilesCache } from '../utils/indexedDB';
 import { showError, showSuccess } from './SimpleNotification';
 import './CoachesExec.css';
 import { getApiBaseUrl } from '../utils/apiConfig';
@@ -42,15 +44,19 @@ const getCardTitle = (member) =>
     : member.role;
 
 const CoachesExec = () => {
-  const location = useLocation();
-  const { currentUser, isAdmin, isExec, isCoach } = useAuth();
-  const isCoachOrExec = currentUser && (isAdmin(currentUser) || isExec(currentUser) || isCoach(currentUser));
+  const { currentUser, isAdmin, isExec } = useAuth();
   const canEditProfiles = currentUser && (isAdmin(currentUser) || isExec(currentUser));
   const canManagePositions = currentUser && isAdmin(currentUser);
 
+  const {
+    teamMembers: cachedTeamMembers,
+    loading,
+    error: loadError,
+    isOffline,
+    refresh
+  } = useTeamProfiles();
+
   const [teamMembers, setTeamMembers] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -77,47 +83,21 @@ const CoachesExec = () => {
   const coaches = useMemo(() => getMembersByCategory(teamMembers, 'coach'), [teamMembers]);
   const execMembers = useMemo(() => getMembersByCategory(teamMembers, 'exec'), [teamMembers]);
   const pastPresidents = useMemo(() => getMembersByCategory(teamMembers, 'past-president'), [teamMembers]);
-
-  const loadTeamMembers = async () => {
-    const response = await fetch(`${API_BASE}/profiles`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    }).catch((networkError) => {
-      throw new Error(`Network error: ${networkError.message || 'Failed to connect to server'}`);
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch team members: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return membersArrayToObject(data.teamMembers);
-  };
+  const hasMembers = Object.keys(teamMembers).length > 0;
+  const error = !hasMembers && loadError
+    ? `Failed to load team members: ${loadError}`
+    : (!hasMembers && isOffline && !loading
+      ? 'Failed to load team members: Network error: Failed to fetch'
+      : null);
+  const showOfflineBanner = isOffline && hasMembers;
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        setLoading(true);
-        setTeamMembers(await loadTeamMembers());
-        setError(null);
-      } catch (fetchError) {
-        console.error('Error loading team members:', fetchError);
-        setError(`Failed to load team members: ${fetchError.message || 'Unknown error'}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMembers();
-  }, []);
-
-  useEffect(() => {
-    if (!loading) {
-      loadTeamMembers()
-        .then(setTeamMembers)
-        .catch((refreshError) => console.error('Error refreshing team members:', refreshError));
+    if (cachedTeamMembers && cachedTeamMembers.length > 0) {
+      setTeamMembers(membersArrayToObject(cachedTeamMembers));
+    } else if (!loading && !loadError) {
+      setTeamMembers({});
     }
-  }, [location.pathname, loading]);
+  }, [cachedTeamMembers, loading, loadError]);
 
   const handleEditClick = (memberId) => {
     const member = teamMembers[memberId];
@@ -150,6 +130,11 @@ const CoachesExec = () => {
 
   const handleSaveEdit = async () => {
     if (!editingMember) return;
+
+    if (!navigator.onLine) {
+      showError("You're offline. Connect to the internet to update profiles.");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -190,18 +175,27 @@ const CoachesExec = () => {
         normalizedImage = `${API_BASE}/..${normalizedImage}`;
       }
 
+      const updatedMember = {
+        ...teamMembers[editingMember],
+        ...updatedFromServer,
+        name: updatedFromServer.name ?? editForm.name,
+        role: updatedFromServer.role ?? editForm.role,
+        email: updatedFromServer.email ?? editForm.email,
+        bio: updatedFromServer.bio ?? editForm.bio,
+        profileLabel: updatedFromServer.profileLabel ?? editForm.profileLabel,
+        image: normalizedImage || editForm.image || teamMembers[editingMember]?.image
+      };
+
       setTeamMembers((prev) => ({
         ...prev,
-        [editingMember]: {
-          ...prev[editingMember],
-          name: updatedFromServer.name ?? editForm.name,
-          role: updatedFromServer.role ?? editForm.role,
-          email: updatedFromServer.email ?? editForm.email,
-          bio: updatedFromServer.bio ?? editForm.bio,
-          profileLabel: updatedFromServer.profileLabel ?? editForm.profileLabel,
-          image: normalizedImage || editForm.image || prev[editingMember]?.image
-        }
+        [editingMember]: updatedMember
       }));
+
+      try {
+        await teamProfilesCache.put(updatedMember);
+      } catch (cacheError) {
+        console.warn('Failed to update team profile cache:', cacheError);
+      }
 
       showSuccess('Profile updated successfully.');
       handleCloseEdit();
@@ -236,6 +230,11 @@ const CoachesExec = () => {
       return;
     }
 
+    if (!navigator.onLine) {
+      showError("You're offline. Connect to the internet to add positions.");
+      return;
+    }
+
     try {
       setAddingPosition(true);
       const token = localStorage.getItem('triathlonToken');
@@ -263,6 +262,12 @@ const CoachesExec = () => {
         ...prev,
         [newMember.id]: newMember
       }));
+
+      try {
+        await teamProfilesCache.put(newMember);
+      } catch (cacheError) {
+        console.warn('Failed to update team profile cache:', cacheError);
+      }
 
       showSuccess('Position added successfully.');
       setShowAddPosition(false);
@@ -292,7 +297,7 @@ const CoachesExec = () => {
 
   const renderCoachCard = (member) => (
     <div key={member.id} className="coach-card-container">
-      {canEditProfiles && (
+      {canEditProfiles && !isOffline && (
         <button
           className="edit-button"
           onClick={() => handleEditClick(member.id)}
@@ -326,7 +331,7 @@ const CoachesExec = () => {
 
   const renderExecCard = (member) => (
     <div key={member.id} className="exec-card-container">
-      {canEditProfiles && (
+      {canEditProfiles && !isOffline && (
         <button
           className="edit-button"
           onClick={(e) => {
@@ -363,7 +368,7 @@ const CoachesExec = () => {
     <div className="section-header-row">
       <h2 className="section-subtitle">
         {title}
-        {canManagePositions && (
+        {canManagePositions && !isOffline && (
           <button
             className={`add-position-button${secondary ? ' add-position-button-secondary' : ''}`}
             onClick={() => openAddPosition(category)}
@@ -392,12 +397,12 @@ const CoachesExec = () => {
   }
 
   if (error) {
-    const isOffline = !navigator.onLine || /network error|load failed|failed to fetch|failed to connect/i.test(error);
-    if (isCoachOrExec && isOffline) {
-      return (
-        <div className="coaches-exec-container">
-          <div className="container">
-            <h1 className="section-title">Coaches & Executive Team</h1>
+    const offlineError = isOffline || /network error|load failed|failed to fetch|failed to connect/i.test(error);
+    return (
+      <div className="coaches-exec-container">
+        <div className="container">
+          <h1 className="section-title">Coaches & Executive Team</h1>
+          {offlineError ? (
             <div className="offline-state" style={{
               textAlign: 'center',
               padding: '3rem 2rem',
@@ -407,29 +412,23 @@ const CoachesExec = () => {
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📴</div>
               <h2 style={{ color: '#374151', marginBottom: '0.75rem' }}>You&apos;re Offline</h2>
               <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-                The Team page needs an internet connection to load. Check your connection and try again when you&apos;re back online.
+                No cached team roster is available yet. Open this page once while online so it can be saved for offline use.
               </p>
               <button
                 className="btn btn-primary"
-                onClick={() => window.location.reload()}
+                onClick={() => refresh()}
                 disabled={!navigator.onLine}
               >
                 Try Again
               </button>
             </div>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="coaches-exec-container">
-        <div className="container">
-          <h1 className="section-title">Coaches & Executive Team</h1>
-          <div className="error-state">
-            <h2>Error loading team members</h2>
-            <p>{error}</p>
-            <button onClick={() => window.location.reload()}>Try Again</button>
-          </div>
+          ) : (
+            <div className="error-state">
+              <h2>Error loading team members</h2>
+              <p>{error}</p>
+              <button onClick={() => refresh()}>Try Again</button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -439,6 +438,15 @@ const CoachesExec = () => {
     <div className="coaches-exec-container">
       <div className="container">
         <h1 className="section-title">Coaches & Executive Team</h1>
+
+        {showOfflineBanner && (
+          <div className="offline-indicator">
+            <span className="offline-icon">📴</span>
+            <span className="offline-text">
+              You're offline. Showing cached team roster.
+            </span>
+          </div>
+        )}
 
         <div className="coaches-section">
           {renderSectionHeader('Our Coaches', 'coach')}

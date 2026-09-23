@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'UofTTriDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Object store names
 const STORES = {
@@ -14,6 +14,7 @@ const STORES = {
   WORKOUT_WAITLISTS: 'workoutWaitlists',
   RACES: 'races',
   RACE_SIGNUPS: 'raceSignups',
+  TEAM_PROFILES: 'teamProfiles',
   SYNC_QUEUE: 'syncQueue',
   CACHE_METADATA: 'cacheMetadata'
 };
@@ -90,6 +91,13 @@ export async function initDB() {
         const raceSignupStore = db.createObjectStore(STORES.RACE_SIGNUPS, { keyPath: 'id' });
         raceSignupStore.createIndex('race_id', 'race_id', { unique: false });
         raceSignupStore.createIndex('user_id', 'user_id', { unique: false });
+      }
+
+      // Team profiles (coaches / exec) store
+      if (!db.objectStoreNames.contains(STORES.TEAM_PROFILES)) {
+        const teamStore = db.createObjectStore(STORES.TEAM_PROFILES, { keyPath: 'id' });
+        teamStore.createIndex('category', 'category', { unique: false });
+        teamStore.createIndex('sortOrder', 'sortOrder', { unique: false });
       }
 
       // Sync queue store (already created by backgroundSync, but ensure it exists)
@@ -322,6 +330,18 @@ export const raceSignups = {
   queryByRaceId: (raceId) => query(STORES.RACE_SIGNUPS, 'race_id', raceId),
   queryByUserId: (userId) => query(STORES.RACE_SIGNUPS, 'user_id', userId),
   count: () => count(STORES.RACE_SIGNUPS)
+};
+
+// Team profiles (coaches & exec)
+export const teamProfiles = {
+  put: (member) => put(STORES.TEAM_PROFILES, member),
+  putAll: (members) => putAll(STORES.TEAM_PROFILES, members),
+  get: (id) => get(STORES.TEAM_PROFILES, id),
+  getAll: () => getAll(STORES.TEAM_PROFILES),
+  remove: (id) => remove(STORES.TEAM_PROFILES, id),
+  clear: () => clear(STORES.TEAM_PROFILES),
+  queryByCategory: (category) => query(STORES.TEAM_PROFILES, 'category', category),
+  count: () => count(STORES.TEAM_PROFILES)
 };
 
 // Cache Metadata

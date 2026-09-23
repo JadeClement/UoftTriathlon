@@ -10,6 +10,7 @@ import {
   workoutWaitlists,
   races,
   raceSignups,
+  teamProfiles,
   cacheMetadata,
   initDB,
 } from '../utils/indexedDB';
@@ -22,7 +23,8 @@ const CACHE_DURATION = {
   WORKOUT_SIGNUPS: 2 * 60 * 1000,  // 2 minutes
   WORKOUT_WAITLISTS: 2 * 60 * 1000, // 2 minutes
   RACES: 10 * 60 * 1000,           // 10 minutes
-  RACE_SIGNUPS: 5 * 60 * 1000      // 5 minutes
+  RACE_SIGNUPS: 5 * 60 * 1000,     // 5 minutes
+  TEAM_PROFILES: 30 * 60 * 1000    // 30 minutes — team roster changes infrequently
 };
 
 /**
@@ -295,6 +297,75 @@ export async function syncRaces() {
 }
 
 /**
+ * Fetch team profiles (coaches / exec) from API
+ */
+async function fetchTeamProfilesFromAPI() {
+  const response = await fetch(`${API_BASE_URL}/profiles`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch team members: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Sync coaches & exec team profiles (offline-first)
+ */
+export async function syncTeamProfiles() {
+  try {
+    await initDB();
+
+    const isOnline = navigator.onLine;
+    const cacheKey = 'teamProfiles';
+    const stale = await isStale(cacheKey, CACHE_DURATION.TEAM_PROFILES);
+
+    if (!isOnline || !stale) {
+      const cached = await teamProfiles.getAll();
+      if (cached.length > 0) {
+        console.log('📦 Returning cached team profiles');
+        return { teamMembers: cached, fromCache: true, offline: !isOnline };
+      }
+    }
+
+    if (!isOnline) {
+      return {
+        teamMembers: [],
+        fromCache: true,
+        offline: true,
+        error: 'Offline and no cached team roster available'
+      };
+    }
+
+    console.log('🌐 Fetching team profiles from API');
+    const data = await fetchTeamProfilesFromAPI();
+    const members = Array.isArray(data.teamMembers) ? data.teamMembers : [];
+
+    if (members.length > 0) {
+      await teamProfiles.clear();
+      await teamProfiles.putAll(members);
+      await cacheMetadata.updateLastSync(cacheKey);
+      console.log(`✅ Cached ${members.length} team profiles`);
+    }
+
+    return { teamMembers: members, fromCache: false };
+  } catch (error) {
+    console.error('Error syncing team profiles:', error);
+
+    const cached = await teamProfiles.getAll();
+    return {
+      teamMembers: cached,
+      fromCache: true,
+      offline: !navigator.onLine,
+      error: cached.length === 0 ? error.message : undefined
+    };
+  }
+}
+
+/**
  * Clear all cached data
  */
 export async function clearCache() {
@@ -306,7 +377,8 @@ export async function clearCache() {
       workoutSignups.clear(),
       workoutWaitlists.clear(),
       races.clear(),
-      raceSignups.clear()
+      raceSignups.clear(),
+      teamProfiles.clear()
     ]);
     
     console.log('🗑️ Cache cleared');
@@ -324,18 +396,20 @@ export async function getCacheStats() {
   try {
     await initDB();
     
-    const [forumCount, signupCount, waitlistCount, raceCount] = await Promise.all([
+    const [forumCount, signupCount, waitlistCount, raceCount, teamCount] = await Promise.all([
       forumPosts.count(),
       workoutSignups.count(),
       workoutWaitlists.count(),
-      races.count()
+      races.count(),
+      teamProfiles.count()
     ]);
     
     return {
       forumPosts: forumCount,
       workoutSignups: signupCount,
       workoutWaitlists: waitlistCount,
-      races: raceCount
+      races: raceCount,
+      teamProfiles: teamCount
     };
   } catch (error) {
     console.error('Error getting cache stats:', error);

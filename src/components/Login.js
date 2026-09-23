@@ -16,7 +16,10 @@ import { getApiBaseUrl } from '../utils/apiConfig';
 import { validatePhoneNumber, formatPhoneNumber, formatPhoneNumberInput } from '../utils/phoneUtils';
 
 const Login = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('signup') !== '1';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

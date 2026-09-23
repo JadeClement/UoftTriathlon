@@ -5,6 +5,7 @@ import ConfirmModal from './ConfirmModal';
 import { getApiBaseUrl } from '../utils/apiConfig';
 import { validatePhoneNumber, formatPhoneNumber, formatPhoneNumberInput } from '../utils/phoneUtils';
 import { getDetailBackNav } from '../utils/swipeNavigation';
+import { syncTeamProfiles } from '../services/dataSync';
 import './Profile.css';
 
 const DEFAULT_PROFILE_IMAGE = '/images/default_profile.png';
@@ -66,51 +67,40 @@ const Profile = () => {
     return result;
   }, [role]);
 
-  // Load team members from backend API
-  useEffect(() => {
-    const loadTeamMembers = async () => {
-      try {
-        setTeamLoading(true);
-        const response = await fetch(`${getApiBaseUrl()}/profiles`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch team members');
-        }
-        
-        const data = await response.json();
-        
-        // Convert array to object with id as key
-        const membersObject = {};
-        if (Array.isArray(data.teamMembers)) {
-          data.teamMembers.forEach(member => {
-            let image = member.image;
-            // If no image provided, or is blank/whitespace, use default blue profile image
-            if (!image || (typeof image === 'string' && image.trim() === '')) {
-              image = '/images/icon.png';
-            }
-            // Convert relative image URLs to full URLs for display
-            const normalizedImage = image && image.startsWith('/uploads/')
-              ? `${getApiBaseUrl()}/..${image}`
-              : image;
-            
-            membersObject[member.id] = {
-              ...member,
-              image: normalizedImage
-            };
-          });
-          console.log('✅ Loaded team members:', membersObject);
-        }
-        
-        setTeamMembers(membersObject);
-      } catch (error) {
-        console.error('Error loading team members:', error);
-      } finally {
-        setTeamLoading(false);
-      }
-    };
+  // Load team members (offline-first via IndexedDB cache)
+  const loadTeamMembers = React.useCallback(async () => {
+    try {
+      setTeamLoading(true);
+      const result = await syncTeamProfiles();
+      const list = Array.isArray(result.teamMembers) ? result.teamMembers : [];
 
-    loadTeamMembers();
+      const membersObject = {};
+      list.forEach((member) => {
+        let image = member.image;
+        if (!image || (typeof image === 'string' && image.trim() === '')) {
+          image = '/images/icon.png';
+        }
+        const normalizedImage = image && image.startsWith('/uploads/')
+          ? `${getApiBaseUrl()}/..${image}`
+          : image;
+
+        membersObject[member.id] = {
+          ...member,
+          image: normalizedImage
+        };
+      });
+
+      setTeamMembers(membersObject);
+    } catch (error) {
+      console.error('Error loading team members:', error);
+    } finally {
+      setTeamLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadTeamMembers();
+  }, [loadTeamMembers]);
 
   useEffect(() => {
     if (isUserProfile && currentUser?.id) {
@@ -674,19 +664,48 @@ const Profile = () => {
   }
 
   if (!userProfile) {
+    const isOwnProfileGate = isUserProfile && !currentUser;
+
     return (
       <div className="profile-container">
         <div className="container">
-          <div className="error-state">
-            <h2>Profile Not Found</h2>
-            <p>Sorry, we couldn't find the profile you're looking for.</p>
-            <button
-              type="button"
-              className="back-link"
-              onClick={() => navigate(teamBackNav.backTo)}
-            >
-              {teamBackNav.label}
-            </button>
+          <div className="profile-empty-state">
+            {isOwnProfileGate ? (
+              <>
+                <h2>Sign in to view your profile</h2>
+                <div className="profile-empty-actions">
+                  <Link to="/login" className="btn btn-primary">
+                    Log in
+                  </Link>
+                  <Link to="/login?signup=1" className="btn btn-secondary">
+                    Sign up
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Profile not available</h2>
+                <p>
+                  This person may have been removed, the link may be outdated, or the team roster
+                  hasn&apos;t been loaded on this device yet. Open Coaches &amp; Executive Team once
+                  while online, then try again.
+                </p>
+                <div className="profile-empty-actions">
+                  <Link to={teamBackNav.backTo} className="btn btn-secondary">
+                    Back to Team
+                  </Link>
+                  {navigator.onLine && (
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => loadTeamMembers()}
+                    >
+                      Try Again
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

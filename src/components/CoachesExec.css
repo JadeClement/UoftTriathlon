@@ -5,6 +5,27 @@
   min-height: calc(100vh - var(--navbar-height, 70px));
 }
 
+.offline-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  color: #92400e;
+  font-size: 14px;
+}
+
+.offline-icon {
+  font-size: 18px;
+}
+
+.offline-text {
+  font-weight: 500;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
