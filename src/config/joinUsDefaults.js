@@ -41,7 +41,7 @@ export const DEFAULT_JOIN_US_CONTENT = {
       },
       {
         title: 'Join the U of T Athletics Centre (AC)',
-        body: 'You must be an AC-member to join the Tri Club (provides access to training facilities, including pool). U of T students are automatically AC-members during the Fall and Winter terms. Otherwise, AC-membership can be purchased at the AC Main Office.',
+        body: 'You must be an AC-member to join the Tri Club (provides access to training facilities, including pool), except for the run only option. U of T students are automatically AC-members during the Fall and Winter terms. Otherwise, AC-membership can be purchased at the AC Main Office.',
       },
       {
         title: 'Join the Tri Club',
