@@ -460,7 +460,7 @@ const Races = () => {
     [...getFilteredRaces()].sort((a, b) => {
       const da = String(a.date).split('T')[0];
       const db = String(b.date).split('T')[0];
-      return da.localeCompare(db);
+      return db.localeCompare(da);
     });
 
   const formatDateShort = (dateString) => {
