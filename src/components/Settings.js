@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import { showSuccess, showError } from './SimpleNotification';
@@ -28,24 +28,28 @@ const Settings = () => {
     runWorkouts: false,
     events: false,
     forumReplies: false,
-    waitlistPromotions: false
+    waitlistPromotions: false,
+    smsEnabled: false,
+    workoutReminderHours: 24
   });
   const [notificationPrefsLoading, setNotificationPrefsLoading] = useState(false);
+  const [phoneInfo, setPhoneInfo] = useState({
+    number: null,
+    verified: false
+  });
+  const [smsConfigured, setSmsConfigured] = useState(true);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
 
   const API_BASE_URL = getApiBaseUrl();
 
   useEffect(() => {
-    // Push/settings UI is for the native apps (iOS + Android)
-    if (!isNativeApp) {
-      navigate('/profile');
-      return;
-    }
-
     if (!currentUser) {
       navigate('/login');
       return;
     }
-    
+
     if (!isMember(currentUser)) {
       navigate('/login');
       return;
@@ -55,14 +59,13 @@ const Settings = () => {
     setResultsPublic(currentUser?.results_public ?? currentUser?.resultsPublic ?? false);
     setRacesPublic(currentUser?.races_public ?? currentUser?.racesPublic ?? false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, navigate, isMember, isNativeApp]);
+  }, [currentUser, navigate, isMember]);
 
-  // Load notification preferences
   const loadNotificationPrefs = async () => {
     try {
       const token = localStorage.getItem('triathlonToken');
       const response = await fetch(`${API_BASE_URL}/users/notification-preferences`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
@@ -73,16 +76,26 @@ const Settings = () => {
             runWorkouts: data.preferences.run_workouts || false,
             events: data.preferences.events || false,
             forumReplies: data.preferences.forum_replies || false,
-            waitlistPromotions: data.preferences.waitlist_promotions || false
+            waitlistPromotions: data.preferences.waitlist_promotions || false,
+            smsEnabled: data.preferences.sms_enabled || false,
+            workoutReminderHours: [1, 12, 24].includes(Number(data.preferences.workout_reminder_hours))
+              ? Number(data.preferences.workout_reminder_hours)
+              : 24
           });
         }
+        if (data.phone) {
+          setPhoneInfo({
+            number: data.phone.number || null,
+            verified: Boolean(data.phone.verified)
+          });
+        }
+        setSmsConfigured(data.sms_configured !== false);
       }
     } catch (error) {
       console.error('Error loading notification preferences:', error);
     }
   };
 
-  // Save notification preferences
   const saveNotificationPrefs = async (newPrefs) => {
     try {
       setNotificationPrefsLoading(true);
@@ -90,7 +103,7 @@ const Settings = () => {
       const response = await fetch(`${API_BASE_URL}/users/notification-preferences`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -100,7 +113,9 @@ const Settings = () => {
             run_workouts: newPrefs.runWorkouts,
             events: newPrefs.events,
             forum_replies: newPrefs.forumReplies,
-            waitlist_promotions: newPrefs.waitlistPromotions
+            waitlist_promotions: newPrefs.waitlistPromotions,
+            sms_enabled: newPrefs.smsEnabled,
+            workout_reminder_hours: newPrefs.workoutReminderHours
           }
         })
       });
@@ -108,7 +123,8 @@ const Settings = () => {
         setNotificationPrefs(newPrefs);
         showSuccess('Notification preferences saved!');
       } else {
-        showError('Failed to save notification preferences');
+        const err = await response.json().catch(() => ({}));
+        showError(err.error || 'Failed to save notification preferences');
       }
     } catch (error) {
       console.error('Error saving notification preferences:', error);
@@ -116,6 +132,70 @@ const Settings = () => {
     } finally {
       setNotificationPrefsLoading(false);
     }
+  };
+
+  const handleSendVerification = async () => {
+    try {
+      setOtpLoading(true);
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/users/phone/send-verification`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setOtpSent(true);
+        showSuccess('Verification code sent by text');
+      } else {
+        showError(data.error || 'Failed to send verification code');
+      }
+    } catch (error) {
+      showError('Failed to send verification code');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    try {
+      setOtpLoading(true);
+      const token = localStorage.getItem('triathlonToken');
+      const response = await fetch(`${API_BASE_URL}/users/phone/verify`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ code: otpCode })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setPhoneInfo((prev) => ({ ...prev, verified: true }));
+        setOtpCode('');
+        setOtpSent(false);
+        updateUser({
+          ...currentUser,
+          phone_verified: true,
+          phoneVerified: true
+        });
+        showSuccess('Phone number verified');
+      } else {
+        showError(data.error || 'Failed to verify code');
+      }
+    } catch (error) {
+      showError('Failed to verify code');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleSmsToggle = (checked) => {
+    if (checked && !phoneInfo.verified) {
+      showError('Verify your phone number before enabling SMS');
+      return;
+    }
+    const newPrefs = { ...notificationPrefs, smsEnabled: checked };
+    saveNotificationPrefs(newPrefs);
   };
 
   const savePrivacyPref = async (field, value) => {
@@ -216,11 +296,6 @@ const Settings = () => {
     }
   };
 
-  // Settings (push prefs, privacy, account) are for native apps only
-  if (!isNativeApp) {
-    return null;
-  }
-
   return (
     <div className="settings-container">
       <div className="container">
@@ -234,38 +309,45 @@ const Settings = () => {
           </button>
           <h1 className="settings-title">Settings</h1>
 
-          {/* Notification Preferences Section - native push; no email opt-out exists */}
+          {/* Category preferences — shared by push (apps) and SMS */}
           <div className="settings-section">
-            <h2 className="settings-section-title">Push Notification Preferences</h2>
+            <h2 className="settings-section-title">Notification Categories</h2>
             <p className="settings-section-description">
-              Choose which push notifications you&apos;d like to receive in the app. Emails (e.g. waitlist promotions, role changes) are always sent and cannot be turned off here.
-            </p>
-            <p className="settings-system-notice">
-              {isIOS ? (
-                <>
-                  If you aren&apos;t receiving notifications, also turn them on in your phone&apos;s Settings:
-                  {' '}
-                  <strong>Settings → Notifications → UofT Triathlon</strong>
-                  {' '}
-                  (or search for the app), and enable Allow Notifications.
-                </>
-              ) : isAndroid ? (
-                <>
-                  If you aren&apos;t receiving notifications, also turn them on in your phone&apos;s system settings:
-                  {' '}
-                  <strong>Settings → Apps → UofT Triathlon → Notifications</strong>
-                  {' '}
-                  and enable notifications for the app.
-                </>
-              ) : (
-                <>
-                  If you aren&apos;t receiving notifications, also enable them for this app in your device&apos;s system Settings.
-                </>
-              )}
+              Choose what you want to be notified about.
+              {isNativeApp
+                ? ' These apply to push notifications on this device, and to SMS if you enable text alerts below.'
+                : ' On the website these apply to SMS text alerts (enable below). Push notifications are available in the iOS and Android apps.'}
+              {' '}
+              Emails (e.g. waitlist promotions, role changes) are always sent and cannot be turned off here.
             </p>
 
+            {isNativeApp && (
+              <p className="settings-system-notice">
+                {isIOS ? (
+                  <>
+                    If you aren&apos;t receiving push notifications, also turn them on in your phone&apos;s Settings:
+                    {' '}
+                    <strong>Settings → Notifications → UofT Triathlon</strong>
+                    {' '}
+                    (or search for the app), and enable Allow Notifications.
+                  </>
+                ) : isAndroid ? (
+                  <>
+                    If you aren&apos;t receiving push notifications, also turn them on in your phone&apos;s system settings:
+                    {' '}
+                    <strong>Settings → Apps → UofT Triathlon → Notifications</strong>
+                    {' '}
+                    and enable notifications for the app.
+                  </>
+                ) : (
+                  <>
+                    If you aren&apos;t receiving push notifications, also enable them for this app in your device&apos;s system Settings.
+                  </>
+                )}
+              </p>
+            )}
+
             <div className="settings-preferences">
-              {/* Workout Types - One row */}
               <div className="settings-pref-row">
                 <label className="settings-checkbox-label">
                   <input
@@ -305,7 +387,6 @@ const Settings = () => {
                 </label>
               </div>
 
-              {/* Other notifications */}
               <div className="settings-pref-row">
                 <label className="settings-checkbox-label">
                   <input
@@ -344,6 +425,133 @@ const Settings = () => {
                   <span>Waitlist Promotions</span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <div className="settings-section">
+            <h2 className="settings-section-title">Workout Reminders</h2>
+            <p className="settings-section-description">
+              Get a reminder before workouts you have signed up for. This is separate from the
+              category alerts above, which are for newly posted workouts. Reminders are sent as a
+              push notification in the app, and by text if you enable SMS below.
+            </p>
+            <div className="settings-radio-group" role="radiogroup" aria-label="Workout reminder timing">
+              {[
+                { hours: 24, label: '24 hours before (default)' },
+                { hours: 12, label: '12 hours before' },
+                { hours: 1, label: '1 hour before' }
+              ].map((option) => (
+                <label className="settings-radio-label" key={option.hours}>
+                  <input
+                    type="radio"
+                    name="workoutReminderHours"
+                    value={option.hours}
+                    checked={notificationPrefs.workoutReminderHours === option.hours}
+                    onChange={() => {
+                      const newPrefs = { ...notificationPrefs, workoutReminderHours: option.hours };
+                      saveNotificationPrefs(newPrefs);
+                    }}
+                    disabled={notificationPrefsLoading}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* SMS / Twilio opt-in */}
+          <div className="settings-section">
+            <h2 className="settings-section-title">Text (SMS) Notifications</h2>
+            <p className="settings-section-description">
+              Opt in to receive text messages for the categories you selected above, and for workout reminders.
+              {isNativeApp ? ' This is optional in addition to push notifications.' : ''}
+              {' '}
+              Message &amp; data rates may apply. Reply STOP to cancel texts from our number.
+            </p>
+
+            {!smsConfigured && (
+              <p className="settings-system-notice">
+                SMS is not configured on the server yet. Check back soon, or contact an exec.
+              </p>
+            )}
+
+            <div className="settings-sms-block">
+              <p className="settings-sms-phone">
+                Phone on profile:{' '}
+                <strong>{phoneInfo.number || 'Not set'}</strong>
+                {phoneInfo.number && (
+                  <>
+                    {' · '}
+                    {phoneInfo.verified ? (
+                      <span className="settings-verified">Verified</span>
+                    ) : (
+                      <span className="settings-unverified">Not verified</span>
+                    )}
+                  </>
+                )}
+              </p>
+              <p className="settings-section-description" style={{ marginBottom: '1rem' }}>
+                Update your number on{' '}
+                <Link to="/profile">Profile</Link>
+                . Changing it requires re-verification and turns SMS off until you opt in again.
+              </p>
+
+              {phoneInfo.number && !phoneInfo.verified && smsConfigured && (
+                <div className="settings-otp">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleSendVerification}
+                    disabled={otpLoading}
+                  >
+                    {otpSent ? 'Resend code' : 'Send verification code'}
+                  </button>
+                  {otpSent && (
+                    <div className="settings-otp-row">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        placeholder="6-digit code"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="settings-otp-input"
+                        aria-label="Verification code"
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handleVerifyCode}
+                        disabled={otpLoading || otpCode.length !== 6}
+                      >
+                        Verify
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!phoneInfo.number && (
+                <p className="settings-section-description">
+                  Add a phone number on your <Link to="/profile">Profile</Link> to enable SMS.
+                </p>
+              )}
+
+              <label className="settings-checkbox-label settings-sms-toggle">
+                <input
+                  type="checkbox"
+                  checked={notificationPrefs.smsEnabled}
+                  onChange={(e) => handleSmsToggle(e.target.checked)}
+                  disabled={
+                    notificationPrefsLoading ||
+                    !smsConfigured ||
+                    !phoneInfo.number ||
+                    !phoneInfo.verified
+                  }
+                />
+                <span>Enable SMS notifications</span>
+              </label>
             </div>
           </div>
 

@@ -409,11 +409,32 @@ async function initializeDatabase() {
         events BOOLEAN DEFAULT FALSE,
         forum_replies BOOLEAN DEFAULT FALSE,
         waitlist_promotions BOOLEAN DEFAULT FALSE,
+        sms_enabled BOOLEAN DEFAULT FALSE,
+        workout_reminder_hours INTEGER NOT NULL DEFAULT 24,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT notification_preferences_reminder_hours_check
+          CHECK (workout_reminder_hours IN (1, 12, 24))
       )
     `);
     logger.debug('✅ Notification preferences table created');
+
+    // Phone OTP codes for SMS opt-in verification
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS phone_verification_codes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        phone_number VARCHAR(20) NOT NULL,
+        code_hash VARCHAR(64) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        attempts INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await pool.query(
+      'CREATE INDEX IF NOT EXISTS idx_phone_verification_codes_user_id ON phone_verification_codes(user_id)'
+    );
+    logger.debug('✅ Phone verification codes table created');
 
     // Create calendar_preferences table
     await pool.query(`
@@ -610,6 +631,76 @@ async function initializeDatabase() {
       logger.debug('✅ races_public column added to users table (or already exists)');
     } catch (error) {
       logger.debug('ℹ️  races_public column may already exist in users table');
+    }
+
+    // SMS notifications: phone verification + opt-in flag
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE
+      `);
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMP
+      `);
+      await pool.query(`
+        ALTER TABLE notification_preferences
+        ADD COLUMN IF NOT EXISTS sms_enabled BOOLEAN DEFAULT FALSE
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS phone_verification_codes (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          phone_number VARCHAR(20) NOT NULL,
+          code_hash VARCHAR(64) NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          attempts INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await pool.query(
+        'CREATE INDEX IF NOT EXISTS idx_phone_verification_codes_user_id ON phone_verification_codes(user_id)'
+      );
+      logger.debug('✅ SMS notification columns/tables ensured');
+    } catch (error) {
+      logger.debug('ℹ️  SMS notification schema may already exist:', error.message);
+    }
+
+    // Workout signup reminders: lead time preference + send log
+    try {
+      await pool.query(`
+        ALTER TABLE notification_preferences
+        ADD COLUMN IF NOT EXISTS workout_reminder_hours INTEGER NOT NULL DEFAULT 24
+      `);
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'notification_preferences_reminder_hours_check'
+          ) THEN
+            ALTER TABLE notification_preferences
+              ADD CONSTRAINT notification_preferences_reminder_hours_check
+              CHECK (workout_reminder_hours IN (1, 12, 24));
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS workout_reminders_sent (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          post_id INTEGER NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
+          hours_before INTEGER NOT NULL CHECK (hours_before IN (1, 12, 24)),
+          sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (user_id, post_id)
+        )
+      `);
+      await pool.query(
+        'CREATE INDEX IF NOT EXISTS idx_workout_reminders_sent_post_id ON workout_reminders_sent(post_id)'
+      );
+      logger.debug('✅ Workout reminder columns/tables ensured');
+    } catch (error) {
+      logger.error('❌ Workout reminder schema setup failed:', error.message);
     }
 
     // Profile years: season on team (editable on profile)

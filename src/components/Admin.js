@@ -2198,7 +2198,7 @@ const Admin = () => {
                   {editForm.phoneNumber && !validatePhoneNumber(editForm.phoneNumber) && (
                     <div className="error-message">Please enter a valid 10-digit phone number</div>
                   )}
-                  <small>Optional contact number (SMS notifications are not used)</small>
+                  <small>Optional. Members can verify this number in Settings to opt into SMS alerts.</small>
                 </div>
 
                 <div className="form-group">

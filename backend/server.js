@@ -256,6 +256,8 @@ async function startServer() {
       logger.debug(`📊 Health check: http://localhost:${PORT}/api/health`);
       logger.debug(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.debug('📊 Database: PostgreSQL (uofttriathlon)');
+      const { startWorkoutReminderScheduler } = require('./services/workoutReminderService');
+      startWorkoutReminderScheduler();
       // startAutoBackup(); // Commented out for now
     });
   } catch (error) {

@@ -4,6 +4,7 @@ const { pool } = require('../database-pg');
 const { authenticateToken, requireAdmin, requireRole, requireCoach } = require('../middleware/auth');
 const ExcelJS = require('exceljs');
 const notificationService = require('../services/notificationService');
+const smsService = require('../services/smsService');
 const { computeMembershipStatus, formatTermLabel } = require('../utils/membership');
 const logger = require('../utils/logger');
 
@@ -647,6 +648,12 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
 
     if (phone_number !== undefined) {
       const trimmedPhone = String(phone_number || '').trim();
+      const previousPhoneResult = await pool.query(
+        'SELECT phone_number FROM users WHERE id = $1',
+        [id]
+      );
+      const previousPhone = previousPhoneResult.rows[0]?.phone_number || null;
+
       if (trimmedPhone === '') {
         paramCount++;
         updates.push(`phone_number = $${paramCount}`);
@@ -660,6 +667,10 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
         updates.push(`phone_number = $${paramCount}`);
         values.push(trimmedPhone);
       }
+
+      // Stash for post-update verification reset
+      req._phoneChangedForSms = !smsService.phonesEqual(previousPhone, trimmedPhone === '' ? null : trimmedPhone) ||
+        (Boolean(previousPhone) !== Boolean(trimmedPhone));
     }
 
     if (role !== undefined) {
@@ -724,6 +735,14 @@ router.put('/members/:id/update', authenticateToken, requireAdmin, async (req, r
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (req._phoneChangedForSms) {
+      try {
+        await smsService.clearPhoneVerification(id, { disableSms: true });
+      } catch (clearErr) {
+        console.error('Failed to clear phone verification after admin phone change:', clearErr);
+      }
     }
 
     // Send email notification if role was actually changed
@@ -1490,10 +1509,11 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
   }
 });
 
-// SMS was never production-enabled (Twilio unused). Kept as an explicit rejection so old clients fail clearly.
+// Bulk SMS via Twilio was never used for club announcements; members opt into SMS
+// notifications themselves in Settings. Kept as an explicit rejection for old clients.
 router.post('/send-sms', authenticateToken, requireRole('exec'), async (req, res) => {
   return res.status(410).json({
-    error: 'SMS is not available. Use email instead.',
+    error: 'Bulk SMS is not available. Members can opt into SMS alerts in Settings.',
   });
 });
 

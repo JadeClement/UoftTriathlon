@@ -6,6 +6,7 @@ const { pool } = require('../database-pg');
 const { authenticateToken, allowOwnProfile, requireMember } = require('../middleware/auth');
 const { isS3Enabled, uploadBufferToS3, deleteFromS3, getS3KeyFromUrl } = require('../utils/s3');
 const { computeMembershipStatus, formatTermLabel } = require('../utils/membership');
+const smsService = require('../services/smsService');
 const logger = require('../utils/logger');
 
 // Debug (non-sensitive) printout of S3 detection to help diagnose env on deploys
@@ -93,6 +94,7 @@ router.get('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     const userResult = await pool.query(`
       SELECT u.id, u.name, u.email, u.role, u.created_at, u.phone_number, u.profile_picture_url,
         u.charter_accepted, u.results_public, u.races_public, u.bio, u.joined_year, u.end_year,
+        COALESCE(u.phone_verified, false) AS phone_verified, u.phone_verified_at,
         u.term_id, t.term, t.year AS term_year, t.start_date AS term_start_date, t.end_date AS term_end_date,
         EXISTS (
           SELECT 1 FROM membership_receipts mr
@@ -176,6 +178,15 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
 
     logger.debug('🔍 Profile update route: Email and phone unique, updating database...');
 
+    const existingProfile = await pool.query(
+      'SELECT phone_number FROM users WHERE id = $1',
+      [userId]
+    );
+    const previousPhone = existingProfile.rows[0]?.phone_number || null;
+    const nextPhone = phone_number || null;
+    const phoneChanged = !smsService.phonesEqual(previousPhone, nextPhone) ||
+      (Boolean(previousPhone) !== Boolean(nextPhone));
+
     // Build update query dynamically
     const updates = [];
     const values = [];
@@ -188,7 +199,7 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
     values.push(email);
     
     updates.push(`phone_number = $${++paramCount}`);
-    values.push(phone_number || null);
+    values.push(nextPhone);
     
     updates.push(`bio = $${++paramCount}`);
     values.push(bio || null);
@@ -220,8 +231,15 @@ router.put('/profile', authenticateToken, allowOwnProfile(), async (req, res) =>
       WHERE id = $${paramCount}
     `, values.slice(0, -1).concat([userId]));
 
+    if (phoneChanged) {
+      await smsService.clearPhoneVerification(userId, { disableSms: true });
+    }
+
     logger.debug('✅ Profile update route: Database update successful');
-    res.json({ message: 'Profile updated successfully' });
+    res.json({
+      message: 'Profile updated successfully',
+      phone_verification_reset: phoneChanged
+    });
   } catch (error) {
     console.error('❌ Profile update route: Error occurred:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -388,31 +406,58 @@ router.get('/notification-preferences', authenticateToken, allowOwnProfile(), as
         run_workouts,
         events,
         forum_replies,
-        waitlist_promotions
+        waitlist_promotions,
+        COALESCE(sms_enabled, false) AS sms_enabled,
+        COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours
       FROM notification_preferences
       WHERE user_id = $1
     `, [userId]);
+
+    const phoneResult = await pool.query(
+      `SELECT phone_number, COALESCE(phone_verified, false) AS phone_verified, phone_verified_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+    const phoneRow = phoneResult.rows[0] || {};
     
     if (result.rows.length === 0) {
-      // Default to opted-in; create the row so subsequent sends and Settings stay consistent
+      // Categories default opted-in; SMS is opt-in only
       const defaults = {
         spin_brick_workouts: true,
         swim_workouts: true,
         run_workouts: true,
         events: true,
         forum_replies: true,
-        waitlist_promotions: true
+        waitlist_promotions: true,
+        sms_enabled: false,
+        workout_reminder_hours: 24
       };
       await pool.query(`
         INSERT INTO notification_preferences (
-          user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions
-        ) VALUES ($1, true, true, true, true, true, true)
+          user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions, sms_enabled, workout_reminder_hours
+        ) VALUES ($1, true, true, true, true, true, true, false, 24)
         ON CONFLICT (user_id) DO NOTHING
       `, [userId]);
-      return res.json({ preferences: defaults });
+      return res.json({
+        preferences: defaults,
+        phone: {
+          number: phoneRow.phone_number || null,
+          verified: phoneRow.phone_verified || false,
+          verified_at: phoneRow.phone_verified_at || null
+        },
+        sms_configured: smsService.isConfigured()
+      });
     }
     
-    res.json({ preferences: result.rows[0] });
+    res.json({
+      preferences: result.rows[0],
+      phone: {
+        number: phoneRow.phone_number || null,
+        verified: phoneRow.phone_verified || false,
+        verified_at: phoneRow.phone_verified_at || null
+      },
+      sms_configured: smsService.isConfigured()
+    });
   } catch (error) {
     console.error('Get notification preferences error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -428,14 +473,68 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
     if (!preferences) {
       return res.status(400).json({ error: 'Preferences are required' });
     }
-    
+
+    const wantsSmsExplicit = preferences.sms_enabled !== undefined;
+    let wantsSms = false;
+    if (wantsSmsExplicit) {
+      wantsSms = preferences.sms_enabled === true || preferences.sms_enabled === 'true';
+    }
+
     // Check if preferences exist
     const checkResult = await pool.query(`
-      SELECT user_id FROM notification_preferences WHERE user_id = $1
+      SELECT user_id,
+             COALESCE(sms_enabled, false) AS sms_enabled,
+             COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours
+      FROM notification_preferences WHERE user_id = $1
     `, [userId]);
+
+    if (!wantsSmsExplicit && checkResult.rows.length > 0) {
+      wantsSms = checkResult.rows[0].sms_enabled === true;
+    }
+
+    if (wantsSms) {
+      const phoneCheck = await pool.query(
+        `SELECT phone_number, COALESCE(phone_verified, false) AS phone_verified
+         FROM users WHERE id = $1`,
+        [userId]
+      );
+      const phone = phoneCheck.rows[0];
+      if (!phone?.phone_number || !phone.phone_verified) {
+        return res.status(400).json({
+          error: 'Verify your phone number before enabling SMS notifications'
+        });
+      }
+      if (!smsService.isConfigured()) {
+        return res.status(503).json({
+          error: 'SMS notifications are not available right now'
+        });
+      }
+    }
+
+    let reminderHours = 24;
+    if (preferences.workout_reminder_hours !== undefined && preferences.workout_reminder_hours !== null) {
+      reminderHours = Number(preferences.workout_reminder_hours);
+      if (![1, 12, 24].includes(reminderHours)) {
+        return res.status(400).json({
+          error: 'Workout reminder must be 24, 12, or 1 hour before the workout'
+        });
+      }
+    } else if (checkResult.rows.length > 0) {
+      reminderHours = Number(checkResult.rows[0].workout_reminder_hours) || 24;
+    }
+
+    const categoryValues = [
+      preferences.spin_brick_workouts || false,
+      preferences.swim_workouts || false,
+      preferences.run_workouts || false,
+      preferences.events || false,
+      preferences.forum_replies || false,
+      preferences.waitlist_promotions || false,
+      wantsSms,
+      reminderHours
+    ];
     
     if (checkResult.rows.length === 0) {
-      // Insert new preferences
       await pool.query(`
         INSERT INTO notification_preferences (
           user_id,
@@ -444,19 +543,12 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
           run_workouts,
           events,
           forum_replies,
-          waitlist_promotions
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        userId,
-        preferences.spin_brick_workouts || false,
-        preferences.swim_workouts || false,
-        preferences.run_workouts || false,
-        preferences.events || false,
-        preferences.forum_replies || false,
-        preferences.waitlist_promotions || false
-      ]);
+          waitlist_promotions,
+          sms_enabled,
+          workout_reminder_hours
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [userId, ...categoryValues]);
     } else {
-      // Update existing preferences
       await pool.query(`
         UPDATE notification_preferences
         SET
@@ -465,23 +557,74 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
           run_workouts = $4,
           events = $5,
           forum_replies = $6,
-          waitlist_promotions = $7
+          waitlist_promotions = $7,
+          sms_enabled = $8,
+          workout_reminder_hours = $9,
+          updated_at = CURRENT_TIMESTAMP
         WHERE user_id = $1
-      `, [
-        userId,
-        preferences.spin_brick_workouts || false,
-        preferences.swim_workouts || false,
-        preferences.run_workouts || false,
-        preferences.events || false,
-        preferences.forum_replies || false,
-        preferences.waitlist_promotions || false
-      ]);
+      `, [userId, ...categoryValues]);
     }
     
     res.json({ message: 'Notification preferences updated successfully' });
   } catch (error) {
     console.error('Update notification preferences error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Send phone verification OTP for SMS opt-in
+router.post('/phone/send-verification', authenticateToken, allowOwnProfile(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userResult = await pool.query(
+      'SELECT phone_number FROM users WHERE id = $1 AND is_active = true',
+      [userId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const phoneNumber = userResult.rows[0].phone_number;
+    if (!phoneNumber) {
+      return res.status(400).json({
+        error: 'Add a phone number on your profile before verifying'
+      });
+    }
+
+    const result = await smsService.sendVerificationCode(userId, phoneNumber);
+    res.json({
+      message: 'Verification code sent',
+      expires_at: result.expiresAt
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    if (status >= 500) {
+      console.error('Send phone verification error:', error);
+    }
+    res.status(status).json({
+      error: error.message || 'Failed to send verification code'
+    });
+  }
+});
+
+// Confirm phone verification OTP
+router.post('/phone/verify', authenticateToken, allowOwnProfile(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { code } = req.body || {};
+    const result = await smsService.verifyCode(userId, code);
+    res.json({
+      message: 'Phone number verified',
+      phone_verified: true,
+      phone_number: result.phoneNumber
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    if (status >= 500) {
+      console.error('Verify phone error:', error);
+    }
+    res.status(status).json({
+      error: error.message || 'Failed to verify phone number'
+    });
   }
 });
 
@@ -770,8 +913,8 @@ router.post('/push-token', authenticateToken, async (req, res) => {
       logger.debug(`✅ Device token updated for user ${userId}`);
       await pool.query(`
         INSERT INTO notification_preferences (
-          user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions
-        ) VALUES ($1, true, true, true, true, true, true)
+          user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions, sms_enabled
+        ) VALUES ($1, true, true, true, true, true, true, false)
         ON CONFLICT (user_id) DO NOTHING
       `, [userId]);
       return res.json({ message: 'Device token updated successfully' });
@@ -792,8 +935,8 @@ router.post('/push-token', authenticateToken, async (req, res) => {
     // even if they never opened Settings
     await pool.query(`
       INSERT INTO notification_preferences (
-        user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions
-      ) VALUES ($1, true, true, true, true, true, true)
+        user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions, sms_enabled
+      ) VALUES ($1, true, true, true, true, true, true, false)
       ON CONFLICT (user_id) DO NOTHING
     `, [userId]);
 
@@ -860,6 +1003,7 @@ router.delete('/profile', authenticateToken, allowOwnProfile(), async (req, res)
     await client.query('DELETE FROM login_history WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM role_change_notifications WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM push_device_tokens WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM workout_reminders_sent WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM notification_preferences WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM post_likes WHERE user_id = $1', [userId]);
     await client.query('DELETE FROM event_rsvps WHERE user_id = $1', [userId]);

@@ -93,3 +93,14 @@ APNS_TEAM_ID=your_apple_team_id
 APNS_BUNDLE_ID=uofttri.club.app
 # false for Xcode/dev builds; true for App Store / TestFlight
 APNS_PRODUCTION=false
+
+# =============================================================================
+# SMS Notifications — Twilio (opt-in text alerts)
+# Add these in Railway Variables for production.
+# =============================================================================
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+# E.164 format, e.g. +14165551234
+TWILIO_FROM_NUMBER=+1XXXXXXXXXX
+# Alias also accepted:
+# TWILIO_PHONE_NUMBER=+1XXXXXXXXXX

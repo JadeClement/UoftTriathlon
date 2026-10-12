@@ -1,17 +1,18 @@
 require('dotenv').config();
 const { pool } = require('../database-pg');
 const emailService = require('./emailService');
+const smsService = require('./smsService');
 const { sendPushNotification, sendBulkPushNotifications } = require('./pushSender');
 const logger = require('../utils/logger');
 
 /**
  * Notification Service
  *
- * User notification preferences (Settings) control iOS/Android PUSH notifications only.
- * They do NOT affect emails (e.g. waitlist "you're in" emails are always sent).
- *
- * Push notifications are implemented using native push (FCM for Android, APNs for iOS).
- * FCM/APNs configuration is required for push notifications to work.
+ * Category preferences (Settings) control WHAT users are notified about.
+ * - Push (iOS/Android): sent when the category is on (native apps).
+ * - SMS (Twilio): sent only when sms_enabled is opted in, phone is verified,
+ *   and the category is on. Available on web and as an extra option on apps.
+ * Emails (e.g. waitlist "you're in") are always sent and are not gated by prefs.
  */
 
 /**
@@ -76,6 +77,80 @@ async function sendPushNotificationToUser(userId, notification) {
 }
 
 /**
+ * Build a short SMS body from title + body (SMS length limits).
+ */
+function formatSmsBody(title, body) {
+  const text = body ? `${title}: ${body}` : title;
+  const prefix = 'UofT Tri: ';
+  const max = 300 - prefix.length;
+  const trimmed = text.length > max ? `${text.slice(0, max - 1)}…` : text;
+  return `${prefix}${trimmed}`;
+}
+
+/**
+ * Send SMS to a user if they opted in, verified phone, and SMS is configured.
+ * @param {Object} user - { id, phone_number?, phoneNumber? }
+ * @param {Object} notification - { title, body }
+ * @param {Object} [options]
+ * @param {boolean} [options.alreadyCheckedEligible] - skip preference/phone lookup
+ */
+async function sendSmsNotificationToUser(user, notification, options = {}) {
+  try {
+    if (!smsService.isConfigured()) {
+      return false;
+    }
+
+    let phone = user.phone_number || user.phoneNumber || user.phone;
+    let eligible = options.alreadyCheckedEligible === true;
+
+    if (!eligible) {
+      const result = await pool.query(
+        `SELECT u.phone_number, u.phone_verified, COALESCE(np.sms_enabled, false) AS sms_enabled
+         FROM users u
+         LEFT JOIN notification_preferences np ON np.user_id = u.id
+         WHERE u.id = $1`,
+        [user.id]
+      );
+      if (result.rows.length === 0) return false;
+      const row = result.rows[0];
+      if (!row.sms_enabled || !row.phone_verified || !row.phone_number) {
+        return false;
+      }
+      phone = row.phone_number;
+      eligible = true;
+    }
+
+    if (!phone) return false;
+
+    const body = formatSmsBody(notification.title || 'Notification', notification.body || '');
+    const result = await smsService.sendSms(phone, body);
+    return result.success;
+  } catch (error) {
+    console.error(`❌ Error sending SMS to user ${user.id}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Send push + optional SMS for a category notification.
+ */
+async function sendCategoryNotificationToUser(user, notification) {
+  await sendPushNotificationToUser(user.id, notification);
+
+  const hasEligibilityFields = typeof user.sms_enabled === 'boolean';
+  const smsEligible =
+    user.sms_enabled === true &&
+    user.phone_verified === true &&
+    Boolean(user.phone_number || user.phoneNumber || user.phone);
+
+  if (smsEligible) {
+    await sendSmsNotificationToUser(user, notification, { alreadyCheckedEligible: true });
+  } else if (!hasEligibilityFields) {
+    await sendSmsNotificationToUser(user, notification);
+  }
+}
+
+/**
  * Get notification preferences for a user
  * @param {number} userId - User ID
  * @returns {Promise<Object>} User's notification preferences
@@ -89,43 +164,52 @@ async function getUserNotificationPreferences(userId) {
         run_workouts,
         events,
         forum_replies,
-        waitlist_promotions
+        waitlist_promotions,
+        COALESCE(sms_enabled, false) AS sms_enabled,
+        COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours
       FROM notification_preferences
       WHERE user_id = $1`,
       [userId]
     );
 
     if (result.rows.length === 0) {
-      // Default to opted-in so Android/iOS users receive pushes until they turn categories off
+      // Categories default opted-in for push; SMS is always opt-in
       return {
         spinBrickWorkouts: true,
         swimWorkouts: true,
         runWorkouts: true,
         events: true,
         forumReplies: true,
-        waitlistPromotions: true
+        waitlistPromotions: true,
+        smsEnabled: false,
+        workoutReminderHours: 24
       };
     }
 
     const prefs = result.rows[0];
+    const reminderHours = Number(prefs.workout_reminder_hours);
     return {
       spinBrickWorkouts: prefs.spin_brick_workouts || false,
       swimWorkouts: prefs.swim_workouts || false,
       runWorkouts: prefs.run_workouts || false,
       events: prefs.events || false,
       forumReplies: prefs.forum_replies || false,
-      waitlistPromotions: prefs.waitlist_promotions || false
+      waitlistPromotions: prefs.waitlist_promotions || false,
+      smsEnabled: prefs.sms_enabled || false,
+      workoutReminderHours: [1, 12, 24].includes(reminderHours) ? reminderHours : 24
     };
   } catch (error) {
     console.error('❌ Error fetching notification preferences:', error);
-    // Default to opted-in on error so we don't silently drop pushes
+    // Default to opted-in categories on error so we don't silently drop pushes
     return {
       spinBrickWorkouts: true,
       swimWorkouts: true,
       runWorkouts: true,
       events: true,
       forumReplies: true,
-      waitlistPromotions: true
+      waitlistPromotions: true,
+      smsEnabled: false,
+      workoutReminderHours: 24
     };
   }
 }
@@ -154,7 +238,9 @@ async function getUsersWithPreference(preferenceType) {
     }
 
     const result = await pool.query(
-      `SELECT u.id, u.email, u.name, u.phone_number
+      `SELECT u.id, u.email, u.name, u.phone_number,
+              COALESCE(u.phone_verified, false) AS phone_verified,
+              COALESCE(np.sms_enabled, false) AS sms_enabled
       FROM users u
       LEFT JOIN notification_preferences np ON u.id = np.user_id
       WHERE COALESCE(np.${columnName}, true) = true
@@ -194,13 +280,14 @@ async function notifyWorkoutPosted(workoutType, workoutData) {
     
     logger.debug(`📢 Notifying ${users.length} users about new ${workoutType} workout: ${workoutData.title}`);
 
-    // Send push notifications to users
+    const notification = {
+      title: `New ${workoutType} Workout: ${workoutData.title}`,
+      body: workoutData.content?.substring(0, 100) || '',
+      data: { type: 'workout', workoutId: workoutData.id }
+    };
+
     for (const user of users) {
-      await sendPushNotificationToUser(user.id, {
-        title: `New ${workoutType} Workout: ${workoutData.title}`,
-        body: workoutData.content?.substring(0, 100) || '',
-        data: { type: 'workout', workoutId: workoutData.id }
-      });
+      await sendCategoryNotificationToUser(user, notification);
     }
   } catch (error) {
     console.error('❌ Error sending workout post notifications:', error);
@@ -217,13 +304,14 @@ async function notifyEventPosted(eventData) {
     
     logger.debug(`📢 Notifying ${users.length} users about new event: ${eventData.title}`);
 
-    // Send push notifications to users
+    const notification = {
+      title: `New Event: ${eventData.title}`,
+      body: eventData.content?.substring(0, 100) || '',
+      data: { type: 'event', eventId: eventData.id }
+    };
+
     for (const user of users) {
-      await sendPushNotificationToUser(user.id, {
-        title: `New Event: ${eventData.title}`,
-        body: eventData.content?.substring(0, 100) || '',
-        data: { type: 'event', eventId: eventData.id }
-      });
+      await sendCategoryNotificationToUser(user, notification);
     }
   } catch (error) {
     console.error('❌ Error sending event post notifications:', error);
@@ -246,29 +334,35 @@ async function notifyForumReply(userId, replyData) {
     }
 
     // Get user info
-    const userResult = await pool.query('SELECT email, name FROM users WHERE id = $1', [userId]);
+    const userResult = await pool.query(
+      `SELECT email, name, phone_number,
+              COALESCE(phone_verified, false) AS phone_verified
+       FROM users WHERE id = $1`,
+      [userId]
+    );
     if (userResult.rows.length === 0) {
       logger.debug(`⚠️ User ${userId} not found, skipping forum reply notification`);
       return;
     }
 
+    const userRow = userResult.rows[0];
     logger.debug(`📢 Notifying user ${userId} about forum reply on post: ${replyData.postTitle}`);
 
-    // Send push notification
-    await sendPushNotificationToUser(userId, {
+    const notification = {
       title: `New reply on: ${replyData.postTitle}`,
       body: replyData.replyContent?.substring(0, 100) || '',
       data: { type: 'forum', postId: replyData.postId }
-    });
+    };
 
-    // Optional: Send email notification for forum replies
-    // Uncomment if you want email notifications for forum replies:
-    // const user = userResult.rows[0];
-    // await emailService.sendEmail(
-    //   user.email,
-    //   `New reply on: ${replyData.postTitle}`,
-    //   `...`
-    // );
+    await sendCategoryNotificationToUser(
+      {
+        id: userId,
+        phone_number: userRow.phone_number,
+        phone_verified: userRow.phone_verified,
+        sms_enabled: preferences.smsEnabled
+      },
+      notification
+    );
   } catch (error) {
     console.error('❌ Error sending forum reply notification:', error);
   }
@@ -300,7 +394,9 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
 
     // Get users who have forum_replies preference enabled
     const usersWithPreference = await pool.query(
-      `SELECT u.id, u.email, u.name
+      `SELECT u.id, u.email, u.name, u.phone_number,
+              COALESCE(u.phone_verified, false) AS phone_verified,
+              COALESCE(np.sms_enabled, false) AS sms_enabled
        FROM users u
        LEFT JOIN notification_preferences np ON u.id = np.user_id
        WHERE u.id = ANY($1::int[])
@@ -333,7 +429,7 @@ async function notifyWorkoutReplyToSignups(postId, replyData) {
 /**
  * Send waitlist promotion notification
  * Email: Always sent (user must know they got in)
- * Push: Only if user has waitlist_promotions preference enabled (Settings controls iOS push only)
+ * Push/SMS: Only if waitlist_promotions preference enabled (SMS also needs sms_enabled + verified phone)
  * @param {Object} userData - { id, email, phone, name }
  * @param {Object} workoutData - { id, title, workoutDate, workoutTime }
  */
@@ -351,14 +447,22 @@ async function notifyWaitlistPromotion(userData, workoutData) {
       null
     );
 
-    // Push notification: only if user has waitlist promotions enabled in Settings (iOS push prefs)
     const preferences = await getUserNotificationPreferences(userData.id);
     if (preferences.waitlistPromotions) {
-      await sendPushNotificationToUser(userData.id, {
+      const notification = {
         title: `You're in! ${workoutData.title}`,
         body: `You've been promoted from the waitlist for this workout.`,
         data: { type: 'workout', workoutId: workoutData.id }
-      });
+      };
+
+      await sendPushNotificationToUser(userData.id, notification);
+
+      if (preferences.smsEnabled) {
+        await sendSmsNotificationToUser(
+          { id: userData.id, phone_number: userData.phone || userData.phone_number },
+          notification
+        );
+      }
     }
   } catch (error) {
     console.error('❌ Error sending waitlist promotion notification:', error);
@@ -370,10 +474,10 @@ module.exports = {
   getUsersWithPreference,
   getUserDeviceTokens,
   sendPushNotificationToUser,
+  sendSmsNotificationToUser,
   notifyWorkoutPosted,
   notifyEventPosted,
   notifyForumReply,
   notifyWorkoutReplyToSignups,
   notifyWaitlistPromotion
 };
-
