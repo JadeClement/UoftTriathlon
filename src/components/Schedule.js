@@ -102,6 +102,69 @@ const WORKOUT_TYPES = [
   { value: 'recovery', label: 'Recovery / Other' },
 ];
 
+const DEFAULT_PRACTICE_INFO = {
+  sections: [
+    {
+      id: 'swims',
+      title: '🏊 Swims 🏊',
+      where: 'Varsity Pool, UofT Athletic Centre, 55 Harbord St, Toronto, ON M5S 2W6',
+      note: 'Please show up on time.',
+    },
+    {
+      id: 'spins',
+      title: '🚴 Spins 🚴',
+      where: 'Field House – Court 4 (West side), UofT Athletic Centre, 55 Harbord St, Toronto, ON M5S 2W6',
+      note: 'Sign up for Spins on the Forum.',
+    },
+    {
+      id: 'bricks',
+      title: '🚴 🏃 Bricks (Spin & Run) 🚴🏃',
+      where: 'Field House – Court 4 (West side), UofT Athletics Centre, 55 Harbord St, Toronto, ON M5S 2W6',
+      note: 'Sign up for Bricks on the Forum.',
+    },
+    {
+      id: 'runs',
+      title: '🏃 Runs 🏃',
+      items: [
+        {
+          id: 'tuesday-track',
+          title: 'Tuesday Track',
+          where: 'Central Tech Track, 725 Bathurst St, Toronto, ON M5S 2R5',
+          note: 'Track location may change due to snow or Ice – change of location will be communicated via email and our social media',
+        },
+        {
+          id: 'thursday-tempo',
+          title: 'Thursday Tempo',
+          where: 'Meet in the lobby of the Athletic Centre.',
+          note: '',
+        },
+      ],
+    },
+  ],
+};
+
+const clonePracticeInfo = (info) => {
+  const sections = Array.isArray(info?.sections) ? info.sections : DEFAULT_PRACTICE_INFO.sections;
+  return {
+    sections: sections.map((section) => ({
+      id: section.id,
+      title: section.title || '',
+      where: section.where || '',
+      note: section.note || '',
+      ...(Array.isArray(section.items)
+        ? {
+            items: section.items.map((item) => ({
+              id: item.id,
+              title: item.title || '',
+              where: item.where || '',
+              note: item.note || '',
+            })),
+          }
+        : {}),
+    })),
+  };
+};
+
 const emptyDays = () =>
   DAYS.reduce((acc, day) => {
     acc[day] = [];
@@ -125,6 +188,8 @@ const Schedule = () => {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [draftSeason, setDraftSeason] = useState(null);
+  const [showPracticeModal, setShowPracticeModal] = useState(false);
+  const [draftPractice, setDraftPractice] = useState(null);
   const [saving, setSaving] = useState(false);
   const seasonTabRefs = useRef({});
   const userPickedSeason = useRef(false);
@@ -189,6 +254,64 @@ const Schedule = () => {
     if (saving) return;
     setShowEditModal(false);
     setDraftSeason(null);
+  };
+
+  const openPracticeModal = () => {
+    setDraftPractice(clonePracticeInfo(schedule?.practiceInfo));
+    setShowPracticeModal(true);
+  };
+
+  const closePracticeModal = () => {
+    if (saving) return;
+    setShowPracticeModal(false);
+    setDraftPractice(null);
+  };
+
+  const updatePracticeSection = (sectionId, field, value) => {
+    setDraftPractice((prev) => ({
+      sections: (prev?.sections || []).map((section) =>
+        section.id === sectionId ? { ...section, [field]: value } : section
+      ),
+    }));
+  };
+
+  const updateRunLocation = (index, field, value) => {
+    setDraftPractice((prev) => ({
+      sections: (prev?.sections || []).map((section) => {
+        if (section.id !== 'runs') return section;
+        const items = (section.items || []).map((item, itemIndex) =>
+          itemIndex === index ? { ...item, [field]: value } : item
+        );
+        return { ...section, items };
+      }),
+    }));
+  };
+
+  const addRunLocation = () => {
+    setDraftPractice((prev) => ({
+      sections: (prev?.sections || []).map((section) => {
+        if (section.id !== 'runs') return section;
+        return {
+          ...section,
+          items: [
+            ...(section.items || []),
+            { id: `run-${Date.now()}`, title: '', where: '', note: '' },
+          ],
+        };
+      }),
+    }));
+  };
+
+  const removeRunLocation = (index) => {
+    setDraftPractice((prev) => ({
+      sections: (prev?.sections || []).map((section) => {
+        if (section.id !== 'runs') return section;
+        return {
+          ...section,
+          items: (section.items || []).filter((_, itemIndex) => itemIndex !== index),
+        };
+      }),
+    }));
   };
 
   const updateDraftField = (field, value) => {
@@ -258,7 +381,38 @@ const Schedule = () => {
     }
   };
 
+  const savePracticeInfo = async () => {
+    if (!draftPractice || !schedule) return;
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('triathlonToken');
+      const res = await fetch(`${API_BASE}/site/schedule`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ schedule: { practiceInfo: draftPractice } }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save practice locations');
+      }
+      setSchedule(data.schedule || { ...schedule, practiceInfo: draftPractice });
+      setShowPracticeModal(false);
+      setDraftPractice(null);
+      showSuccess('Practice locations saved.');
+    } catch (err) {
+      showError(err.message || 'Failed to save practice locations');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const season = schedule?.seasons?.[activeSeason];
+  const practiceInfo = schedule?.practiceInfo?.sections?.length
+    ? schedule.practiceInfo
+    : DEFAULT_PRACTICE_INFO;
   const panelId = `season-panel-${activeSeason.replace('/', '-')}`;
   const tabId = `season-tab-${activeSeason.replace('/', '-')}`;
 
@@ -333,61 +487,60 @@ const Schedule = () => {
         </div>
 
         <div className="welcome-section">
+          {canEdit && schedule && (
+            <div className="practice-info-toolbar">
+              <button
+                type="button"
+                className="schedule-edit-btn"
+                onClick={openPracticeModal}
+                aria-label="Edit practice locations"
+                title="Edit practice locations"
+              >
+                ✏️
+              </button>
+            </div>
+          )}
           <div className="workout-overview">
-            <div className="workout-type">
-              <h2>🏊 Swims 🏊</h2>
-              <p>
-                <strong>Where:</strong> Varsity Pool, UofT Athletic Centre, 55 Harbord St, Toronto, ON
-                M5S 2W6
-              </p>
-              <p>
-                <strong>Note:</strong> Please show up on time.
-              </p>
-            </div>
-
-            <div className="workout-type">
-              <h2>🚴 Spins 🚴</h2>
-              <p>
-                <strong>Where:</strong> Field House – Court 4 (West side), UofT Athletic Centre, 55
-                Harbord St, Toronto, ON M5S 2W6
-              </p>
-              <p>
-                <strong>Note:</strong> Sign up for Spins on the Forum.
-              </p>
-            </div>
-
-            <div className="workout-type">
-              <h2>🚴 🏃 Bricks (Spin & Run) 🚴🏃</h2>
-              <p>
-                <strong>Where:</strong> Field House – Court 4 (West side), UofT Athletics Centre, 55
-                Harbord St, Toronto, ON M5S 2W6
-              </p>
-              <p>
-                <strong>Note:</strong> Sign up for Bricks on the Forum.
-              </p>
-            </div>
-
-            <div className="workout-type">
-              <h2>🏃 Runs 🏃</h2>
-              <div className="run-details">
-                <div className="run-type">
-                  <h3>Tuesday Track</h3>
-                  <p>
-                    <strong>Where:</strong> Central Tech Track, 725 Bathurst St, Toronto, ON M5S 2R5
-                  </p>
-                  <p>
-                    <strong>Note:</strong> Track location may change due to snow or Ice – change of
-                    location will be communicated via email and our social media
-                  </p>
+            {practiceInfo.sections.map((section) =>
+              section.id === 'runs' ? (
+                <div className="workout-type" key={section.id}>
+                  <h2>{section.title}</h2>
+                  {(section.items || []).length > 0 && (
+                    <div className="run-details">
+                      {section.items.map((item) => (
+                        <div className="run-type" key={item.id}>
+                          {item.title ? <h3>{item.title}</h3> : null}
+                          {item.where ? (
+                            <p>
+                              <strong>Where:</strong> {item.where}
+                            </p>
+                          ) : null}
+                          {item.note ? (
+                            <p>
+                              <strong>Note:</strong> {item.note}
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="run-type">
-                  <h3>Thursday Tempo</h3>
-                  <p>
-                    <strong>Where:</strong> Meet in the lobby of the Athletic Centre.
-                  </p>
+              ) : (
+                <div className="workout-type" key={section.id}>
+                  <h2>{section.title}</h2>
+                  {section.where ? (
+                    <p>
+                      <strong>Where:</strong> {section.where}
+                    </p>
+                  ) : null}
+                  {section.note ? (
+                    <p>
+                      <strong>Note:</strong> {section.note}
+                    </p>
+                  ) : null}
                 </div>
-              </div>
-            </div>
+              )
+            )}
           </div>
         </div>
       </div>
@@ -491,6 +644,137 @@ const Schedule = () => {
               </button>
               <button type="button" className="btn btn-primary" onClick={saveSchedule} disabled={saving}>
                 {saving ? 'Saving…' : 'Save schedule'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPracticeModal && draftPractice && (
+        <div className="schedule-modal-overlay" onClick={closePracticeModal}>
+          <div
+            className="schedule-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="practice-edit-title"
+          >
+            <div className="schedule-modal-header">
+              <h3 id="practice-edit-title">Edit practice locations</h3>
+              <button type="button" className="schedule-modal-close" onClick={closePracticeModal} aria-label="Close">
+                ×
+              </button>
+            </div>
+
+            <div className="schedule-modal-body">
+              {draftPractice.sections.map((section) => (
+                <div className="schedule-edit-day" key={section.id}>
+                  <div className="schedule-edit-day-header">
+                    <h4>{section.id === 'runs' ? 'Runs' : section.title || section.id}</h4>
+                    {section.id === 'runs' && (
+                      <button type="button" className="btn-schedule-add" onClick={addRunLocation}>
+                        + Add run location
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="practice-edit-fields">
+                    <label>
+                      Heading
+                      <input
+                        type="text"
+                        value={section.title}
+                        onChange={(e) => updatePracticeSection(section.id, 'title', e.target.value)}
+                        maxLength={80}
+                      />
+                    </label>
+
+                    {section.id !== 'runs' && (
+                      <>
+                        <label>
+                          Where
+                          <textarea
+                            value={section.where}
+                            onChange={(e) => updatePracticeSection(section.id, 'where', e.target.value)}
+                            maxLength={400}
+                            rows={3}
+                          />
+                        </label>
+                        <label>
+                          Note
+                          <textarea
+                            value={section.note}
+                            onChange={(e) => updatePracticeSection(section.id, 'note', e.target.value)}
+                            maxLength={600}
+                            rows={3}
+                          />
+                        </label>
+                      </>
+                    )}
+                  </div>
+
+                  {section.id === 'runs' && (
+                    <div className="practice-run-list">
+                      {(section.items || []).length === 0 && (
+                        <p className="schedule-edit-empty">No run locations</p>
+                      )}
+                      {(section.items || []).map((item, index) => (
+                        <div className="practice-run-edit" key={item.id || index}>
+                          <div className="schedule-edit-day-header">
+                            <h4>{item.title || `Run ${index + 1}`}</h4>
+                            <button
+                              type="button"
+                              className="btn-schedule-delete"
+                              onClick={() => removeRunLocation(index)}
+                              aria-label={`Delete ${item.title || `run location ${index + 1}`}`}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                          <div className="practice-edit-fields">
+                            <label>
+                              Name
+                              <input
+                                type="text"
+                                value={item.title}
+                                onChange={(e) => updateRunLocation(index, 'title', e.target.value)}
+                                maxLength={80}
+                                placeholder="e.g. Tuesday Track"
+                              />
+                            </label>
+                            <label>
+                              Where
+                              <textarea
+                                value={item.where}
+                                onChange={(e) => updateRunLocation(index, 'where', e.target.value)}
+                                maxLength={400}
+                                rows={2}
+                              />
+                            </label>
+                            <label>
+                              Note
+                              <textarea
+                                value={item.note}
+                                onChange={(e) => updateRunLocation(index, 'note', e.target.value)}
+                                maxLength={600}
+                                rows={2}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="schedule-modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={closePracticeModal} disabled={saving}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" onClick={savePracticeInfo} disabled={saving}>
+                {saving ? 'Saving…' : 'Save locations'}
               </button>
             </div>
           </div>

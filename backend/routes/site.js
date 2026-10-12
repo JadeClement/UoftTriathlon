@@ -126,12 +126,108 @@ const normalizeSeason = (seasonKey, rawSeason, fallbackSeason) => {
   };
 };
 
+const DEFAULT_PRACTICE_INFO = {
+  sections: [
+    {
+      id: 'swims',
+      title: '🏊 Swims 🏊',
+      where: 'Varsity Pool, UofT Athletic Centre, 55 Harbord St, Toronto, ON M5S 2W6',
+      note: 'Please show up on time.',
+    },
+    {
+      id: 'spins',
+      title: '🚴 Spins 🚴',
+      where: 'Field House – Court 4 (West side), UofT Athletic Centre, 55 Harbord St, Toronto, ON M5S 2W6',
+      note: 'Sign up for Spins on the Forum.',
+    },
+    {
+      id: 'bricks',
+      title: '🚴 🏃 Bricks (Spin & Run) 🚴🏃',
+      where: 'Field House – Court 4 (West side), UofT Athletics Centre, 55 Harbord St, Toronto, ON M5S 2W6',
+      note: 'Sign up for Bricks on the Forum.',
+    },
+    {
+      id: 'runs',
+      title: '🏃 Runs 🏃',
+      items: [
+        {
+          id: 'tuesday-track',
+          title: 'Tuesday Track',
+          where: 'Central Tech Track, 725 Bathurst St, Toronto, ON M5S 2R5',
+          note: 'Track location may change due to snow or Ice – change of location will be communicated via email and our social media',
+        },
+        {
+          id: 'thursday-tempo',
+          title: 'Thursday Tempo',
+          where: 'Meet in the lobby of the Athletic Centre.',
+          note: '',
+        },
+      ],
+    },
+  ],
+};
+
+const clipText = (value, max) => String(value ?? '').trim().slice(0, max);
+
+const normalizeRunLocation = (item, index = 0) => {
+  if (!item || typeof item !== 'object') return null;
+  const title = clipText(item.title, 80);
+  const where = clipText(item.where, 400);
+  const note = clipText(item.note, 600);
+  if (!title && !where && !note) return null;
+  return {
+    id: clipText(item.id, 40) || `run-${index + 1}`,
+    title,
+    where,
+    note,
+  };
+};
+
+const normalizePracticeInfo = (raw) => {
+  const hasSections = Array.isArray(raw?.sections);
+  const byId = {};
+  if (hasSections) {
+    raw.sections.forEach((section) => {
+      if (section && typeof section === 'object' && section.id) {
+        byId[String(section.id)] = section;
+      }
+    });
+  }
+
+  const sections = DEFAULT_PRACTICE_INFO.sections.map((def) => {
+    const src = hasSections ? byId[def.id] : def;
+    const source = src && typeof src === 'object' ? src : def;
+    if (def.id === 'runs') {
+      const itemsSource = Array.isArray(source.items) ? source.items : def.items;
+      return {
+        id: 'runs',
+        title: clipText(source.title, 80) || def.title,
+        items: itemsSource
+          .map((item, index) => normalizeRunLocation(item, index))
+          .filter(Boolean)
+          .slice(0, 12),
+      };
+    }
+    return {
+      id: def.id,
+      title: clipText(source.title, 80) || def.title,
+      where: clipText(source.where, 400),
+      note: clipText(source.note, 600),
+    };
+  });
+
+  return { sections };
+};
+
 const normalizeSchedule = (raw) => {
   const seasons = {};
   Object.keys(DEFAULT_SCHEDULE.seasons).forEach((key) => {
     seasons[key] = normalizeSeason(key, raw?.seasons?.[key], DEFAULT_SCHEDULE.seasons[key]);
   });
-  return { seasons };
+  return {
+    seasons,
+    practiceInfo: normalizePracticeInfo(raw?.practiceInfo),
+  };
 };
 
 const loadSchedule = async () => {
@@ -491,10 +587,19 @@ router.get('/schedule', async (_req, res) => {
   }
 });
 
-// Admin/exec: replace full weekly schedule
+// Exec/admin: update the weekly schedule, practice locations, or both.
+// Omitted sections are left as they are, so editing one does not wipe the other.
 router.put('/schedule', authenticateToken, requireRole('exec'), async (req, res) => {
   try {
-    const schedule = normalizeSchedule(req.body?.schedule || req.body || {});
+    const existing = await loadSchedule();
+    const incoming =
+      req.body?.schedule && typeof req.body.schedule === 'object' ? req.body.schedule : req.body || {};
+    const schedule = normalizeSchedule({
+      seasons: Object.prototype.hasOwnProperty.call(incoming, 'seasons') ? incoming.seasons : existing.seasons,
+      practiceInfo: Object.prototype.hasOwnProperty.call(incoming, 'practiceInfo')
+        ? incoming.practiceInfo
+        : existing.practiceInfo,
+    });
     await pool.query(
       `
       INSERT INTO site_settings(key, value) VALUES ($1, $2)

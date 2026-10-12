@@ -584,6 +584,61 @@
   margin-top: 2rem;
 }
 
+.practice-info-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -0.75rem 0 0.75rem;
+}
+
+.practice-info-toolbar .schedule-edit-btn {
+  position: static;
+}
+
+.practice-edit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.practice-edit-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.practice-edit-fields input,
+.practice-edit-fields textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 400;
+}
+
+.practice-edit-fields textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.practice-run-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.practice-run-edit {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
 .welcome-section .section-subtitle {
   color: #1E3A8A;
   font-size: 2rem;
