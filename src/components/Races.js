@@ -418,6 +418,21 @@ const Races = () => {
     }
   };
 
+  const getRaceWhenTone = (dateString) => {
+    try {
+      const base = String(dateString).split('T')[0];
+      const [y, m, d] = base.split('-').map(Number);
+      const raceDate = new Date(Date.UTC(y, m - 1, d));
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      raceDate.setUTCHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((raceDate - today) / (1000 * 60 * 60 * 24));
+      return diffDays < 0 ? 'past' : 'upcoming';
+    } catch {
+      return 'unknown';
+    }
+  };
+
   const getMonthName = (dateString) => {
     try {
       const base = String(dateString).split('T')[0];
@@ -933,7 +948,9 @@ const Races = () => {
                         )}
                       </td>
                       <td className="races-table-col-when">
-                        <span className="races-table-badge">{getDaysUntilRace(race.date)}</span>
+                        <span className={`races-table-badge races-table-badge-${getRaceWhenTone(race.date)}`}>
+                          {getDaysUntilRace(race.date)}
+                        </span>
                       </td>
                       {currentUser && isMember(currentUser) && (
                         <td

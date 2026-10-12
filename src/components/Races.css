@@ -327,12 +327,25 @@
 
 .races-table-badge {
   display: inline-block;
-  background: #d1fae5;
-  color: #065f46;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+.races-table-badge-past {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.races-table-badge-upcoming {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.races-table-badge-unknown {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
 .races-table-col-narrow {
