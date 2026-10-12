@@ -106,6 +106,7 @@ const Navbar = () => {
       { key: 'schedule', path: '/schedule', label: 'Schedule', ref: 'schedule' },
       { key: 'coachesExec', path: '/coaches-exec', label: 'Coaches & Exec', ref: 'coachesExec' },
       { key: 'races', path: '/races', label: 'Races', condition: () => currentUser && isMember(currentUser), ref: 'races' },
+      { key: 'settings', path: '/settings', label: 'Settings', condition: () => currentUser && isMember(currentUser), ref: 'settings' },
       { key: 'admin', path: '/admin', label: 'Admin', condition: () => currentUser && (isAdmin(currentUser) || isExec(currentUser)), ref: 'admin' },
     ];
     

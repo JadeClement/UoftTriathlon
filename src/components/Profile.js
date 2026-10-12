@@ -719,6 +719,11 @@ const Profile = () => {
           View Your Results
         </Link>
       )}
+      {currentUser && isMember(currentUser) && (
+        <Link to="/settings" className="btn btn-secondary">
+          Settings
+        </Link>
+      )}
       <button
         type="button"
         className="btn btn-edit btn-edit-icon"
