@@ -131,8 +131,23 @@ const EventDetail = () => {
         }
       }
 
-      // Load comments (will be implemented when backend is ready)
-      setComments([]);
+      try {
+        const commentsResponse = await fetch(`${API_BASE_URL}/forum/posts/${id}/comments`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json();
+          setComments(commentsData.comments || []);
+        } else {
+          setComments([]);
+        }
+      } catch (commentsError) {
+        console.error('Error loading comments:', commentsError);
+        setComments([]);
+      }
 
       setLoading(false);
       console.log('✅ EventDetail: Finished loading event details');
@@ -280,17 +295,29 @@ const EventDetail = () => {
         return;
       }
 
-      const newCommentObj = {
-        id: Date.now(),
-        user_name: currentUser.name,
-        content: newComment.trim(),
-        created_at: new Date().toISOString().split('T')[0]
-      };
+      const response = await fetch(`${API_BASE_URL}/forum/posts/${id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: newComment.trim()
+        })
+      });
 
-      setComments([...comments, newCommentObj]);
-      setNewComment('');
+      if (response.ok) {
+        const data = await response.json();
+        setComments([...comments, data.comment]);
+        setNewComment('');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to post comment' }));
+        console.error('Error posting comment:', errorData);
+        showError(errorData.error || 'Failed to post comment');
+      }
     } catch (error) {
       console.error('Error adding comment:', error);
+      showError('Failed to post comment. Please try again.');
     }
   };
 
@@ -634,7 +661,24 @@ const EventDetail = () => {
                       )}
                       <span className="comment-author">{comment.user_name}</span>
                     </div>
-                    <span className="comment-date">{comment.created_at}</span>
+                    <span className="comment-date">
+                      {(() => {
+                        try {
+                          const date = new Date(comment.created_at);
+                          if (isNaN(date.getTime())) {
+                            return comment.created_at;
+                          }
+                          return (
+                            <>
+                              {date.toLocaleDateString()}
+                              <span className="comment-time"> • {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </>
+                          );
+                        } catch (error) {
+                          return comment.created_at;
+                        }
+                      })()}
+                    </span>
                   </div>
                   <div className="comment-content">{linkifyText(comment.content)}</div>
                 </div>
