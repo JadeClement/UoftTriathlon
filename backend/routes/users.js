@@ -408,7 +408,8 @@ router.get('/notification-preferences', authenticateToken, allowOwnProfile(), as
         forum_replies,
         waitlist_promotions,
         COALESCE(sms_enabled, false) AS sms_enabled,
-        COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours
+        COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours,
+        COALESCE(news_bulletins, true) AS news_bulletins
       FROM notification_preferences
       WHERE user_id = $1
     `, [userId]);
@@ -430,12 +431,13 @@ router.get('/notification-preferences', authenticateToken, allowOwnProfile(), as
         forum_replies: true,
         waitlist_promotions: true,
         sms_enabled: false,
-        workout_reminder_hours: 24
+        workout_reminder_hours: 24,
+        news_bulletins: true
       };
       await pool.query(`
         INSERT INTO notification_preferences (
-          user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions, sms_enabled, workout_reminder_hours
-        ) VALUES ($1, true, true, true, true, true, true, false, 24)
+          user_id, spin_brick_workouts, swim_workouts, run_workouts, events, forum_replies, waitlist_promotions, sms_enabled, workout_reminder_hours, news_bulletins
+        ) VALUES ($1, true, true, true, true, true, true, false, 24, true)
         ON CONFLICT (user_id) DO NOTHING
       `, [userId]);
       return res.json({
@@ -484,7 +486,8 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
     const checkResult = await pool.query(`
       SELECT user_id,
              COALESCE(sms_enabled, false) AS sms_enabled,
-             COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours
+             COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours,
+             COALESCE(news_bulletins, true) AS news_bulletins
       FROM notification_preferences WHERE user_id = $1
     `, [userId]);
 
@@ -523,6 +526,15 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
       reminderHours = Number(checkResult.rows[0].workout_reminder_hours) || 24;
     }
 
+    let newsBulletins = true;
+    if (preferences.news_bulletins === undefined || preferences.news_bulletins === null) {
+      if (checkResult.rows.length > 0) {
+        newsBulletins = checkResult.rows[0].news_bulletins !== false;
+      }
+    } else {
+      newsBulletins = preferences.news_bulletins === true || preferences.news_bulletins === 'true';
+    }
+
     const categoryValues = [
       preferences.spin_brick_workouts || false,
       preferences.swim_workouts || false,
@@ -531,7 +543,8 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
       preferences.forum_replies || false,
       preferences.waitlist_promotions || false,
       wantsSms,
-      reminderHours
+      reminderHours,
+      newsBulletins
     ];
     
     if (checkResult.rows.length === 0) {
@@ -545,8 +558,9 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
           forum_replies,
           waitlist_promotions,
           sms_enabled,
-          workout_reminder_hours
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          workout_reminder_hours,
+          news_bulletins
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `, [userId, ...categoryValues]);
     } else {
       await pool.query(`
@@ -560,6 +574,7 @@ router.put('/notification-preferences', authenticateToken, allowOwnProfile(), as
           waitlist_promotions = $7,
           sms_enabled = $8,
           workout_reminder_hours = $9,
+          news_bulletins = $10,
           updated_at = CURRENT_TIMESTAMP
         WHERE user_id = $1
       `, [userId, ...categoryValues]);

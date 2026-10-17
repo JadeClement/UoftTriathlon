@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAdminContext } from '../../context/AdminContext';
 
 const AdminEmail = () => {
@@ -17,11 +18,23 @@ const AdminEmail = () => {
     insertUrl,
     handleTextareaKeyDown,
     handleSendEmail,
+    showBulletinPrompt,
+    setShowBulletinPrompt,
+    confirmBulletinChoice,
     emailStatus,
     bulkEmailStatus,
     sendingEmail,
     sendingBulkEmail,
   } = useAdminContext();
+
+  useEffect(() => {
+    if (!showBulletinPrompt) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setShowBulletinPrompt(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [showBulletinPrompt, setShowBulletinPrompt]);
 
   return (
     <div className="admin-main-content">
@@ -499,7 +512,7 @@ const AdminEmail = () => {
                   type="button"
                   className="btn btn-primary"
                   disabled={sendingEmail || sendingBulkEmail}
-                  onClick={handleSendEmail}
+                  onClick={() => handleSendEmail()}
                   style={{
                     backgroundColor: emailType === 'everyone' ? '#dc2626' : '#3b82f6',
                     width: '100%',
@@ -588,6 +601,58 @@ const AdminEmail = () => {
           )}
         </div>
       </div>
+      {showBulletinPrompt && createPortal(
+        <div
+          className="confirm-modal-overlay"
+          onClick={() => setShowBulletinPrompt(false)}
+          style={{ zIndex: 13000 }}
+        >
+          <div
+            className="confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulletin-prompt-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="bulletin-prompt-title" className="confirm-modal-title">Is this a bulletin?</h2>
+            <p className="confirm-modal-message">
+              Bulletin emails are posted on the News page, newest first, and members get a push
+              notification unless they turned that off in Settings. Choose no to send the email only.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="confirm-modal-button confirm-modal-button-confirm"
+                onClick={() => confirmBulletinChoice(true)}
+              >
+                Yes, post it on News
+              </button>
+              <button
+                type="button"
+                className="confirm-modal-button confirm-modal-button-cancel"
+                onClick={() => confirmBulletinChoice(false)}
+              >
+                No, just send the email
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBulletinPrompt(false)}
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  padding: '0.4rem',
+                }}
+              >
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

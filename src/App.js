@@ -8,6 +8,7 @@ import Forum from './components/Forum';
 import Schedule from './components/Schedule';
 import JoinUs from './components/JoinUs';
 import Races from './components/Races';
+import News from './components/News';
 import CoachesExec from './components/CoachesExec';
 import Login from './components/Login';
 import WorkoutDetail from './components/WorkoutDetail';
@@ -219,6 +220,11 @@ function AppContent() {
           navigate(`/workout/${workoutId}`);
           // Clear after use
           delete window.lastReceivedNotification;
+        } else if (notificationData?.type === 'bulletin' && notificationData?.bulletinId) {
+          const bulletinId = String(notificationData.bulletinId);
+          console.log(`📍 Navigating to bulletin from stored notification: /news/${bulletinId}`);
+          navigate(`/news/${bulletinId}`);
+          delete window.lastReceivedNotification;
         }
       }, 1000);
     }
@@ -246,6 +252,10 @@ function AppContent() {
           const raceId = String(data.raceId);
           console.log(`📍 Navigating to race from pending notification: /race/${raceId}`);
           navigate(`/race/${raceId}`);
+        } else if (data?.type === 'bulletin' && data?.bulletinId) {
+          const bulletinId = String(data.bulletinId);
+          console.log(`📍 Navigating to bulletin from pending notification: /news/${bulletinId}`);
+          navigate(`/news/${bulletinId}`);
         }
       }
     }, 1500);
@@ -262,6 +272,8 @@ function AppContent() {
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/join-us" element={<JoinUs />} />
           <Route path="/races" element={<Races />} />
+          <Route path="/news" element={<News />} />
+          <Route path="/news/:bulletinId" element={<News />} />
           <Route path="/coaches-exec" element={<CoachesExec />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/resources" element={<Resources />} />
