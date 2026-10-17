@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePendingReceipts } from '../context/PendingReceiptsContext';
@@ -96,6 +96,8 @@ const Admin = () => {
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [bulkEmailStatus, setBulkEmailStatus] = useState(null);
   const [emailType, setEmailType] = useState('individual'); // 'individual' or 'everyone'
+  const [showBulletinPrompt, setShowBulletinPrompt] = useState(false);
+  const emailSendLock = useRef(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' }); // 'success' or 'error'
 
   // Show notification helper
@@ -552,7 +554,7 @@ const Admin = () => {
     }
   };
 
-  const handleSendEmail = async () => {
+  const handleSendEmail = async ({ isBulletin = false, confirmedBulletinChoice = false } = {}) => {
     setEmailStatus(null);
     setBulkEmailStatus(null);
 
@@ -578,6 +580,14 @@ const Admin = () => {
       setEmailStatus({ type: 'error', text: 'Please provide recipient email.' });
       return;
     }
+
+    if (emailType === 'everyone' && !confirmedBulletinChoice) {
+      setShowBulletinPrompt(true);
+      return;
+    }
+
+    if (emailSendLock.current) return;
+    emailSendLock.current = true;
 
     try {
       if (emailType === 'individual') {
@@ -620,6 +630,7 @@ const Admin = () => {
         formData.append('subject', template.title || 'UofT Tri Club Update');
         formData.append('message', template.body || '');
         formData.append('template', JSON.stringify(template));
+        formData.append('isBulletin', isBulletin ? 'true' : 'false');
         formData.append(
           'recipients',
           JSON.stringify({
@@ -652,9 +663,14 @@ const Admin = () => {
         });
         const data = await resp.json();
         if (resp.ok) {
+          const newsNote = isBulletin
+            ? (data.bulletinId
+              ? ' It is now on News.'
+              : ' The email went out, but it could not be posted on News.')
+            : '';
           setBulkEmailStatus({
             type: 'success',
-            text: `Bulk email sent successfully to ${data.recipientCount || data.sentCount || 0} recipients!`,
+            text: `Bulk email sent successfully to ${data.recipientCount || data.sentCount || 0} recipients!${newsNote}`,
           });
           setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
           setEmailAttachments([]);
@@ -671,6 +687,8 @@ const Admin = () => {
         setBulkEmailStatus({ type: 'error', text: err.message });
         setSendingBulkEmail(false);
       }
+    } finally {
+      emailSendLock.current = false;
     }
   };
 
@@ -1982,6 +2000,12 @@ const Admin = () => {
     insertUrl,
     handleTextareaKeyDown,
     handleSendEmail,
+    showBulletinPrompt,
+    setShowBulletinPrompt,
+    confirmBulletinChoice: (isBulletin) => {
+      setShowBulletinPrompt(false);
+      handleSendEmail({ isBulletin, confirmedBulletinChoice: true });
+    },
     emailStatus,
     bulkEmailStatus,
     sendingEmail,

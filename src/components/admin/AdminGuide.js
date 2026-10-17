@@ -290,7 +290,8 @@ const AdminGuide = () => {
             <h4><NavLink to="/admin/email">Send Email</NavLink></h4>
             <p>
               Send emails to the club mailing list or selected groups. You can attach files.
-              Use this for announcements, reminders, and event updates.
+              Use this for announcements, reminders, and event updates. When you send to everyone,
+              you will be asked if it is a bulletin. Bulletins are also posted on the News page.
             </p>
           </div>
 

@@ -30,7 +30,8 @@ const Settings = () => {
     forumReplies: false,
     waitlistPromotions: false,
     smsEnabled: false,
-    workoutReminderHours: 24
+    workoutReminderHours: 24,
+    newsBulletins: true
   });
   const [notificationPrefsLoading, setNotificationPrefsLoading] = useState(false);
   const [phoneInfo, setPhoneInfo] = useState({
@@ -77,6 +78,7 @@ const Settings = () => {
             events: data.preferences.events || false,
             forumReplies: data.preferences.forum_replies || false,
             waitlistPromotions: data.preferences.waitlist_promotions || false,
+            newsBulletins: data.preferences.news_bulletins !== false,
             smsEnabled: data.preferences.sms_enabled || false,
             workoutReminderHours: [1, 12, 24].includes(Number(data.preferences.workout_reminder_hours))
               ? Number(data.preferences.workout_reminder_hours)
@@ -114,6 +116,7 @@ const Settings = () => {
             events: newPrefs.events,
             forum_replies: newPrefs.forumReplies,
             waitlist_promotions: newPrefs.waitlistPromotions,
+            news_bulletins: newPrefs.newsBulletins,
             sms_enabled: newPrefs.smsEnabled,
             workout_reminder_hours: newPrefs.workoutReminderHours
           }
@@ -425,6 +428,24 @@ const Settings = () => {
                   <span>Waitlist Promotions</span>
                 </label>
               </div>
+              <div className="settings-pref-row">
+                <label className="settings-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={notificationPrefs.newsBulletins}
+                    onChange={(e) => {
+                      const newPrefs = { ...notificationPrefs, newsBulletins: e.target.checked };
+                      saveNotificationPrefs(newPrefs);
+                    }}
+                    disabled={notificationPrefsLoading}
+                  />
+                  <span>News bulletins</span>
+                </label>
+              </div>
+              <p className="settings-section-description">
+                Push notification on the iOS and Android apps when a bulletin is posted. On by default.
+                The email is still sent either way. This does not send a text.
+              </p>
             </div>
           </div>
 

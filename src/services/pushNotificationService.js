@@ -77,6 +77,10 @@ function setupEarlyNotificationListeners() {
         const raceId = String(data.raceId);
         console.log(`📍 Navigating from local notification to: /race/${raceId}`);
         navigateTo(`/race/${raceId}`);
+      } else if (data?.type === 'bulletin' && data?.bulletinId) {
+        const bulletinId = String(data.bulletinId);
+        console.log(`📍 Navigating from local notification to: /news/${bulletinId}`);
+        navigateTo(`/news/${bulletinId}`);
       }
     } catch (error) {
       console.error('❌ Error handling local notification click:', error);
@@ -657,6 +661,8 @@ function handleNotificationAction(notification) {
       window.location.href = `/forum`;
     } else if (data?.type === 'race' && data?.raceId) {
       window.location.href = `/race/${data.raceId}`;
+    } else if (data?.type === 'bulletin' && data?.bulletinId) {
+      window.location.href = `/news/${data.bulletinId}`;
     }
   }
 }

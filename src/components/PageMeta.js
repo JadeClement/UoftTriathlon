@@ -28,6 +28,10 @@ const ROUTE_META = {
     title: 'Races',
     description: 'Upcoming races and team race signups for the UofT Triathlon Club.',
   },
+  '/news': {
+    title: 'News',
+    description: 'Club bulletin emails from the UofT Triathlon Club, newest first.',
+  },
   '/coaches-exec': {
     title: 'Coaches & Exec',
     description: 'Meet the coaches and executive team of the UofT Triathlon Club.',
@@ -91,6 +95,7 @@ function metaForPath(pathname) {
   if (pathname.startsWith('/race/')) {
     return { title: 'Race', description: 'Race details and signup for UofT Triathlon Club.' };
   }
+  if (pathname.startsWith('/news')) return ROUTE_META['/news'];
   return {
     title: SITE_NAME,
     description: 'Official website of the University of Toronto Triathlon Club.',

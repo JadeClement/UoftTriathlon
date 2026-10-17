@@ -32,6 +32,7 @@ const siteRoutes = require('./routes/site');
 const gearRoutes = require('./routes/gear');
 const merchRoutes = require('./routes/merch');
 const ragRoutes = require('./routes/rag');
+const newsRoutes = require('./routes/news');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -128,6 +129,7 @@ app.use('/api/site', siteRoutes);
 app.use('/api/gear', gearRoutes);
 app.use('/api/merch-orders', merchRoutes);
 app.use('/api/rag', ragRoutes);
+app.use('/api/news', newsRoutes);
 
 // Health check (must be before /api/* 404 handler)
 app.get('/api/health', async (req, res) => {

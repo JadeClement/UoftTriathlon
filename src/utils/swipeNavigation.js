@@ -11,6 +11,7 @@ const DETAIL_BACK_ROUTES = [
   { pattern: /^\/workout\/[^/]+$/, backTo: '/forum', label: '← Back to Forum' },
   { pattern: /^\/event\/[^/]+$/, backTo: '/forum?tab=events', label: '← Back to Forum' },
   { pattern: /^\/race\/[^/]+$/, backTo: '/races', label: '← Back to Races' },
+  { pattern: /^\/news\/[^/]+$/, backTo: '/news', label: '← Back to News', replace: true },
   { pattern: /^\/profile\/[^/]+\/[^/]+$/, backTo: '/coaches-exec', label: '← Back to Team' },
   { pattern: /^\/settings$/, backTo: '/profile', label: '← Back to Profile' },
   { pattern: /^\/results$/, backTo: '/profile', label: '← Back to Profile' },
@@ -48,10 +49,11 @@ export function getDetailBackNav(pathname) {
 }
 
 export function navigateDetailBack(navigate, pathname) {
-  const target = getDetailBackTarget(pathname);
-  if (target) {
-    navigate(target);
-    return true;
+  for (const route of DETAIL_BACK_ROUTES) {
+    if (route.pattern.test(pathname)) {
+      navigate(route.backTo, route.replace ? { replace: true } : undefined);
+      return true;
+    }
   }
   return false;
 }

@@ -134,6 +134,13 @@ export function handleNotificationNavigation(notification) {
       navigateTo(`/race/${raceId}`);
       return;
     }
+
+    if (data?.type === 'bulletin' && data?.bulletinId) {
+      const bulletinId = String(data.bulletinId);
+      console.log(`📍 Navigating to bulletin: /news/${bulletinId}`);
+      navigateTo(`/news/${bulletinId}`);
+      return;
+    }
     
     // If we get here, no valid navigation was found
     console.warn('⚠️ No navigation action for notification');

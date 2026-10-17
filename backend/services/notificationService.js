@@ -166,7 +166,8 @@ async function getUserNotificationPreferences(userId) {
         forum_replies,
         waitlist_promotions,
         COALESCE(sms_enabled, false) AS sms_enabled,
-        COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours
+        COALESCE(workout_reminder_hours, 24) AS workout_reminder_hours,
+        COALESCE(news_bulletins, true) AS news_bulletins
       FROM notification_preferences
       WHERE user_id = $1`,
       [userId]
@@ -182,7 +183,8 @@ async function getUserNotificationPreferences(userId) {
         forumReplies: true,
         waitlistPromotions: true,
         smsEnabled: false,
-        workoutReminderHours: 24
+        workoutReminderHours: 24,
+        newsBulletins: true
       };
     }
 
@@ -196,7 +198,8 @@ async function getUserNotificationPreferences(userId) {
       forumReplies: prefs.forum_replies || false,
       waitlistPromotions: prefs.waitlist_promotions || false,
       smsEnabled: prefs.sms_enabled || false,
-      workoutReminderHours: [1, 12, 24].includes(reminderHours) ? reminderHours : 24
+      workoutReminderHours: [1, 12, 24].includes(reminderHours) ? reminderHours : 24,
+      newsBulletins: prefs.news_bulletins !== false
     };
   } catch (error) {
     console.error('❌ Error fetching notification preferences:', error);
@@ -209,14 +212,15 @@ async function getUserNotificationPreferences(userId) {
       forumReplies: true,
       waitlistPromotions: true,
       smsEnabled: false,
-      workoutReminderHours: 24
+      workoutReminderHours: 24,
+      newsBulletins: true
     };
   }
 }
 
 /**
  * Get all users who have a specific notification preference enabled
- * @param {string} preferenceType - One of: 'spinBrickWorkouts', 'swimWorkouts', 'runWorkouts', 'events', 'forumReplies', 'waitlistPromotions'
+ * @param {string} preferenceType - One of: 'spinBrickWorkouts', 'swimWorkouts', 'runWorkouts', 'events', 'forumReplies', 'waitlistPromotions', 'newsBulletins'
  * @returns {Promise<Array>} Array of user objects with id, email, name
  */
 async function getUsersWithPreference(preferenceType) {
@@ -228,7 +232,8 @@ async function getUsersWithPreference(preferenceType) {
       'runWorkouts': 'run_workouts',
       'events': 'events',
       'forumReplies': 'forum_replies',
-      'waitlistPromotions': 'waitlist_promotions'
+      'waitlistPromotions': 'waitlist_promotions',
+      'newsBulletins': 'news_bulletins'
     };
 
     const columnName = columnMap[preferenceType];
@@ -469,6 +474,39 @@ async function notifyWaitlistPromotion(userData, workoutData) {
   }
 }
 
+/**
+ * Push members when a bulletin is posted on News.
+ * Push only — this preference does not send SMS.
+ * @param {Object} bulletin - { id, title, preview }
+ */
+async function notifyNewsBulletin(bulletin) {
+  try {
+    const users = await getUsersWithPreference('newsBulletins');
+    if (users.length === 0) {
+      logger.debug('📢 No users to notify for news bulletin');
+      return;
+    }
+
+    const notification = {
+      title: bulletin.title || 'New club bulletin',
+      body: bulletin.preview || 'A new bulletin is on News.',
+      data: {
+        type: 'bulletin',
+        bulletinId: String(bulletin.id),
+      },
+    };
+
+    logger.debug(`📢 Sending bulletin push to ${users.length} users for bulletin ${bulletin.id}`);
+    await Promise.all(users.map((user) =>
+      sendPushNotificationToUser(user.id, notification).catch((error) => {
+        console.error(`❌ Bulletin push failed for user ${user.id}:`, error);
+      })
+    ));
+  } catch (error) {
+    console.error('❌ Error sending bulletin notifications:', error);
+  }
+}
+
 module.exports = {
   getUserNotificationPreferences,
   getUsersWithPreference,
@@ -479,5 +517,6 @@ module.exports = {
   notifyEventPosted,
   notifyForumReply,
   notifyWorkoutReplyToSignups,
-  notifyWaitlistPromotion
+  notifyWaitlistPromotion,
+  notifyNewsBulletin
 };

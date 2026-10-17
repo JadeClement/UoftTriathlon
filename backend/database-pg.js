@@ -703,6 +703,34 @@ async function initializeDatabase() {
       logger.error('❌ Workout reminder schema setup failed:', error.message);
     }
 
+    // News bulletins: archive of club-wide emails, plus an on-by-default push preference
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS news_bulletins (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL,
+          banner_title TEXT,
+          body TEXT,
+          html_body TEXT NOT NULL,
+          search_text TEXT NOT NULL DEFAULT '',
+          sent_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          removed_at TIMESTAMP,
+          removed_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+        )
+      `);
+      await pool.query(
+        'CREATE INDEX IF NOT EXISTS idx_news_bulletins_active_sent_at ON news_bulletins (sent_at DESC, id DESC)'
+      );
+      await pool.query(`
+        ALTER TABLE notification_preferences
+        ADD COLUMN IF NOT EXISTS news_bulletins BOOLEAN DEFAULT TRUE
+      `);
+      logger.debug('✅ News bulletin table and preference ensured');
+    } catch (error) {
+      logger.error('❌ News bulletin schema setup failed:', error.message);
+    }
+
     // Profile years: season on team (editable on profile)
     try {
       await pool.query(`

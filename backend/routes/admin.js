@@ -7,24 +7,14 @@ const notificationService = require('../services/notificationService');
 const smsService = require('../services/smsService');
 const { computeMembershipStatus, formatTermLabel } = require('../utils/membership');
 const logger = require('../utils/logger');
+const {
+  formatText,
+  buildBulletinHtml,
+  buildSearchText,
+  previewText,
+} = require('../utils/bulletinContent');
 
-// Function to convert markdown-like formatting to HTML
-const formatText = (text) => {
-  if (!text) return '';
-
-  const linkifyMarkdown = (s) => s.replace(/\[([^\]]*)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi, (_m, label, url) => {
-    const href = url.startsWith('http') ? url : `https://${url}`;
-    const display = (label && label.trim().length > 0) ? label : url;
-    return `<a href="${href}" style="color: #3b82f6; text-decoration: none;">${display}</a>`;
-  });
-
-  return linkifyMarkdown(text)
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-    .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
-    .replace(/\n• /g, '<br/><br/>• ') // Add extra space before bullet points
-    .replace(/\n\d+\. /g, '<br/>$&') // Add single space before numbered bullets
-    .replace(/\n/g, '<br/>'); // Line breaks
-};
+const EMAIL_LINK_STYLE = 'color: #3b82f6; text-decoration: none;';
 
 const router = express.Router();
 
@@ -1192,7 +1182,7 @@ router.post('/send-email', authenticateToken, requireRole('exec'), upload.array(
 <body>
   <div class="email-container">
     <div class="content">
-      <div class="message">${formatText(message)}<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em></div>
+      <div class="message">${formatText(message, { linkStyle: EMAIL_LINK_STYLE })}<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em></div>
     </div>
     <div class="footer">
       <p>UofT Triathlon Club | <a href="https://uoft-tri.club">uoft-tri.club</a></p>
@@ -1393,7 +1383,7 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
             // If the editor already produced HTML links, trust the provided anchor tags
             ? body 
             // Otherwise, treat as plain text/markdown and convert to safe HTML with links
-            : formatText(escapeHtml(body))
+            : formatText(escapeHtml(body), { linkStyle: EMAIL_LINK_STYLE })
           }<br/><br/><em style="color: #6b7280; font-style: italic;">The UofT Tri Club Exec</em></p>` 
         : ''}
     </div>
@@ -1485,17 +1475,50 @@ router.post('/send-bulk-email', authenticateToken, requireRole('exec'), upload.a
       }
     }
 
+    let bulletinId = null;
+    const isBulletin = req.body.isBulletin === true || req.body.isBulletin === 'true';
+    if (isBulletin && successCount > 0) {
+      try {
+        const htmlBody = buildBulletinHtml(body);
+        const inserted = await pool.query(
+          `INSERT INTO news_bulletins (title, banner_title, body, html_body, search_text, sent_by)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id`,
+          [
+            subject,
+            bannerTitle,
+            body,
+            htmlBody,
+            buildSearchText({ title: subject, bannerTitle, body }),
+            req.user.id,
+          ]
+        );
+        bulletinId = inserted.rows[0].id;
+        notificationService.notifyNewsBulletin({
+          id: bulletinId,
+          title: subject,
+          preview: previewText(body),
+        }).catch((notifyError) => {
+          console.error('Bulletin push failed:', notifyError);
+        });
+      } catch (bulletinError) {
+        console.error('Failed to publish bulletin on News:', bulletinError);
+      }
+    }
+
     // Return results
     if (errorCount === 0) {
       res.json({ 
         message: 'All emails sent successfully',
-        recipientCount: successCount
+        recipientCount: successCount,
+        bulletinId
       });
     } else if (successCount > 0) {
       res.json({ 
         message: `Sent to ${successCount} recipients, ${errorCount} failed`,
         recipientCount: successCount,
-        errors: errors.slice(0, 5) // Limit to first 5 errors
+        errors: errors.slice(0, 5), // Limit to first 5 errors
+        bulletinId
       });
     } else {
       res.status(500).json({ 
