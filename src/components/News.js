@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import ConfirmModal from './ConfirmModal';
 import { showError, showSuccess } from './SimpleNotification';
 import { getApiBaseUrl } from '../utils/apiConfig';
+import { isTermExpiredError } from '../utils/apiError';
 import './News.css';
 
 const formatSentAt = (value) => {
@@ -30,6 +31,7 @@ const News = () => {
   const [bulletins, setBulletins] = useState([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState('');
+  const [termExpired, setTermExpired] = useState(false);
   const [reader, setReader] = useState(null);
   const [readerLoading, setReaderLoading] = useState(false);
   const [readerError, setReaderError] = useState('');
@@ -55,6 +57,7 @@ const News = () => {
     try {
       setListLoading(true);
       setListError('');
+      setTermExpired(false);
       const token = localStorage.getItem('triathlonToken');
       const params = new URLSearchParams();
       if (search) params.set('q', search);
@@ -64,6 +67,10 @@ const News = () => {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (isTermExpiredError(data)) {
+          setTermExpired(true);
+          return;
+        }
         throw new Error(data.error || 'Failed to load bulletins');
       }
       setBulletins(data.bulletins || []);
@@ -108,6 +115,10 @@ const News = () => {
         const data = await response.json().catch(() => ({}));
         if (cancelled) return;
         if (!response.ok) {
+          if (isTermExpiredError(data)) {
+            setTermExpired(true);
+            return;
+          }
           throw new Error(data.error || 'That bulletin is no longer available');
         }
         setReader(data.bulletin);
@@ -218,7 +229,7 @@ const News = () => {
     );
   }
 
-  const readerOpen = Boolean(bulletinId);
+  const readerOpen = Boolean(bulletinId) && !termExpired;
 
   const readerModal = readerOpen
     ? createPortal(
@@ -283,19 +294,27 @@ const News = () => {
           <p>Club bulletins, newest first.</p>
         </header>
 
-        <label className="news-search">
-          <span className="visually-hidden">Search bulletins</span>
-          <input
-            type="search"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search titles and bulletin text"
-            autoComplete="off"
-          />
-        </label>
+        {!termExpired && (
+          <label className="news-search">
+            <span className="visually-hidden">Search bulletins</span>
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Search titles and bulletin text"
+              autoComplete="off"
+            />
+          </label>
+        )}
 
         {listLoading && <p className="news-status">Loading bulletins…</p>}
-        {listError && !listLoading && (
+        {termExpired && !listLoading && (
+          <div className="news-notice">
+            <p>Sorry, your term has expired. Please submit your registration receipt.</p>
+            <Link to="/profile" className="news-profile-btn">Go to Profile</Link>
+          </div>
+        )}
+        {listError && !listLoading && !termExpired && (
           <div className="news-status news-status-error">
             <p>{listError}</p>
             <button type="button" onClick={loadBulletins}>
@@ -304,7 +323,7 @@ const News = () => {
           </div>
         )}
 
-        {!listLoading && !listError && bulletins.length === 0 && (
+        {!listLoading && !listError && !termExpired && bulletins.length === 0 && (
           <p className="news-status">
             {search
               ? 'No bulletins match that search.'
@@ -312,7 +331,7 @@ const News = () => {
           </p>
         )}
 
-        {!listLoading && !listError && bulletins.length > 0 && (
+        {!listLoading && !listError && !termExpired && bulletins.length > 0 && (
           <ul className="news-list">
             {bulletins.map((bulletin) => (
               <li key={bulletin.id}>
