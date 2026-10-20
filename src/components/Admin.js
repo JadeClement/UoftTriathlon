@@ -581,7 +581,7 @@ const Admin = () => {
       return;
     }
 
-    if (emailType === 'everyone' && !confirmedBulletinChoice) {
+    if (!confirmedBulletinChoice) {
       setShowBulletinPrompt(true);
       return;
     }
@@ -600,6 +600,7 @@ const Admin = () => {
         formData.append('subject', emailForm.subject);
         formData.append('message', emailForm.message);
         formData.append('template', JSON.stringify(template));
+        formData.append('isBulletin', isBulletin ? 'true' : 'false');
 
         // Add attachments if any
         emailAttachments.forEach((file) => {
@@ -613,7 +614,12 @@ const Admin = () => {
         });
         const data = await resp.json();
         if (resp.ok) {
-          setEmailStatus({ type: 'success', text: 'Email sent successfully!' });
+          const newsNote = isBulletin
+            ? (data.bulletinId
+              ? ' It is now on News.'
+              : ' The email went out, but it could not be posted on News.')
+            : '';
+          setEmailStatus({ type: 'success', text: `Email sent successfully!${newsNote}` });
           setEmailForm({ to: '', subject: '', message: '' });
           setTemplate({ bannerTitle: '', title: '', intro: '', bullets: [''], body: '' });
           setEmailAttachments([]);

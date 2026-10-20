@@ -105,7 +105,6 @@ const Navbar = () => {
       { key: 'joinUs', path: '/join-us', label: 'Join Us', ref: 'joinUs' },
       { key: 'schedule', path: '/schedule', label: 'Schedule', ref: 'schedule' },
       { key: 'coachesExec', path: '/coaches-exec', label: 'Coaches & Exec', ref: 'coachesExec' },
-      { key: 'news', path: '/news', label: 'News', condition: () => currentUser && isMember(currentUser), ref: 'news' },
       { key: 'races', path: '/races', label: 'Races', condition: () => currentUser && isMember(currentUser), ref: 'races' },
       { key: 'settings', path: '/settings', label: 'Settings', condition: () => currentUser && isMember(currentUser), ref: 'settings' },
       { key: 'admin', path: '/admin', label: 'Admin', condition: () => currentUser && (isAdmin(currentUser) || isExec(currentUser)), ref: 'admin' },
@@ -749,6 +748,11 @@ const Navbar = () => {
                 {item.label}
               </Link>
             ))}
+            {currentUser && isMember(currentUser) && (
+              <Link to="/news" className={`hamburger-item ${isActive('/news') ? 'active' : ''}`} onClick={closeMenu}>
+                News
+              </Link>
+            )}
             <Link to="/faq" className={`hamburger-item ${isActive('/faq') ? 'active' : ''}`} onClick={closeMenu}>
               FAQ
             </Link>
@@ -802,6 +806,15 @@ const Navbar = () => {
                   </Link>
                 ))}
                 {/* Always in More dropdown */}
+                {currentUser && isMember(currentUser) && (
+                  <Link
+                    to="/news"
+                    className={`more-item ${isActive('/news') ? 'active' : ''}`}
+                    onClick={closeMenu}
+                  >
+                    News
+                  </Link>
+                )}
                 <Link 
                   to="/faq" 
                   className={`more-item ${isActive('/faq') ? 'active' : ''}`}

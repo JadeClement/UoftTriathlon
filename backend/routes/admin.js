@@ -1197,7 +1197,37 @@ router.post('/send-email', authenticateToken, requireRole('exec'), upload.array(
       : await emailService.sendEmail(to, subject, htmlContent, message, process.env.AWS_FROM_EMAIL || 'info@uoft-tri.club');
     
     if (result.success) {
-      return res.json({ message: 'Email sent successfully' });
+      let bulletinId = null;
+      const isBulletin = req.body.isBulletin === true || req.body.isBulletin === 'true';
+      if (isBulletin) {
+        try {
+          const htmlBody = buildBulletinHtml(message);
+          const inserted = await pool.query(
+            `INSERT INTO news_bulletins (title, banner_title, body, html_body, search_text, sent_by)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id`,
+            [
+              subject,
+              null,
+              message,
+              htmlBody,
+              buildSearchText({ title: subject, bannerTitle: '', body: message }),
+              req.user.id,
+            ]
+          );
+          bulletinId = inserted.rows[0].id;
+          notificationService.notifyNewsBulletin({
+            id: bulletinId,
+            title: subject,
+            preview: previewText(message),
+          }).catch((notifyError) => {
+            console.error('Bulletin push failed:', notifyError);
+          });
+        } catch (bulletinError) {
+          console.error('Failed to publish bulletin on News:', bulletinError);
+        }
+      }
+      return res.json({ message: 'Email sent successfully', bulletinId });
     }
     return res.status(500).json({ error: 'Failed to send email: ' + result.error });
   } catch (error) {
